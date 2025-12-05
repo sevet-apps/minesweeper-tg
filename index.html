@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+    <title>Glass Super App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* --- CSS Переменные --- */
+        :root {
+            --bg-color: #f2f2f7;
+            --text-color: #000000;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            --cell-bg: rgba(209, 209, 214, 0.5); /* Чуть темнее для контраста */
+            --cell-border: rgba(255,255,255,0.4);
+            --cell-revealed: rgba(220, 220, 220, 0.3);
+            --accent: #007aff;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --tab-bg: rgba(255,255,255,0.85);
+            --segment-bg: rgba(118, 118, 128, 0.12);
+            --segment-active: #ffffff;
+            --anim-curve: cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --glass-bg: rgba(30, 30, 30, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            --cell-bg: rgba(255, 255, 255, 0.15);
+            --cell-border: rgba(255,255,255,0.05);
+            --cell-revealed: rgba(0, 0, 0, 0.3);
+            --tab-bg: rgba(30,30,30, 0.85);
+            --segment-bg: rgba(118, 118, 128, 0.24);
+            --segment-active: #636366;
+            --accent: #0a84ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none; /* Запрет выделения на iOS */
+            -webkit-touch-callout: none; /* Запрет меню по долгому тапу */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.4s ease;
+        }
+
+        /* --- UI Screens (Pages) --- */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 20px;
+            padding-bottom: 100px; /* Место под меню */
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+            transition: opacity 0.3s ease, transform 0.3s var(--anim-curve);
+        }
+        
+        .screen.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+            z-index: 10;
+        }
+        
+        /* Экран игры (на весь экран) */
+        #game-screen {
+            z-index: 100; /* Перекрывает всё */
+            background: var(--bg-color);
+            padding-bottom: 20px;
+            display: none; /* JS включит flex */
+        }
+        #game-screen.visible { display: flex; }
+
+        /* --- Header --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+
+        /* --- Theme Toggle (Small) --- */
+        .theme-switch {
+            width: 50px; height: 28px;
+            background: var(--segment-bg);
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+        }
+        .theme-knob {
+            width: 24px; height: 24px;
+            background: var(--segment-active);
+            border-radius: 50%;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: transform 0.3s var(--anim-curve);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        [data-theme="dark"] .theme-knob { transform: translateX(22px); }
+
+        /* --- Cards (Games List, Profile) --- */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: transform 0.2s;
+        }
+        .card:active { transform: scale(0.98); }
+        
+        .game-icon {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, #007aff, #5856d6);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; color: white;
+        }
+        .game-info h3 { margin: 0; font-size: 17px; }
+        .game-info p { margin: 4px 0 0 0; font-size: 13px; color: #8e8e93; }
+
+        /* --- Profile Styles --- */
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .avatar {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: #e1e1e1;
+            margin-bottom: 15px;
+            object-fit: cover;
+            border: 4px solid var(--glass-bg);
+            box-shadow: var(--shadow);
+        }
+        .username { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+        .userid { font-size: 14px; color: #8e8e93; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+        }
+        .stat-box {
+            background: var(--glass-bg);
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
+        }
+        .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); display: block;}
+        .stat-label { font-size: 13px; color: #8e8e93; }
+
+        /* --- Tab Bar --- */
+        .tab-bar {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 85px; /* Учитываем Home Indicator на iPhone */
+            background: var(--tab-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 0.5px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding-top: 10px;
+            z-index: 50;
+        }
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #8e8e93;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 60px;
+            transition: color 0.2s;
+        }
+        .tab-item.active { color: var(--accent); }
+        .tab-item svg { width: 26px; height: 26px; fill: currentColor; }
+
+        /* --- GAME UI --- */
+        .game-header-bar {
+            width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
+        }
+        .back-btn {
+            font-size: 17px; color: var(--accent); font-weight: 500;
+            cursor: pointer; display: flex; align-items: center;
+        }
+        .game-stats {
+            display: flex; gap: 15px;
+            font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums;
+        }
+
+        .game-area {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Центрирование поля */
+            overflow: hidden; /* Скрываем вылеты за пределы */
+            position: relative;
+        }
+
+        .grid {
+            display: grid;
+            gap: 4px;
+            /* Scale будет задан через JS */
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+        }
+
+        .cell {
+            width: 36px; height: 36px;
+            background: var(--cell-bg);
+            border: 1px solid var(--cell-border);
+            border-radius: 6px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 18px; font-weight: 700;
+            cursor: pointer;
+        }
+        .cell:active { transform: scale(0.92); }
+        .cell.revealed { background: var(--cell-revealed); border-color: transparent; cursor: default; }
+        .cell.flagged { background: rgba(255,59,48,0.15); border-color: var(--danger); }
+        
+        /* Цвета цифр */
+        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
+        .c-4 { color: #5856d6; } .c-5 { color: #ff9500; } .c-6 { color: #00c7be; }
+        .c-7 { color: #323232; } .c-8 { color: #8e8e93; }
+
+        /* --- Segmented Control (Копать/Флаг) --- */
+        .controls-wrapper {
+            position: fixed;
+            bottom: 100px; left: 50%; transform: translateX(-50%);
+            z-index: 60;
+        }
+        .segment-control {
+            background: var(--segment-bg);
+            border-radius: 9px;
+            padding: 2px;
+            display: flex;
+            position: relative;
+            width: 200px;
+            height: 36px;
+            backdrop-filter: blur(10px);
+        }
+        .segment-option {
+            flex: 1;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 13px; font-weight: 600;
+            z-index: 2; cursor: pointer;
+            transition: color 0.2s;
+        }
+        .segment-slider {
+            position: absolute;
+            top: 2px; left: 2px;
+            width: calc(50% - 2px); height: 32px;
+            background: var(--segment-active);
+            border-radius: 7px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s var(--anim-curve);
+            z-index: 1;
+        }
+        /* Состояния слайдера */
+        .segment-control[data-state="dig"] .segment-slider { transform: translateX(0); }
+        .segment-control[data-state="flag"] .segment-slider { transform: translateX(100%); }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 200;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: var(--bg-color);
+            width: 85%; max-width: 320px;
+            padding: 25px; border-radius: 24px;
+            text-align: center;
+            transform: scale(0.9); transition: transform 0.3s var(--anim-curve);
+        }
+        .modal-overlay.visible .modal { transform: scale(1); }
+        
+        .btn-main {
+            background: var(--accent); color: white; border: none;
+            padding: 12px; width: 100%; border-radius: 12px;
+            font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer;
+        }
+        
+        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .diff-btn {
+            background: var(--segment-bg); padding: 10px; border-radius: 10px;
+            font-size: 14px; font-weight: 500; cursor: pointer; border: 2px solid transparent;
+        }
+        .diff-btn.selected { border-color: var(--accent); background: rgba(0,122,255,0.1); color: var(--accent); }
+
+    </style>
+</head>
+<body>
+
+    <div id="view-games" class="screen active">
+        <div class="header">
+            <div class="app-title">Игры</div>
+            <div class="theme-switch" id="themeToggle">
+                <div class="theme-knob">☀️</div>
+            </div>
+        </div>
+        
+        <div class="card" onclick="openGameSettings()">
+            <div class="game-icon">💣</div>
+            <div class="game-info">
+                <h3>Сапёр</h3>
+                <p>Классика в стекле</p>
+            </div>
+            <div style="margin-left: auto; color: var(--accent);">Play</div>
+        </div>
+
+        <div class="card" style="opacity: 0.6;">
+            <div class="game-icon" style="background: linear-gradient(135deg, #ff9500, #ff3b30);">?</div>
+            <div class="game-info">
+                <h3>Скоро</h3>
+                <p>Новые игры в разработке</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-profile" class="screen">
+        <div class="header">
+            <div class="app-title">Профиль</div>
+        </div>
+        
+        <div class="profile-header">
+            <img id="user-avatar" src="" alt="" class="avatar">
+            <div id="user-name" class="username">Загрузка...</div>
+            <div id="user-id" class="userid">@username</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <span class="stat-val" id="stat-total">0</span>
+                <span class="stat-label">Игр сыграно</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-val" id="stat-best">--</span>
+                <span class="stat-label">Лучшее время</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-screen">
+        <div class="game-header-bar" style="padding: 15px 20px;">
+            <div class="back-btn" onclick="closeGame()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Назад
+            </div>
+            <div class="game-stats">
+                <span>🚩 <span id="flagsVal">10</span></span>
+                <span>⏱️ <span id="timerVal">000</span></span>
+            </div>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="grid" id="grid"></div>
+        </div>
+        
+        <div class="controls-wrapper">
+            <div class="segment-control" id="modeSwitch" data-state="dig">
+                <div class="segment-slider"></div>
+                <div class="segment-option" onclick="setMode('dig')">Копать</div>
+                <div class="segment-option" onclick="setMode('flag')">Флаг</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-bar" id="tabBar">
+        <div class="tab-item active" onclick="switchTab('games')">
+            <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
+            Игры
+        </div>
+        <div class="tab-item" onclick="switchTab('profile')">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>Настройки</h2>
+            <p>Выберите размер поля:</p>
+            <div class="diff-grid">
+                <div class="diff-btn" onclick="selectDiff(6, 6, 5, this)">6x6</div>
+                <div class="diff-btn selected" onclick="selectDiff(8, 8, 10, this)">8x8</div>
+                <div class="diff-btn" onclick="selectDiff(10, 10, 15, this)">10x10</div>
+                <div class="diff-btn" onclick="selectDiff(15, 15, 30, this)">15x15</div>
+            </div>
+            <button class="btn-main" onclick="launchGame()">Играть</button>
+            <button style="background:transparent; color:#8e8e93; border:none; margin-top:10px; font-size:15px;" onclick="closeSettings()">Отмена</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal">
+            <h2 id="resTitle">Победа!</h2>
+            <p id="resText">Время: 10 сек</p>
+            <button class="btn-main" onclick="closeGame(); closeResult();">В меню</button>
+            <button class="btn-main" style="background: var(--segment-bg); color: var(--text-color);" onclick="launchGame(); closeResult();">Заново</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        // --- GLOBAL STATE ---
+        let currentMode = 'dig'; // 'dig' | 'flag'
+        let ROWS=8, COLS=8, MINES=10;
+        let gridData = [];
+        let timer = 0, timerInterval = null;
+        let flags = 0;
+        let firstClick = true;
+        let gameOver = false;
+        
+        // --- THEME ---
+        const themeToggle = document.getElementById('themeToggle');
+        let isDark = tg.colorScheme === 'dark';
+        
+        function applyTheme() {
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            themeToggle.querySelector('.theme-knob').innerText = isDark ? '🌙' : '☀️';
+            if (tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7';
+            if (tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7';
+        }
+        applyTheme();
+
+        themeToggle.addEventListener('click', () => {
+            isDark = !isDark;
+            applyTheme();
+            tg.HapticFeedback.selectionChanged();
+        });
+
+        // --- TABS & NAVIGATION ---
+        function switchTab(tab) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            
+            if(tab === 'games') {
+                document.getElementById('view-games').classList.add('active');
+                document.querySelectorAll('.tab-item')[0].classList.add('active');
+            } else {
+                document.getElementById('view-profile').classList.add('active');
+                document.querySelectorAll('.tab-item')[1].classList.add('active');
+                loadProfile();
+            }
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        // --- PROFILE LOGIC ---
+        function loadProfile() {
+            const user = tg.initDataUnsafe.user || { first_name: "Gamer", username: "unknown" };
+            
+            document.getElementById('user-name').innerText = user.first_name;
+            document.getElementById('user-id').innerText = user.username ? '@' + user.username : '';
+            
+            // Аватарка (если есть URL, иначе заглушка)
+            const ava = document.getElementById('user-avatar');
+            if(user.photo_url) {
+                ava.src = user.photo_url;
+            } else {
+                // Генерация цветной заглушки с первой буквой
+                ava.style.display = 'flex';
+                ava.style.alignItems = 'center';
+                ava.style.justifyContent = 'center';
+                ava.style.fontSize = '40px';
+                ava.style.color = 'white';
+                ava.style.background = '#007aff';
+                ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + user.first_name[0] + "%3C/text%3E%3C/svg%3E";
+            }
+
+            // Статистика из LocalStorage
+            const total = localStorage.getItem('saper_total') || 0;
+            const best = localStorage.getItem('saper_best');
+            
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-best').innerText = best ? best + 's' : '--';
+        }
+
+        // --- GAME LAUNCHER ---
+        const settingsModal = document.getElementById('settingsModal');
+        
+        function openGameSettings() {
+            settingsModal.classList.add('visible');
+            tg.HapticFeedback.impactOccurred('light');
+        }
+        function closeSettings() {
+            settingsModal.classList.remove('visible');
+        }
+        
+        function selectDiff(r, c, m, btn) {
+            ROWS = r; COLS = c; MINES = m;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function launchGame() {
+            closeSettings();
+            document.getElementById('game-screen').classList.add('visible');
+            document.getElementById('tabBar').style.display = 'none'; // Скрыть табы
+            initGame();
+        }
+
+        function closeGame() {
+            document.getElementById('game-screen').classList.remove('visible');
+            document.getElementById('tabBar').style.display = 'flex'; // Вернуть табы
+            clearInterval(timerInterval);
+        }
+        
+        function closeResult() {
+            document.getElementById('resultModal').classList.remove('visible');
+        }
+
+        // --- GAME LOGIC ---
+        function setMode(mode) {
+            currentMode = mode;
+            const el = document.getElementById('modeSwitch');
+            el.setAttribute('data-state', mode);
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function initGame() {
+            gridData = [];
+            gameOver = false;
+            firstClick = true;
+            flags = MINES;
+            timer = 0;
+            document.getElementById('flagsVal').innerText = flags;
+            document.getElementById('timerVal').innerText = '000';
+            clearInterval(timerInterval);
+
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            
+            // Setup Grid Style
+            gridEl.style.gridTemplateColumns = `repeat(${COLS}, 36px)`;
+            
+            // SCALING LOGIC (Fix #1)
+            // Доступная ширина экрана - отступы (40px)
+            const availableWidth = window.innerWidth - 40;
+            const requiredWidth = COLS * 40; // 36px cell + 4px gap
+            let scale = 1;
+            
+            if (requiredWidth > availableWidth) {
+                scale = availableWidth / requiredWidth;
+            }
+            gridEl.style.transform = `scale(${scale})`;
+
+            // Generate Cells
+            for(let r=0; r<ROWS; r++){
+                const row = [];
+                for(let c=0; c<COLS; c++){
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    
+                    // Events
+                    cell.addEventListener('click', () => handleClick(r, c, cell));
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        toggleFlag(r, c, cell);
+                    });
+                    
+                    // Long Press Handling (Fix #4)
+                    let pressTimer;
+                    cell.addEventListener('touchstart', (e) => {
+                        if(gameOver) return;
+                        pressTimer = setTimeout(() => {
+                            toggleFlag(r, c, cell);
+                            tg.HapticFeedback.impactOccurred('medium');
+                        }, 500);
+                    });
+                    cell.addEventListener('touchend', () => clearTimeout(pressTimer));
+                    cell.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+                    gridEl.appendChild(cell);
+                    row.push({ 
+                        isMine: false, 
+                        revealed: false, 
+                        flagged: false, 
+                        neighbor: 0, 
+                        el: cell 
+                    });
+                }
+                gridData.push(row);
+            }
+        }
+
+        function handleClick(r, c, el) {
+            if(gameOver) return;
+            const cell = gridData[r][c];
+            
+            if(currentMode === 'flag') {
+                toggleFlag(r, c, el);
+                return;
+            }
+            
+            if(cell.flagged || cell.revealed) return;
+
+            if(firstClick) {
+                firstClick = false;
+                placeMines(r, c);
+                startTimer();
+            }
+
+            if(cell.isMine) {
+                loseGame(cell);
+            } else {
+                reveal(r, c);
+                checkWin();
+                tg.HapticFeedback.selectionChanged();
+            }
+        }
+
+        function toggleFlag(r, c, el) {
+            const cell = gridData[r][c];
+            if(cell.revealed || gameOver) return;
+
+            if(!cell.flagged && flags > 0) {
+                cell.flagged = true;
+                el.classList.add('flagged');
+                el.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+                flags--;
+            } else if(cell.flagged) {
+                cell.flagged = false;
+                el.classList.remove('flagged');
+                el.innerHTML = '';
+                flags++;
+            }
+            document.getElementById('flagsVal').innerText = flags;
+        }
+
+        function placeMines(exR, exC) {
+            let placed = 0;
+            while(placed < MINES) {
+                let rr = Math.floor(Math.random() * ROWS);
+                let cc = Math.floor(Math.random() * COLS);
+                if((rr!==exR || cc!==exC) && !gridData[rr][cc].isMine) {
+                    gridData[rr][cc].isMine = true;
+                    placed++;
+                }
+            }
+            // Calc numbers
+            for(let r=0; r<ROWS; r++){
+                for(let c=0; c<COLS; c++){
+                    if(gridData[r][c].isMine) continue;
+                    let count = 0;
+                    for(let i=-1; i<=1; i++)
+                        for(let j=-1; j<=1; j++)
+                            if(r+i>=0 && r+i<ROWS && c+j>=0 && c+j<COLS && gridData[r+i][c+j].isMine) count++;
+                    gridData[r][c].neighbor = count;
+                }
+            }
+        }
+
+        function reveal(r, c) {
+            const cell = gridData[r][c];
+            if(cell.revealed || cell.flagged) return;
+            
+            cell.revealed = true;
+            cell.el.classList.add('revealed');
+            
+            if(cell.neighbor > 0) {
+                cell.el.innerText = cell.neighbor;
+                cell.el.classList.add(`c-${cell.neighbor}`);
+            } else {
+                for(let i=-1; i<=1; i++)
+                    for(let j=-1; j<=1; j++)
+                        if(r+i>=0 && r+i<ROWS && c+j>=0 && c+j<COLS) reveal(r+i, c+j);
+            }
+        }
+
+        function checkWin() {
+            let revealed = 0;
+            gridData.forEach(row => row.forEach(c => { if(c.revealed) revealed++; }));
+            if(revealed === ROWS*COLS - MINES) {
+                winGame();
+            }
+        }
+
+        function winGame() {
+            gameOver = true;
+            clearInterval(timerInterval);
+            tg.HapticFeedback.notificationOccurred('success');
+            
+            // Save Stats
+            let total = parseInt(localStorage.getItem('saper_total') || '0') + 1;
+            let best = parseInt(localStorage.getItem('saper_best') || '9999');
+            localStorage.setItem('saper_total', total);
+            if(timer < best) localStorage.setItem('saper_best', timer);
+
+            // Confetti
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            
+            document.getElementById('resTitle').innerText = "Победа! 🎉";
+            document.getElementById('resText').innerText = `Время: ${timer} сек`;
+            setTimeout(() => document.getElementById('resultModal').classList.add('visible'), 500);
+        }
+
+        function loseGame(cell) {
+            gameOver = true;
+            clearInterval(timerInterval);
+            tg.HapticFeedback.notificationOccurred('error');
+            cell.el.style.background = 'var(--danger)';
+            
+            // Reveal mines
+            gridData.forEach(row => row.forEach(c => {
+                if(c.isMine) {
+                    c.el.innerHTML = '💣';
+                    c.el.style.color = 'black';
+                }
+            }));
+            
+            // Save Stats (Total only)
+            let total = parseInt(localStorage.getItem('saper_total') || '0') + 1;
+            localStorage.setItem('saper_total', total);
+
+            document.getElementById('resTitle').innerText = "Бум! 💥";
+            document.getElementById('resText').innerText = "Не повезло в этот раз";
+            setTimeout(() => document.getElementById('resultModal').classList.add('visible'), 1000);
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timer++;
+                document.getElementById('timerVal').innerText = timer.toString().padStart(3,'0');
+            }, 1000);
+        }
+
+    </script>
+</body>
+</html>
