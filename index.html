@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+    <title>Glass Super App v3.1</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* --- CSS Переменные (Тот самый стиль) --- */
+        :root {
+            --bg-color: #f2f2f7;
+            --text-color: #000000;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            --cell-bg: rgba(255, 255, 255, 0.6);
+            --cell-border: rgba(0,0,0,0.05);
+            --cell-revealed: rgba(220, 220, 220, 0.5);
+            --accent: #007aff; /* Apple Blue */
+            --danger: #ff3b30;
+            --success: #34c759;
+            --tab-bg: rgba(255,255,255,0.9);
+            --toggle-bg: #e9e9ea;
+            --toggle-circle: #ffffff;
+            --icon-color: #3a3a3c;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --glass-bg: rgba(30, 30, 30, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            --cell-bg: rgba(255, 255, 255, 0.12);
+            --cell-border: rgba(255,255,255,0.05);
+            --cell-revealed: rgba(0, 0, 0, 0.3);
+            --tab-bg: rgba(30,30,30, 0.9);
+            --toggle-bg: #2c2c2e;
+            --toggle-circle: #636366;
+            --icon-color: #aeaeb2;
+            --accent: #0a84ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.4s ease;
+        }
+
+        /* --- Иконки SVG --- */
+        .icon {
+            width: 24px; height: 24px;
+            fill: none; stroke: currentColor;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .icon-sm { width: 18px; height: 18px; }
+
+        /* --- Экраны --- */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 20px;
+            padding-bottom: 110px; /* Место под меню */
+            overflow-y: auto;
+            opacity: 0; pointer-events: none;
+            transform: scale(0.98);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .screen.active {
+            opacity: 1; pointer-events: auto; transform: scale(1);
+            z-index: 1;
+        }
+
+        /* --- ЭКРАН ИГРЫ (Особый слой) --- */
+        #game-screen {
+            position: fixed; /* Гарантированно поверх всего */
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 9999; /* Очень высокий индекс */
+            display: flex; flex-direction: column;
+            transform: translateY(100%); /* Спрятан внизу */
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* Плавный выезд iOS */
+            padding: 0;
+        }
+        #game-screen.visible { transform: translateY(0); }
+
+        /* --- Header --- */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; margin-top: 10px;
+        }
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+
+        /* --- Слайдер Темы (как на видео) --- */
+        .theme-switch {
+            position: relative; width: 64px; height: 34px;
+            background: var(--toggle-bg); border-radius: 20px;
+            cursor: pointer; padding: 2px;
+        }
+        .theme-icons {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 7px; color: var(--icon-color); pointer-events: none;
+        }
+        .switch-circle {
+            position: absolute; top: 2px; left: 2px;
+            width: 30px; height: 30px;
+            background: var(--toggle-circle);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 2;
+        }
+        [data-theme="dark"] .switch-circle { transform: translateX(30px); }
+
+        /* --- Карточки меню --- */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 20px; margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 15px;
+            transition: transform 0.2s; cursor: pointer;
+        }
+        .card:active { transform: scale(0.97); }
+        .game-icon-box {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, #007aff, #5ac8fa);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 24px;
+        }
+
+        /* --- Интерфейс Игры --- */
+        .game-top-bar {
+            padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .back-btn {
+            color: var(--accent); font-size: 17px; font-weight: 500;
+            display: flex; align-items: center; cursor: pointer;
+        }
+        
+        .game-area {
+            flex: 1; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; padding-bottom: 100px;
+        }
+
+        .grid {
+            display: grid; gap: 5px;
+            transition: transform 0.3s;
+            padding: 10px;
+            background: var(--glass-bg);
+            border-radius: 16px;
+        }
+
+        .cell {
+            width: 38px; height: 38px;
+            background: var(--cell-bg);
+            border: 1px solid var(--cell-border);
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 18px; font-weight: 700; cursor: pointer;
+            position: relative;
+        }
+        .cell:active { transform: scale(0.92); }
+        .cell.revealed { background: var(--cell-revealed); border-color: transparent; }
+        
+        /* Цвета цифр */
+        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
+
+        /* --- Кнопки управления (Вернул стиль v2) --- */
+        .bottom-controls {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px;
+            background: var(--glass-bg);
+            padding: 8px; border-radius: 25px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 10001; /* Поверх всего в игре */
+        }
+
+        .control-btn {
+            border: none; background: transparent;
+            color: var(--text-color);
+            padding: 10px 24px;
+            border-radius: 18px;
+            font-size: 16px; font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .control-btn.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,122,255,0.3);
+        }
+
+        /* --- Tab Bar (Меню внизу) --- */
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: 85px; background: var(--tab-bg);
+            backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border-top: 0.5px solid var(--glass-border);
+            display: flex; justify-content: space-around; padding-top: 10px;
+            z-index: 50;
+        }
+        .tab-item {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 11px; color: #8e8e93; font-weight: 500;
+            cursor: pointer; width: 60px;
+        }
+        .tab-item.active { color: var(--accent); }
+        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 20000; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: var(--bg-color); width: 85%; max-width: 320px;
+            padding: 25px; border-radius: 24px; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+        }
+        
+        .btn-main {
+            background: var(--accent); color: white; border: none;
+            padding: 14px; width: 100%; border-radius: 14px;
+            font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer;
+        }
+        
+        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .diff-btn {
+            background: var(--toggle-bg); padding: 12px; border-radius: 12px;
+            font-size: 15px; font-weight: 500; cursor: pointer;
+            border: 2px solid transparent; color: var(--text-color);
+        }
+        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); }
+        
+        /* Профиль */
+        .profile-container { display: flex; flex-direction: column; align-items: center; }
+        .avatar {
+            width: 100px; height: 100px; border-radius: 50%;
+            background: #e1e1e1; margin-bottom: 15px; object-fit: cover;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="view-games" class="screen active">
+        <div class="header">
+            <div class="app-title">Игры</div>
+            <div class="theme-switch" id="themeToggle">
+                <div class="theme-icons">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </div>
+                <div class="switch-circle"></div>
+            </div>
+        </div>
+
+        <div class="card" onclick="openGameSettings()">
+            <div class="game-icon-box">💣</div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Сапёр</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+        
+        <div class="card" style="opacity: 0.6;">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff9500, #ff3b30);">?</div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Скоро</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Новые режимы</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-profile" class="screen">
+        <div class="header"><div class="app-title">Профиль</div></div>
+        <div class="profile-container">
+            <img id="user-avatar" src="" alt="" class="avatar">
+            <h2 id="user-name" style="margin:0;">Loading...</h2>
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p>
+            
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-total" style="font-size:24px; font-weight:800; color:var(--accent);">0</div>
+                    <div style="font-size:13px; color:#8e8e93;">Игр сыграно</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-best" style="font-size:24px; font-weight:800; color:var(--accent);">--</div>
+                    <div style="font-size:13px; color:#8e8e93;">Рекорд (сек)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab-item active" onclick="switchTab('games', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
+            Игры
+        </div>
+        <div class="tab-item" onclick="switchTab('profile', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </div>
+    </div>
+
+    <div id="game-screen">
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeGame()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Закрыть
+            </div>
+            <div style="display:flex; gap:15px; font-weight:600; font-size:18px;">
+                <span style="display:flex; align-items:center; gap:4px;">
+                    <svg class="icon icon-sm" style="color:var(--danger)" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    <span id="flagsVal">10</span>
+                </span>
+                <span style="display:flex; align-items:center; gap:4px;">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="timerVal">000</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <div class="grid" id="grid"></div>
+        </div>
+
+        <div class="bottom-controls">
+            <button class="control-btn active" id="btnDig" onclick="setMode('dig')">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                Копать
+            </button>
+            <button class="control-btn" id="btnFlag" onclick="setMode('flag')">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                Флаг
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>Размер поля</h2>
+            <div class="diff-grid">
+                <div class="diff-btn" onclick="selectDiff(6, 6, 5, this)">6x6</div>
+                <div class="diff-btn selected" onclick="selectDiff(8, 8, 10, this)">8x8</div>
+                <div class="diff-btn" onclick="selectDiff(10, 10, 15, this)">10x10</div>
+                <div class="diff-btn" onclick="selectDiff(15, 15, 30, this)">15x15</div>
+            </div>
+            <button class="btn-main" onclick="launchGame()">Начать</button>
+            <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeSettings()">Отмена</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal">
+            <h2 id="resTitle">Победа!</h2>
+            <p id="resText">Время: 10 сек</p>
+            <button class="btn-main" onclick="closeGame(); document.getElementById('resultModal').classList.remove('visible')">В меню</button>
+            <button class="btn-main" style="background:var(--toggle-bg); color:var(--text-color); margin-top:10px;" onclick="document.getElementById('resultModal').classList.remove('visible'); launchGame()">Заново</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // --- Состояние ---
+        let currentMode = 'dig';
+        let ROWS=8, COLS=8, MINES=10;
+        let gridData = [], timer = 0, timerInterval, flags = 0, firstClick = true, gameOver = false;
+
+        // --- Тема ---
+        const themeToggle = document.getElementById('themeToggle');
+        let isDark = tg.colorScheme === 'dark';
+        function applyTheme() {
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7';
+            if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7';
+        }
+        applyTheme();
+        themeToggle.addEventListener('click', () => {
+            isDark = !isDark;
+            applyTheme();
+            tg.HapticFeedback.selectionChanged();
+        });
+
+        // --- Навигация ---
+        function switchTab(tabName, el) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            
+            if(tabName === 'games') document.getElementById('view-games').classList.add('active');
+            else {
+                document.getElementById('view-profile').classList.add('active');
+                loadProfile();
+            }
+            if(el) el.classList.add('active');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        // --- Управление Игрой (Окно) ---
+        function openGameSettings() {
+            document.getElementById('settingsModal').classList.add('visible');
+            tg.HapticFeedback.impactOccurred('light');
+        }
+        function closeSettings() { document.getElementById('settingsModal').classList.remove('visible'); }
+        
+        function selectDiff(r, c, m, btn) {
+            ROWS=r; COLS=c; MINES=m;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function launchGame() {
+            closeSettings();
+            document.getElementById('game-screen').classList.add('visible');
+            initGame();
+        }
+        function closeGame() {
+            document.getElementById('game-screen').classList.remove('visible');
+            clearInterval(timerInterval);
+        }
+
+        // --- Профиль ---
+        function loadProfile() {
+            const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" };
+            document.getElementById('user-name').innerText = user.first_name;
+            document.getElementById('user-id').innerText = user.username ? '@'+user.username : '';
+            
+            const ava = document.getElementById('user-avatar');
+            if(user.photo_url) ava.src = user.photo_url;
+            else {
+                ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E";
+            }
+            document.getElementById('stat-total').innerText = localStorage.getItem('saper_total') || 0;
+            document.getElementById('stat-best').innerText = localStorage.getItem('saper_best') || '--';
+        }
+
+        // --- Логика Сапера ---
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btnDig').classList.toggle('active', mode === 'dig');
+            document.getElementById('btnFlag').classList.toggle('active', mode === 'flag');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function initGame() {
+            gridData = []; gameOver = false; firstClick = true; flags = MINES; timer = 0;
+            document.getElementById('flagsVal').innerText = flags;
+            document.getElementById('timerVal').innerText = '000';
+            clearInterval(timerInterval);
+
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            gridEl.style.gridTemplateColumns = `repeat(${COLS}, 38px)`;
+
+            // Масштабирование
+            const availW = window.innerWidth - 30;
+            const reqW = COLS * 43; // cell + gap
+            gridEl.style.transform = reqW > availW ? `scale(${availW/reqW})` : `scale(1)`;
+
+            for(let r=0; r<ROWS; r++){
+                const row = [];
+                for(let c=0; c<COLS; c++){
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    // Клики
+                    cell.onclick = () => handleClick(r, c);
+                    cell.oncontextmenu = (e) => { e.preventDefault(); toggleFlag(r, c); };
+                    
+                    // Долгое нажатие (Mobile)
+                    let pt;
+                    cell.addEventListener('touchstart', () => {
+                        if(gameOver) return;
+                        pt = setTimeout(() => {
+                            toggleFlag(r, c);
+                            tg.HapticFeedback.impactOccurred('medium');
+                        }, 500);
+                    });
+                    cell.addEventListener('touchend', () => clearTimeout(pt));
+                    cell.addEventListener('touchmove', () => clearTimeout(pt));
+
+                    gridEl.appendChild(cell);
+                    row.push({ isMine:false, revealed:false, flagged:false, neighbor:0, el:cell });
+                }
+                gridData.push(row);
+            }
+        }
+
+        function handleClick(r, c) {
+            const cell = gridData[r][c];
+            if(gameOver || cell.revealed) return;
+
+            if(currentMode === 'flag') { toggleFlag(r,c); return; }
+            if(cell.flagged) return;
+
+            if(firstClick) {
+                firstClick = false;
+                placeMines(r, c);
+                timerInterval = setInterval(() => {
+                    timer++;
+                    document.getElementById('timerVal').innerText = timer.toString().padStart(3,'0');
+                }, 1000);
+            }
+
+            if(cell.isMine) loseGame(cell);
+            else {
+                reveal(r, c);
+                checkWin();
+                tg.HapticFeedback.selectionChanged();
+            }
+        }
+
+        function toggleFlag(r, c) {
+            const cell = gridData[r][c];
+            if(cell.revealed || gameOver) return;
+
+            if(!cell.flagged && flags > 0) {
+                cell.flagged = true;
+                cell.el.classList.add('flagged');
+                // Та самая SVG иконка флага
+                cell.el.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24" style="color:var(--danger); fill:none;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+                flags--;
+            } else if(cell.flagged) {
+                cell.flagged = false;
+                cell.el.classList.remove('flagged');
+                cell.el.innerHTML = '';
+                flags++;
+            }
+            document.getElementById('flagsVal').innerText = flags;
+        }
+
+        function reveal(r, c) {
+            const cell = gridData[r][c];
+            if(cell.revealed || cell.flagged) return;
+            
+            cell.revealed = true;
+            cell.el.classList.add('revealed');
+            
+            if(cell.neighbor > 0) {
+                cell.el.innerText = cell.neighbor;
+                cell.el.classList.add(`c-${cell.neighbor}`);
+            } else {
+                for(let i=-1; i<=1; i++)
+                    for(let j=-1; j<=1; j++)
+                        if(r+i>=0 && r+i<ROWS && c+j>=0 && c+j<COLS) reveal(r+i, c+j);
+            }
+        }
+
+        function placeMines(exR, exC) {
+            let placed = 0;
+            while(placed < MINES) {
+                let rr = Math.floor(Math.random()*ROWS), cc = Math.floor(Math.random()*COLS);
+                if((rr!==exR || cc!==exC) && !gridData[rr][cc].isMine) {
+                    gridData[rr][cc].isMine = true;
+                    placed++;
+                }
+            }
+            for(let r=0; r<ROWS; r++)
+                for(let c=0; c<COLS; c++){
+                    if(gridData[r][c].isMine) continue;
+                    let cnt=0;
+                    for(let i=-1; i<=1; i++)
+                        for(let j=-1; j<=1; j++)
+                            if(r+i>=0 && r+i<ROWS && c+j>=0 && c+j<COLS && gridData[r+i][c+j].isMine) cnt++;
+                    gridData[r][c].neighbor = cnt;
+                }
+        }
+
+        function loseGame(cell) {
+            gameOver = true; clearInterval(timerInterval);
+            tg.HapticFeedback.notificationOccurred('error');
+            cell.el.style.background = 'var(--danger)';
+            
+            gridData.forEach(row => row.forEach(c => {
+                if(c.isMine) {
+                    // Та самая SVG иконка мины (кружок с точками)
+                    c.el.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
+                    c.el.style.color = '#333';
+                }
+            }));
+            
+            let t = parseInt(localStorage.getItem('saper_total')||0)+1;
+            localStorage.setItem('saper_total', t);
+            
+            document.getElementById('resTitle').innerText = "Бум!";
+            document.getElementById('resText').innerText = "Попробуй еще раз";
+            setTimeout(() => document.getElementById('resultModal').classList.add('visible'), 1000);
+        }
+
+        function checkWin() {
+            let rev = 0;
+            gridData.forEach(r => r.forEach(c => { if(c.revealed) rev++; }));
+            if(rev === ROWS*COLS - MINES) {
+                gameOver = true; clearInterval(timerInterval);
+                tg.HapticFeedback.notificationOccurred('success');
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.7 } });
+                
+                let t = parseInt(localStorage.getItem('saper_total')||0)+1;
+                let b = parseInt(localStorage.getItem('saper_best')||9999);
+                localStorage.setItem('saper_total', t);
+                if(timer < b) localStorage.setItem('saper_best', timer);
+                
+                document.getElementById('resTitle').innerText = "Победа! 🎉";
+                document.getElementById('resText').innerText = `Время: ${timer} сек`;
+                setTimeout(() => document.getElementById('resultModal').classList.add('visible'), 500);
+            }
+        }
+    </script>
+</body>
+</html>
