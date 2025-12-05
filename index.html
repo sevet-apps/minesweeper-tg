@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+    <title>Glass Minesweeper</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* --- 1. Настройки и Переменные (Темы) --- */
+        :root {
+            --bg-color: #f2f2f7;
+            --text-color: #000000;
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            --cell-bg: rgba(255, 255, 255, 0.5);
+            --cell-hover: rgba(255, 255, 255, 0.8);
+            --cell-revealed: rgba(230, 230, 230, 0.4);
+            --accent: #007aff; /* Apple Blue */
+            --danger: #ff3b30; /* Apple Red */
+            --success: #34c759; /* Apple Green */
+            --toggle-bg: #e5e5ea;
+            --toggle-circle: #ffffff;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --transition-speed: 0.4s;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1c1c1e;
+            --text-color: #ffffff;
+            --glass-bg: rgba(30, 30, 30, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --cell-bg: rgba(255, 255, 255, 0.1);
+            --cell-hover: rgba(255, 255, 255, 0.2);
+            --cell-revealed: rgba(0, 0, 0, 0.2);
+            --toggle-bg: #2c2c2e;
+            --toggle-circle: #48484a;
+        }
+
+        /* --- 2. Базовые стили --- */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        /* --- 3. Слайдер темы (Как на видео) --- */
+        .header {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+            transition: all var(--transition-speed);
+        }
+
+        .toggle-container {
+            position: relative;
+            width: 60px;
+            height: 32px;
+            background: var(--toggle-bg);
+            border-radius: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5px;
+            transition: background var(--transition-speed);
+        }
+
+        .toggle-icon {
+            font-size: 14px;
+            z-index: 1;
+            transition: opacity var(--transition-speed);
+        }
+        
+        .toggle-circle {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 28px;
+            height: 28px;
+            background: var(--toggle-circle);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform var(--transition-speed) cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        [data-theme="dark"] .toggle-circle {
+            transform: translateX(28px);
+        }
+
+        /* --- 4. Игровое поле --- */
+        .game-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            transition: all var(--transition-speed);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 40px); /* 8 колонок */
+            gap: 6px;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: var(--cell-bg);
+            border-radius: 10px; /* Apple rounded corners */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .cell:active {
+            transform: scale(0.95);
+        }
+
+        .cell.revealed {
+            background: var(--cell-revealed);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            cursor: default;
+        }
+
+        /* Цвета цифр (как в оригинале, но мягче) */
+        .c-1 { color: #007aff; }
+        .c-2 { color: #34c759; }
+        .c-3 { color: #ff3b30; }
+        .c-4 { color: #5856d6; }
+        .c-5 { color: #ff9500; }
+        .c-6 { color: #00c7be; }
+        .c-7 { color: #323232; }
+        .c-8 { color: #8e8e93; }
+
+        .cell.mine {
+            background: rgba(255, 59, 48, 0.3); /* Red wash */
+        }
+        
+        .cell.flagged {
+             /* Можно добавить анимацию появления */
+        }
+
+        /* Кнопка рестарта */
+        .restart-btn {
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            transition: transform 0.2s;
+        }
+        
+        .restart-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* Анимация победы/поражения */
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .emoji-anim {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="font-weight: 700; font-size: 20px;">Minesweeper</div>
+        <div class="toggle-container" id="themeToggle">
+            <span class="toggle-icon">☀️</span>
+            <span class="toggle-icon">🌙</span>
+            <div class="toggle-circle"></div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="stats">
+            <span>🚩 <span id="flagsLeft">10</span></span>
+            <span>⏱️ <span id="timer">000</span></span>
+        </div>
+        
+        <div class="grid" id="grid">
+            </div>
+
+        <button class="restart-btn" onclick="initGame()">Новая игра</button>
+    </div>
+
+    <script>
+        // --- Логика Игры ---
+
+        const gridElement = document.getElementById('grid');
+        const flagsElement = document.getElementById('flagsLeft');
+        const timerElement = document.getElementById('timer');
+        const themeToggle = document.getElementById('themeToggle');
+        
+        const ROWS = 10;
+        const COLS = 8;
+        const MINES_COUNT = 10;
+        
+        let grid = [];
+        let gameOver = false;
+        let flags = 0;
+        let timer = 0;
+        let timerInterval;
+        let firstClick = true;
+
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрыть на весь экран
+
+        // Смена темы
+        let isDark = false;
+        themeToggle.addEventListener('click', () => {
+            isDark = !isDark;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            
+            // Вибрация при переключении (Haptic Feedback)
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.selectionChanged();
+            }
+        });
+        
+        // Автоопределение темы Telegram
+        if (tg.colorScheme === 'dark') {
+            isDark = true;
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+
+        function initGame() {
+            clearInterval(timerInterval);
+            timer = 0;
+            timerElement.innerText = '000';
+            flags = MINES_COUNT;
+            flagsElement.innerText = flags;
+            gameOver = false;
+            firstClick = true;
+            grid = [];
+            gridElement.innerHTML = '';
+            
+            // Создаем пустую сетку
+            for (let r = 0; r < ROWS; r++) {
+                const row = [];
+                for (let c = 0; c < COLS; c++) {
+                    const cell = {
+                        r, c,
+                        isMine: false,
+                        revealed: false,
+                        flagged: false,
+                        neighborMines: 0,
+                        element: document.createElement('div')
+                    };
+                    
+                    cell.element.classList.add('cell');
+                    
+                    // Обработчики событий (ПК и Мобайл)
+                    cell.element.addEventListener('click', () => handleClick(cell));
+                    cell.element.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        handleFlag(cell);
+                    });
+                    
+                    // Долгое нажатие для мобильных
+                    let pressTimer;
+                    cell.element.addEventListener('touchstart', (e) => {
+                        if (gameOver || cell.revealed) return;
+                        pressTimer = setTimeout(() => {
+                            handleFlag(cell);
+                            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                        }, 500); // 500мс для флага
+                    });
+                    
+                    cell.element.addEventListener('touchend', () => clearTimeout(pressTimer));
+                    cell.element.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+                    gridElement.appendChild(cell.element);
+                    row.push(cell);
+                }
+                grid.push(row);
+            }
+        }
+
+        function placeMines(excludeR, excludeC) {
+            let minesPlaced = 0;
+            while (minesPlaced < MINES_COUNT) {
+                const r = Math.floor(Math.random() * ROWS);
+                const c = Math.floor(Math.random() * COLS);
+                
+                // Не ставим мину там, где был первый клик, и не повторяемся
+                if (!grid[r][c].isMine && (r !== excludeR || c !== excludeC)) {
+                    grid[r][c].isMine = true;
+                    minesPlaced++;
+                }
+            }
+            calculateNumbers();
+        }
+
+        function calculateNumbers() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c].isMine) continue;
+                    let count = 0;
+                    // Проверка соседей
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            const nr = r + dr;
+                            const nc = c + dc;
+                            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc].isMine) {
+                                count++;
+                            }
+                        }
+                    }
+                    grid[r][c].neighborMines = count;
+                }
+            }
+        }
+
+        function handleClick(cell) {
+            if (gameOver || cell.flagged || cell.revealed) return;
+
+            if (firstClick) {
+                firstClick = false;
+                placeMines(cell.r, cell.c);
+                startTimer();
+            }
+
+            if (cell.isMine) {
+                gameOver = true;
+                revealAllMines();
+                cell.element.style.background = 'rgba(255, 59, 48, 0.5)';
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                return;
+            }
+
+            revealCell(cell);
+            checkWin();
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        }
+
+        function handleFlag(cell) {
+            if (gameOver || cell.revealed) return;
+            
+            if (!cell.flagged && flags > 0) {
+                cell.flagged = true;
+                cell.element.classList.add('flagged');
+                cell.element.innerHTML = '<span class="emoji-anim">🚩</span>';
+                flags--;
+            } else if (cell.flagged) {
+                cell.flagged = false;
+                cell.element.classList.remove('flagged');
+                cell.element.innerHTML = '';
+                flags++;
+            }
+            flagsElement.innerText = flags;
+        }
+
+        function revealCell(cell) {
+            if (cell.revealed || cell.flagged) return;
+            
+            cell.revealed = true;
+            cell.element.classList.add('revealed');
+            
+            if (cell.neighborMines > 0) {
+                cell.element.innerText = cell.neighborMines;
+                cell.element.classList.add(`c-${cell.neighborMines}`);
+                cell.element.innerHTML = `<span class="emoji-anim">${cell.neighborMines}</span>`;
+            } else {
+                // Если 0, открываем соседей (Flood Fill)
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const nr = cell.r + dr;
+                        const nc = cell.c + dc;
+                        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+                            revealCell(grid[nr][nc]);
+                        }
+                    }
+                }
+            }
+        }
+
+        function revealAllMines() {
+            grid.forEach(row => {
+                row.forEach(cell => {
+                    if (cell.isMine) {
+                        cell.element.classList.add('mine');
+                        cell.element.innerHTML = '<span class="emoji-anim">💣</span>';
+                    }
+                });
+            });
+            clearInterval(timerInterval);
+        }
+
+        function checkWin() {
+            let revealedCount = 0;
+            grid.forEach(row => {
+                row.forEach(cell => {
+                    if (cell.revealed) revealedCount++;
+                });
+            });
+
+            if (revealedCount === (ROWS * COLS - MINES_COUNT)) {
+                gameOver = true;
+                clearInterval(timerInterval);
+                flagsElement.innerText = "WIN";
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                // Можно добавить салют или поздравление
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timer++;
+                timerElement.innerText = timer.toString().padStart(3, '0');
+            }, 1000);
+        }
+
+        // Запуск
+        initGame();
+
+    </script>
+</body>
+</html>
