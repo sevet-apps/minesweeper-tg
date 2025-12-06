@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+    <title>Glass Super App v6.0</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* --- CSS Переменные --- */
+        :root {
+            --bg-color: #f2f2f7;
+            --text-color: #000000;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            
+            /* Minesweeper Colors */
+            --cell-bg: rgba(255, 255, 255, 0.6);
+            --cell-border: rgba(0,0,0,0.05);
+            --cell-revealed: rgba(220, 220, 220, 0.5);
+            
+            --accent: #007aff;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --tab-bg: rgba(255,255,255,0.9);
+            --toggle-bg: #e9e9ea;
+            --toggle-circle: #ffffff;
+            --icon-color: #3a3a3c;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --glass-bg: rgba(30, 30, 30, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            
+            --cell-bg: rgba(255, 255, 255, 0.12);
+            --cell-border: rgba(255,255,255,0.05);
+            --cell-revealed: rgba(0, 0, 0, 0.3);
+
+            --tab-bg: rgba(30,30,30, 0.9);
+            --toggle-bg: #2c2c2e;
+            --toggle-circle: #636366;
+            --icon-color: #aeaeb2;
+            --accent: #0a84ff;
+        }
+
+        /* Глобальный фикс для конфетти */
+        canvas { z-index: 100000 !important; pointer-events: none; }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
+
+        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .icon-sm { width: 18px; height: 18px; }
+
+        /* --- Screens --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 20px; padding-bottom: 110px; overflow-y: auto;
+            opacity: 0; pointer-events: none; transform: scale(0.98);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+
+        /* --- Full Screen Game Overlay --- */
+        .game-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 9999;
+            display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .game-overlay.visible { transform: translateY(0); }
+
+        /* --- Header & Cards --- */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; }
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+
+        .theme-switch {
+            position: relative; width: 64px; height: 34px; background: var(--toggle-bg);
+            border-radius: 20px; cursor: pointer; padding: 2px;
+        }
+        .theme-icons {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 7px; color: var(--icon-color); pointer-events: none;
+        }
+        .switch-circle {
+            position: absolute; top: 2px; left: 2px; width: 30px; height: 30px;
+            background: var(--toggle-circle); border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2;
+        }
+        [data-theme="dark"] .switch-circle { transform: translateX(30px); }
+
+        .card {
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px; border: 1px solid var(--glass-border);
+            padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 15px;
+            transition: transform 0.2s; cursor: pointer;
+        }
+        .card:active { transform: scale(0.97); }
+        .game-icon-box {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 24px;
+        }
+
+        /* --- Game UI Common --- */
+        .game-top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 80px; position: relative; width: 100%;}
+
+        /* --- MINESWEEPER STYLES --- */
+        .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; }
+        .cell {
+            width: 38px; height: 38px; background: var(--cell-bg); border: 1px solid var(--cell-border);
+            border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-size: 18px; font-weight: 700; cursor: pointer; position: relative;
+        }
+        .cell:active { transform: scale(0.92); }
+        .cell.revealed { background: var(--cell-revealed); border-color: transparent; }
+        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
+
+        .bottom-controls {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; background: var(--glass-bg); padding: 8px;
+            border-radius: 25px; backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001;
+        }
+        .control-btn {
+            border: none; background: transparent; color: var(--text-color);
+            padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;
+        }
+        .control-btn.active { background: var(--accent); color: white; box-shadow: 0 4px 15px rgba(0,122,255,0.3); }
+
+        /* --- CHECKERS STYLES --- */
+        .checkers-wrapper { width: 100%; padding: 0 20px; display: flex; justify-content: center; }
+        .checkers-board {
+            width: 100%; max-width: 360px; aspect-ratio: 1 / 1; 
+            display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+            background: #ffffff; border: 4px solid #333; border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;
+        }
+        
+        .ch-cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; }
+        .ch-cell.light { background-color: #ffffff !important; }
+        .ch-cell.dark { background-color: #222222 !important; }
+        .ch-cell.highlight::after {
+            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0, 122, 255, 0.5); pointer-events: none;
+        }
+
+        .checker {
+            width: 80%; height: 80%; border-radius: 50%;
+            position: relative; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 2;
+        }
+        .checker.white { background: #f2f2f7; border: 3px solid #c7c7cc; }
+        /* Исправленный цвет черных шашек */
+        .checker.black { background: #444446; border: 3px solid #666; }
+        .checker.king::before {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 40%; height: 40%; border-radius: 50%; border: 3px solid #ff3b30;
+        }
+        .checker.selected { transform: scale(1.15); box-shadow: 0 8px 20px rgba(0,122,255,0.6); border-color: var(--accent); z-index: 10; }
+
+        /* --- Modals & TabBar --- */
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 85px;
+            background: var(--tab-bg); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around;
+            padding-top: 10px; z-index: 50;
+        }
+        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; width: 60px; }
+        .tab-item.active { color: var(--accent); }
+        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: var(--bg-color); width: 85%; max-width: 320px;
+            padding: 25px; border-radius: 24px; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+            transition: transform 0.4s ease;
+        }
+        
+        /* Класс для переворота модалки при победе черных */
+        .modal.rotate-180 { transform: rotate(180deg); }
+
+        .btn-main {
+            background: var(--accent); color: white; border: none; padding: 14px; width: 100%;
+            border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer;
+        }
+        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .diff-btn {
+            background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500;
+            cursor: pointer; border: 2px solid transparent; color: var(--text-color);
+        }
+        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); }
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+
+    </style>
+</head>
+<body>
+
+    <div id="view-games" class="screen active">
+        <div class="header">
+            <div class="app-title">Игры</div>
+            <div class="theme-switch" id="themeToggle">
+                <div class="theme-icons">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </div>
+                <div class="switch-circle"></div>
+            </div>
+        </div>
+
+        <div class="card" onclick="openGameModal('saper')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);">💣</div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Сапёр</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+
+        <div class="card" onclick="openGameModal('checkers')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg>
+            </div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Шашки</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом или Другом</p>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+    </div>
+
+    <div id="view-profile" class="screen">
+        <div class="header"><div class="app-title">Профиль</div></div>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <img id="user-avatar" src="" alt="" class="avatar">
+            <h2 id="user-name" style="margin:0;">Loading...</h2>
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p>
+            
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom: 10px;">
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div>
+                    <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div>
+                </div>
+            </div>
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab-item active" onclick="switchTab('games', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
+            Игры
+        </div>
+        <div class="tab-item" onclick="switchTab('profile', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </div>
+    </div>
+
+    <div id="saper-screen" class="game-overlay">
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div>
+            <div style="display:flex; gap:15px; font-weight:600; font-size:18px;">
+                <span style="display:flex; align-items:center; gap:4px;"><svg class="icon icon-sm" style="color:var(--danger)" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg><span id="saperFlags">0</span></span>
+                <span style="display:flex; align-items:center; gap:4px;"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span id="saperTimer">000</span></span>
+            </div>
+        </div>
+        <div class="game-area"><div class="grid" id="saperGrid"></div></div>
+        <div class="bottom-controls">
+            <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Копать</button>
+            <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>Флаг</button>
+        </div>
+    </div>
+
+    <div id="checkers-screen" class="game-overlay">
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div>
+            <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div>
+        </div>
+        <div class="game-area">
+            <div class="checkers-wrapper">
+                <div id="checkersBoard" class="checkers-board"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalSaper">
+        <div class="modal">
+            <h2>Сапёр</h2>
+            <div class="diff-grid">
+                <div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div>
+                <div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div>
+                <div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div>
+                <div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div>
+            </div>
+            <button class="btn-main" onclick="launchSaper()">Начать</button>
+            <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalCheckers">
+        <div class="modal">
+            <h2>Шашки</h2>
+            <p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p>
+            <div class="diff-grid">
+                <div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div>
+                <div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div>
+            </div>
+            <button class="btn-main" onclick="launchCheckers()">Играть</button>
+            <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalResult">
+        <div class="modal" id="modalResultContent">
+            <h2 id="resTitle">Победа!</h2>
+            <p id="resText">Текст</p>
+            <button class="btn-main" onclick="closeResult()">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // --- Common ---
+        const themeToggle = document.getElementById('themeToggle');
+        let isDark = tg.colorScheme === 'dark';
+        
+        function applyTheme() {
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7';
+            if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7';
+        }
+        applyTheme();
+        themeToggle.addEventListener('click', () => { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); });
+
+        function switchTab(t, el) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+            if(t==='games') document.getElementById('view-games').classList.add('active');
+            else { document.getElementById('view-profile').classList.add('active'); loadProfile(); }
+            if(el) el.classList.add('active');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function openGameModal(game) {
+            if(game==='saper') document.getElementById('modalSaper').classList.add('visible');
+            if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible');
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        function closeGame(game) {
+            document.getElementById(game+'-screen').classList.remove('visible');
+            if(game==='saper') clearInterval(saperTimerInt);
+        }
+        
+        function closeResult() {
+            document.getElementById('modalResult').classList.remove('visible');
+            // Сброс переворота
+            document.getElementById('modalResultContent').classList.remove('rotate-180');
+            document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible'));
+        }
+
+        function loadProfile() {
+            const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" };
+            document.getElementById('user-name').innerText = user.first_name;
+            document.getElementById('user-id').innerText = user.username ? '@'+user.username : '';
+            const ava = document.getElementById('user-avatar');
+            if(user.photo_url) ava.src = user.photo_url;
+            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E";
+            
+            // Stats Saper
+            document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0;
+            document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--';
+            
+            // Stats Checkers
+            document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0;
+            document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0;
+        }
+
+        // ================= SAPER LOGIC =================
+        let sRows=8, sCols=8, sMines=10, sMode='dig';
+        let sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false;
+
+        function setSaperDiff(r,c,m,btn) {
+            sRows=r; sCols=c; sMines=m;
+            document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected'));
+            btn.classList.add('selected');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function launchSaper() {
+            document.getElementById('modalSaper').classList.remove('visible');
+            document.getElementById('saper-screen').classList.add('visible');
+            initSaper();
+        }
+        function setSaperMode(m) {
+            sMode = m;
+            document.getElementById('btnDig').classList.toggle('active', m==='dig');
+            document.getElementById('btnFlag').classList.toggle('active', m==='flag');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function initSaper() {
+            sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0;
+            document.getElementById('saperFlags').innerText = sFlags;
+            document.getElementById('saperTimer').innerText = '000';
+            clearInterval(sTimerInt);
+            const gridEl = document.getElementById('saperGrid');
+            gridEl.innerHTML='';
+            gridEl.style.gridTemplateColumns = `repeat(${sCols}, 38px)`;
+            const w = window.innerWidth - 20;
+            const rw = sCols * 43;
+            gridEl.style.transform = rw > w ? `scale(${w/rw})` : `scale(1)`;
+            for(let r=0; r<sRows; r++){
+                const row=[];
+                for(let c=0; c<sCols; c++){
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.onclick = () => onSaperClick(r,c);
+                    cell.oncontextmenu = (e) => { e.preventDefault(); onSaperFlag(r,c); };
+                    let pt;
+                    cell.addEventListener('touchstart', () => { if(!sOver) pt=setTimeout(() => {onSaperFlag(r,c); tg.HapticFeedback.impactOccurred('medium');}, 500); });
+                    cell.addEventListener('touchend', ()=>clearTimeout(pt));
+                    gridEl.appendChild(cell);
+                    row.push({ isMine:false, revealed:false, flagged:false, neighbor:0, el:cell });
+                }
+                sGrid.push(row);
+            }
+        }
+        function onSaperClick(r,c) {
+            const cell = sGrid[r][c];
+            if(sOver || cell.revealed) return;
+            if(sMode==='flag') { onSaperFlag(r,c); return; }
+            if(cell.flagged) return;
+            if(sFirst) {
+                sFirst=false;
+                placeMinesSafe(r,c);
+                sTimerInt = setInterval(()=>{ sTimer++; document.getElementById('saperTimer').innerText=sTimer.toString().padStart(3,'0'); },1000);
+            }
+            if(cell.isMine) loseSaper(cell);
+            else { revealSaper(r,c); checkSaperWin(); tg.HapticFeedback.selectionChanged(); }
+        }
+        function onSaperFlag(r,c) {
+            const cell = sGrid[r][c];
+            if(sOver || cell.revealed) return;
+            if(!cell.flagged && sFlags>0) {
+                cell.flagged=true; cell.el.classList.add('flagged'); sFlags--;
+                cell.el.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24" style="color:var(--danger); fill:none;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+            } else if(cell.flagged) {
+                cell.flagged=false; cell.el.classList.remove('flagged'); sFlags++;
+                cell.el.innerHTML = '';
+            }
+            document.getElementById('saperFlags').innerText=sFlags;
+        }
+        function placeMinesSafe(exR, exC) {
+            let placed=0;
+            while(placed<sMines) {
+                let rr = Math.floor(Math.random()*sRows);
+                let cc = Math.floor(Math.random()*sCols);
+                if(Math.abs(rr-exR)<=1 && Math.abs(cc-exC)<=1) continue;
+                if(!sGrid[rr][cc].isMine) { sGrid[rr][cc].isMine=true; placed++; }
+            }
+            for(let r=0; r<sRows; r++) for(let c=0; c<sCols; c++) {
+                if(sGrid[r][c].isMine) continue;
+                let cnt=0;
+                for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++)
+                    if(r+i>=0 && r+i<sRows && c+j>=0 && c+j<sCols && sGrid[r+i][c+j].isMine) cnt++;
+                sGrid[r][c].neighbor=cnt;
+            }
+        }
+        function revealSaper(r,c) {
+            const cell = sGrid[r][c];
+            if(cell.revealed || cell.flagged) return;
+            cell.revealed=true; cell.el.classList.add('revealed');
+            if(cell.neighbor>0) { cell.el.innerText=cell.neighbor; cell.el.classList.add('c-'+cell.neighbor); }
+            else { for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) if(r+i>=0 && r+i<sRows && c+j>=0 && c+j<sCols) revealSaper(r+i,c+j); }
+        }
+        function loseSaper(cell) {
+            sOver=true; clearInterval(sTimerInt); tg.HapticFeedback.notificationOccurred('error');
+            cell.el.style.background='var(--danger)';
+            sGrid.forEach(r=>r.forEach(c=>{ if(c.isMine) { c.el.innerHTML=`<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`; c.el.style.color='#333'; } }));
+            localStorage.setItem('saper_total', (parseInt(localStorage.getItem('saper_total')||0)+1));
+            showResult('Бум!', 'Не повезло');
+        }
+        function checkSaperWin() {
+            let rev=0; sGrid.forEach(r=>r.forEach(c=>{if(c.revealed) rev++}));
+            if(rev === sRows*sCols - sMines) {
+                sOver=true; clearInterval(sTimerInt); tg.HapticFeedback.notificationOccurred('success');
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 200000 });
+                let t=parseInt(localStorage.getItem('saper_total')||0)+1;
+                let b=parseInt(localStorage.getItem('saper_best')||9999);
+                localStorage.setItem('saper_total', t);
+                if(sTimer<b) localStorage.setItem('saper_best', sTimer);
+                showResult('Победа! 🎉', `Время: ${sTimer} сек`);
+            }
+        }
+
+        // ================= CHECKERS LOGIC 6.0 (FLYING KINGS + MULTI JUMP) =================
+        const BOARD_SIZE = 8;
+        let board = [];
+        let turn = 'white';
+        let selectedPiece = null;
+        let isPvE = false;
+        let forcedPiece = null; // Шашка, которая обязана продолжить бой
+
+        function setCheckersMode(pve, btn) {
+            isPvE = pve;
+            document.getElementById('pvpBtn').classList.remove('selected');
+            document.getElementById('pveBtn').classList.remove('selected');
+            btn.classList.add('selected');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function launchCheckers() {
+            document.getElementById('modalCheckers').classList.remove('visible');
+            document.getElementById('checkers-screen').classList.add('visible');
+            setTimeout(initCheckers, 50);
+        }
+
+        function initCheckers() {
+            turn = 'white';
+            selectedPiece = null;
+            forcedPiece = null;
+            document.getElementById('checkersStatus').innerText = "Ход Белых";
+            
+            const boardEl = document.getElementById('checkersBoard');
+            boardEl.innerHTML = '';
+            board = [];
+            
+            for(let r=0; r<BOARD_SIZE; r++) {
+                const row = [];
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    const isDark = (r + c) % 2 !== 0;
+                    cell.className = `ch-cell ${isDark ? 'dark' : 'light'}`;
+                    cell.onclick = () => onBoardClick(r, c);
+                    boardEl.appendChild(cell);
+                    
+                    let piece = null;
+                    if(isDark) {
+                        if(r < 3) piece = { color: 'black', isKing: false };
+                        if(r > 4) piece = { color: 'white', isKing: false };
+                    }
+                    row.push({ piece, el: cell });
+                    if(piece) renderPiece(r, c);
+                }
+                board.push(row);
+            }
+        }
+
+        function renderPiece(r, c) {
+            const cell = board[r][c];
+            cell.el.innerHTML = '';
+            if(cell.piece) {
+                const p = document.createElement('div');
+                p.className = `checker ${cell.piece.color} ${cell.piece.isKing ? 'king' : ''}`;
+                cell.el.appendChild(p);
+            }
+        }
+
+        function onBoardClick(r, c) {
+            if(isPvE && turn === 'black') return;
+            const cell = board[r][c];
+
+            // 1. Выбор шашки
+            if(cell.piece && cell.piece.color === turn) {
+                // Если есть обязательная шашка для серии, можно выбрать только её
+                if(forcedPiece && (forcedPiece.r !== r || forcedPiece.c !== c)) return;
+
+                if(selectedPiece) {
+                    const p = board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');
+                    if(p) p.classList.remove('selected');
+                    clearHighlights();
+                }
+                selectedPiece = { r, c };
+                cell.el.querySelector('.checker').classList.add('selected');
+                highlightMoves(r, c);
+                tg.HapticFeedback.selectionChanged();
+                return;
+            }
+
+            // 2. Ход
+            if(!cell.piece && selectedPiece) {
+                const moves = getValidMoves(selectedPiece.r, selectedPiece.c, board);
+                const move = moves.find(m => m.toR === r && m.toC === c);
+                if(move) executeMove(move);
+            }
+        }
+
+        function highlightMoves(r, c) {
+            const moves = getValidMoves(r, c, board);
+            moves.forEach(m => board[m.toR][m.toC].el.classList.add('highlight'));
+        }
+        function clearHighlights() {
+            board.forEach(row => row.forEach(cell => cell.el.classList.remove('highlight')));
+        }
+
+        // Логика ходов (включая Летающую Дамку)
+        function getValidMoves(r, c, b) {
+            const p = b[r][c].piece;
+            if(!p) return [];
+            const moves = [];
+            
+            // Направления
+            const dirs = [[-1,-1], [-1,1], [1,-1], [1,1]];
+
+            dirs.forEach(d => {
+                let dist = 1;
+                while(true) {
+                    let nr = r + d[0]*dist;
+                    let nc = c + d[1]*dist;
+
+                    if(!isOnBoard(nr, nc)) break;
+
+                    // Если клетка пустая
+                    if(!b[nr][nc].piece) {
+                        // Обычная шашка ходит только вперед (если не бой)
+                        if(!p.isKing) {
+                            const isForward = (p.color === 'white' && d[0] === -1) || (p.color === 'black' && d[0] === 1);
+                            if(isForward && dist === 1 && !forcedPiece) { // Обычный ход
+                                moves.push({ fromR:r, fromC:c, toR: nr, toC: nc, isCapture: false });
+                            }
+                            // Обычная шашка ходит на 1 клетку без боя
+                            break; 
+                        } else {
+                            // Дамка (без боя)
+                            if(!forcedPiece)
+                                moves.push({ fromR:r, fromC:c, toR: nr, toC: nc, isCapture: false });
+                        }
+                    } else {
+                        // Если встретили фигуру
+                        if(b[nr][nc].piece.color === p.color) break; // Своя фигура - блок
+
+                        // Враг. Проверяем, есть ли место за ним
+                        let jumpR = nr + d[0];
+                        let jumpC = nc + d[1];
+                        if(isOnBoard(jumpR, jumpC) && !b[jumpR][jumpC].piece) {
+                            // Можно рубить!
+                            // Для дамки можно приземлиться не только сразу за врагом, но и дальше
+                             if(p.isKing) {
+                                 let flyDist = 1;
+                                 while(true) {
+                                     let flyR = nr + d[0]*flyDist;
+                                     let flyC = nc + d[1]*flyDist;
+                                     if(!isOnBoard(flyR, flyC) || b[flyR][flyC].piece) break;
+                                     moves.push({ fromR:r, fromC:c, toR: flyR, toC: flyC, isCapture: true, midR: nr, midC: nc });
+                                     flyDist++;
+                                 }
+                             } else {
+                                 moves.push({ fromR:r, fromC:c, toR: jumpR, toC: jumpC, isCapture: true, midR: nr, midC: nc });
+                             }
+                        }
+                        break; // Дальше в этом направлении искать нельзя (уперлись в связку)
+                    }
+                    dist++;
+                    if(!p.isKing) break; // Обычная шашка проверяет только соседей
+                }
+            });
+
+            // Если есть обязательный бой (forcedPiece), фильтруем только бои
+            // Для упрощения: если найдены бои в moves, оставляем только их
+            const captures = moves.filter(m => m.isCapture);
+            return captures.length > 0 ? captures : moves;
+        }
+
+        function isOnBoard(r, c) { return r>=0 && r<8 && c>=0 && c<8; }
+
+        function executeMove(move) {
+            const { fromR, fromC, toR, toC, isCapture, midR, midC } = move;
+            
+            const p = board[fromR][fromC].piece;
+            board[toR][toC].piece = p;
+            board[fromR][fromC].piece = null;
+            
+            // Обновляем вид
+            renderPiece(toR, toC);
+            renderPiece(fromR, fromC);
+            
+            if(selectedPiece) {
+                const prev = document.querySelector('.checker.selected');
+                if(prev) prev.classList.remove('selected');
+            }
+            clearHighlights();
+
+            // Если был бой
+            if(isCapture) {
+                board[midR][midC].piece = null;
+                renderPiece(midR, midC);
+                tg.HapticFeedback.notificationOccurred('warning');
+                
+                // Проверка: можно ли рубить дальше?
+                // Важно: дамка или шашка на новом месте
+                // Превращение в дамку
+                let promoted = false;
+                if(!p.isKing && ((p.color==='white' && toR===0) || (p.color==='black' && toR===7))) {
+                    p.isKing = true;
+                    renderPiece(toR, toC);
+                    promoted = true;
+                }
+
+                // Если превратились - ход заканчивается (правило русских шашек может варьироваться, здесь упростим: превращение = конец серии)
+                // Если НЕ превратились (или уже дамка), ищем новые бои
+                if(!promoted) {
+                    const nextMoves = getValidMoves(toR, toC, board);
+                    if(nextMoves.some(m => m.isCapture)) {
+                        // Продолжаем серию!
+                        forcedPiece = { r: toR, c: toC };
+                        selectedPiece = { r: toR, c: toC };
+                        board[toR][toC].el.querySelector('.checker').classList.add('selected');
+                        highlightMoves(toR, toC);
+                        
+                        // Если бот играет, он должен продолжить
+                        if(isPvE && turn === 'black') {
+                            setTimeout(aiMove, 500);
+                        }
+                        return; // Ход НЕ передается
+                    }
+                }
+            } else {
+                tg.HapticFeedback.selectionChanged();
+                // Обычный ход - проверяем на дамку
+                if(!p.isKing && ((p.color==='white' && toR===0) || (p.color==='black' && toR===7))) {
+                    p.isKing = true;
+                    renderPiece(toR, toC);
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            }
+
+            // Конец хода
+            forcedPiece = null;
+            selectedPiece = null;
+            
+            // Проверка на победу
+            if(checkWinCondition()) return;
+
+            turn = turn === 'white' ? 'black' : 'white';
+            document.getElementById('checkersStatus').innerText = turn === 'white' ? "Ход Белых" : "Ход Чёрных";
+
+            if(isPvE && turn === 'black') setTimeout(aiMove, 600);
+        }
+
+        function checkWinCondition() {
+            // Простейшая проверка: есть ли у противника фигуры или ходы
+            let whiteCount = 0, blackCount = 0;
+            let whiteMoves = false, blackMoves = false;
+
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                if(board[r][c].piece) {
+                    if(board[r][c].piece.color === 'white') {
+                        whiteCount++;
+                        if(!whiteMoves && getValidMoves(r,c,board).length > 0) whiteMoves = true;
+                    } else {
+                        blackCount++;
+                        if(!blackMoves && getValidMoves(r,c,board).length > 0) blackMoves = true;
+                    }
+                }
+            }
+
+            if(blackCount === 0 || !blackMoves) { endGame('white'); return true; }
+            if(whiteCount === 0 || !whiteMoves) { endGame('black'); return true; }
+            return false;
+        }
+
+        function endGame(winner) {
+            // Сохранение статистики
+            let total = parseInt(localStorage.getItem('checkers_total') || 0) + 1;
+            localStorage.setItem('checkers_total', total);
+            
+            if(isPvE && winner === 'white') {
+                let wins = parseInt(localStorage.getItem('checkers_wins_pve') || 0) + 1;
+                localStorage.setItem('checkers_wins_pve', wins);
+            }
+
+            tg.HapticFeedback.notificationOccurred('success');
+            
+            // Настройка модалки и конфетти
+            const modal = document.getElementById('modalResultContent');
+            const title = document.getElementById('resTitle');
+            const text = document.getElementById('resText');
+
+            if(isPvE) {
+                // PvE Победа
+                if(winner === 'white') {
+                    let wins = localStorage.getItem('checkers_wins_pve');
+                    title.innerText = "Победа! 🎉";
+                    text.innerText = getMilestoneMessage(wins);
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 200000 });
+                } else {
+                    title.innerText = "Поражение 🤖";
+                    text.innerText = "Робот оказался умнее.";
+                }
+            } else {
+                // PvP Победа
+                title.innerText = winner === 'white' ? "Белые победили! ⚪️" : "Чёрные победили! ⚫️";
+                text.innerText = "";
+                
+                if(winner === 'white') {
+                    // Салют снизу
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 1 }, zIndex: 200000 });
+                } else {
+                    // Салют сверху и переворот
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0 }, zIndex: 200000 });
+                    modal.classList.add('rotate-180');
+                }
+            }
+
+            setTimeout(() => document.getElementById('modalResult').classList.add('visible'), 500);
+        }
+
+        function getMilestoneMessage(wins) {
+            if(wins == 10) return "10 побед! Хорошее начало!";
+            if(wins == 50) return "50 побед! Гроссмейстер в пути!";
+            if(wins == 100) return "100 побед! Ты познал всю мощь дамок 😁";
+            if(wins == 200) return "200 побед! Роботы тебя боятся.";
+            if(wins == 500) return "500 побед! Легенда!";
+            if(wins == 1000) return "1000 побед! Ты прошел игру.";
+            return `Это твоя ${wins}-я победа над ботом!`;
+        }
+
+        function showResult(title, text) {
+            document.getElementById('resTitle').innerText=title;
+            document.getElementById('resText').innerText=text;
+            setTimeout(()=>document.getElementById('modalResult').classList.add('visible'), 1000);
+        }
+
+        function aiMove() {
+            const pieces = [];
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                if(board[r][c].piece && board[r][c].piece.color === 'black') pieces.push({r, c});
+            }
+            
+            // Если есть forcedPiece у бота (продолжение серии)
+            if(forcedPiece) {
+                const moves = getValidMoves(forcedPiece.r, forcedPiece.c, board);
+                if(moves.length > 0) {
+                     executeMove(moves[0]); // Бьет первым попавшимся
+                     return;
+                }
+            }
+
+            let allMoves = [];
+            pieces.forEach(p => {
+                const moves = getValidMoves(p.r, p.c, board);
+                moves.forEach(m => allMoves.push({ from: p, to: m }));
+            });
+
+            if(allMoves.length === 0) return; // У бота нет ходов (проиграл)
+
+            const captures = allMoves.filter(m => m.to.isCapture);
+            const move = captures.length > 0 
+                ? captures[Math.floor(Math.random()*captures.length)] 
+                : allMoves[Math.floor(Math.random()*allMoves.length)];
+                
+            executeMove(move.to);
+        }
+    </script>
+</body>
+</html>
