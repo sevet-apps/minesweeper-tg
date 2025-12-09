@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+    <title>Glass Super App v8.1</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* --- CSS Переменные --- */
+        :root {
+            --bg-color: #f2f2f7;
+            --text-color: #000000;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            
+            --accent: #007aff;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --tab-bg: rgba(255,255,255,0.95);
+            --toggle-bg: #e9e9ea;
+            --toggle-circle: #ffffff;
+            --icon-color: #3a3a3c;
+
+            /* Block Blast Colors */
+            --bb-grid: rgba(0,0,0,0.05);
+            --bb-cell: rgba(255,255,255,0.5);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --glass-bg: rgba(30, 30, 30, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            
+            --tab-bg: rgba(30,30,30, 0.95);
+            --toggle-bg: #2c2c2e;
+            --toggle-circle: #636366;
+            --icon-color: #aeaeb2;
+            --accent: #0a84ff;
+            
+            --bb-grid: rgba(255,255,255,0.05);
+            --bb-cell: rgba(255,255,255,0.1);
+        }
+
+        canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
+
+        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .icon-sm { width: 18px; height: 18px; }
+
+        /* Screens */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+
+        /* Game Overlay */
+        .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .game-overlay.visible { transform: translateY(0); }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; }
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+
+        .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; }
+        .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; }
+        .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; }
+        [data-theme="dark"] .switch-circle { transform: translateX(30px); }
+
+        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; }
+        .card:active { transform: scale(0.97); }
+        .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+
+        .game-top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
+
+        /* --- SAPER CSS --- */
+        .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; }
+        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; }
+        .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } }
+        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
+        .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; }
+        .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .control-btn.active { background: var(--accent); color: white; }
+
+        /* --- CHECKERS CSS --- */
+        .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; }
+        .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; }
+        .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; }
+        .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; }
+        .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); }
+        .checker.white { background: #f0f0f0; border: 3px solid #ccc; }
+        .checker.black { background: #444; border: 3px solid #777; }
+        .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; }
+        .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
+
+        /* --- BLOCK BLAST CSS --- */
+        .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; }
+        .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: transform 0.2s; }
+        .bb-grid { 
+            display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px;
+            width: 90vw; height: 90vw; max-width: 350px; max-height: 350px;
+            background: var(--bb-grid); padding: 4px; border-radius: 12px;
+        }
+        .bb-cell { 
+            background: var(--bb-cell); border-radius: 6px; 
+            transition: transform 0.2s, opacity 0.2s; /* Анимация пропадания */
+        }
+        .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
+        .bb-cell.clearing { transform: scale(0); opacity: 0; } /* Эффект удаления */
+        
+        .bb-footer {
+            position: absolute; bottom: 30px; width: 100%; height: 120px;
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 0 20px;
+        }
+        .bb-shape-container { width: 80px; height: 80px; display: flex; justify-content: center; align-items: center; position: relative; }
+        .bb-shape-preview { display: grid; gap: 2px; pointer-events: auto; touch-action: none; }
+        .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+        
+        /* Drag Ghost */
+        .drag-ghost { 
+            position: fixed; pointer-events: none; z-index: 10000; 
+            transform: translate(-50%, -100%); /* Палец держит фигуру снизу */
+            opacity: 0.9;
+        }
+        .drag-ghost .bb-block { width: 40px; height: 40px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); } /* Увеличенная при перетаскивании */
+
+        /* Colors for Block Blast */
+        .bb-c-1 { background: #ff3b30; } /* Red */
+        .bb-c-2 { background: #ff9500; } /* Orange */
+        .bb-c-3 { background: #ffcc00; } /* Yellow */
+        .bb-c-4 { background: #34c759; } /* Green */
+        .bb-c-5 { background: #007aff; } /* Blue */
+        .bb-c-6 { background: #5856d6; } /* Purple */
+        .bb-c-7 { background: #af52de; } /* Pink */
+        .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
+
+        /* Common */
+        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; }
+        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; width: 60px; }
+        .tab-item.active { color: var(--accent); }
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
+        .modal.rotate-180 { transform: rotate(180deg); }
+        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; }
+        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); }
+        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); }
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+    <div id="view-games" class="screen active">
+        <div class="header">
+            <div class="app-title">Игры</div>
+            <div class="theme-switch" id="themeToggle">
+                <div class="switch-circle"></div>
+                <div class="theme-icons" style="justify-content:space-around; width:100%">☀️ 🌙</div>
+            </div>
+        </div>
+
+        <div class="card" onclick="openGameModal('saper')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);">💣</div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Сапёр</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+
+        <div class="card" onclick="openGameModal('checkers')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg>
+            </div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Шашки</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+
+        <div class="card" onclick="startBlockBlastCheck()">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="9" height="9" rx="2"></rect>
+                    <rect x="13" y="2" width="9" height="9" rx="2"></rect>
+                    <rect x="2" y="13" width="9" height="9" rx="2"></rect>
+                </svg>
+            </div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Block Blast</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+    </div>
+
+    <div id="view-profile" class="screen">
+        <div class="header"><div class="app-title">Профиль</div></div>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <img id="user-avatar" src="" alt="" class="avatar">
+            <h2 id="user-name" style="margin:0;">Loading...</h2>
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p>
+            
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div>
+                    <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Block Игр</div>
+                </div>
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                    <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab-item active" onclick="switchTab('games', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>Игры</div>
+        <div class="tab-item" onclick="switchTab('profile', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</div>
+    </div>
+
+    <div id="saper-screen" class="game-overlay">
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div>
+            <div style="display:flex; gap:15px; font-weight:600; font-size:18px;">
+                <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> 🚩</span>
+                <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000</span> ⏱</span>
+            </div>
+        </div>
+        <div class="game-area"><div class="grid" id="saperGrid"></div></div>
+        <div class="bottom-controls">
+            <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button>
+            <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button>
+        </div>
+    </div>
+
+    <div id="checkers-screen" class="game-overlay">
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div>
+            <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div>
+        </div>
+        <div class="game-area">
+            <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div>
+        </div>
+    </div>
+
+    <div id="bb-screen" class="game-overlay">
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div>
+            <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div>
+        </div>
+        <div class="bb-game-container">
+            <div class="bb-score-box" id="bbScore">0</div>
+            <div id="bbGrid" class="bb-grid"></div>
+            <div class="bb-footer">
+                <div class="bb-shape-container" id="shape0"></div>
+                <div class="bb-shape-container" id="shape1"></div>
+                <div class="bb-shape-container" id="shape2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
+    
+    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
+
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" onclick="closeResult()">Закрыть</button></div></div>
+
+    <script>
+        const tg = window.Telegram.WebApp; tg.expand();
+        const themeToggle = document.getElementById('themeToggle'); let isDark = tg.colorScheme === 'dark';
+        function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
+        applyTheme(); themeToggle.addEventListener('click', () => { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); });
+
+        function switchTab(t, el) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); if(t==='games') document.getElementById('view-games').classList.add('active'); else { document.getElementById('view-profile').classList.add('active'); loadProfile(); } if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
+        function openGameModal(game) { if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); tg.HapticFeedback.impactOccurred('light'); }
+        function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
+        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
+
+        function loadProfile() {
+            const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" };
+            document.getElementById('user-name').innerText = user.first_name;
+            document.getElementById('user-id').innerText = user.username ? '@'+user.username : '';
+            const ava = document.getElementById('user-avatar');
+            if(user.photo_url) ava.src = user.photo_url; else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E";
+            // Stats
+            document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0;
+            document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--';
+            document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0;
+            document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0;
+            document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0;
+            document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0;
+        }
+
+        /* --- SAPER LOGIC --- */
+        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false;
+        function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
+        function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); initSaper(); }
+        function setSaperMode(m) { sMode=m; document.getElementById('btnDig').classList.toggle('active', m==='dig'); document.getElementById('btnFlag').classList.toggle('active', m==='flag'); tg.HapticFeedback.selectionChanged(); }
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c);sTimerInt=setInterval(()=>{sTimer++;document.getElementById('saperTimer').innerText=sTimer.toString().padStart(3,'0');},1000);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();tg.HapticFeedback.selectionChanged();}}
+        function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML='🚩';sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
+        function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
+        function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
+        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML='💣';}));localStorage.setItem('saper_total',(parseInt(localStorage.getItem('saper_total')||0)+1));showResult('Бум!','Не повезло');}
+        function checkSaperWin(){let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++}));if(rev===sRows*sCols-sMines){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});let t=parseInt(localStorage.getItem('saper_total')||0)+1,b=parseInt(localStorage.getItem('saper_best')||9999);localStorage.setItem('saper_total',t);if(sTimer<b)localStorage.setItem('saper_best',sTimer);showResult('Победа!',`Время: ${sTimer} с`);}}
+
+        /* --- CHECKERS LOGIC --- */
+        const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
+        function setCheckersMode(pve,btn){isPvE=pve;document.getElementById('pvpBtn').classList.remove('selected');document.getElementById('pveBtn').classList.remove('selected');btn.classList.add('selected');tg.HapticFeedback.selectionChanged();}
+        function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
+        function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
+        function onBoardClick(r,c){if(isPvE&&turn==='black')return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
+        function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
+        function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
+        function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);}
+        function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
+        function endGame(w){let t=parseInt(localStorage.getItem('checkers_total')||0)+1;localStorage.setItem('checkers_total',t);if(isPvE&&w==='white')localStorage.setItem('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{tit.innerText="Поражение";txt.innerText="Робот победил.";}}else{tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);}
+        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
+
+        /* --- BLOCK BLAST LOGIC (V8.0) --- */
+        const BB_ROWS=8, BB_COLS=8;
+        let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null;
+        
+        // Shape Definitions (polyominoes)
+        const SHAPES = [
+            [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1],[1,1]], // Basics
+            [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], // T
+            [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], // Z
+            [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]], // L
+            [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]] // L-wide
+        ];
+        const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
+
+        function startBlockBlastCheck() {
+            if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible');
+            else newGameBB();
+        }
+
+        function resumeBB() {
+            document.getElementById('modalBBResume').classList.remove('visible');
+            document.getElementById('bb-screen').classList.add('visible');
+            restoreBBState();
+        }
+
+        function newGameBB() {
+            document.getElementById('modalBBResume').classList.remove('visible');
+            document.getElementById('bb-screen').classList.add('visible');
+            initBB();
+        }
+
+        function initBB() {
+            bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
+            bbScore = 0; bbDisplayedScore = 0; updateBBScoreUI();
+            document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
+            renderBBGrid();
+            spawnShapes();
+            saveBBState();
+        }
+
+        function renderBBGrid() {
+            const el = document.getElementById('bbGrid');
+            el.innerHTML = '';
+            for(let r=0; r<BB_ROWS; r++) {
+                for(let c=0; c<BB_COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'bb-cell';
+                    cell.dataset.r = r; cell.dataset.c = c;
+                    if(bbGrid[r][c] !== 0) {
+                        cell.classList.add('filled', bbGrid[r][c]);
+                    }
+                    el.appendChild(cell);
+                }
+            }
+        }
+
+        function spawnShapes() {
+            bbShapes = [];
+            for(let i=0; i<3; i++) {
+                const shapeIdx = Math.floor(Math.random() * SHAPES.length);
+                const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i });
+                renderShapePreview(i, SHAPES[shapeIdx], color);
+            }
+        }
+
+        function renderShapePreview(slotId, matrix, color) {
+            const container = document.getElementById(`shape${slotId}`);
+            container.innerHTML = '';
+            if(!matrix) return;
+
+            const preview = document.createElement('div');
+            preview.className = 'bb-shape-preview';
+            preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`;
+            
+            // Build visual
+            matrix.forEach(row => {
+                row.forEach(val => {
+                    const b = document.createElement('div');
+                    if(val) { b.className = `bb-block ${color}`; }
+                    else { b.style.opacity = 0; }
+                    preview.appendChild(b);
+                });
+            });
+
+            // Touch Drag Logic
+            preview.addEventListener('touchstart', (e) => startDrag(e, slotId, matrix, color));
+            // Mouse Drag Logic
+            preview.addEventListener('mousedown', (e) => startDrag(e, slotId, matrix, color));
+            
+            container.appendChild(preview);
+        }
+
+        /* --- DRAG AND DROP SYSTEM --- */
+        let draggedElement = null;
+        let dragGhost = null;
+        let dragData = null; // { matrix, color, slotId }
+
+        function startDrag(e, slotId, matrix, color) {
+            e.preventDefault();
+            const touch = e.touches ? e.touches[0] : e;
+            
+            dragData = { slotId, matrix, color };
+            
+            // Create Ghost
+            dragGhost = document.createElement('div');
+            dragGhost.className = 'drag-ghost';
+            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, 40px)`;
+            dragGhost.style.display = 'grid';
+            dragGhost.style.gap = '2px';
+            
+            matrix.forEach(row => {
+                row.forEach(val => {
+                    const b = document.createElement('div');
+                    if(val) b.className = `bb-block ${color}`;
+                    else b.style.opacity = 0;
+                    dragGhost.appendChild(b);
+                });
+            });
+            
+            document.body.appendChild(dragGhost);
+            moveGhost(touch.clientX, touch.clientY);
+            
+            // Hide original
+            e.target.closest('.bb-shape-preview').style.opacity = 0;
+
+            document.addEventListener('touchmove', onTouchMove, {passive: false});
+            document.addEventListener('touchend', onTouchEnd);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onTouchEnd);
+        }
+
+        function onTouchMove(e) { e.preventDefault(); moveGhost(e.touches[0].clientX, e.touches[0].clientY); checkPlacement(e.touches[0].clientX, e.touches[0].clientY); }
+        function onMouseMove(e) { e.preventDefault(); moveGhost(e.clientX, e.clientY); checkPlacement(e.clientX, e.clientY); }
+
+        function moveGhost(x, y) {
+            if(dragGhost) {
+                // Center the ghost on finger (approximately, offset slightly up so user sees it)
+                dragGhost.style.left = x + 'px';
+                dragGhost.style.top = (y - 50) + 'px';
+            }
+        }
+
+        function checkPlacement(x, y) {
+            // Remove old shadows
+            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'));
+
+            // Find cell under finger (offset to be under the actual block start)
+            // We assume finger is at center of shape. We need top-left of shape relative to grid.
+            // Let's rely on elementFromPoint looking for a cell.
+            const el = document.elementFromPoint(x, y - 80); // Look slightly above finger
+            if(!el || !el.classList.contains('bb-cell')) return;
+
+            const r = parseInt(el.dataset.r);
+            const c = parseInt(el.dataset.c);
+            
+            // Adjust to align center of shape with this cell
+            const rows = dragData.matrix.length;
+            const cols = dragData.matrix[0].length;
+            const startR = r - Math.floor(rows/2);
+            const startC = c - Math.floor(cols/2);
+
+            if(canPlace(dragData.matrix, startR, startC)) {
+                // Show shadow
+                drawShadow(dragData.matrix, startR, startC, dragData.color);
+                dragData.validPos = { r: startR, c: startC };
+            } else {
+                dragData.validPos = null;
+            }
+        }
+
+        function canPlace(matrix, r, c) {
+            for(let i=0; i<matrix.length; i++) {
+                for(let j=0; j<matrix[0].length; j++) {
+                    if(matrix[i][j] === 1) {
+                        let nr = r + i;
+                        let nc = c + j;
+                        if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function drawShadow(matrix, r, c, color) {
+            for(let i=0; i<matrix.length; i++) {
+                for(let j=0; j<matrix[0].length; j++) {
+                    if(matrix[i][j] === 1) {
+                        const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`);
+                        if(cell) cell.classList.add('bb-shadow', color);
+                    }
+                }
+            }
+        }
+
+        function onTouchEnd(e) {
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onTouchEnd);
+
+            if(dragGhost) dragGhost.remove();
+            
+            // Restore original preview visibility
+            const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`);
+            if(original) original.style.opacity = 1;
+
+            if(dragData.validPos) {
+                // Place it
+                placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color);
+                // Remove from slot
+                document.getElementById(`shape${dragData.slotId}`).innerHTML = '';
+                bbShapes[dragData.slotId] = null;
+                
+                checkLines();
+                
+                // Check Refill
+                if(bbShapes.every(s => s === null)) {
+                    spawnShapes();
+                }
+
+                checkGameOver();
+                saveBBState();
+            }
+        }
+
+        function placeShape(matrix, r, c, color) {
+            tg.HapticFeedback.impactOccurred('light');
+            let placedCount = 0;
+            for(let i=0; i<matrix.length; i++) {
+                for(let j=0; j<matrix[0].length; j++) {
+                    if(matrix[i][j] === 1) {
+                        bbGrid[r+i][c+j] = color;
+                        const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`);
+                        cell.classList.remove('bb-shadow');
+                        cell.classList.add('filled', color);
+                        placedCount++;
+                    }
+                }
+            }
+            addScore(placedCount);
+        }
+
+        function checkLines() {
+            let linesCleared = 0;
+            const rowsToClear = [];
+            const colsToClear = [];
+
+            // Check Rows
+            for(let r=0; r<BB_ROWS; r++) {
+                if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r);
+            }
+            // Check Cols
+            for(let c=0; c<BB_COLS; c++) {
+                let full = true;
+                for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false;
+                if(full) colsToClear.push(c);
+            }
+
+            const totalCleared = rowsToClear.length + colsToClear.length;
+            if(totalCleared > 0) {
+                tg.HapticFeedback.notificationOccurred('success');
+                // Animation
+                rowsToClear.forEach(r => {
+                    for(let c=0; c<BB_COLS; c++) animateClear(r, c);
+                });
+                colsToClear.forEach(c => {
+                    for(let r=0; r<BB_ROWS; r++) animateClear(r, c);
+                });
+
+                // Logic clear after delay
+                setTimeout(() => {
+                    rowsToClear.forEach(r => {
+                        for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); }
+                    });
+                    colsToClear.forEach(c => {
+                        for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); }
+                    });
+                    
+                    // Combo Bonus
+                    let points = totalCleared * 10;
+                    if(totalCleared > 1) points *= totalCleared; 
+                    if(totalCleared >= 3) confetti({ particleCount: 100, spread: 60, origin: { y: 0.5 }, zIndex: 2147483647 });
+                    
+                    addScore(points);
+                    saveBBState();
+                }, 200);
+            }
+        }
+
+        function animateClear(r, c) {
+            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
+            if(cell) {
+                cell.classList.add('clearing');
+                setTimeout(() => cell.classList.remove('clearing'), 200);
+            }
+        }
+
+        function updateCellUI(r, c) {
+            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
+            cell.className = 'bb-cell'; // Reset
+        }
+
+        function addScore(points) {
+            bbScore += points;
+            // Smooth counter
+            const target = bbScore;
+            const step = Math.ceil((target - bbDisplayedScore) / 10);
+            const int = setInterval(() => {
+                bbDisplayedScore += step;
+                if(bbDisplayedScore >= target) {
+                    bbDisplayedScore = target;
+                    clearInterval(int);
+                }
+                updateBBScoreUI();
+            }, 30);
+            
+            // Best Score
+            let best = parseInt(localStorage.getItem('bb_best_score') || 0);
+            if(bbScore > best) {
+                localStorage.setItem('bb_best_score', bbScore);
+                document.getElementById('bbBestScore').innerText = bbScore;
+            }
+        }
+
+        function updateBBScoreUI() {
+            document.getElementById('bbScore').innerText = bbDisplayedScore;
+        }
+
+        function checkGameOver() {
+            // Check if any available shape can be placed
+            const movesAvailable = bbShapes.some(s => {
+                if(!s) return false;
+                for(let r=0; r<BB_ROWS; r++) {
+                    for(let c=0; c<BB_COLS; c++) {
+                        if(canPlace(s.matrix, r, c)) return true;
+                    }
+                }
+                return false;
+            });
+
+            // Need to account for empty slots - if all empty, true (spawn happens before this check usually, but just in case)
+            if(bbShapes.every(s=>s===null)) return; // Should have respawned
+
+            if(!movesAvailable) {
+                // Game Over
+                tg.HapticFeedback.notificationOccurred('error');
+                showResult("Game Over", `Score: ${bbScore}`);
+                localStorage.removeItem('bb_state');
+                localStorage.setItem('bb_total_games', parseInt(localStorage.getItem('bb_total_games')||0)+1);
+            }
+        }
+
+        function saveBBState() {
+            if(bbShapes.every(s=>s===null)) return; // Don't save empty interim state
+            const state = {
+                grid: bbGrid,
+                score: bbScore,
+                shapes: bbShapes
+            };
+            localStorage.setItem('bb_state', JSON.stringify(state));
+        }
+
+        function restoreBBState() {
+            const data = JSON.parse(localStorage.getItem('bb_state'));
+            if(!data) { initBB(); return; }
+            
+            bbGrid = data.grid;
+            bbScore = data.score;
+            bbDisplayedScore = bbScore;
+            bbShapes = data.shapes;
+            
+            updateBBScoreUI();
+            document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
+            renderBBGrid();
+            
+            // Restore shapes
+            for(let i=0; i<3; i++) {
+                if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color);
+                else document.getElementById(`shape${i}`).innerHTML = '';
+            }
+        }
+
+    </script>
+</body>
+</html>
