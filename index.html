@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v9.4</title>
+    <title>Glass Super App v10.0 Major Update</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -36,10 +36,12 @@
         /* CHECKERS STYLES */
         .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
         
-        /* BB STYLES */
-        .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; } .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: transform 0.2s; } .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
+        /* BB STYLES (New Combo Styles) */
+        .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: transform 0.2s; } .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
         .bb-footer { position: absolute; bottom: 30px; width: 100%; height: 120px; display: flex; justify-content: space-around; align-items: center; padding: 0 20px; } .bb-shape-container { width: 80px; height: 80px; display: flex; justify-content: center; align-items: center; position: relative; } .bb-shape-preview { display: grid; gap: 2px; pointer-events: auto; touch-action: none; } .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; transform: translate(-50%, -100%); opacity: 0.95; } .drag-ghost .bb-block { width: 40px; height: 40px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); } .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
+        .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
+        @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
         
         .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; } .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } .tab-item.active { color: var(--accent); background: transparent !important; } .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; } .modal-overlay.visible { opacity: 1; pointer-events: auto; } .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; } .modal.rotate-180 { transform: rotate(180deg); } .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
@@ -56,7 +58,7 @@
             <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
                 <span style="display:flex; align-items:center; gap:4px;">
                     <span id="saperFlags">0</span> 
-                    <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M4 15a1 1 0 0 0 1-1V5a2 2 0 0 1 2-2h8.5c.82 0 1.56.59 1.73 1.4L18 8l-1.77 3.6c-.17.81-.91 1.4-1.73 1.4H8a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0v-4h9.5c1.78 0 3.37-1.3 3.69-3.07l.8-4.01c.42-2.13-1.2-4.12-3.37-4.12H8V3a1 1 0 0 0-2 0v12a1 1 0 0 0-2 0z"/></svg>
+                    <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
                 </span> 
                 <span style="display:flex; align-items:center; gap:4px;">
                     <span id="saperTimer">000</span> 
@@ -80,9 +82,9 @@
         const tg = window.Telegram.WebApp; tg.expand();
         const themeToggle = document.getElementById('themeToggle'); let isDark = tg.colorScheme === 'dark';
         
-        // ICONS CONSTANTS (Flag fixed)
+        // ICONS CONSTANTS (New clean flag)
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
-        const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M5 21a1 1 0 0 1-.5-.13A1 1 0 0 1 4 20V4a1 1 0 0 1 1-1h9.5c1.86 0 3.23 1.7 2.87 3.53l-.8 4.01c-.27 1.34-1.44 2.46-2.9 2.46H6v7a1 1 0 0 1-1 1z"/></svg>`;
+        const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
         applyTheme(); themeToggle.addEventListener('click', () => { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); });
@@ -119,67 +121,52 @@
         function endGame(w){if(checkersOver)return;checkersOver=true;let t=parseInt(localStorage.getItem('checkers_total')||0)+1;localStorage.setItem('checkers_total',t);if(isPvE&&w==='white')localStorage.setItem('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){showResult("Победа!", "Робот повержен.", "Закрыть");confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{showResult("Поражение", "Робот победил.", "Закрыть");}}else{showResult(w==='white'?"Белые победили!":"Чёрные победили!", "", "Закрыть");if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}}
         function aiMove(){if(checkersOver)return;const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
-        /* --- BLOCK BLAST --- */
-        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null; 
-        const SHAPES = [ [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1],[1,1]], [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]], [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]] ]; 
+        /* --- BLOCK BLAST OVERHAUL --- */
+        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0; 
+        // Full Classic Shape Set
+        const SHAPES = [
+             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1,1,1]], [[1],[1],[1],[1],[1]], // Lines
+             [[1,1],[1,1]], [[1,1,1],[1,1,1]], [[1,1],[1,1],[1,1]], [[1,1,1],[1,1,1],[1,1,1]], // Squares/Rects
+             [[1,0],[1,0],[1,1]], [[1,1,1],[1,0,0]], [[1,1],[0,1],[0,1]], [[0,0,1],[1,1,1]], // Big L
+             [[0,1],[0,1],[1,1]], [[1,0,0],[1,1,1]], [[1,1],[1,0],[1,0]], [[1,1,1],[0,0,1]], // Big L mirrors
+             [[1,0],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]], [[0,1],[1,1]], // Small L
+             [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[0,1],[1,1],[0,1]] // T-shapes
+        ];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
         
-        const TOUCH_OFFSET_Y = 120; // Only for visual ghost
-
         function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
         function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
-        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
+        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
         function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
         function spawnShapes() { bbShapes = []; for(let i=0; i<3; i++) { const shapeIdx = Math.floor(Math.random() * SHAPES.length); const color = COLORS[Math.floor(Math.random() * COLORS.length)]; bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); renderShapePreview(i, SHAPES[shapeIdx], color); } }
-        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); preview.addEventListener('touchstart', (e) => startDrag(e, slotId, matrix, color)); preview.addEventListener('mousedown', (e) => startDrag(e, slotId, matrix, color)); container.appendChild(preview); }
+        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); preview.addEventListener('touchstart', (e) => startDrag(e, slotId, matrix, color)); preview.addEventListener('mousedown', (e) => startDrag(e, slotId, matrix, color)); container.appendChild(preview); }
+        
         let draggedElement = null; let dragGhost = null; let dragData = null;
-        function startDrag(e, slotId, matrix, color) { e.preventDefault(); const touch = e.touches ? e.touches[0] : e; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, 40px)`; dragGhost.style.display = 'grid'; dragGhost.style.gap = '2px'; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); moveGhost(touch.clientX, touch.clientY); e.target.closest('.bb-shape-preview').style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
+        function startDrag(e, slotId, matrix, color) { 
+            e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const target = e.target;
+            if(!target.classList.contains('bb-block')) return;
+            // Identify which block part was touched
+            const touchedRi = parseInt(target.dataset.ri); const touchedCi = parseInt(target.dataset.ci);
+            dragData = { slotId, matrix, color, touchedRi, touchedCi }; 
+            dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, 40px)`; dragGhost.style.display = 'grid'; dragGhost.style.gap = '2px'; 
+            matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); 
+            document.body.appendChild(dragGhost); moveGhost(touch.clientX, touch.clientY); e.target.closest('.bb-shape-preview').style.opacity = 0; 
+            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
+        }
         function onTouchMove(e) { e.preventDefault(); moveGhost(e.touches[0].clientX, e.touches[0].clientY); checkPlacement(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); moveGhost(e.clientX, e.clientY); checkPlacement(e.clientX, e.clientY); }
-        function moveGhost(x, y) { if(dragGhost) { dragGhost.style.left = x + 'px'; dragGhost.style.top = (y - TOUCH_OFFSET_Y) + 'px'; } }
+        function moveGhost(x, y) { if(dragGhost) { dragGhost.style.left = x + 'px'; dragGhost.style.top = y + 'px'; } }
         
+        // NEW PLACEMENT LOGIC: Anchor touched block to hovered cell
         function checkPlacement(x, y) { 
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            
-            // New Logic: Coordinate Math instead of elementFromPoint
-            const gridEl = document.getElementById('bbGrid');
-            const gridRect = gridEl.getBoundingClientRect();
-            
-            // Calculate where the ghost CENTER is
-            const ghostX = x; 
-            const ghostY = y - TOUCH_OFFSET_Y;
-            
-            // If outside grid bounds (with some margin), return
-            if(ghostX < gridRect.left - 20 || ghostX > gridRect.right + 20 || ghostY < gridRect.top - 20 || ghostY > gridRect.bottom + 20) return;
-
-            // Approximate cell size (assuming 350px max width or less)
-            const gap = 4;
-            // The grid has 8 columns. Width includes 7 gaps.
-            // cellWidth * 8 + gap * 7 = gridRect.width - padding(8)
-            // But let's simplify: map relative coordinate to 0-7 index
-            const relX = ghostX - gridRect.left;
-            const relY = ghostY - gridRect.top;
-            const totalCellSize = (gridRect.width) / 8; // includes cell + portion of gap
-            
-            const r = Math.floor(relY / totalCellSize);
-            const c = Math.floor(relX / totalCellSize);
-
-            // Bounds check for indices
-            if(r < 0 || r >= BB_ROWS || c < 0 || c >= BB_COLS) return;
-
-            // Center the shape around the finger/pointer
-            const rows = dragData.matrix.length; 
-            const cols = dragData.matrix[0].length; 
-            const startR = r - Math.floor(rows/2); 
-            const startC = c - Math.floor(cols/2); 
-            
-            if(canPlace(dragData.matrix, startR, startC)) { 
-                drawShadow(dragData.matrix, startR, startC, dragData.color); 
-                dragData.validPos = { r: startR, c: startC }; 
-            } else { 
-                dragData.validPos = null; 
-            } 
+            dragGhost.style.display = 'none'; const el = document.elementFromPoint(x, y); dragGhost.style.display = 'grid';
+            if(!el || !el.classList.contains('bb-cell')) { dragData.validPos = null; return; }
+            const hoveredR = parseInt(el.dataset.r); const hoveredC = parseInt(el.dataset.c); 
+            // Calculate top-left origin based on touched block offset
+            const startR = hoveredR - dragData.touchedRi; const startC = hoveredC - dragData.touchedCi; 
+            if(canPlace(dragData.matrix, startR, startC)) { drawShadow(dragData.matrix, startR, startC, dragData.color); dragData.validPos = { r: startR, c: startC }; } else { dragData.validPos = null; } 
         }
 
         function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
@@ -189,26 +176,23 @@
             if(dragGhost) dragGhost.remove(); 
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); 
             if(original) original.style.opacity = 1; 
-            
             if(dragData.validPos) { 
                 placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
                 document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
                 bbShapes[dragData.slotId] = null; 
-                
-                // CRITICAL FIX: Check lines FIRST, and only check Game Over after grid update
                 const linesCleared = checkLines(); 
                 if(linesCleared === 0) {
-                    if(bbShapes.every(s => s === null)) { spawnShapes(); }
-                    checkGameOver();
-                    saveBBState();
+                    if(bbShapes.every(s => s === null)) spawnShapes();
+                    checkGameOver(); saveBBState();
                 } else {
-                   // If lines cleared, checkGameOver is called inside checkLines' timeout
-                   if(bbShapes.every(s => s === null)) { spawnShapes(); }
-                   // Save state happens after clear
+                   if(bbShapes.every(s => s === null)) spawnShapes();
                 }
             } 
         }
+        // Add score on placement
         function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.remove('bb-shadow'); cell.classList.add('filled', color); placedCount++; } } } addScore(placedCount); }
+        
+        // New Combo & Scoring Logic
         function checkLines() { 
             let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
             for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
@@ -216,6 +200,7 @@
             const totalCleared = rowsToClear.length + colsToClear.length; 
             
             if(totalCleared > 0) { 
+                bbCombo++; // Increment combo
                 tg.HapticFeedback.notificationOccurred('success'); 
                 rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) animateClear(r, c); }); 
                 colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) animateClear(r, c); }); 
@@ -223,43 +208,40 @@
                 setTimeout(() => { 
                     rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
-                    let points = totalCleared * 10; if(totalCleared > 1) points *= totalCleared; 
-                    if(totalCleared >= 3) confetti({ particleCount: 100, spread: 60, origin: { y: 0.5 }, zIndex: 2147483647 }); 
+                    
+                    // Original Scoring Math
+                    let points = totalCleared * 10; 
+                    if(bbCombo > 1) {
+                        points += bbCombo * 10; // Combo bonus
+                        showComboPopup(`COMBO x${bbCombo}!`);
+                        if(bbCombo > 2) confetti({ particleCount: 100, spread: 60, origin: { y: 0.5 }, zIndex: 2147483647 });
+                    }
                     addScore(points); 
                     saveBBState(); 
-                    checkGameOver(); // FIX: Check game over AFTER clearing
+                    checkGameOver();
                 }, 200); 
                 return totalCleared;
-            } 
+            } else {
+                bbCombo = 0; // Reset combo if no lines cleared
+            }
             return 0;
         }
+        function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
         function animateClear(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.classList.add('clearing'); setTimeout(() => cell.classList.remove('clearing'), 200); } }
         function updateCellUI(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell'; }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); let best = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbScore > best) { localStorage.setItem('bb_best_score', bbScore); document.getElementById('bbBestScore').innerText = bbScore; } }
         function updateBBScoreUI() { document.getElementById('bbScore').innerText = bbDisplayedScore; }
         function checkGameOver() { 
-            const shapesLeft = bbShapes.filter(s => s !== null);
-            if(shapesLeft.length === 0) return; 
-            const canMove = shapesLeft.some(s => { 
-                for(let r=0; r<BB_ROWS; r++) { 
-                    for(let c=0; c<BB_COLS; c++) { 
-                        if(canPlace(s.matrix, r, c)) return true; 
-                    } 
-                } 
-                return false; 
-            }); 
+            const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; 
+            const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); 
             if(!canMove) { 
                 tg.HapticFeedback.notificationOccurred('error'); 
-                showResult("Нет места", "Фигуры некуда ставить.", "Новая игра", () => {
-                    closeResult();
-                    newGameBB();
-                });
-                localStorage.removeItem('bb_state'); 
-                localStorage.setItem('bb_total_games', parseInt(localStorage.getItem('bb_total_games')||0)+1); 
+                showResult("Нет места", `Счет: ${bbScore}`, "Новая игра", () => { closeResult(); newGameBB(); });
+                localStorage.removeItem('bb_state'); localStorage.setItem('bb_total_games', parseInt(localStorage.getItem('bb_total_games')||0)+1); 
             } 
         }
-        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes }; localStorage.setItem('bb_state', JSON.stringify(state)); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
+        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo }; localStorage.setItem('bb_state', JSON.stringify(state)); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
     </script>
 </body>
 </html>
