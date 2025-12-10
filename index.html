@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v9.2</title>
+    <title>Glass Super App v9.3</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -28,7 +28,7 @@
         .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
         .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
         .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .saper-flag { width: 20px; height: 20px; fill: var(--accent); stroke: none; animation: popIn 0.2s ease; }
+        .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } .control-btn.active { background: var(--accent); color: white; }
@@ -56,7 +56,7 @@
             <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
                 <span style="display:flex; align-items:center; gap:4px;">
                     <span id="saperFlags">0</span> 
-                    <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round"></line></svg>
                 </span> 
                 <span style="display:flex; align-items:center; gap:4px;">
                     <span id="saperTimer">000</span> 
@@ -80,9 +80,9 @@
         const tg = window.Telegram.WebApp; tg.expand();
         const themeToggle = document.getElementById('themeToggle'); let isDark = tg.colorScheme === 'dark';
         
-        // ICONS CONSTANTS
+        // ICONS CONSTANTS (Flag is now Red #ff3b30)
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
-        const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"></line></svg>`;
+        const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round"></line></svg>`;
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
         applyTheme(); themeToggle.addEventListener('click', () => { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); });
@@ -107,23 +107,25 @@
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
         /* --- CHECKERS --- */
-        const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
+        const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null, checkersOver=false;
         function setCheckersMode(pve,btn){isPvE=pve;document.getElementById('pvpBtn').classList.remove('selected');document.getElementById('pveBtn').classList.remove('selected');btn.classList.add('selected');tg.HapticFeedback.selectionChanged();}
         function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
-        function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
-        function onBoardClick(r,c){if(isPvE&&turn==='black')return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
+        function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;checkersOver=false;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
+        function onBoardClick(r,c){if((isPvE&&turn==='black')||checkersOver)return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
         function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
-        function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);}
+        function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black'&&!checkersOver)setTimeout(aiMove,600);}
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        function endGame(w){let t=parseInt(localStorage.getItem('checkers_total')||0)+1;localStorage.setItem('checkers_total',t);if(isPvE&&w==='white')localStorage.setItem('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){showResult("Победа!", "Робот повержен.", "Закрыть");confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{showResult("Поражение", "Робот победил.", "Закрыть");}}else{showResult(w==='white'?"Белые победили!":"Чёрные победили!", "", "Закрыть");if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}}
-        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
+        function endGame(w){if(checkersOver)return;checkersOver=true;let t=parseInt(localStorage.getItem('checkers_total')||0)+1;localStorage.setItem('checkers_total',t);if(isPvE&&w==='white')localStorage.setItem('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){showResult("Победа!", "Робот повержен.", "Закрыть");confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{showResult("Поражение", "Робот победил.", "Закрыть");}}else{showResult(w==='white'?"Белые победили!":"Чёрные победили!", "", "Закрыть");if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}}
+        function aiMove(){if(checkersOver)return;const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
         const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null; 
         const SHAPES = [ [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1],[1,1]], [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]], [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]] ]; 
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
-        const TOUCH_OFFSET_Y = 80; // Distance from finger to block center
+        
+        // INCREASED OFFSET to move ghost/detection HIGHER above the finger
+        const TOUCH_OFFSET_Y = 120; 
 
         function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
         function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
@@ -139,12 +141,11 @@
         function moveGhost(x, y) { if(dragGhost) { dragGhost.style.left = x + 'px'; dragGhost.style.top = (y - TOUCH_OFFSET_Y) + 'px'; } }
         function checkPlacement(x, y) { 
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            // Calibrate detection point to match ghost center
-            const checkY = y - TOUCH_OFFSET_Y - 20; 
+            // Calculate check point HIGHER to detect cells above finger
+            const checkY = y - TOUCH_OFFSET_Y - 50; 
             const el = document.elementFromPoint(x, checkY); 
             if(!el || !el.classList.contains('bb-cell')) return; 
             const r = parseInt(el.dataset.r); const c = parseInt(el.dataset.c); 
-            // Find center of shape matrix to align with cursor
             const rows = dragData.matrix.length; const cols = dragData.matrix[0].length; 
             const startR = r - Math.floor(rows/2); const startC = c - Math.floor(cols/2); 
             if(canPlace(dragData.matrix, startR, startC)) { drawShadow(dragData.matrix, startR, startC, dragData.color); dragData.validPos = { r: startR, c: startC }; } else { dragData.validPos = null; } 
@@ -159,11 +160,8 @@
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); let best = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbScore > best) { localStorage.setItem('bb_best_score', bbScore); document.getElementById('bbBestScore').innerText = bbScore; } }
         function updateBBScoreUI() { document.getElementById('bbScore').innerText = bbDisplayedScore; }
         function checkGameOver() { 
-            // Only check if we have shapes to place
             const shapesLeft = bbShapes.filter(s => s !== null);
             if(shapesLeft.length === 0) return; 
-
-            // Check if ANY remaining shape can be placed ANYWHERE
             const canMove = shapesLeft.some(s => { 
                 for(let r=0; r<BB_ROWS; r++) { 
                     for(let c=0; c<BB_COLS; c++) { 
@@ -172,7 +170,6 @@
                 } 
                 return false; 
             }); 
-            
             if(!canMove) { 
                 tg.HapticFeedback.notificationOccurred('error'); 
                 showResult("Нет места", "Фигуры некуда ставить.", "Новая игра", () => {
