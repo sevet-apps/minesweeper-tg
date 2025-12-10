@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v8.0</title>
+    <title>Glass Super App v9.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -45,8 +45,20 @@
             --bb-cell: rgba(255,255,255,0.1);
         }
 
+        /* Глобальный запрет на выделение и контекстное меню (iOS fix) */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -webkit-touch-callout: none; /* Убирает меню при долгом нажатии */
+        }
+        
+        /* Запрет перетаскивания картинок */
+        img { pointer-events: none; }
+
         canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
 
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -63,6 +75,7 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; }
         .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 
+        /* Theme Switcher (Fixed Icons) */
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; }
         .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; }
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; }
@@ -78,7 +91,7 @@
 
         /* --- SAPER CSS --- */
         .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; }
-        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; }
+        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; }
         .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } }
         .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
         .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; }
@@ -106,10 +119,10 @@
         }
         .bb-cell { 
             background: var(--bb-cell); border-radius: 6px; 
-            transition: transform 0.2s, opacity 0.2s; /* Анимация пропадания */
+            transition: transform 0.2s, opacity 0.2s; 
         }
         .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
-        .bb-cell.clearing { transform: scale(0); opacity: 0; } /* Эффект удаления */
+        .bb-cell.clearing { transform: scale(0); opacity: 0; }
         
         .bb-footer {
             position: absolute; bottom: 30px; width: 100%; height: 120px;
@@ -120,28 +133,36 @@
         .bb-shape-preview { display: grid; gap: 2px; pointer-events: auto; touch-action: none; }
         .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         
-        /* Drag Ghost */
         .drag-ghost { 
             position: fixed; pointer-events: none; z-index: 10000; 
-            transform: translate(-50%, -100%); /* Палец держит фигуру снизу */
-            opacity: 0.9;
+            transform: translate(-50%, -100%); opacity: 0.9;
         }
-        .drag-ghost .bb-block { width: 40px; height: 40px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); } /* Увеличенная при перетаскивании */
+        .drag-ghost .bb-block { width: 40px; height: 40px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
 
-        /* Colors for Block Blast */
-        .bb-c-1 { background: #ff3b30; } /* Red */
-        .bb-c-2 { background: #ff9500; } /* Orange */
-        .bb-c-3 { background: #ffcc00; } /* Yellow */
-        .bb-c-4 { background: #34c759; } /* Green */
-        .bb-c-5 { background: #007aff; } /* Blue */
-        .bb-c-6 { background: #5856d6; } /* Purple */
-        .bb-c-7 { background: #af52de; } /* Pink */
+        /* Block Blast Colors */
+        .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; }
         .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
 
-        /* Common */
-        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; }
-        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; width: 60px; }
-        .tab-item.active { color: var(--accent); }
+        /* Tab Bar Fixed */
+        .tab-bar { 
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; 
+            background: var(--tab-bg); backdrop-filter: blur(30px); 
+            border-top: 0.5px solid var(--glass-border); 
+            display: flex; justify-content: space-around; 
+            padding-top: 10px; z-index: 50; 
+        }
+        .tab-item { 
+            display: flex; flex-direction: column; align-items: center; 
+            font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; 
+            flex: 1; /* Равномерное распределение */
+            background: transparent !important; /* Убираем фон */
+        }
+        .tab-item.active { 
+            color: var(--accent); 
+            background: transparent !important; /* Гарантия отсутствия фона */
+        }
+        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal-overlay.visible { opacity: 1; pointer-events: auto; }
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
@@ -159,8 +180,11 @@
         <div class="header">
             <div class="app-title">Игры</div>
             <div class="theme-switch" id="themeToggle">
+                <div class="theme-icons">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </div>
                 <div class="switch-circle"></div>
-                <div class="theme-icons" style="justify-content:space-around; width:100%">☀️ 🌙</div>
             </div>
         </div>
 
@@ -185,7 +209,9 @@
         </div>
 
         <div class="card" onclick="startBlockBlastCheck()">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);">🧩</div>
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg>
+            </div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;">Block Blast</h3>
                 <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p>
@@ -278,9 +304,7 @@
 
     <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
-    
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
-
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" onclick="closeResult()">Закрыть</button></div></div>
 
     <script>
@@ -300,7 +324,6 @@
             document.getElementById('user-id').innerText = user.username ? '@'+user.username : '';
             const ava = document.getElementById('user-avatar');
             if(user.photo_url) ava.src = user.photo_url; else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E";
-            // Stats
             document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0;
             document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--';
             document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0;
@@ -309,7 +332,7 @@
             document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0;
         }
 
-        /* --- SAPER LOGIC --- */
+        /* --- SAPER --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); initSaper(); }
@@ -322,7 +345,7 @@
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML='💣';}));localStorage.setItem('saper_total',(parseInt(localStorage.getItem('saper_total')||0)+1));showResult('Бум!','Не повезло');}
         function checkSaperWin(){let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++}));if(rev===sRows*sCols-sMines){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});let t=parseInt(localStorage.getItem('saper_total')||0)+1,b=parseInt(localStorage.getItem('saper_best')||9999);localStorage.setItem('saper_total',t);if(sTimer<b)localStorage.setItem('saper_best',sTimer);showResult('Победа!',`Время: ${sTimer} с`);}}
 
-        /* --- CHECKERS LOGIC --- */
+        /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
         function setCheckersMode(pve,btn){isPvE=pve;document.getElementById('pvpBtn').classList.remove('selected');document.getElementById('pveBtn').classList.remove('selected');btn.classList.add('selected');tg.HapticFeedback.selectionChanged();}
         function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
@@ -335,389 +358,45 @@
         function endGame(w){let t=parseInt(localStorage.getItem('checkers_total')||0)+1;localStorage.setItem('checkers_total',t);if(isPvE&&w==='white')localStorage.setItem('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{tit.innerText="Поражение";txt.innerText="Робот победил.";}}else{tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);}
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
 
-        /* --- BLOCK BLAST LOGIC (V8.0) --- */
+        /* --- BLOCK BLAST --- */
         const BB_ROWS=8, BB_COLS=8;
         let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null;
-        
-        // Shape Definitions (polyominoes)
         const SHAPES = [
-            [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1],[1,1]], // Basics
-            [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], // T
-            [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], // Z
-            [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]], // L
-            [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]] // L-wide
+            [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1],[1,1]],
+            [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], 
+            [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]],
+            [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]],
+            [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]]
         ];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
 
-        function startBlockBlastCheck() {
-            if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible');
-            else newGameBB();
-        }
+        function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
+        function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
+        function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
+        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
+        function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
+        function spawnShapes() { bbShapes = []; for(let i=0; i<3; i++) { const shapeIdx = Math.floor(Math.random() * SHAPES.length); const color = COLORS[Math.floor(Math.random() * COLORS.length)]; bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); renderShapePreview(i, SHAPES[shapeIdx], color); } }
+        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); preview.addEventListener('touchstart', (e) => startDrag(e, slotId, matrix, color)); preview.addEventListener('mousedown', (e) => startDrag(e, slotId, matrix, color)); container.appendChild(preview); }
 
-        function resumeBB() {
-            document.getElementById('modalBBResume').classList.remove('visible');
-            document.getElementById('bb-screen').classList.add('visible');
-            restoreBBState();
-        }
-
-        function newGameBB() {
-            document.getElementById('modalBBResume').classList.remove('visible');
-            document.getElementById('bb-screen').classList.add('visible');
-            initBB();
-        }
-
-        function initBB() {
-            bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
-            bbScore = 0; bbDisplayedScore = 0; updateBBScoreUI();
-            document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
-            renderBBGrid();
-            spawnShapes();
-            saveBBState();
-        }
-
-        function renderBBGrid() {
-            const el = document.getElementById('bbGrid');
-            el.innerHTML = '';
-            for(let r=0; r<BB_ROWS; r++) {
-                for(let c=0; c<BB_COLS; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'bb-cell';
-                    cell.dataset.r = r; cell.dataset.c = c;
-                    if(bbGrid[r][c] !== 0) {
-                        cell.classList.add('filled', bbGrid[r][c]);
-                    }
-                    el.appendChild(cell);
-                }
-            }
-        }
-
-        function spawnShapes() {
-            bbShapes = [];
-            for(let i=0; i<3; i++) {
-                const shapeIdx = Math.floor(Math.random() * SHAPES.length);
-                const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-                bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i });
-                renderShapePreview(i, SHAPES[shapeIdx], color);
-            }
-        }
-
-        function renderShapePreview(slotId, matrix, color) {
-            const container = document.getElementById(`shape${slotId}`);
-            container.innerHTML = '';
-            if(!matrix) return;
-
-            const preview = document.createElement('div');
-            preview.className = 'bb-shape-preview';
-            preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`;
-            
-            // Build visual
-            matrix.forEach(row => {
-                row.forEach(val => {
-                    const b = document.createElement('div');
-                    if(val) { b.className = `bb-block ${color}`; }
-                    else { b.style.opacity = 0; }
-                    preview.appendChild(b);
-                });
-            });
-
-            // Touch Drag Logic
-            preview.addEventListener('touchstart', (e) => startDrag(e, slotId, matrix, color));
-            // Mouse Drag Logic
-            preview.addEventListener('mousedown', (e) => startDrag(e, slotId, matrix, color));
-            
-            container.appendChild(preview);
-        }
-
-        /* --- DRAG AND DROP SYSTEM --- */
-        let draggedElement = null;
-        let dragGhost = null;
-        let dragData = null; // { matrix, color, slotId }
-
-        function startDrag(e, slotId, matrix, color) {
-            e.preventDefault();
-            const touch = e.touches ? e.touches[0] : e;
-            
-            dragData = { slotId, matrix, color };
-            
-            // Create Ghost
-            dragGhost = document.createElement('div');
-            dragGhost.className = 'drag-ghost';
-            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, 40px)`;
-            dragGhost.style.display = 'grid';
-            dragGhost.style.gap = '2px';
-            
-            matrix.forEach(row => {
-                row.forEach(val => {
-                    const b = document.createElement('div');
-                    if(val) b.className = `bb-block ${color}`;
-                    else b.style.opacity = 0;
-                    dragGhost.appendChild(b);
-                });
-            });
-            
-            document.body.appendChild(dragGhost);
-            moveGhost(touch.clientX, touch.clientY);
-            
-            // Hide original
-            e.target.closest('.bb-shape-preview').style.opacity = 0;
-
-            document.addEventListener('touchmove', onTouchMove, {passive: false});
-            document.addEventListener('touchend', onTouchEnd);
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onTouchEnd);
-        }
-
+        /* --- DRAG AND DROP --- */
+        let draggedElement = null; let dragGhost = null; let dragData = null;
+        function startDrag(e, slotId, matrix, color) { e.preventDefault(); const touch = e.touches ? e.touches[0] : e; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, 40px)`; dragGhost.style.display = 'grid'; dragGhost.style.gap = '2px'; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); moveGhost(touch.clientX, touch.clientY); e.target.closest('.bb-shape-preview').style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
         function onTouchMove(e) { e.preventDefault(); moveGhost(e.touches[0].clientX, e.touches[0].clientY); checkPlacement(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); moveGhost(e.clientX, e.clientY); checkPlacement(e.clientX, e.clientY); }
-
-        function moveGhost(x, y) {
-            if(dragGhost) {
-                // Center the ghost on finger (approximately, offset slightly up so user sees it)
-                dragGhost.style.left = x + 'px';
-                dragGhost.style.top = (y - 50) + 'px';
-            }
-        }
-
-        function checkPlacement(x, y) {
-            // Remove old shadows
-            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'));
-
-            // Find cell under finger (offset to be under the actual block start)
-            // We assume finger is at center of shape. We need top-left of shape relative to grid.
-            // Let's rely on elementFromPoint looking for a cell.
-            const el = document.elementFromPoint(x, y - 80); // Look slightly above finger
-            if(!el || !el.classList.contains('bb-cell')) return;
-
-            const r = parseInt(el.dataset.r);
-            const c = parseInt(el.dataset.c);
-            
-            // Adjust to align center of shape with this cell
-            const rows = dragData.matrix.length;
-            const cols = dragData.matrix[0].length;
-            const startR = r - Math.floor(rows/2);
-            const startC = c - Math.floor(cols/2);
-
-            if(canPlace(dragData.matrix, startR, startC)) {
-                // Show shadow
-                drawShadow(dragData.matrix, startR, startC, dragData.color);
-                dragData.validPos = { r: startR, c: startC };
-            } else {
-                dragData.validPos = null;
-            }
-        }
-
-        function canPlace(matrix, r, c) {
-            for(let i=0; i<matrix.length; i++) {
-                for(let j=0; j<matrix[0].length; j++) {
-                    if(matrix[i][j] === 1) {
-                        let nr = r + i;
-                        let nc = c + j;
-                        if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false;
-                    }
-                }
-            }
-            return true;
-        }
-
-        function drawShadow(matrix, r, c, color) {
-            for(let i=0; i<matrix.length; i++) {
-                for(let j=0; j<matrix[0].length; j++) {
-                    if(matrix[i][j] === 1) {
-                        const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`);
-                        if(cell) cell.classList.add('bb-shadow', color);
-                    }
-                }
-            }
-        }
-
-        function onTouchEnd(e) {
-            document.removeEventListener('touchmove', onTouchMove);
-            document.removeEventListener('touchend', onTouchEnd);
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onTouchEnd);
-
-            if(dragGhost) dragGhost.remove();
-            
-            // Restore original preview visibility
-            const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`);
-            if(original) original.style.opacity = 1;
-
-            if(dragData.validPos) {
-                // Place it
-                placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color);
-                // Remove from slot
-                document.getElementById(`shape${dragData.slotId}`).innerHTML = '';
-                bbShapes[dragData.slotId] = null;
-                
-                checkLines();
-                
-                // Check Refill
-                if(bbShapes.every(s => s === null)) {
-                    spawnShapes();
-                }
-
-                checkGameOver();
-                saveBBState();
-            }
-        }
-
-        function placeShape(matrix, r, c, color) {
-            tg.HapticFeedback.impactOccurred('light');
-            let placedCount = 0;
-            for(let i=0; i<matrix.length; i++) {
-                for(let j=0; j<matrix[0].length; j++) {
-                    if(matrix[i][j] === 1) {
-                        bbGrid[r+i][c+j] = color;
-                        const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`);
-                        cell.classList.remove('bb-shadow');
-                        cell.classList.add('filled', color);
-                        placedCount++;
-                    }
-                }
-            }
-            addScore(placedCount);
-        }
-
-        function checkLines() {
-            let linesCleared = 0;
-            const rowsToClear = [];
-            const colsToClear = [];
-
-            // Check Rows
-            for(let r=0; r<BB_ROWS; r++) {
-                if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r);
-            }
-            // Check Cols
-            for(let c=0; c<BB_COLS; c++) {
-                let full = true;
-                for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false;
-                if(full) colsToClear.push(c);
-            }
-
-            const totalCleared = rowsToClear.length + colsToClear.length;
-            if(totalCleared > 0) {
-                tg.HapticFeedback.notificationOccurred('success');
-                // Animation
-                rowsToClear.forEach(r => {
-                    for(let c=0; c<BB_COLS; c++) animateClear(r, c);
-                });
-                colsToClear.forEach(c => {
-                    for(let r=0; r<BB_ROWS; r++) animateClear(r, c);
-                });
-
-                // Logic clear after delay
-                setTimeout(() => {
-                    rowsToClear.forEach(r => {
-                        for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); }
-                    });
-                    colsToClear.forEach(c => {
-                        for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); }
-                    });
-                    
-                    // Combo Bonus
-                    let points = totalCleared * 10;
-                    if(totalCleared > 1) points *= totalCleared; 
-                    if(totalCleared >= 3) confetti({ particleCount: 100, spread: 60, origin: { y: 0.5 }, zIndex: 2147483647 });
-                    
-                    addScore(points);
-                    saveBBState();
-                }, 200);
-            }
-        }
-
-        function animateClear(r, c) {
-            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
-            if(cell) {
-                cell.classList.add('clearing');
-                setTimeout(() => cell.classList.remove('clearing'), 200);
-            }
-        }
-
-        function updateCellUI(r, c) {
-            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
-            cell.className = 'bb-cell'; // Reset
-        }
-
-        function addScore(points) {
-            bbScore += points;
-            // Smooth counter
-            const target = bbScore;
-            const step = Math.ceil((target - bbDisplayedScore) / 10);
-            const int = setInterval(() => {
-                bbDisplayedScore += step;
-                if(bbDisplayedScore >= target) {
-                    bbDisplayedScore = target;
-                    clearInterval(int);
-                }
-                updateBBScoreUI();
-            }, 30);
-            
-            // Best Score
-            let best = parseInt(localStorage.getItem('bb_best_score') || 0);
-            if(bbScore > best) {
-                localStorage.setItem('bb_best_score', bbScore);
-                document.getElementById('bbBestScore').innerText = bbScore;
-            }
-        }
-
-        function updateBBScoreUI() {
-            document.getElementById('bbScore').innerText = bbDisplayedScore;
-        }
-
-        function checkGameOver() {
-            // Check if any available shape can be placed
-            const movesAvailable = bbShapes.some(s => {
-                if(!s) return false;
-                for(let r=0; r<BB_ROWS; r++) {
-                    for(let c=0; c<BB_COLS; c++) {
-                        if(canPlace(s.matrix, r, c)) return true;
-                    }
-                }
-                return false;
-            });
-
-            // Need to account for empty slots - if all empty, true (spawn happens before this check usually, but just in case)
-            if(bbShapes.every(s=>s===null)) return; // Should have respawned
-
-            if(!movesAvailable) {
-                // Game Over
-                tg.HapticFeedback.notificationOccurred('error');
-                showResult("Game Over", `Score: ${bbScore}`);
-                localStorage.removeItem('bb_state');
-                localStorage.setItem('bb_total_games', parseInt(localStorage.getItem('bb_total_games')||0)+1);
-            }
-        }
-
-        function saveBBState() {
-            if(bbShapes.every(s=>s===null)) return; // Don't save empty interim state
-            const state = {
-                grid: bbGrid,
-                score: bbScore,
-                shapes: bbShapes
-            };
-            localStorage.setItem('bb_state', JSON.stringify(state));
-        }
-
-        function restoreBBState() {
-            const data = JSON.parse(localStorage.getItem('bb_state'));
-            if(!data) { initBB(); return; }
-            
-            bbGrid = data.grid;
-            bbScore = data.score;
-            bbDisplayedScore = bbScore;
-            bbShapes = data.shapes;
-            
-            updateBBScoreUI();
-            document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
-            renderBBGrid();
-            
-            // Restore shapes
-            for(let i=0; i<3; i++) {
-                if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color);
-                else document.getElementById(`shape${i}`).innerHTML = '';
-            }
-        }
-
+        function moveGhost(x, y) { if(dragGhost) { dragGhost.style.left = x + 'px'; dragGhost.style.top = (y - 50) + 'px'; } }
+        function checkPlacement(x, y) { document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); const el = document.elementFromPoint(x, y - 80); if(!el || !el.classList.contains('bb-cell')) return; const r = parseInt(el.dataset.r); const c = parseInt(el.dataset.c); const rows = dragData.matrix.length; const cols = dragData.matrix[0].length; const startR = r - Math.floor(rows/2); const startC = c - Math.floor(cols/2); if(canPlace(dragData.matrix, startR, startC)) { drawShadow(dragData.matrix, startR, startC, dragData.color); dragData.validPos = { r: startR, c: startC }; } else { dragData.validPos = null; } }
+        function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
+        function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
+        function onTouchEnd(e) { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); if(dragGhost) dragGhost.remove(); const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; if(dragData.validPos) { placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; bbShapes[dragData.slotId] = null; checkLines(); if(bbShapes.every(s => s === null)) { spawnShapes(); } checkGameOver(); saveBBState(); } }
+        function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.remove('bb-shadow'); cell.classList.add('filled', color); placedCount++; } } } addScore(placedCount); }
+        function checkLines() { let linesCleared = 0; const rowsToClear = []; const colsToClear = []; for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } const totalCleared = rowsToClear.length + colsToClear.length; if(totalCleared > 0) { tg.HapticFeedback.notificationOccurred('success'); rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) animateClear(r, c); }); colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) animateClear(r, c); }); setTimeout(() => { rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); let points = totalCleared * 10; if(totalCleared > 1) points *= totalCleared; if(totalCleared >= 3) confetti({ particleCount: 100, spread: 60, origin: { y: 0.5 }, zIndex: 2147483647 }); addScore(points); saveBBState(); }, 200); } }
+        function animateClear(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.classList.add('clearing'); setTimeout(() => cell.classList.remove('clearing'), 200); } }
+        function updateCellUI(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell'; }
+        function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); let best = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbScore > best) { localStorage.setItem('bb_best_score', bbScore); document.getElementById('bbBestScore').innerText = bbScore; } }
+        function updateBBScoreUI() { document.getElementById('bbScore').innerText = bbDisplayedScore; }
+        function checkGameOver() { const movesAvailable = bbShapes.some(s => { if(!s) return false; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(bbShapes.every(s=>s===null)) return; if(!movesAvailable) { tg.HapticFeedback.notificationOccurred('error'); showResult("Game Over", `Score: ${bbScore}`); localStorage.removeItem('bb_state'); localStorage.setItem('bb_total_games', parseInt(localStorage.getItem('bb_total_games')||0)+1); } }
+        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes }; localStorage.setItem('bb_state', JSON.stringify(state)); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
     </script>
 </body>
 </html>
