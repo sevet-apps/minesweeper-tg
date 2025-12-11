@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v10.2 Perfect Drag</title>
+    <title>Glass Super App v10.3 Fix Stretch</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -40,7 +40,7 @@
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: transform 0.2s; } .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
         .bb-footer { position: absolute; bottom: 30px; width: 100%; height: 120px; display: flex; justify-content: space-around; align-items: center; padding: 0 20px; } .bb-shape-container { width: 80px; height: 80px; display: flex; justify-content: center; align-items: center; position: relative; } .bb-shape-preview { display: grid; gap: 2px; pointer-events: auto; touch-action: none; } .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         /* GHOST STYLE */
-        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.9; transform: scale(1.1); transition: transform 0.1s; } 
+        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.9; transform: scale(1.1); transition: transform 0.1s; width: max-content; height: max-content; } 
         .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); } 
         
         .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
@@ -160,6 +160,8 @@
             dragData = { slotId, matrix, color }; 
             dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; 
             dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
+            // CRITICAL FIX: Explicitly set rows to match width so it's square
+            dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; 
             dragGhost.style.gap = '4px'; 
             dragGhost.style.display = 'grid'; 
             
