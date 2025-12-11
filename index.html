@@ -2,24 +2,37 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v11.0 Final Release</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+    <title>Glass Super App v11.0 Fullscreen</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); }
+        :root { 
+            --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); 
+            /* ИЗМЕНЕНИЕ 2: Переменные для безопасных зон (челка и низ экрана) */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
         [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+        
+        /* ИЗМЕНЕНИЕ 3: Добавлен padding-bottom с учетом safe-area для скролла */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: calc(110px + var(--safe-bottom)); overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+        
         .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .game-overlay.visible { transform: translateY(0); }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+        
+        /* ИЗМЕНЕНИЕ 4: Отступ сверху для заголовка, чтобы не налез на часы */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: calc(10px + var(--safe-top)); } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+        
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } [data-theme="dark"] .switch-circle { transform: translateX(30px); }
         .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
-        .game-top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; } .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
+        
+        /* ИЗМЕНЕНИЕ 5: Отступ сверху для шапки внутри игр */
+        .game-top-bar { padding: 15px 20px; padding-top: calc(15px + var(--safe-top)); display: flex; justify-content: space-between; align-items: center; } .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
         
         /* SAPER STYLES */
         .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
@@ -31,19 +44,20 @@
         .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } .control-btn.active { background: var(--accent); color: white; }
+        /* ИЗМЕНЕНИЕ 6: Кнопки сапера подняты чуть выше с учетом нижней полоски */
+        .bottom-controls { position: fixed; bottom: calc(40px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } .control-btn.active { background: var(--accent); color: white; }
         
         /* CHECKERS STYLES */
         .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
         
         /* BB STYLES */
+        /* ИЗМЕНЕНИЕ 7: Отступ снизу для футера Block Blast */
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
         .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
         
-        /* FOOTER & TOUCH ZONES */
-        .bb-footer { position: absolute; bottom: 30px; width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
+        .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
         .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
         .bb-shape-preview { display: grid; gap: 2px; pointer-events: none; touch-action: none; transition: opacity 0.2s; } 
         .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
@@ -56,7 +70,9 @@
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
         @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
         
-        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; } .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } .tab-item.active { color: var(--accent); background: transparent !important; } .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+        /* ИЗМЕНЕНИЕ 8: Таб-бар увеличен в высоту, чтобы компенсировать Home Indicator */
+        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: calc(85px + var(--safe-bottom)); background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; padding-bottom: var(--safe-bottom); z-index: 50; } .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } .tab-item.active { color: var(--accent); background: transparent !important; } .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+        
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; } .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; } .modal.rotate-180 { transform: rotate(180deg); } 
         .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
@@ -107,7 +123,14 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp; tg.expand();
+        const tg = window.Telegram.WebApp; 
+        
+        // ИЗМЕНЕНИЕ 9: Запуск полноэкранного режима
+        tg.expand();
+        if (tg.requestFullscreen) {
+            tg.requestFullscreen();
+        }
+
         const themeToggle = document.getElementById('themeToggle'); let isDark = tg.colorScheme === 'dark';
         
         // ICONS CONSTANTS (Flag fixed)
