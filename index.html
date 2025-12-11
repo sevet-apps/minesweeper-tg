@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v10.1 Physics Fix</title>
+    <title>Glass Super App v10.2 Perfect Drag</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -39,8 +39,10 @@
         /* BB STYLES */
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: transform 0.2s; } .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
         .bb-footer { position: absolute; bottom: 30px; width: 100%; height: 120px; display: flex; justify-content: space-around; align-items: center; padding: 0 20px; } .bb-shape-container { width: 80px; height: 80px; display: flex; justify-content: center; align-items: center; position: relative; } .bb-shape-preview { display: grid; gap: 2px; pointer-events: auto; touch-action: none; } .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
-        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; box-shadow: 0 15px 40px rgba(0,0,0,0.25); transform: scale(1.1); transition: transform 0.1s; } 
-        .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; } 
+        /* GHOST STYLE */
+        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.9; transform: scale(1.1); transition: transform 0.1s; } 
+        .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); } 
+        
         .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
         @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
@@ -125,18 +127,16 @@
         
         /* --- BLOCK BLAST --- */
         const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0; 
-        // Full Classic Shape Set
         const SHAPES = [
-             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1,1,1]], [[1],[1],[1],[1],[1]], // Lines
-             [[1,1],[1,1]], [[1,1,1],[1,1,1]], [[1,1],[1,1],[1,1]], [[1,1,1],[1,1,1],[1,1,1]], // Squares/Rects
-             [[1,0],[1,0],[1,1]], [[1,1,1],[1,0,0]], [[1,1],[0,1],[0,1]], [[0,0,1],[1,1,1]], // Big L
-             [[0,1],[0,1],[1,1]], [[1,0,0],[1,1,1]], [[1,1],[1,0],[1,0]], [[1,1,1],[0,0,1]], // Big L mirrors
-             [[1,0],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]], [[0,1],[1,1]], // Small L
-             [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[0,1],[1,1],[0,1]] // T-shapes
+             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1,1,1]], [[1],[1],[1],[1],[1]],
+             [[1,1],[1,1]], [[1,1,1],[1,1,1]], [[1,1],[1,1],[1,1]], [[1,1,1],[1,1,1],[1,1,1]],
+             [[1,0],[1,0],[1,1]], [[1,1,1],[1,0,0]], [[1,1],[0,1],[0,1]], [[0,0,1],[1,1,1]],
+             [[0,1],[0,1],[1,1]], [[1,0,0],[1,1,1]], [[1,1],[1,0],[1,0]], [[1,1,1],[0,0,1]],
+             [[1,0],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]], [[0,1],[1,1]],
+             [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[0,1],[1,1],[0,1]]
         ];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
-        
-        const DRAG_Y_OFFSET = 150; // Visual lift above finger
+        const DRAG_LIFT_Y = 150; // Figure Stick Height
 
         function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
         function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
@@ -147,32 +147,37 @@
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); preview.addEventListener('touchstart', (e) => startDrag(e, slotId, matrix, color)); preview.addEventListener('mousedown', (e) => startDrag(e, slotId, matrix, color)); container.appendChild(preview); }
         
         let draggedElement = null; let dragGhost = null; let dragData = null;
+        let touchOffsetX = 0, touchOffsetY = 0;
+
         function startDrag(e, slotId, matrix, color) { 
             e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const target = e.target;
             if(!target.classList.contains('bb-block')) return;
             
-            // Create ghost with REAL CELL SIZE (calculated from grid)
+            // GRID METRICS
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
-            const realCellSize = gridRect.width / 8; // Assuming 8 cols
+            const cellFullSize = gridRect.width / 8; // Including gaps
 
             dragData = { slotId, matrix, color }; 
             dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; 
-            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${realCellSize}px)`; 
-            dragGhost.style.gap = '4px'; // Match grid gap
+            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
+            dragGhost.style.gap = '4px'; 
             dragGhost.style.display = 'grid'; 
             
-            // Ghost dimensions to center it
-            const ghostWidth = matrix[0].length * realCellSize + (matrix[0].length - 1) * 4;
-            const ghostHeight = matrix.length * realCellSize + (matrix.length - 1) * 4;
+            // Calculate pixel size of the ghost shape
+            const shapePixelW = matrix[0].length * cellFullSize; 
+            const shapePixelH = matrix.length * cellFullSize;
 
             matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); 
             document.body.appendChild(dragGhost); 
             
-            // Initial positioning using the OFFSET logic
-            const startX = touch.clientX - (ghostWidth / 2);
-            const startY = touch.clientY - DRAG_Y_OFFSET - (ghostHeight / 2);
-            
-            moveGhost(startX, startY);
+            // Calculate where we grabbed inside the shape (Relative to Top-Left of shape)
+            const previewRect = e.target.closest('.bb-shape-preview').getBoundingClientRect();
+            // Scale factor between small preview and big ghost
+            const scale = shapePixelW / previewRect.width; 
+            touchOffsetX = (touch.clientX - previewRect.left) * scale;
+            touchOffsetY = (touch.clientY - previewRect.top) * scale;
+
+            moveGhost(touch.clientX, touch.clientY);
             e.target.closest('.bb-shape-preview').style.opacity = 0; 
             document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
         }
@@ -181,40 +186,50 @@
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
 
         function handleMove(x, y) {
-            // 1. Separation of Coordinates (The Offset Logic)
-            // Calculate shape's top-left corner based on OFFSET
-            const ghostRect = dragGhost.getBoundingClientRect();
-            const ghostX = x - (ghostRect.width / 2);
-            const ghostY = y - DRAG_Y_OFFSET - (ghostRect.height / 2);
+            // 1. VISUAL: Figure on a Stick
+            // Ghost Left = Touch X - (Offset inside shape) -> Keeps horizontal drag natural
+            // Ghost Top = Touch Y - (Offset inside shape) - LIFT AMOUNT
+            const ghostX = x - touchOffsetX;
+            const ghostY = y - touchOffsetY - DRAG_LIFT_Y;
 
-            moveGhost(ghostX, ghostY);
+            if(dragGhost) {
+                dragGhost.style.left = ghostX + 'px';
+                dragGhost.style.top = ghostY + 'px';
+            }
             
-            // 2. World to Grid (Grid Snapping)
+            // 2. LOGIC: Center-Based Snapping
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
-            const cellSize = gridRect.width / 8; // Calculate actual cell size with gap approximation
+            const cellFullSize = gridRect.width / 8;
+
+            // Find Center of the Floating Ghost
+            const shapePixelW = dragData.matrix[0].length * cellFullSize;
+            const shapePixelH = dragData.matrix.length * cellFullSize;
+            const centerX = ghostX + (shapePixelW / 2);
+            const centerY = ghostY + (shapePixelH / 2);
+
+            // Map Center to Grid Index
+            const centerCol = Math.floor((centerX - gridRect.left) / cellFullSize);
+            const centerRow = Math.floor((centerY - gridRect.top) / cellFullSize);
+
+            // Calculate Top-Left Origin of shape based on Center
+            const matrixRows = dragData.matrix.length;
+            const matrixCols = dragData.matrix[0].length;
             
-            // Calculate relative position of shape's top-left to grid's top-left
-            const relX = ghostX - gridRect.left;
-            const relY = ghostY - gridRect.top;
+            const startCol = centerCol - Math.floor(matrixCols / 2);
+            const startRow = centerRow - Math.floor(matrixRows / 2);
 
-            // Round to nearest index
-            const col = Math.round(relX / cellSize);
-            const row = Math.round(relY / cellSize);
-
-            checkPlacement(row, col);
+            checkPlacement(startRow, startCol);
+        }
+        
+        function moveGhost(x, y) { 
+            // Initial Draw
+            const ghostX = x - touchOffsetX;
+            const ghostY = y - touchOffsetY - DRAG_LIFT_Y;
+            if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; }
         }
 
-        function moveGhost(x, y) { if(dragGhost) { dragGhost.style.left = x + 'px'; dragGhost.style.top = y + 'px'; } }
-        
         function checkPlacement(r, c) { 
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            
-            // Check bounds and validity
-            if (r < -2 || r >= BB_ROWS + 2 || c < -2 || c >= BB_COLS + 2) { // Allow slight overdrag but check valid
-                dragData.validPos = null; return;
-            }
-
-            // 3. Snap Preview
             if(canPlace(dragData.matrix, r, c)) { 
                 drawShadow(dragData.matrix, r, c, dragData.color); 
                 dragData.validPos = { r: r, c: c }; 
