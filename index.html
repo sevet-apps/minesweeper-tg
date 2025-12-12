@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v11.0 Final Release</title>
+    <title>Glass Super App v11.1 Cloud Sync</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -48,7 +48,7 @@
         .bb-shape-preview { display: grid; gap: 2px; pointer-events: none; touch-action: none; transition: opacity 0.2s; } 
         .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         
-        /* GHOST STYLE - EXACT SIZE 1:1 */
+        /* GHOST STYLE */
         .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
         .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
         
@@ -110,10 +110,13 @@
         const tg = window.Telegram.WebApp; tg.expand();
         const themeToggle = document.getElementById('themeToggle'); let isDark = tg.colorScheme === 'dark';
         
-        // ICONS CONSTANTS (Flag fixed)
+        // ICONS CONSTANTS
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
+
+        // CLOUD SYNC KEYS
+        const SYNC_KEYS = ['saper_total', 'saper_best', 'checkers_total', 'checkers_wins_pve', 'bb_total_games', 'bb_best_score'];
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
         applyTheme(); themeToggle.addEventListener('click', () => { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); });
@@ -121,7 +124,107 @@
         function openGameModal(game) { if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); tg.HapticFeedback.impactOccurred('light'); }
         function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
-        function loadProfile() { const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; document.getElementById('user-name').innerText = user.first_name; document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; const ava = document.getElementById('user-avatar'); if(user.photo_url) ava.src = user.photo_url; else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--'; document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; }
+        
+        // --- NEW SYNC LOGIC ---
+        function loadProfile() { 
+            const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
+            document.getElementById('user-name').innerText = user.first_name; 
+            document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; 
+            const ava = document.getElementById('user-avatar'); 
+            if(user.photo_url) ava.src = user.photo_url; 
+            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
+            
+            // Initial render from LocalStorage
+            updateProfileUI();
+
+            // Run Cloud Sync in Background
+            syncWithCloud();
+        }
+
+        function updateProfileUI() {
+            document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
+            document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--'; 
+            document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
+            document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; 
+            document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
+            document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0;
+            // Also update Best Score on main menu
+            if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
+        }
+
+        function syncWithCloud() {
+            // Get all keys from Cloud
+            tg.CloudStorage.getItems(SYNC_KEYS, (err, cloudData) => {
+                if(err) { console.error('Cloud Sync Error', err); return; } // If cloud fails, just use local
+                
+                let hasChanges = false;
+                
+                SYNC_KEYS.forEach(key => {
+                    // Logic: Get Local (or 0), Get Cloud (or 0)
+                    // If key is "saper_best" (where lower is better), we handle differently? 
+                    // Wait, user said "MAXIMUM statistics". Usually implies higher is better.
+                    // Exception: Saper time. Lower is better. Let's handle generic numeric stats first.
+                    
+                    let localVal = parseInt(localStorage.getItem(key) || '0');
+                    if(key === 'saper_best' && localStorage.getItem(key) === '--') localVal = 999999;
+                    
+                    let cloudVal = parseInt(cloudData[key]);
+                    if(isNaN(cloudVal)) cloudVal = (key === 'saper_best') ? 999999 : 0; // Default for cloud
+
+                    let finalVal = localVal;
+
+                    if (key === 'saper_best') {
+                        // For Time: MINIMUM is better
+                        if (cloudVal < 999999 && cloudVal > 0) {
+                             if (localVal === 999999 || cloudVal < localVal) finalVal = cloudVal;
+                        }
+                    } else {
+                        // For everything else: MAXIMUM is better
+                        finalVal = Math.max(localVal, cloudVal);
+                    }
+
+                    // UPDATE LOCAL
+                    if (finalVal !== localVal) {
+                        localStorage.setItem(key, (key === 'saper_best' && finalVal === 999999) ? '--' : finalVal);
+                        hasChanges = true;
+                    }
+
+                    // UPDATE CLOUD (If cloud was lower/worse)
+                    if (key === 'saper_best') {
+                         if (cloudVal === 999999 || (finalVal < cloudVal && finalVal > 0)) {
+                             tg.CloudStorage.setItem(key, finalVal.toString());
+                         }
+                    } else {
+                         if (finalVal > cloudVal) {
+                             tg.CloudStorage.setItem(key, finalVal.toString());
+                         }
+                    }
+                });
+
+                if(hasChanges) updateProfileUI();
+            });
+        }
+        
+        // Helper to save to cloud instantly when game ends
+        function saveStatToCloud(key, value) {
+            localStorage.setItem(key, value); // Save local first
+            // Check if better than cloud? Or just sync logic? Simplest is to run sync logic for that key.
+            tg.CloudStorage.getItem(key, (err, cloudValStr) => {
+                if(err) return;
+                let cloudVal = parseInt(cloudValStr) || 0;
+                let newVal = parseInt(value);
+                
+                if (key === 'saper_best') {
+                    if(!cloudVal || cloudVal === 0) cloudVal = 999999;
+                    if(newVal < cloudVal) tg.CloudStorage.setItem(key, newVal.toString());
+                } else {
+                    if(newVal > cloudVal) tg.CloudStorage.setItem(key, newVal.toString());
+                }
+            });
+        }
+
+        // --- END SYNC LOGIC ---
+
         
         /* --- SAPER --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false;
@@ -133,8 +236,13 @@
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
-        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));localStorage.setItem('saper_total',(parseInt(localStorage.getItem('saper_total')||0)+1));showResult('Бум!','Не повезло', 'Закрыть');}
-        function checkSaperWin(){let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++}));if(rev===sRows*sCols-sMines){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});let t=parseInt(localStorage.getItem('saper_total')||0)+1,b=parseInt(localStorage.getItem('saper_best')||9999);localStorage.setItem('saper_total',t);if(sTimer<b)localStorage.setItem('saper_best',sTimer);showResult('Победа!',`Время: ${sTimer} с`, 'Круто');}}
+        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));
+        let t = (parseInt(localStorage.getItem('saper_total')||0)+1); saveStatToCloud('saper_total', t);
+        showResult('Бум!','Не повезло', 'Закрыть');}
+        function checkSaperWin(){let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++}));if(rev===sRows*sCols-sMines){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
+        let t = parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total', t);
+        let b = parseInt(localStorage.getItem('saper_best')||9999); if(sTimer<b) saveStatToCloud('saper_best', sTimer);
+        showResult('Победа!',`Время: ${sTimer} с`, 'Круто');}}
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
         /* --- CHECKERS --- */
@@ -147,7 +255,13 @@
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
         function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black'&&!checkersOver)setTimeout(aiMove,600);}
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        function endGame(w){if(checkersOver)return;checkersOver=true;let t=parseInt(localStorage.getItem('checkers_total')||0)+1;localStorage.setItem('checkers_total',t);if(isPvE&&w==='white')localStorage.setItem('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){showResult("Победа!", "Робот повержен.", "Закрыть");confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{showResult("Поражение", "Робот победил.", "Закрыть");}}else{showResult(w==='white'?"Белые победили!":"Чёрные победили!", "", "Закрыть");if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}}
+        function endGame(w){if(checkersOver)return;checkersOver=true;
+        let t = parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total', t);
+        if(isPvE&&w==='white') {
+             let wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; 
+             saveStatToCloud('checkers_wins_pve', wins);
+        }
+        tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){showResult("Победа!", "Робот повержен.", "Закрыть");confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{showResult("Поражение", "Робот победил.", "Закрыть");}}else{showResult(w==='white'?"Белые победили!":"Чёрные победили!", "", "Закрыть");if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}}
         function aiMove(){if(checkersOver)return;const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
@@ -177,8 +291,6 @@
             preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; 
             matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); 
             container.appendChild(preview);
-            
-            // ATTACH LISTENER TO CONTAINER FOR BIGGER HIT AREA
             container.ontouchstart = (e) => startDrag(e, slotId, matrix, color);
             container.onmousedown = (e) => startDrag(e, slotId, matrix, color);
         }
@@ -188,35 +300,22 @@
 
         function startDrag(e, slotId, matrix, color) { 
             e.preventDefault(); const touch = e.touches ? e.touches[0] : e;
-            
-            // GRID METRICS
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
             const cellFullSize = gridRect.width / 8; 
-
             dragData = { slotId, matrix, color }; 
             dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; 
             dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
             dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; 
             dragGhost.style.gap = '4px'; 
             dragGhost.style.display = 'grid'; 
-            
-            // CALCULATE GHOST SIZE (EXACT 1:1)
             const shapePixelW = matrix[0].length * cellFullSize; 
-
             matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); 
             document.body.appendChild(dragGhost); 
-            
-            // Center pickup logic since we are clicking container now
-            // We want the finger to be roughly in the middle of the shape if grabbed from empty space
-            // Or precise if grabbed on block. For bigger hit area, simple center offset is safest for UX.
-            touchOffsetX = (shapePixelW / 2); // Center horizontally
-            touchOffsetY = (shapePixelW / 2); // Roughly center vertically (assuming square-ish average)
-
+            touchOffsetX = (shapePixelW / 2); 
+            touchOffsetY = (shapePixelW / 2); 
             moveGhost(touch.clientX, touch.clientY);
-            
             const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`);
             if(preview) preview.style.opacity = 0;
-
             document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
         }
 
@@ -226,22 +325,13 @@
         function handleMove(x, y) {
             const ghostX = x - touchOffsetX;
             const ghostY = y - touchOffsetY - DRAG_LIFT_Y;
-
-            if(dragGhost) {
-                dragGhost.style.left = ghostX + 'px';
-                dragGhost.style.top = ghostY + 'px';
-            }
-            
+            if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; }
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
             const cellFullSize = gridRect.width / 8;
-
-            // SNAP LOGIC
             const relX = ghostX - gridRect.left;
             const relY = ghostY - gridRect.top;
-
             const col = Math.round(relX / cellFullSize);
             const row = Math.round(relY / cellFullSize);
-
             checkPlacement(row, col);
         }
         
@@ -272,17 +362,14 @@
                 placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
                 document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
                 container = document.getElementById(`shape${dragData.slotId}`);
-                container.ontouchstart = null; container.onmousedown = null; // Remove listeners
-                
+                container.ontouchstart = null; container.onmousedown = null; 
                 bbShapes[dragData.slotId] = null; 
                 const linesCleared = checkLines(); 
-                
                 if(linesCleared === 0) {
-                    // Logic for keeping combo alive for 2 empty moves
                     if (bbCombo > 0) {
                         bbComboBuffer--;
                         if(bbComboBuffer <= 0) {
-                            bbCombo = 0; // Reset only after buffer depletes
+                            bbCombo = 0; 
                             updateBBScoreUI();
                         }
                     }
@@ -303,9 +390,8 @@
             
             if(totalCleared > 0) { 
                 bbCombo++; // Increment combo
-                bbComboBuffer = 3; // Reset buffer to 3 moves
-                updateBBScoreUI(); // Update color
-                
+                bbComboBuffer = 3; // Reset buffer
+                updateBBScoreUI(); 
                 tg.HapticFeedback.notificationOccurred('success'); 
                 rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) animateClear(r, c); }); 
                 colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) animateClear(r, c); }); 
@@ -313,12 +399,10 @@
                 setTimeout(() => { 
                     rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
-                    
                     let points = totalCleared * 10; 
                     if(bbCombo > 1) {
                         points += bbCombo * 10; 
                         showComboPopup(`COMBO x${bbCombo}!`);
-                        // Removed confetti here as requested
                     }
                     addScore(points); 
                     saveBBState(); 
@@ -344,19 +428,14 @@
             const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); 
             if(!canMove) { 
                 tg.HapticFeedback.notificationOccurred('error'); 
-                
-                // 1. Animation Fill
                 await animateGameOverFill();
-                
-                // 2. Logic Check Record
                 const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0);
                 const isRecord = bbScore > currentBest;
-                if(isRecord) localStorage.setItem('bb_best_score', bbScore);
+                if(isRecord) saveStatToCloud('bb_best_score', bbScore);
                 
                 localStorage.removeItem('bb_state'); 
-                localStorage.setItem('bb_total_games', parseInt(localStorage.getItem('bb_total_games')||0)+1);
+                let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t);
                 
-                // 3. Show Result
                 showBBGameOverModal(isRecord, bbScore, currentBest);
             } 
         }
@@ -364,7 +443,6 @@
         function animateGameOverFill() {
             return new Promise(resolve => {
                 const emptyCells = [];
-                // Collect empty cells, sort by row desc (bottom to top)
                 for(let r=BB_ROWS-1; r>=0; r--) {
                     for(let c=0; c<BB_COLS; c++) {
                         if(bbGrid[r][c] === 0) {
@@ -373,7 +451,6 @@
                         }
                     }
                 }
-                
                 let i = 0;
                 const int = setInterval(() => {
                     if(i >= emptyCells.length) {
@@ -385,7 +462,7 @@
                     const color = COLORS[Math.floor(Math.random() * COLORS.length)];
                     if(cell) cell.classList.add('filled', color);
                     i++;
-                }, 10); // Fast fill speed
+                }, 10); 
             });
         }
 
@@ -395,7 +472,6 @@
             modal.innerHTML = '';
             
             if(isRecord) {
-                // RECORD LAYOUT
                 confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 });
                 modal.innerHTML = `
                     ${ICON_CROWN}
@@ -404,7 +480,6 @@
                     <button class="btn-main" onclick="closeResult(); newGameBB();">Играть снова</button>
                     <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>
                 `;
-                // Animate counter
                 let s = oldBest;
                 const step = Math.ceil((score - oldBest) / 30);
                 const counter = document.getElementById('recCounter');
@@ -414,7 +489,6 @@
                     counter.innerText = s;
                 }, 30);
             } else {
-                // NO RECORD LAYOUT
                 modal.innerHTML = `
                     <h2 style="margin:0 0 5px 0;">Рекорд не побит</h2>
                     <p style="color:#8e8e93; margin:0 0 20px 0;">Попробуйте еще раз!</p>
