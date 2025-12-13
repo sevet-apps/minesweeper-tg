@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.5 Fixed Profile</title>
+    <title>Glass Super App v12.6 Sticky Rank</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -37,7 +37,7 @@
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
-        .lb-list { padding-bottom: 40px; }
+        .lb-list { padding-bottom: 80px; /* Space for sticky user */ }
         .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
         .lb-item:active { transform: scale(0.98); }
         .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
@@ -48,13 +48,18 @@
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
+        /* STICKY USER RANK (BLUE WINDOW) */
+        .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 202; transform: translateY(150%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .lb-sticky-user.visible { transform: translateY(0); }
+        .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
+        .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
+        .lb-sticky-user .lb-name { color: white; }
+
         /* THEME & PROFILE */
         .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
         .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
         .settings-row:last-child { border-bottom: none; }
         .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
-        
-        /* Custom Theme Toggle (Oval) */
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
         .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
@@ -122,11 +127,12 @@
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
-        <div class="card disabled">
+        <div class="card" onclick="openLeaderboardDetail('checkers')">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Шашек</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
+        
         <div class="card disabled">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Block Blast</h3></div>
@@ -145,6 +151,13 @@
             <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="lb-list" id="lbList"></div>
+        
+        <div class="lb-sticky-user" id="lbStickyUser">
+            <div class="lb-rank" id="stickyRank">#</div>
+            <img src="" class="lb-avatar" id="stickyAvatar">
+            <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
+            <div class="lb-val" id="stickyVal">0</div>
+        </div>
     </div>
 
     <div id="view-games" class="screen active"> 
@@ -164,9 +177,7 @@
             <div class="settings-group">
                 <div class="settings-row">
                     <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         Тема
                     </div>
                     <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
@@ -301,15 +312,25 @@
             { id: 'saper_best_15', name: 'Лучшее время 15x15', isTime: true }
         ];
 
+        const CHECKERS_CATS = [
+            { id: 'checkers_total', name: 'Всего игр' },
+            { id: 'checkers_wins_pve', name: 'Побед над роботом' }
+        ];
+
         function openLeaderboardDetail(game) {
-            if(game !== 'saper') return;
             currentLbGame = game;
-            document.getElementById('lbGameTitle').innerText = 'Топы Сапёра';
-            loadLeaderboardData(SAPER_CATS[0]);
+            if(game === 'saper') {
+                document.getElementById('lbGameTitle').innerText = 'Топы Сапёра';
+                loadLeaderboardData(SAPER_CATS[0]);
+            } else if (game === 'checkers') {
+                document.getElementById('lbGameTitle').innerText = 'Топы Шашек';
+                loadLeaderboardData(CHECKERS_CATS[0]);
+            }
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
         function closeLeaderboardDetail() {
             document.getElementById('view-leaderboard-detail').classList.remove('active');
+            document.getElementById('lbStickyUser').classList.remove('visible');
         }
 
         function toggleDropdown() {
@@ -319,7 +340,8 @@
             
             if(!isActive) {
                 menu.innerHTML = '';
-                SAPER_CATS.forEach(cat => {
+                const cats = currentLbGame === 'saper' ? SAPER_CATS : CHECKERS_CATS;
+                cats.forEach(cat => {
                     const el = document.createElement('div');
                     el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`;
                     el.innerText = cat.name;
@@ -334,25 +356,58 @@
             }
         }
 
+        let lbObserver = null;
         function loadLeaderboardData(category) {
             currentLbCat = category;
             document.getElementById('lbCurrentCat').innerText = category.name;
             const listEl = document.getElementById('lbList');
+            const stickyEl = document.getElementById('lbStickyUser');
             listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">Загрузка...</div>';
+            stickyEl.classList.remove('visible');
             
+            if(lbObserver) lbObserver.disconnect();
+
             setTimeout(() => {
                 const userValRaw = localStorage.getItem(category.id);
                 let userVal = parseInt(userValRaw);
                 if(isNaN(userVal) || userValRaw === '--') userVal = category.isTime ? 999999 : 0;
 
                 const mockUsers = generateMockUsers(100, category.isTime);
-                const me = { name: (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) ? tg.initDataUnsafe.user.first_name : "Вы", val: userVal, isMe: true };
+                const meName = (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) ? tg.initDataUnsafe.user.first_name : "Вы";
+                const me = { name: meName, val: userVal, isMe: true };
                 mockUsers.push(me);
                 
                 if(category.isTime) { mockUsers.sort((a,b) => a.val - b.val); } else { mockUsers.sort((a,b) => b.val - a.val); }
 
                 listEl.innerHTML = '';
                 const displayList = mockUsers.slice(0, 100);
+
+                // Setup Sticky Data
+                const myRank = displayList.findIndex(u => u.isMe) + 1;
+                if(myRank > 0) {
+                     document.getElementById('stickyRank').innerText = myRank;
+                     document.getElementById('stickyName').innerText = meName + " (Вы)";
+                     document.getElementById('stickyVal').innerText = category.isTime ? (me.val === 999999 ? '--' : me.val + 'с') : me.val;
+                     const stickyAva = document.getElementById('stickyAvatar');
+                     stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(meName)}, #ddd)`;
+                     
+                     // Use real photo if available
+                     if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) stickyAva.src = tg.initDataUnsafe.user.photo_url;
+                     else stickyAva.src = ""; // Fallback to gradient
+                     
+                     stickyEl.classList.add('visible'); // Show initially
+                }
+
+                // Setup Intersection Observer to Hide Sticky when real row is visible
+                lbObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if(entry.isIntersecting) {
+                            stickyEl.classList.remove('visible');
+                        } else {
+                            stickyEl.classList.add('visible');
+                        }
+                    });
+                }, { threshold: 0.1 });
 
                 displayList.forEach((u, index) => {
                     const rank = index + 1;
@@ -366,7 +421,11 @@
 
                     const item = document.createElement('div');
                     item.className = `lb-item rank-${rank}`;
-                    if(u.isMe) item.style.border = '1px solid var(--accent)';
+                    if(u.isMe) {
+                        item.style.border = '1px solid var(--accent)';
+                        item.id = 'myRankRow'; // For observer
+                        lbObserver.observe(item);
+                    }
 
                     item.innerHTML = `
                         <div class="lb-rank">${rank}</div>${medal}
