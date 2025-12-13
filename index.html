@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.2 Fixed Icon</title>
+    <title>Glass Super App v12.3 Saper Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -15,7 +15,6 @@
         
         /* ICONS & GENERAL */
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } 
-        
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
         .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .game-overlay.visible { transform: translateY(0); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
@@ -36,11 +35,8 @@
 
         /* LEADERBOARD SPECIFIC STYLES */
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
-        
-        /* Dropdown Selector */
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
-
         .lb-list { padding-bottom: 40px; }
         .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
         .lb-item:active { transform: scale(0.98); }
@@ -50,8 +46,6 @@
         .lb-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
         .lb-val { font-size: 13px; color: #8e8e93; font-weight: 500; }
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
-        
-        /* Hide text rank for top 3 to show medals */
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
         /* THEME & PROFILE */
@@ -84,10 +78,17 @@
         .dd-item.selected { color: var(--accent); font-weight: 600; }
 
         /* GAME STYLES */
+        /* RESTORED SAPER ICON CLASS FOR HEADER VISIBILITY */
+        .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
         .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
         .crown-icon { width: 60px; height: 60px; margin-bottom: 10px; fill: #000; [data-theme="dark"] & { fill: #fff; } }
         
+        /* SAPER BOTTOM CONTROLS */
+        .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } 
+        .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } 
+        .control-btn.active { background: var(--accent); color: white; }
+
         .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
         .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; } 
         .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } } 
