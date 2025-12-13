@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.5 Profile Label & Checkers Top</title>
+    <title>Glass Super App v12.5 Fixed Profile</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -49,12 +49,12 @@
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
         /* THEME & PROFILE */
-        /* Settings Row for Theme Label */
         .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
         .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
         .settings-row:last-child { border-bottom: none; }
         .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
-
+        
+        /* Custom Theme Toggle (Oval) */
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
         .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
@@ -122,12 +122,11 @@
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
-        <div class="card" onclick="openLeaderboardDetail('checkers')">
+        <div class="card disabled">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Шашек</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
-        
         <div class="card disabled">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Block Blast</h3></div>
@@ -165,11 +164,11 @@
             <div class="settings-group">
                 <div class="settings-row">
                     <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" style="display:none;"></path><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.54-3.92-3.11l1.73-1.01c.47 1.04 1.3 1.63 2.19 1.63 1.12 0 1.95-.84 1.95-2.03 0-1.07-.63-1.74-2.45-2.28-2.63-.78-3.79-2.05-3.79-3.97 0-1.73 1.38-3.23 3.32-3.53V2h2.67v1.93c1.37.28 2.53 1.13 3.29 2.45l-1.68 1.03c-.47-.84-1.12-1.32-1.61-1.32-1.03 0-1.64.79-1.64 1.7 0 .93.75 1.57 2.51 2.12 2.68.83 3.73 2.17 3.73 4.14 0 1.84-1.44 3.23-3.66 3.53z" style="display:none;"></path>
-                        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.34 0 .67 0 1-.05v-2.07c-3.13-.53-5.28-3.56-4.75-6.69.53-3.13 3.56-5.28 6.69-4.75 3.13.53 5.28 3.56 4.75 6.69V17h2c1.1 0 2-.9 2-2 0-5.52-4.48-10-10-10z"></path><circle cx="6.5" cy="11.5" r="1.5"></circle><circle cx="9.5" cy="7.5" r="1.5"></circle><circle cx="14.5" cy="7.5" r="1.5"></circle><circle cx="17.5" cy="11.5" r="1.5"></circle></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
                         Тема
                     </div>
-                    
                     <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
                         <div class="theme-icons"> 
                             <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
@@ -180,7 +179,7 @@
                 </div>
             </div>
 
-            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"> 
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> 
@@ -258,7 +257,6 @@
             if(user.photo_url) ava.src = user.photo_url; 
             else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
             
-            // Stats population
             document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
             document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best_8') || '--'; 
             document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
@@ -303,19 +301,11 @@
             { id: 'saper_best_15', name: 'Лучшее время 15x15', isTime: true }
         ];
 
-        const CHECKERS_CATS = [
-            { id: 'checkers_wins_pve', name: 'Побед над ботом' }
-        ];
-
         function openLeaderboardDetail(game) {
+            if(game !== 'saper') return;
             currentLbGame = game;
-            if(game === 'saper') {
-                document.getElementById('lbGameTitle').innerText = 'Топы Сапёра';
-                loadLeaderboardData(SAPER_CATS[0]);
-            } else if (game === 'checkers') {
-                document.getElementById('lbGameTitle').innerText = 'Топы Шашек';
-                loadLeaderboardData(CHECKERS_CATS[0]);
-            }
+            document.getElementById('lbGameTitle').innerText = 'Топы Сапёра';
+            loadLeaderboardData(SAPER_CATS[0]);
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
         function closeLeaderboardDetail() {
@@ -327,14 +317,9 @@
             const overlay = document.getElementById('dropdownOverlay');
             const isActive = menu.classList.contains('active');
             
-            // Determine which categories to show based on active game
-            let cats = [];
-            if(currentLbGame === 'saper') cats = SAPER_CATS;
-            else if(currentLbGame === 'checkers') cats = CHECKERS_CATS;
-
             if(!isActive) {
                 menu.innerHTML = '';
-                cats.forEach(cat => {
+                SAPER_CATS.forEach(cat => {
                     const el = document.createElement('div');
                     el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`;
                     el.innerText = cat.name;
