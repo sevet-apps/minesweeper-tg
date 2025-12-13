@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v11.1 Cloud Sync</title>
+    <title>Glass Super App v11.2 Leaderboard UI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -18,6 +18,8 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } [data-theme="dark"] .switch-circle { transform: translateX(30px); }
         .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
+        /* Non-clickable card style */
+        .card.disabled { cursor: default; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         .game-top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; } .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
         
@@ -57,54 +59,62 @@
         @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
         
         .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; } .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } .tab-item.active { color: var(--accent); background: transparent !important; } .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; } .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
-        .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; } .modal.rotate-180 { transform: rotate(180deg); } 
-        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
-        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
-        .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
-        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
-        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; } .modal-overlay.visible { opacity: 1; pointer-events: auto; } .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; } .modal.rotate-180 { transform: rotate(180deg); } .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
         
         .crown-icon { width: 60px; height: 60px; margin-bottom: 10px; fill: #000; [data-theme="dark"] & { fill: #fff; } }
     </style>
 </head>
 <body>
-    <div id="view-games" class="screen active"> <div class="header"> <div class="app-title">Игры</div> <div class="theme-switch" id="themeToggle"> <div class="theme-icons"> <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> </div> <div class="switch-circle"></div> </div> </div> <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> </div>
-    <div id="view-profile" class="screen"> <div class="header"><div class="app-title">Профиль</div></div> <div style="display:flex; flex-direction:column; align-items:center;"> <img id="user-avatar" src="" alt="" class="avatar"> <h2 id="user-name" style="margin:0;">Loading...</h2> <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> </div> </div> </div>
-    <div class="tab-bar"> <div class="tab-item active" onclick="switchTab('games', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>Игры</div> <div class="tab-item" onclick="switchTab('profile', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</div> </div>
     
-    <div id="saper-screen" class="game-overlay"> 
-        <div class="game-top-bar"> 
-            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> 
-            <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
-                <span style="display:flex; align-items:center; gap:4px;">
-                    <span id="saperFlags">0</span> 
-                    <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
-                </span> 
-                <span style="display:flex; align-items:center; gap:4px;">
-                    <span id="saperTimer">000</span> 
-                    <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                </span> 
-            </div> 
-        </div> 
-        <div class="game-area"><div class="grid" id="saperGrid"></div></div> 
-        <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> 
+    <div id="view-leaderboard" class="screen">
+        <div class="header"><div class="app-title">Топы</div></div>
+        
+        <div class="card disabled">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Saper Top</h3></div>
+        </div>
+        <div class="card disabled">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Checkers Top</h3></div>
+        </div>
+        <div class="card disabled">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Block Blast Top</h3></div>
+        </div>
     </div>
 
+    <div id="view-games" class="screen active"> 
+        <div class="header"> <div class="app-title">Игры</div> <div class="theme-switch" id="themeToggle"> <div class="theme-icons"> <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> </div> <div class="switch-circle"></div> </div> </div> 
+        <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+    </div>
+
+    <div id="view-profile" class="screen"> <div class="header"><div class="app-title">Профиль</div></div> <div style="display:flex; flex-direction:column; align-items:center;"> <img id="user-avatar" src="" alt="" class="avatar"> <h2 id="user-name" style="margin:0;">Loading...</h2> <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> </div> </div> </div>
+    
+    <div class="tab-bar"> 
+        <div class="tab-item" onclick="switchTab('leaderboard', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13h8v7H8z"/><path d="M2 17h6v3H2z"/><path d="M16 17h6v3h-6z"/></svg>
+            Топы
+        </div>
+        <div class="tab-item active" onclick="switchTab('games', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
+            Игры
+        </div> 
+        <div class="tab-item" onclick="switchTab('profile', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </div> 
+    </div>
+    
+    <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
     <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
-    
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
-    
     <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
-    
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
-    
-    <div class="modal-overlay" id="modalBBGameOver">
-        <div class="modal" id="bbGameOverContent">
-            </div>
-    </div>
+    <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
     <script>
         const tg = window.Telegram.WebApp; tg.expand();
@@ -120,112 +130,41 @@
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
         applyTheme(); themeToggle.addEventListener('click', () => { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); });
-        function switchTab(t, el) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); if(t==='games') document.getElementById('view-games').classList.add('active'); else { document.getElementById('view-profile').classList.add('active'); loadProfile(); } if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
+        function switchTab(t, el) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); if(t==='games') document.getElementById('view-games').classList.add('active'); else if(t==='leaderboard') document.getElementById('view-leaderboard').classList.add('active'); else { document.getElementById('view-profile').classList.add('active'); loadProfile(); } if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
         function openGameModal(game) { if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); tg.HapticFeedback.impactOccurred('light'); }
         function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
+        function loadProfile() { const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; document.getElementById('user-name').innerText = user.first_name; document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; const ava = document.getElementById('user-avatar'); if(user.photo_url) ava.src = user.photo_url; else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--'; document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; syncWithCloud(); }
         
-        // --- NEW SYNC LOGIC ---
-        function loadProfile() { 
-            const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
-            document.getElementById('user-name').innerText = user.first_name; 
-            document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; 
-            const ava = document.getElementById('user-avatar'); 
-            if(user.photo_url) ava.src = user.photo_url; 
-            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
-            
-            // Initial render from LocalStorage
-            updateProfileUI();
-
-            // Run Cloud Sync in Background
-            syncWithCloud();
-        }
-
-        function updateProfileUI() {
-            document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
-            document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--'; 
-            document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
-            document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; 
-            document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
-            document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0;
-            // Also update Best Score on main menu
-            if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
-        }
-
         function syncWithCloud() {
-            // Get all keys from Cloud
             tg.CloudStorage.getItems(SYNC_KEYS, (err, cloudData) => {
-                if(err) { console.error('Cloud Sync Error', err); return; } // If cloud fails, just use local
-                
+                if(err) { console.error('Cloud Sync Error', err); return; }
                 let hasChanges = false;
-                
                 SYNC_KEYS.forEach(key => {
-                    // Logic: Get Local (or 0), Get Cloud (or 0)
-                    // If key is "saper_best" (where lower is better), we handle differently? 
-                    // Wait, user said "MAXIMUM statistics". Usually implies higher is better.
-                    // Exception: Saper time. Lower is better. Let's handle generic numeric stats first.
-                    
                     let localVal = parseInt(localStorage.getItem(key) || '0');
                     if(key === 'saper_best' && localStorage.getItem(key) === '--') localVal = 999999;
-                    
                     let cloudVal = parseInt(cloudData[key]);
-                    if(isNaN(cloudVal)) cloudVal = (key === 'saper_best') ? 999999 : 0; // Default for cloud
-
+                    if(isNaN(cloudVal)) cloudVal = (key === 'saper_best') ? 999999 : 0;
                     let finalVal = localVal;
-
-                    if (key === 'saper_best') {
-                        // For Time: MINIMUM is better
-                        if (cloudVal < 999999 && cloudVal > 0) {
-                             if (localVal === 999999 || cloudVal < localVal) finalVal = cloudVal;
-                        }
-                    } else {
-                        // For everything else: MAXIMUM is better
-                        finalVal = Math.max(localVal, cloudVal);
-                    }
-
-                    // UPDATE LOCAL
-                    if (finalVal !== localVal) {
-                        localStorage.setItem(key, (key === 'saper_best' && finalVal === 999999) ? '--' : finalVal);
-                        hasChanges = true;
-                    }
-
-                    // UPDATE CLOUD (If cloud was lower/worse)
-                    if (key === 'saper_best') {
-                         if (cloudVal === 999999 || (finalVal < cloudVal && finalVal > 0)) {
-                             tg.CloudStorage.setItem(key, finalVal.toString());
-                         }
-                    } else {
-                         if (finalVal > cloudVal) {
-                             tg.CloudStorage.setItem(key, finalVal.toString());
-                         }
-                    }
+                    if (key === 'saper_best') { if (cloudVal < 999999 && cloudVal > 0) { if (localVal === 999999 || cloudVal < localVal) finalVal = cloudVal; } } 
+                    else { finalVal = Math.max(localVal, cloudVal); }
+                    if (finalVal !== localVal) { localStorage.setItem(key, (key === 'saper_best' && finalVal === 999999) ? '--' : finalVal); hasChanges = true; }
+                    if (key === 'saper_best') { if (cloudVal === 999999 || (finalVal < cloudVal && finalVal > 0)) { tg.CloudStorage.setItem(key, finalVal.toString()); } } 
+                    else { if (finalVal > cloudVal) { tg.CloudStorage.setItem(key, finalVal.toString()); } }
                 });
-
-                if(hasChanges) updateProfileUI();
-            });
-        }
-        
-        // Helper to save to cloud instantly when game ends
-        function saveStatToCloud(key, value) {
-            localStorage.setItem(key, value); // Save local first
-            // Check if better than cloud? Or just sync logic? Simplest is to run sync logic for that key.
-            tg.CloudStorage.getItem(key, (err, cloudValStr) => {
-                if(err) return;
-                let cloudVal = parseInt(cloudValStr) || 0;
-                let newVal = parseInt(value);
-                
-                if (key === 'saper_best') {
-                    if(!cloudVal || cloudVal === 0) cloudVal = 999999;
-                    if(newVal < cloudVal) tg.CloudStorage.setItem(key, newVal.toString());
-                } else {
-                    if(newVal > cloudVal) tg.CloudStorage.setItem(key, newVal.toString());
+                if(hasChanges) {
+                    if(document.getElementById('stat-saper-games')) document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
+                    if(document.getElementById('stat-saper-best')) document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best') || '--'; 
+                    if(document.getElementById('stat-checkers-games')) document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
+                    if(document.getElementById('stat-checkers-wins')) document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; 
+                    if(document.getElementById('stat-bb-games')) document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
+                    if(document.getElementById('stat-bb-best')) document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0;
+                    if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
                 }
             });
         }
+        function saveStatToCloud(key, value) { localStorage.setItem(key, value); tg.CloudStorage.getItem(key, (err, cloudValStr) => { if(err) return; let cloudVal = parseInt(cloudValStr) || 0; let newVal = parseInt(value); if (key === 'saper_best') { if(!cloudVal || cloudVal === 0) cloudVal = 999999; if(newVal < cloudVal) tg.CloudStorage.setItem(key, newVal.toString()); } else { if(newVal > cloudVal) tg.CloudStorage.setItem(key, newVal.toString()); } }); }
 
-        // --- END SYNC LOGIC ---
-
-        
         /* --- SAPER --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
@@ -236,36 +175,24 @@
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
-        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));
-        let t = (parseInt(localStorage.getItem('saper_total')||0)+1); saveStatToCloud('saper_total', t);
-        showResult('Бум!','Не повезло', 'Закрыть');}
-        function checkSaperWin(){let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++}));if(rev===sRows*sCols-sMines){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
-        let t = parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total', t);
-        let b = parseInt(localStorage.getItem('saper_best')||9999); if(sTimer<b) saveStatToCloud('saper_best', sTimer);
-        showResult('Победа!',`Время: ${sTimer} с`, 'Круто');}}
-        function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
-
+        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let t=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',t);showResult('Бум!','Не повезло', 'Закрыть');}
+        function checkSaperWin(){let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++}));if(rev===sRows*sCols-sMines){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});let t=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',t);let b=parseInt(localStorage.getItem('saper_best')||9999);if(sTimer<b)saveStatToCloud('saper_best',sTimer);showResult('Победа!',`Время: ${sTimer} с`, 'Круто');}}
+        
         /* --- CHECKERS --- */
-        const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null, checkersOver=false;
+        const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
         function setCheckersMode(pve,btn){isPvE=pve;document.getElementById('pvpBtn').classList.remove('selected');document.getElementById('pveBtn').classList.remove('selected');btn.classList.add('selected');tg.HapticFeedback.selectionChanged();}
         function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
-        function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;checkersOver=false;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
-        function onBoardClick(r,c){if((isPvE&&turn==='black')||checkersOver)return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
+        function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
+        function onBoardClick(r,c){if(isPvE&&turn==='black')return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
         function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
-        function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black'&&!checkersOver)setTimeout(aiMove,600);}
+        function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);}
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        function endGame(w){if(checkersOver)return;checkersOver=true;
-        let t = parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total', t);
-        if(isPvE&&w==='white') {
-             let wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; 
-             saveStatToCloud('checkers_wins_pve', wins);
-        }
-        tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){showResult("Победа!", "Робот повержен.", "Закрыть");confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{showResult("Поражение", "Робот победил.", "Закрыть");}}else{showResult(w==='white'?"Белые победили!":"Чёрные победили!", "", "Закрыть");if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}}
-        function aiMove(){if(checkersOver)return;const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
+        function endGame(w){let t=parseInt(localStorage.getItem('checkers_total')||0)+1;saveStatToCloud('checkers_total',t);if(isPvE&&w==='white')saveStatToCloud('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{tit.innerText="Поражение";txt.innerText="Робот победил.";}}else{tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);}
+        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
-        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0;
+        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0; 
         const SHAPES = [
              [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1,1,1]], [[1],[1],[1],[1],[1]],
              [[1,1],[1,1]], [[1,1,1],[1,1,1]], [[1,1],[1,1],[1,1]], [[1,1,1],[1,1,1],[1,1,1]],
