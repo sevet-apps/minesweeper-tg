@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.3 Saper Fix</title>
+    <title>Glass Super App v12.4 Profile Stats & Theme</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -14,7 +14,7 @@
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
         
         /* ICONS & GENERAL */
-        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } 
+        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
         .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .game-overlay.visible { transform: translateY(0); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
@@ -49,16 +49,11 @@
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
         /* THEME & PROFILE */
-        .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); }
-        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
-        .settings-row:last-child { border-bottom: none; }
-        .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
-        .ios-switch { position: relative; width: 51px; height: 31px; display: inline-block; }
-        .ios-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--toggle-bg); transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 27px; width: 27px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        input:checked + .slider { background-color: var(--success); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        /* Custom Theme Toggle from v12.0 */
+        .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; margin-bottom: 20px; } 
+        .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
+        .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
+        [data-theme="dark"] .switch-circle { transform: translateX(30px); }
 
         /* MODALS */
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; } 
@@ -78,13 +73,11 @@
         .dd-item.selected { color: var(--accent); font-weight: 600; }
 
         /* GAME STYLES */
-        /* RESTORED SAPER ICON CLASS FOR HEADER VISIBILITY */
         .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
         .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
         .crown-icon { width: 60px; height: 60px; margin-bottom: 10px; fill: #000; [data-theme="dark"] & { fill: #fff; } }
         
-        /* SAPER BOTTOM CONTROLS */
         .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } 
         .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } 
         .control-btn.active { background: var(--accent); color: white; }
@@ -142,14 +135,11 @@
         </div>
         
         <div class="lb-title-lg" id="lbGameTitle">Title</div>
-        
         <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
             <span id="lbCurrentCat">Category</span>
             <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
-
-        <div class="lb-list" id="lbList">
-            </div>
+        <div class="lb-list" id="lbList"></div>
     </div>
 
     <div id="view-games" class="screen active"> 
@@ -164,29 +154,30 @@
         <div style="display:flex; flex-direction:column; align-items:center;"> 
             <img id="user-avatar" src="" alt="" class="avatar"> 
             <h2 id="user-name" style="margin:0;">Loading...</h2> 
-            <p id="user-id" style="color:#8e8e93; margin:5px 0 30px;">@username</p> 
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
             
-            <div style="width:100%;">
-                <div class="settings-group">
-                    <div class="settings-row">
-                        <div class="settings-label">
-                            <svg class="icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                            Темная тема
-                        </div>
-                        <label class="ios-switch">
-                            <input type="checkbox" id="themeCheckbox" onchange="toggleTheme()">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
+            <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
+                <div class="theme-icons"> 
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
+                </div> 
+                <div class="switch-circle"></div> 
+            </div>
+
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> 
             </div>
         </div> 
     </div>
     
     <div class="tab-bar"> 
         <div class="tab-item" onclick="switchTab('leaderboard', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 6h8v15H8z"/> <path d="M2 13h6v8H2z"/> <path d="M16 13h6v8H16z"/> </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8v15H8z"/><path d="M2 13h6v8H2z"/><path d="M16 13h6v8H16z"/></svg>
             Топы
         </div>
         <div class="tab-item active" onclick="switchTab('games', this)">
@@ -222,7 +213,6 @@
         const SYNC_KEYS = ['saper_total', 'saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15', 'checkers_total', 'checkers_wins_pve', 'bb_total_games', 'bb_best_score'];
 
         function initApp() {
-            document.getElementById('themeCheckbox').checked = isDark;
             applyTheme();
             loadProfile();
             syncWithCloud();
@@ -244,7 +234,25 @@
         function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
-        function loadProfile() { const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; document.getElementById('user-name').innerText = user.first_name; document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; const ava = document.getElementById('user-avatar'); if(user.photo_url) ava.src = user.photo_url; else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; syncWithCloud(); }
+        function loadProfile() { 
+            const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
+            document.getElementById('user-name').innerText = user.first_name; 
+            document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; 
+            const ava = document.getElementById('user-avatar'); 
+            if(user.photo_url) ava.src = user.photo_url; 
+            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
+            
+            // Stats population (Restored)
+            document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
+            document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best_8') || '--'; 
+            document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
+            document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; 
+            document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
+            document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; 
+            if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; 
+            
+            syncWithCloud(); 
+        }
         
         function syncWithCloud() {
             tg.CloudStorage.getItems(SYNC_KEYS, (err, cloudData) => {
@@ -262,6 +270,7 @@
                     if (key.includes('saper_best')) { if (cloudVal === 999999 || (finalVal < cloudVal && finalVal > 0)) { tg.CloudStorage.setItem(key, finalVal.toString()); } } 
                     else { if (finalVal > cloudVal) { tg.CloudStorage.setItem(key, finalVal.toString()); } }
                 });
+                if(hasChanges) loadProfile();
             });
         }
         function saveStatToCloud(key, value) { localStorage.setItem(key, value); tg.CloudStorage.setItem(key, value.toString()); }
