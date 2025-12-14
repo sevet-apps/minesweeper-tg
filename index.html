@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.6 Sticky Rank</title>
+    <title>Glass Super App v12.7 Sticky Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -37,7 +37,7 @@
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
-        .lb-list { padding-bottom: 80px; /* Space for sticky user */ }
+        .lb-list { padding-bottom: 100px; /* Extra padding so last item isn't covered by sticky */ }
         .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
         .lb-item:active { transform: scale(0.98); }
         .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
@@ -48,9 +48,9 @@
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
-        /* STICKY USER RANK (BLUE WINDOW) */
-        .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 202; transform: translateY(150%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .lb-sticky-user.visible { transform: translateY(0); }
+        /* STICKY USER RANK (GLOBAL FIXED) */
+        .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
         .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
         .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
         .lb-sticky-user .lb-name { color: white; }
@@ -151,13 +151,13 @@
             <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="lb-list" id="lbList"></div>
-        
-        <div class="lb-sticky-user" id="lbStickyUser">
-            <div class="lb-rank" id="stickyRank">#</div>
-            <img src="" class="lb-avatar" id="stickyAvatar">
-            <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
-            <div class="lb-val" id="stickyVal">0</div>
-        </div>
+    </div>
+    
+    <div class="lb-sticky-user" id="lbStickyUser">
+        <div class="lb-rank" id="stickyRank">#</div>
+        <img src="" class="lb-avatar" id="stickyAvatar">
+        <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
+        <div class="lb-val" id="stickyVal">0</div>
     </div>
 
     <div id="view-games" class="screen active"> 
@@ -391,20 +391,22 @@
                      const stickyAva = document.getElementById('stickyAvatar');
                      stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(meName)}, #ddd)`;
                      
-                     // Use real photo if available
                      if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) stickyAva.src = tg.initDataUnsafe.user.photo_url;
-                     else stickyAva.src = ""; // Fallback to gradient
+                     else stickyAva.src = ""; 
                      
-                     stickyEl.classList.add('visible'); // Show initially
+                     // Initially hidden, observed will show it if needed
                 }
 
-                // Setup Intersection Observer to Hide Sticky when real row is visible
                 lbObserver = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
-                        if(entry.isIntersecting) {
+                        // If my row IS intersecting (visible), HIDE sticky
+                        // If my row is NOT intersecting (invisible), SHOW sticky
+                        if (entry.isIntersecting) {
                             stickyEl.classList.remove('visible');
                         } else {
-                            stickyEl.classList.add('visible');
+                            if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
+                                stickyEl.classList.add('visible');
+                            }
                         }
                     });
                 }, { threshold: 0.1 });
@@ -423,7 +425,7 @@
                     item.className = `lb-item rank-${rank}`;
                     if(u.isMe) {
                         item.style.border = '1px solid var(--accent)';
-                        item.id = 'myRankRow'; // For observer
+                        item.id = 'myRankRow'; 
                         lbObserver.observe(item);
                     }
 
