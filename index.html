@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.8 Final Leaderboards</title>
+    <title>Glass Super App v12.9 Fix Layers</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -48,7 +48,7 @@
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
-        /* STICKY USER RANK (GLOBAL FIXED) */
+        /* STICKY USER RANK (Z-INDEX 22000) */
         .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
         .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
         .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
@@ -66,7 +66,8 @@
         [data-theme="dark"] .switch-circle { transform: translateX(30px); }
 
         /* MODALS */
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 20000; opacity: 0; pointer-events: none; transition: opacity 0.3s; } 
+        /* Overlay needs to be HIGHER than sticky user (22000) so dropdown (on top of overlay) covers sticky */
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
         .modal.rotate-180 { transform: rotate(180deg); }
@@ -75,8 +76,8 @@
         .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
         .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
         
-        /* DROPDOWN MENU */
-        .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 21000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+        /* DROPDOWN MENU - Highest Z-Index */
+        .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
         .dropdown-menu.active { transform: translateY(0); }
         .dd-item { padding: 15px; font-size: 17px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
         .dd-item:last-child { border: none; }
@@ -382,40 +383,68 @@
             setTimeout(() => {
                 const userValRaw = localStorage.getItem(category.id);
                 let userVal = parseInt(userValRaw);
-                if(isNaN(userVal) || userValRaw === '--') userVal = category.isTime ? 999999 : 0;
+                let hasStats = true;
+
+                if(isNaN(userVal) || userValRaw === '--' || userValRaw === null) {
+                    userVal = category.isTime ? 999999 : 0;
+                    hasStats = false;
+                } else {
+                    if(category.isTime && userVal === 999999) hasStats = false;
+                    if(!category.isTime && userVal === 0) hasStats = false;
+                }
 
                 const mockUsers = generateMockUsers(100, category.isTime, currentLbGame==='bb' && category.id==='bb_best_score');
                 const meName = (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) ? tg.initDataUnsafe.user.first_name : "Вы";
                 const me = { name: meName, val: userVal, isMe: true };
-                mockUsers.push(me);
+                
+                // Add me to list only if I have stats
+                if(hasStats) mockUsers.push(me);
                 
                 if(category.isTime) { mockUsers.sort((a,b) => a.val - b.val); } else { mockUsers.sort((a,b) => b.val - a.val); }
 
                 listEl.innerHTML = '';
                 const displayList = mockUsers.slice(0, 100);
 
-                const myRank = displayList.findIndex(u => u.isMe) + 1;
-                if(myRank > 0) {
-                     document.getElementById('stickyRank').innerText = myRank;
-                     document.getElementById('stickyName').innerText = meName + " (Вы)";
-                     document.getElementById('stickyVal').innerText = category.isTime ? (me.val === 999999 ? '--' : me.val + 'с') : me.val;
-                     const stickyAva = document.getElementById('stickyAvatar');
-                     stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(meName)}, #ddd)`;
-                     if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) stickyAva.src = tg.initDataUnsafe.user.photo_url;
-                     else stickyAva.src = ""; 
+                // --- STICKY BAR SETUP ---
+                const myRank = hasStats ? (displayList.findIndex(u => u.isMe) + 1) : 0;
+                
+                const stickyRankEl = document.getElementById('stickyRank');
+                const stickyValEl = document.getElementById('stickyVal');
+                const stickyNameEl = document.getElementById('stickyName');
+                const stickyAva = document.getElementById('stickyAvatar');
+
+                stickyNameEl.innerText = meName + " (Вы)";
+                
+                if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) stickyAva.src = tg.initDataUnsafe.user.photo_url;
+                else stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(meName)}, #ddd)`;
+
+                if(hasStats && myRank > 0) {
+                     stickyRankEl.innerText = myRank;
+                     stickyValEl.innerText = category.isTime ? (me.val === 999999 ? '--' : me.val + 'с') : me.val;
+                } else {
+                     stickyRankEl.innerText = "- -";
+                     stickyValEl.innerText = "Нет данных";
                 }
 
-                lbObserver = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            stickyEl.classList.remove('visible');
-                        } else {
-                            if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
-                                stickyEl.classList.add('visible');
+                // If I have stats, use Observer to hide sticky when scrolling to my name
+                if(hasStats && myRank > 0) {
+                    lbObserver = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                stickyEl.classList.remove('visible');
+                            } else {
+                                if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
+                                    stickyEl.classList.add('visible');
+                                }
                             }
-                        }
-                    });
-                }, { threshold: 0.1 });
+                        });
+                    }, { threshold: 0.1 });
+                } else {
+                    // No stats -> Sticky is ALWAYS visible (because I am not in the list)
+                    if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
+                        stickyEl.classList.add('visible');
+                    }
+                }
 
                 displayList.forEach((u, index) => {
                     const rank = index + 1;
@@ -432,7 +461,7 @@
                     if(u.isMe) {
                         item.style.border = '1px solid var(--accent)';
                         item.id = 'myRankRow'; 
-                        lbObserver.observe(item);
+                        if(lbObserver) lbObserver.observe(item);
                     }
 
                     item.innerHTML = `
@@ -452,8 +481,8 @@
             for(let i=0; i<count; i++) {
                 let val;
                 if(isTime) { val = Math.floor(Math.random() * 200) + 10; } 
-                else if(isHigh) { val = Math.floor(Math.random() * 5000); } // For Block Blast Scores
-                else { val = Math.floor(Math.random() * 500); } // For games counts
+                else if(isHigh) { val = Math.floor(Math.random() * 5000); } 
+                else { val = Math.floor(Math.random() * 500); } 
                 arr.push({ name: MOCK_NAMES[Math.floor(Math.random()*MOCK_NAMES.length)] + Math.floor(Math.random()*100), val: val, isMe: false });
             }
             return arr;
