@@ -1,237 +1,240 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.9 Fix Layers</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
-        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; }
-        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
-        
-        /* ICONS & GENERAL */
-        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
-        .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .game-overlay.visible { transform: translateY(0); }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
-        
-        /* CARDS & GAME ICONS */
-        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
-        .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
-        .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
-        .game-top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; } 
-        .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
-        .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+    <title>Glass Super App v12.9 Fix Layers</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; }
+        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
+        
+        /* ICONS & GENERAL */
+        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+        .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .game-overlay.visible { transform: translateY(0); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+        
+        /* CARDS & GAME ICONS */
+        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
+        .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
+        .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+        .game-top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; } 
+        .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
+        .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
 
-        /* TAB BAR */
-        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; } 
-        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } 
-        .tab-item.active { color: var(--accent); background: transparent !important; } 
-        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+        /* TAB BAR */
+        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; } 
+        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } 
+        .tab-item.active { color: var(--accent); background: transparent !important; } 
+        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
 
-        /* LEADERBOARD SPECIFIC STYLES */
-        .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
-        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
-        .lb-selector:active { background: rgba(0,0,0,0.05); }
-        .lb-list { padding-bottom: 100px; }
-        .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
-        .lb-item:active { transform: scale(0.98); }
-        .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
-        .lb-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 12px; background: #ddd; }
-        .lb-info { flex: 1; }
-        .lb-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
-        .lb-val { font-size: 13px; color: #8e8e93; font-weight: 500; }
-        .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
-        .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
+        /* LEADERBOARD SPECIFIC STYLES */
+        .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
+        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
+        .lb-selector:active { background: rgba(0,0,0,0.05); }
+        .lb-list { padding-bottom: 100px; }
+        .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
+        .lb-item:active { transform: scale(0.98); }
+        .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
+        .lb-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 12px; background: #ddd; }
+        .lb-info { flex: 1; }
+        .lb-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+        .lb-val { font-size: 13px; color: #8e8e93; font-weight: 500; }
+        .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
+        .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
-        /* STICKY USER RANK (Z-INDEX 22000) */
-        .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
-        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
-        .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
-        .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
-        .lb-sticky-user .lb-name { color: white; }
+        /* STICKY USER RANK (Z-INDEX 22000) */
+        .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
+        .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
+        .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
+        .lb-sticky-user .lb-name { color: white; }
 
-        /* THEME & PROFILE */
-        .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
-        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
-        .settings-row:last-child { border-bottom: none; }
-        .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
-        .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
-        .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
-        .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
-        [data-theme="dark"] .switch-circle { transform: translateX(30px); }
+        /* THEME & PROFILE */
+        .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
+        .settings-row:last-child { border-bottom: none; }
+        .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
+        .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
+        .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
+        .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
+        [data-theme="dark"] .switch-circle { transform: translateX(30px); }
 
-        /* MODALS */
-        /* Overlay needs to be HIGHER than sticky user (22000) so dropdown (on top of overlay) covers sticky */
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; } 
-        .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
-        .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
-        .modal.rotate-180 { transform: rotate(180deg); }
-        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
-        .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
-        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
-        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
-        
-        /* DROPDOWN MENU - Highest Z-Index */
-        .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
-        .dropdown-menu.active { transform: translateY(0); }
-        .dd-item { padding: 15px; font-size: 17px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
-        .dd-item:last-child { border: none; }
-        .dd-item.selected { color: var(--accent); font-weight: 600; }
+        /* MODALS */
+        /* Overlay needs to be HIGHER than sticky user (22000) so dropdown (on top of overlay) covers sticky */
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; } 
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
+        .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
+        .modal.rotate-180 { transform: rotate(180deg); }
+        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
+        .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
+        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
+        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
+        
+        /* DROPDOWN MENU - Highest Z-Index */
+        .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+        .dropdown-menu.active { transform: translateY(0); }
+        .dd-item { padding: 15px; font-size: 17px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
+        .dd-item:last-child { border: none; }
+        .dd-item.selected { color: var(--accent); font-weight: 600; }
 
-        /* GAME STYLES */
-        .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
-        .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
-        .crown-icon { width: 60px; height: 60px; margin-bottom: 10px; fill: #000; [data-theme="dark"] & { fill: #fff; } }
-        
-        .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } 
-        .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } 
-        .control-btn.active { background: var(--accent); color: white; }
+        /* GAME STYLES */
+        .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
+        .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
+        .crown-icon { width: 60px; height: 60px; margin-bottom: 10px; fill: #000; [data-theme="dark"] & { fill: #fff; } }
+        
+        .bottom-controls { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: var(--glass-bg); padding: 8px; border-radius: 25px; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10001; } 
+        .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } 
+        .control-btn.active { background: var(--accent); color: white; }
 
-        .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
-        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; } 
-        .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } } 
-        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
-        
-        .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
+        .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
+        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; } 
+        .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } } 
+        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
+        
+        .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
 
-        .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
-        .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
-        .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
-        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
-        .bb-footer { position: absolute; bottom: 30px; width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
-        .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
-        .bb-shape-preview { display: grid; gap: 2px; pointer-events: none; touch-action: none; transition: opacity 0.2s; } 
-        .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
-        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
-        .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
-        .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
-        .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
-        @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
-        
-        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
-    </style>
+        .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
+        .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
+        .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
+        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
+        .bb-footer { position: absolute; bottom: 30px; width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
+        .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
+        .bb-shape-preview { display: grid; gap: 2px; pointer-events: none; touch-action: none; transition: opacity 0.2s; } 
+        .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
+        .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
+        .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
+        .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
+        @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
+        
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+    </style>
 </head>
 <body>
-    
-    <div id="view-leaderboard" class="screen">
-        <div class="header"><div class="app-title">Топы</div></div>
-        
-        <div class="card" onclick="openLeaderboardDetail('saper')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Сапёра</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-        
-        <div class="card" onclick="openLeaderboardDetail('checkers')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Шашек</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-        
-        <div class="card" onclick="openLeaderboardDetail('bb')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Block Blast</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-    </div>
+    
+    <div id="view-leaderboard" class="screen">
+        <div class="header"><div class="app-title">Топы</div></div>
+        
+        <div class="card" onclick="openLeaderboardDetail('saper')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Сапёра</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+        
+        <div class="card" onclick="openLeaderboardDetail('checkers')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Шашек</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+        
+        <div class="card" onclick="openLeaderboardDetail('bb')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Block Blast</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+    </div>
 
-    <div id="view-leaderboard-detail" class="screen" style="z-index: 200; background: var(--bg-color);">
-        <div class="header">
-            <div class="back-btn" onclick="closeLeaderboardDetail()" style="font-size: 17px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Назад</div>
-        </div>
-        
-        <div class="lb-title-lg" id="lbGameTitle">Title</div>
-        <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
-            <span id="lbCurrentCat">Category</span>
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-        <div class="lb-list" id="lbList"></div>
-    </div>
-    
-    <div class="lb-sticky-user" id="lbStickyUser">
-        <div class="lb-rank" id="stickyRank">#</div>
-        <img src="" class="lb-avatar" id="stickyAvatar">
-        <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
-        <div class="lb-val" id="stickyVal">0</div>
-    </div>
+    <div id="view-leaderboard-detail" class="screen" style="z-index: 200; background: var(--bg-color);">
+        <div class="header">
+            <div class="back-btn" onclick="closeLeaderboardDetail()" style="font-size: 17px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Назад</div>
+        </div>
+        
+        <div class="lb-title-lg" id="lbGameTitle">Title</div>
+        <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
+            <span id="lbCurrentCat">Category</span>
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="lb-list" id="lbList"></div>
+    </div>
+    
+    <div class="lb-sticky-user" id="lbStickyUser">
+        <div class="lb-rank" id="stickyRank">#</div>
+        <img src="" class="lb-avatar" id="stickyAvatar">
+        <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
+        <div class="lb-val" id="stickyVal">0</div>
+    </div>
 
-    <div id="view-games" class="screen active"> 
-        <div class="header"> <div class="app-title">Игры</div> </div> 
-        <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-    </div>
+    <div id="view-games" class="screen active"> 
+        <div class="header"> <div class="app-title">Игры</div> </div> 
+        <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+    </div>
 
-    <div id="view-profile" class="screen"> 
-        <div class="header"><div class="app-title">Профиль</div></div> 
-        <div style="display:flex; flex-direction:column; align-items:center;"> 
-            <img id="user-avatar" src="" alt="" class="avatar"> 
-            <h2 id="user-name" style="margin:0;">Loading...</h2> 
-            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
-            
-            <div class="settings-group">
-                <div class="settings-row">
-                    <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                        Тема
-                    </div>
-                    <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
-                        <div class="theme-icons"> 
-                            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
-                            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
-                        </div> 
-                        <div class="switch-circle"></div> 
-                    </div>
-                </div>
-            </div>
+    <div id="view-profile" class="screen"> 
+        <div class="header"><div class="app-title">Профиль</div></div> 
+        <div style="display:flex; flex-direction:column; align-items:center;"> 
+            <img id="user-avatar" src="" alt="" class="avatar"> 
+            <h2 id="user-name" style="margin:0;">Loading...</h2> 
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
+            
+            <div class="settings-group">
+                <div class="settings-row">
+                    <div class="settings-label">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        Тема
+                    </div>
+                    <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
+                        <div class="theme-icons"> 
+                            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
+                            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
+                        </div> 
+                        <div class="switch-circle"></div> 
+                    </div>
+                </div>
+            </div>
 
-            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> 
-            </div>
-        </div> 
-    </div>
-    
-    <div class="tab-bar"> 
-        <div class="tab-item" onclick="switchTab('leaderboard', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8v15H8z"/><path d="M2 13h6v8H2z"/><path d="M16 13h6v8H16z"/></svg>
-            Топы
-        </div>
-        <div class="tab-item active" onclick="switchTab('games', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
-            Игры
-        </div> 
-        <div class="tab-item" onclick="switchTab('profile', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Профиль
-        </div> 
-    </div>
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> 
+            </div>
+        </div> 
+    </div>
+    
+    <div class="tab-bar"> 
+        <div class="tab-item" onclick="switchTab('leaderboard', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8v15H8z"/><path d="M2 13h6v8H2z"/><path d="M16 13h6v8H16z"/></svg>
+            Топы
+        </div>
+        <div class="tab-item active" onclick="switchTab('games', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
+            Игры
+        </div> 
+        <div class="tab-item" onclick="switchTab('profile', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль
+        </div> 
+    </div>
 
-    <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
-    <div class="dropdown-menu" id="dropdownMenu"></div>
-    
-    <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
-    <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
-    <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
-    <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
-    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
-    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
-    <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
+    <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
+    <div class="dropdown-menu" id="dropdownMenu"></div>
+    
+    <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
+    <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
+    <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
-    <script>
+    <script>
         const tg = window.Telegram.WebApp; tg.expand();
         let isDark = tg.colorScheme === 'dark';
+        
+        // --- НОВАЯ КОНСТАНТА С АДРЕСОМ СЕРВЕРА ---
+        const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
         
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
@@ -242,7 +245,7 @@
         function initApp() {
             applyTheme();
             loadProfile();
-            syncWithCloud();
+            // syncWithCloud() теперь вызывается из loadProfile
         }
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
@@ -277,29 +280,77 @@
             document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; 
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; 
             
-            syncWithCloud(); 
+            // Старая функция syncWithCloud была убрана/упрощена, так как мы теперь 
+            // не используем tg.CloudStorage для хранения основных рекордов.
         }
         
-        function syncWithCloud() {
-            tg.CloudStorage.getItems(SYNC_KEYS, (err, cloudData) => {
-                if(err) { console.error('Cloud Sync Error', err); return; }
-                let hasChanges = false;
-                SYNC_KEYS.forEach(key => {
-                    let localVal = parseInt(localStorage.getItem(key) || '0');
-                    if(key.includes('saper_best') && localStorage.getItem(key) === '--') localVal = 999999;
-                    let cloudVal = parseInt(cloudData[key]);
-                    if(isNaN(cloudVal)) cloudVal = (key.includes('saper_best')) ? 999999 : 0;
-                    let finalVal = localVal;
-                    if (key.includes('saper_best')) { if (cloudVal < 999999 && cloudVal > 0) { if (localVal === 999999 || cloudVal < localVal) finalVal = cloudVal; } } 
-                    else { finalVal = Math.max(localVal, cloudVal); }
-                    if (finalVal !== localVal) { localStorage.setItem(key, (key.includes('saper_best') && finalVal === 999999) ? '--' : finalVal); hasChanges = true; }
-                    if (key.includes('saper_best')) { if (cloudVal === 999999 || (finalVal < cloudVal && finalVal > 0)) { tg.CloudStorage.setItem(key, finalVal.toString()); } } 
-                    else { if (finalVal > cloudVal) { tg.CloudStorage.setItem(key, finalVal.toString()); } }
-                });
-                if(hasChanges) loadProfile();
-            });
+        /**
+         * Упрощенная функция сохранения статистики. 
+         * Теперь просто сохраняем в localStorage. 
+         * Отправка на бэкенд будет происходить из функций конца игры (checkSaperWin, checkGameOver).
+         * @param {string} key 
+         * @param {string|number} value 
+         */
+        function saveStatToCloud(key, value) { 
+            localStorage.setItem(key, value); 
+            // УДАЛЕНО: tg.CloudStorage.setItem(key, value.toString());
+            // Обновляем статистику в профиле сразу после сохранения
+            loadProfile();
+            
+            // Если это рекорд, отправляем его на бэкенд
+            const isBestScore = key.includes('best_score') || key.includes('saper_best');
+            if (isBestScore) {
+                // В зависимости от того, как ты вызываешь saveStatToCloud, 
+                // можно здесь добавить логику отправки на бэкенд, но 
+                // для чистоты лучше оставить ее в функциях конца игры.
+            }
         }
-        function saveStatToCloud(key, value) { localStorage.setItem(key, value); tg.CloudStorage.setItem(key, value.toString()); }
+
+        // --------------------------------------------------------
+        // --- НОВАЯ ФУНКЦИЯ ОТПРАВКИ СТАТИСТИКИ НА БЭКЕНД (POST) ---
+        // --------------------------------------------------------
+        /**
+         * Отправляет статистику на сервер. Вызывается после победы/конца игры.
+         * @param {string} game_type 
+         * @param {number} score 
+         */
+        async function sendStatToBackend(game_type, score) {
+            const user = tg.initDataUnsafe.user;
+            if (!user) {
+                console.warn("User data not available for sending stats.");
+                return;
+            }
+            
+            const url = `${API_BASE_URL}/save-stat`;
+            const payload = {
+                user_id: user.id.toString(),
+                username: user.username || (user.first_name + ' ' + (user.last_name || '')).trim(),
+                game_type: game_type,
+                score: score
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log("Stat saved successfully:", result);
+            } catch (error) {
+                console.error("Failed to send stat to backend:", error);
+                // Можно добавить window.alert или tg.showAlert() для пользователя
+            }
+        }
+
 
         // --- LEADERBOARD LOGIC ---
         let currentLbGame = 'saper';
@@ -370,7 +421,10 @@
         }
 
         let lbObserver = null;
-        function loadLeaderboardData(category) {
+        // --------------------------------------------------------
+        // --- ОБНОВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ТОПОВ (GET) ---
+        // --------------------------------------------------------
+        async function loadLeaderboardData(category) {
             currentLbCat = category;
             document.getElementById('lbCurrentCat').innerText = category.name;
             const listEl = document.getElementById('lbList');
@@ -379,82 +433,118 @@
             stickyEl.classList.remove('visible');
             
             if(lbObserver) lbObserver.disconnect();
+            
+            try {
+                // 1. Загружаем данные с нашего бэкенда
+                const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
+                const response = await fetch(url);
 
-            setTimeout(() => {
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // 2. Получаем данные текущего пользователя из localStorage
+                const user = tg.initDataUnsafe.user;
                 const userValRaw = localStorage.getItem(category.id);
                 let userVal = parseInt(userValRaw);
                 let hasStats = true;
 
-                if(isNaN(userVal) || userValRaw === '--' || userValRaw === null) {
+                if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) {
                     userVal = category.isTime ? 999999 : 0;
                     hasStats = false;
                 } else {
-                    if(category.isTime && userVal === 999999) hasStats = false;
-                    if(!category.isTime && userVal === 0) hasStats = false;
+                    if (category.isTime && userVal === 999999) hasStats = false;
+                    if (!category.isTime && userVal === 0) hasStats = false;
                 }
 
-                const mockUsers = generateMockUsers(100, category.isTime, currentLbGame==='bb' && category.id==='bb_best_score');
-                const meName = (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) ? tg.initDataUnsafe.user.first_name : "Вы";
-                const me = { name: meName, val: userVal, isMe: true };
+                // 3. Формируем финальный список (добавляем юзера, если его нет в топе или нужно обновить)
+                const displayList = data.map((item, index) => ({
+                    rank: index + 1,
+                    user_id: item.user_id,
+                    username: item.username,
+                    score: item.score,
+                    isMe: item.user_id.toString() === user.id.toString() // Проверяем, это ли я
+                }));
                 
-                // Add me to list only if I have stats
-                if(hasStats) mockUsers.push(me);
-                
-                if(category.isTime) { mockUsers.sort((a,b) => a.val - b.val); } else { mockUsers.sort((a,b) => b.val - a.val); }
+                let myRankRow = displayList.find(u => u.user_id.toString() === user.id.toString());
 
+                if (hasStats && !myRankRow) {
+                    // Если у меня есть локальные данные, но меня нет в топе
+                    const me = { 
+                        user_id: user.id.toString(), 
+                        username: (user.first_name + ' ' + (user.last_name || '')).trim() + ' (Вы)', 
+                        score: userVal, 
+                        isMe: true 
+                    };
+                    displayList.push(me);
+                    
+                    // Сортировка для определения моего места среди всех
+                    if (category.isTime) { 
+                        displayList.sort((a, b) => a.score - b.score); 
+                    } else { 
+                        displayList.sort((a, b) => b.score - a.score); 
+                    }
+                } else if (hasStats && myRankRow && (category.isTime ? (userVal < myRankRow.score) : (userVal > myRankRow.score))) {
+                     // Если у меня локально лучше, чем в облаке - обновляем локальную копию
+                     myRankRow.score = userVal;
+                }
+
+
+                // 4. Очищаем и заполняем список
                 listEl.innerHTML = '';
-                const displayList = mockUsers.slice(0, 100);
+                const finalDisplayList = displayList.slice(0, 100);
 
                 // --- STICKY BAR SETUP ---
-                const myRank = hasStats ? (displayList.findIndex(u => u.isMe) + 1) : 0;
+                const meInList = finalDisplayList.find(u => u.user_id.toString() === user.id.toString());
+                const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 
                 const stickyRankEl = document.getElementById('stickyRank');
                 const stickyValEl = document.getElementById('stickyVal');
                 const stickyNameEl = document.getElementById('stickyName');
                 const stickyAva = document.getElementById('stickyAvatar');
 
-                stickyNameEl.innerText = meName + " (Вы)";
+                stickyNameEl.innerText = (user.first_name + ' ' + (user.last_name || '')).trim() + " (Вы)";
                 
                 if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) stickyAva.src = tg.initDataUnsafe.user.photo_url;
-                else stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(meName)}, #ddd)`;
+                else stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(stickyNameEl.innerText)}, #ddd)`;
 
                 if(hasStats && myRank > 0) {
                      stickyRankEl.innerText = myRank;
-                     stickyValEl.innerText = category.isTime ? (me.val === 999999 ? '--' : me.val + 'с') : me.val;
+                     stickyValEl.innerText = category.isTime ? (userVal === 999999 ? '--' : userVal + 'с') : userVal;
                 } else {
                      stickyRankEl.innerText = "- -";
                      stickyValEl.innerText = "Нет данных";
                 }
 
-                // If I have stats, use Observer to hide sticky when scrolling to my name
                 if(hasStats && myRank > 0) {
-                    lbObserver = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                            if (entry.isIntersecting) {
-                                stickyEl.classList.remove('visible');
-                            } else {
-                                if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
-                                    stickyEl.classList.add('visible');
-                                }
-                            }
-                        });
-                    }, { threshold: 0.1 });
+                     lbObserver = new IntersectionObserver((entries) => {
+                         entries.forEach(entry => {
+                             if (entry.isIntersecting) {
+                                 stickyEl.classList.remove('visible');
+                             } else {
+                                 if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
+                                     stickyEl.classList.add('visible');
+                                 }
+                             }
+                         });
+                     }, { threshold: 0.1 });
                 } else {
-                    // No stats -> Sticky is ALWAYS visible (because I am not in the list)
-                    if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
-                        stickyEl.classList.add('visible');
-                    }
+                     if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
+                         stickyEl.classList.add('visible');
+                     }
                 }
 
-                displayList.forEach((u, index) => {
+                finalDisplayList.forEach((u, index) => {
                     const rank = index + 1;
                     let medal = '';
                     if(rank === 1) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-gold); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
                     if(rank === 2) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-silver); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
                     if(rank === 3) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-bronze); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
                     
-                    let displayVal = u.val;
-                    if(category.isTime) displayVal = (u.val === 999999) ? '--' : u.val + 'с';
+                    let displayVal = u.score;
+                    if(category.isTime) displayVal = (u.score === 999999) ? '--' : u.score + 'с';
 
                     const item = document.createElement('div');
                     item.className = `lb-item rank-${rank}`;
@@ -466,27 +556,22 @@
 
                     item.innerHTML = `
                         <div class="lb-rank">${rank}</div>${medal}
-                        <div class="lb-avatar" style="background: linear-gradient(45deg, ${getRandomColor(u.name)}, #ddd)"></div>
-                        <div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.name} ${u.isMe ? '(Вы)' : ''}</div></div>
+                        <div class="lb-avatar" style="background: linear-gradient(45deg, ${getRandomColor(u.username)}, #ddd)"></div>
+                        <div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? '(Вы)' : ''}</div></div>
                         <div class="lb-val">${displayVal}</div>
                     `;
                     listEl.appendChild(item);
                 });
-            }, 300);
+
+            } catch (error) {
+                console.error("Failed to load leaderboard from backend:", error);
+                listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">Ошибка загрузки топа: ${error.message}.</div>`;
+                stickyEl.classList.add('visible');
+            }
         }
 
         const MOCK_NAMES = ["Alex", "Sam", "Maria", "John", "Dmitry", "Olga", "Kate", "Max", "Ivan", "Sergey", "Anna", "Elena", "Mike", "Nick", "Paul", "Lisa"];
-        function generateMockUsers(count, isTime, isHigh) {
-            const arr = [];
-            for(let i=0; i<count; i++) {
-                let val;
-                if(isTime) { val = Math.floor(Math.random() * 200) + 10; } 
-                else if(isHigh) { val = Math.floor(Math.random() * 5000); } 
-                else { val = Math.floor(Math.random() * 500); } 
-                arr.push({ name: MOCK_NAMES[Math.floor(Math.random()*MOCK_NAMES.length)] + Math.floor(Math.random()*100), val: val, isMe: false });
-            }
-            return arr;
-        }
+        // УДАЛЕНА: function generateMockUsers(count, isTime, isHigh) { ... }
         function getRandomColor(str) { let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash); const c = (hash & 0x00FFFFFF).toString(16).toUpperCase(); return '#' + "00000".substring(0, 6 - c.length) + c; }
 
         /* --- SAPER --- */
@@ -517,6 +602,11 @@
                 let b=parseInt(localStorage.getItem(key)||9999);
                 if(sTimer<b) saveStatToCloud(key, sTimer);
                 
+                // --- ОТПРАВКА В БЭКЕНД: Saper Best Time ---
+                sendStatToBackend(`saper_best_${sRows}`, sTimer);
+                // --- ОТПРАВКА В БЭКЕНД: Saper Wins (для общего топа) ---
+                sendStatToBackend('saper_wins', w);
+
                 showResult('Победа!',`Время: ${sTimer} с`, 'Круто');
             }
         }
@@ -531,8 +621,33 @@
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
         function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);}
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        function endGame(w){let t=parseInt(localStorage.getItem('checkers_total')||0)+1;saveStatToCloud('checkers_total',t);if(isPvE&&w==='white')saveStatToCloud('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{tit.innerText="Поражение";txt.innerText="Робот победил.";}}else{tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);}
-        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
+        function endGame(w){
+            let t=parseInt(localStorage.getItem('checkers_total')||0)+1;
+            saveStatToCloud('checkers_total',t);
+            // --- ОТПРАВКА В БЭКЕНД: Checkers Total (для общего топа) ---
+            sendStatToBackend('checkers_total', t);
+
+            if(isPvE&&w==='white') {
+                const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1;
+                saveStatToCloud('checkers_wins_pve', wins);
+                // --- ОТПРАВКА В БЭКЕНД: Checkers PVE Wins ---
+                sendStatToBackend('checkers_wins_pve', wins);
+            }
+            
+            tg.HapticFeedback.notificationOccurred('success');
+            const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');
+            if(isPvE){
+                if(w==='white'){
+                    tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
+                }else{
+                    tit.innerText="Поражение";txt.innerText="Робот победил.";
+                }
+            }else{
+                tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}
+            }
+            setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
+        }
+        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
         const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0; 
@@ -563,7 +678,37 @@
         function updateCellUI(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell'; }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
-        async function checkGameOver() { const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) saveStatToCloud('bb_best_score', bbScore); localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
+        async function checkGameOver() { 
+            const shapesLeft = bbShapes.filter(s => s !== null); 
+            if(shapesLeft.length === 0) return; 
+            const canMove = shapesLeft.some(s => { 
+                for(let r=0; r<BB_ROWS; r++) { 
+                    for(let c=0; c<BB_COLS; c++) { 
+                        if(canPlace(s.matrix, r, c)) return true; 
+                    } 
+                } return false; 
+            }); 
+            if(!canMove) { 
+                tg.HapticFeedback.notificationOccurred('error'); 
+                await animateGameOverFill(); 
+                const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); 
+                const isRecord = bbScore > currentBest; 
+                
+                if(isRecord) {
+                    saveStatToCloud('bb_best_score', bbScore);
+                    // --- ОТПРАВКА В БЭКЕНД: Block Blast Best Score ---
+                    sendStatToBackend('bb_best_score', bbScore);
+                }
+                
+                localStorage.removeItem('bb_state'); 
+                let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; 
+                saveStatToCloud('bb_total_games', t); 
+                // --- ОТПРАВКА В БЭКЕНД: Block Blast Total Games ---
+                sendStatToBackend('bb_total_games', t);
+                
+                showBBGameOverModal(isRecord, bbScore, currentBest); 
+            } 
+        }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `${ICON_CROWN}<h2 style="margin:0 0 10px 0; font-size:24px;">Новый Рекорд!</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">Играть снова</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">Рекорд не побит</h2><p style="color:#8e8e93; margin:0 0 20px 0;">Попробуйте еще раз!</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">Лучший: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; } overlay.classList.add('visible'); }
         function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); }
