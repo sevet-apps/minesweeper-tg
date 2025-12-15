@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v12.9 Fix Layers</title>
+    <title>Glass Super App v13.0 Server Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -233,6 +233,9 @@
         const tg = window.Telegram.WebApp; tg.expand();
         let isDark = tg.colorScheme === 'dark';
         
+        // --- НОВАЯ КОНСТАНТА С АДРЕСОМ СЕРВЕРА ---
+        const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
+        
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
@@ -242,7 +245,6 @@
         function initApp() {
             applyTheme();
             loadProfile();
-            syncWithCloud();
         }
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
@@ -276,30 +278,52 @@
             document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
             document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; 
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; 
-            
-            syncWithCloud(); 
         }
         
-        function syncWithCloud() {
-            tg.CloudStorage.getItems(SYNC_KEYS, (err, cloudData) => {
-                if(err) { console.error('Cloud Sync Error', err); return; }
-                let hasChanges = false;
-                SYNC_KEYS.forEach(key => {
-                    let localVal = parseInt(localStorage.getItem(key) || '0');
-                    if(key.includes('saper_best') && localStorage.getItem(key) === '--') localVal = 999999;
-                    let cloudVal = parseInt(cloudData[key]);
-                    if(isNaN(cloudVal)) cloudVal = (key.includes('saper_best')) ? 999999 : 0;
-                    let finalVal = localVal;
-                    if (key.includes('saper_best')) { if (cloudVal < 999999 && cloudVal > 0) { if (localVal === 999999 || cloudVal < localVal) finalVal = cloudVal; } } 
-                    else { finalVal = Math.max(localVal, cloudVal); }
-                    if (finalVal !== localVal) { localStorage.setItem(key, (key.includes('saper_best') && finalVal === 999999) ? '--' : finalVal); hasChanges = true; }
-                    if (key.includes('saper_best')) { if (cloudVal === 999999 || (finalVal < cloudVal && finalVal > 0)) { tg.CloudStorage.setItem(key, finalVal.toString()); } } 
-                    else { if (finalVal > cloudVal) { tg.CloudStorage.setItem(key, finalVal.toString()); } }
-                });
-                if(hasChanges) loadProfile();
-            });
+        /**
+         * Сохраняет статистику локально.
+         * Отправка на бэкенд теперь происходит отдельно в sendStatToBackend.
+         */
+        function saveStatToCloud(key, value) { 
+            localStorage.setItem(key, value); 
+            // Обновляем статистику в профиле сразу
+            loadProfile();
         }
-        function saveStatToCloud(key, value) { localStorage.setItem(key, value); tg.CloudStorage.setItem(key, value.toString()); }
+
+        // --------------------------------------------------------
+        // --- ОТПРАВКА СТАТИСТИКИ НА СЕРВЕР (POST) ---
+        // --------------------------------------------------------
+        async function sendStatToBackend(game_type, score) {
+            const user = tg.initDataUnsafe.user;
+            if (!user) {
+                console.warn("User data not available");
+                return;
+            }
+            
+            // Используем имя пользователя или имя
+            const usernameToSend = user.username ? user.username : (user.first_name + ' ' + (user.last_name || '')).trim();
+
+            const url = `${API_BASE_URL}/save-stat`;
+            const payload = {
+                user_id: user.id.toString(),
+                username: usernameToSend,
+                game_type: game_type,
+                score: score
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                const result = await response.json();
+                console.log("Stat saved:", result);
+            } catch (error) {
+                console.error("Failed to send stat:", error);
+            }
+        }
 
         // --- LEADERBOARD LOGIC ---
         let currentLbGame = 'saper';
@@ -370,7 +394,11 @@
         }
 
         let lbObserver = null;
-        function loadLeaderboardData(category) {
+        
+        // --------------------------------------------------------
+        // --- ЗАГРУЗКА ТОПОВ С СЕРВЕРА ---
+        // --------------------------------------------------------
+        async function loadLeaderboardData(category) {
             currentLbCat = category;
             document.getElementById('lbCurrentCat').innerText = category.name;
             const listEl = document.getElementById('lbList');
@@ -379,114 +407,132 @@
             stickyEl.classList.remove('visible');
             
             if(lbObserver) lbObserver.disconnect();
-
-            setTimeout(() => {
+            
+            try {
+                // 1. Запрос к бэкенду
+                const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Error: ${response.status}`);
+                const data = await response.json();
+                
+                // 2. Данные пользователя
+                const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id);
                 let userVal = parseInt(userValRaw);
                 let hasStats = true;
 
-                if(isNaN(userVal) || userValRaw === '--' || userValRaw === null) {
+                if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) {
                     userVal = category.isTime ? 999999 : 0;
                     hasStats = false;
                 } else {
-                    if(category.isTime && userVal === 999999) hasStats = false;
-                    if(!category.isTime && userVal === 0) hasStats = false;
+                    if (category.isTime && userVal === 999999) hasStats = false;
+                    if (!category.isTime && userVal === 0) hasStats = false;
                 }
 
-                const mockUsers = generateMockUsers(100, category.isTime, currentLbGame==='bb' && category.id==='bb_best_score');
-                const meName = (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) ? tg.initDataUnsafe.user.first_name : "Вы";
-                const me = { name: meName, val: userVal, isMe: true };
+                // 3. Формируем список
+                const displayList = data.map((item, index) => ({
+                    user_id: item.user_id,
+                    username: item.username,
+                    score: item.score,
+                    isMe: item.user_id.toString() === user.id.toString()
+                }));
                 
-                // Add me to list only if I have stats
-                if(hasStats) mockUsers.push(me);
-                
-                if(category.isTime) { mockUsers.sort((a,b) => a.val - b.val); } else { mockUsers.sort((a,b) => b.val - a.val); }
+                // Проверяем, есть ли я в топе
+                let myRankRow = displayList.find(u => u.isMe);
 
+                // Если меня нет в топе, но есть локальные данные - добавляем временно
+                if (hasStats && !myRankRow) {
+                    const me = { 
+                        user_id: user.id.toString(), 
+                        username: (user.first_name + ' ' + (user.last_name || '')).trim(), 
+                        score: userVal, 
+                        isMe: true 
+                    };
+                    displayList.push(me);
+                    // Пересортировка
+                    if (category.isTime) displayList.sort((a, b) => a.score - b.score); 
+                    else displayList.sort((a, b) => b.score - a.score); 
+                } 
+                // Если я в топе, но локальный результат лучше - обновляем визуально
+                else if (hasStats && myRankRow) {
+                     if ((category.isTime && userVal < myRankRow.score) || (!category.isTime && userVal > myRankRow.score)) {
+                         myRankRow.score = userVal;
+                         if (category.isTime) displayList.sort((a, b) => a.score - b.score); 
+                         else displayList.sort((a, b) => b.score - a.score); 
+                     }
+                }
+
+                // 4. Рендер списка
                 listEl.innerHTML = '';
-                const displayList = mockUsers.slice(0, 100);
+                const finalDisplayList = displayList.slice(0, 100);
 
-                // --- STICKY BAR SETUP ---
-                const myRank = hasStats ? (displayList.findIndex(u => u.isMe) + 1) : 0;
+                // Sticky Bar
+                const meInList = finalDisplayList.find(u => u.isMe);
+                const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 
                 const stickyRankEl = document.getElementById('stickyRank');
                 const stickyValEl = document.getElementById('stickyVal');
                 const stickyNameEl = document.getElementById('stickyName');
                 const stickyAva = document.getElementById('stickyAvatar');
 
-                stickyNameEl.innerText = meName + " (Вы)";
-                
-                if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) stickyAva.src = tg.initDataUnsafe.user.photo_url;
-                else stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(meName)}, #ddd)`;
+                stickyNameEl.innerText = (user.first_name + ' ' + (user.last_name || '')).trim() + " (Вы)";
+                if(user.photo_url) stickyAva.src = user.photo_url;
+                else stickyAva.style.background = `linear-gradient(45deg, ${getRandomColor(stickyNameEl.innerText)}, #ddd)`;
 
                 if(hasStats && myRank > 0) {
                      stickyRankEl.innerText = myRank;
-                     stickyValEl.innerText = category.isTime ? (me.val === 999999 ? '--' : me.val + 'с') : me.val;
+                     stickyValEl.innerText = category.isTime ? (userVal === 999999 ? '--' : userVal + 'с') : userVal;
                 } else {
                      stickyRankEl.innerText = "- -";
                      stickyValEl.innerText = "Нет данных";
                 }
 
-                // If I have stats, use Observer to hide sticky when scrolling to my name
+                // Логика скрытия Sticky Bar при скролле
                 if(hasStats && myRank > 0) {
-                    lbObserver = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                            if (entry.isIntersecting) {
-                                stickyEl.classList.remove('visible');
-                            } else {
-                                if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
-                                    stickyEl.classList.add('visible');
-                                }
-                            }
-                        });
-                    }, { threshold: 0.1 });
+                     lbObserver = new IntersectionObserver((entries) => {
+                         entries.forEach(entry => {
+                             if (entry.isIntersecting) stickyEl.classList.remove('visible');
+                             else if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible');
+                         });
+                     }, { threshold: 0.1 });
                 } else {
-                    // No stats -> Sticky is ALWAYS visible (because I am not in the list)
-                    if(document.getElementById('view-leaderboard-detail').classList.contains('active')){
-                        stickyEl.classList.add('visible');
-                    }
+                     if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible');
                 }
 
-                displayList.forEach((u, index) => {
+                finalDisplayList.forEach((u, index) => {
                     const rank = index + 1;
                     let medal = '';
                     if(rank === 1) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-gold); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
                     if(rank === 2) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-silver); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
                     if(rank === 3) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-bronze); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
                     
-                    let displayVal = u.val;
-                    if(category.isTime) displayVal = (u.val === 999999) ? '--' : u.val + 'с';
+                    let displayVal = u.score;
+                    if(category.isTime) displayVal = (u.score === 999999) ? '--' : u.score + 'с';
 
                     const item = document.createElement('div');
                     item.className = `lb-item rank-${rank}`;
                     if(u.isMe) {
                         item.style.border = '1px solid var(--accent)';
-                        item.id = 'myRankRow'; 
                         if(lbObserver) lbObserver.observe(item);
                     }
 
                     item.innerHTML = `
                         <div class="lb-rank">${rank}</div>${medal}
-                        <div class="lb-avatar" style="background: linear-gradient(45deg, ${getRandomColor(u.name)}, #ddd)"></div>
-                        <div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.name} ${u.isMe ? '(Вы)' : ''}</div></div>
+                        <div class="lb-avatar" style="background: linear-gradient(45deg, ${getRandomColor(u.username)}, #ddd)"></div>
+                        <div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? '(Вы)' : ''}</div></div>
                         <div class="lb-val">${displayVal}</div>
                     `;
                     listEl.appendChild(item);
                 });
-            }, 300);
+
+            } catch (error) {
+                console.error("Load LB error:", error);
+                listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">Ошибка сети.</div>`;
+                stickyEl.classList.add('visible');
+            }
         }
 
-        const MOCK_NAMES = ["Alex", "Sam", "Maria", "John", "Dmitry", "Olga", "Kate", "Max", "Ivan", "Sergey", "Anna", "Elena", "Mike", "Nick", "Paul", "Lisa"];
-        function generateMockUsers(count, isTime, isHigh) {
-            const arr = [];
-            for(let i=0; i<count; i++) {
-                let val;
-                if(isTime) { val = Math.floor(Math.random() * 200) + 10; } 
-                else if(isHigh) { val = Math.floor(Math.random() * 5000); } 
-                else { val = Math.floor(Math.random() * 500); } 
-                arr.push({ name: MOCK_NAMES[Math.floor(Math.random()*MOCK_NAMES.length)] + Math.floor(Math.random()*100), val: val, isMe: false });
-            }
-            return arr;
-        }
+        const MOCK_NAMES = ["Alex", "Sam"]; // Больше не используется, но оставил чтобы не ломать ссылки если есть
         function getRandomColor(str) { let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash); const c = (hash & 0x00FFFFFF).toString(16).toUpperCase(); return '#' + "00000".substring(0, 6 - c.length) + c; }
 
         /* --- SAPER --- */
@@ -517,6 +563,10 @@
                 let b=parseInt(localStorage.getItem(key)||9999);
                 if(sTimer<b) saveStatToCloud(key, sTimer);
                 
+                // --- ОТПРАВКА НА СЕРВЕР ---
+                sendStatToBackend(`saper_best_${sRows}`, sTimer); // Лучшее время
+                sendStatToBackend('saper_wins', w);               // Кол-во побед
+
                 showResult('Победа!',`Время: ${sTimer} с`, 'Круто');
             }
         }
@@ -531,7 +581,30 @@
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
         function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);}
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        function endGame(w){let t=parseInt(localStorage.getItem('checkers_total')||0)+1;saveStatToCloud('checkers_total',t);if(isPvE&&w==='white')saveStatToCloud('checkers_wins_pve',parseInt(localStorage.getItem('checkers_wins_pve')||0)+1);tg.HapticFeedback.notificationOccurred('success');const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');if(isPvE){if(w==='white'){tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});}else{tit.innerText="Поражение";txt.innerText="Робот победил.";}}else{tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}}setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);}
+        function endGame(w){
+            let t=parseInt(localStorage.getItem('checkers_total')||0)+1;
+            saveStatToCloud('checkers_total',t);
+            sendStatToBackend('checkers_total', t); // --- ОТПРАВКА ---
+
+            if(isPvE&&w==='white') {
+                const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1;
+                saveStatToCloud('checkers_wins_pve', wins);
+                sendStatToBackend('checkers_wins_pve', wins); // --- ОТПРАВКА ---
+            }
+            
+            tg.HapticFeedback.notificationOccurred('success');
+            const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');
+            if(isPvE){
+                if(w==='white'){
+                    tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
+                }else{
+                    tit.innerText="Поражение";txt.innerText="Робот победил.";
+                }
+            }else{
+                tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');}
+            }
+            setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
+        }
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
@@ -563,7 +636,35 @@
         function updateCellUI(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell'; }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
-        async function checkGameOver() { const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) saveStatToCloud('bb_best_score', bbScore); localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
+        async function checkGameOver() { 
+            const shapesLeft = bbShapes.filter(s => s !== null); 
+            if(shapesLeft.length === 0) return; 
+            const canMove = shapesLeft.some(s => { 
+                for(let r=0; r<BB_ROWS; r++) { 
+                    for(let c=0; c<BB_COLS; c++) { 
+                        if(canPlace(s.matrix, r, c)) return true; 
+                    } 
+                } return false; 
+            }); 
+            if(!canMove) { 
+                tg.HapticFeedback.notificationOccurred('error'); 
+                await animateGameOverFill(); 
+                const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); 
+                const isRecord = bbScore > currentBest; 
+                
+                if(isRecord) {
+                    saveStatToCloud('bb_best_score', bbScore);
+                    sendStatToBackend('bb_best_score', bbScore); // --- ОТПРАВКА ---
+                }
+                
+                localStorage.removeItem('bb_state'); 
+                let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; 
+                saveStatToCloud('bb_total_games', t); 
+                sendStatToBackend('bb_total_games', t); // --- ОТПРАВКА ---
+                
+                showBBGameOverModal(isRecord, bbScore, currentBest); 
+            } 
+        }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `${ICON_CROWN}<h2 style="margin:0 0 10px 0; font-size:24px;">Новый Рекорд!</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">Играть снова</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">Рекорд не побит</h2><p style="color:#8e8e93; margin:0 0 20px 0;">Попробуйте еще раз!</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">Лучший: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; } overlay.classList.add('visible'); }
         function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); }
