@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v14.0 Final</title>
+    <title>Glass Super App v15.0 Gameplay Update</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -234,7 +234,6 @@
         function initApp() {
             applyTheme();
             loadProfile();
-            // Запускаем синхронизацию старых рекордов при старте
             setTimeout(syncLocalStatsToServer, 2000);
         }
 
@@ -276,7 +275,6 @@
             loadProfile();
         }
 
-        // --- ОТПРАВКА СТАТИСТИКИ (ИСПРАВЛЕНО: ФОТО + ИМЯ) ---
         async function sendStatToBackend(game_type, score) {
             const user = tg.initDataUnsafe.user;
             if (!user) {
@@ -284,7 +282,6 @@
                 return;
             }
             
-            // ОТПРАВЛЯЕМ FIRST_NAME ВМЕСТО USERNAME
             const firstName = user.first_name || "Unknown";
             const lastName = user.last_name ? " " + user.last_name : "";
             const displayName = (firstName + lastName).trim();
@@ -292,8 +289,8 @@
             const url = `${API_BASE_URL}/save-stat`;
             const payload = {
                 user_id: user.id.toString(),
-                username: displayName, // Теперь тут реальное имя
-                photo_url: user.photo_url || "", // Ссылка на фото
+                username: displayName,
+                photo_url: user.photo_url || "", 
                 game_type: game_type,
                 score: score
             };
@@ -310,10 +307,8 @@
             }
         }
         
-        // --- СИНХРОНИЗАЦИЯ (ИСПРАВЛЕНО: ДОБАВЛЕН SAPER 6x6) ---
         function syncLocalStatsToServer() {
             console.log("Starting background sync...");
-            
             const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0);
             if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
             
@@ -323,7 +318,6 @@
             const sapWins = parseInt(localStorage.getItem('saper_wins') || 0);
             if(sapWins > 0) sendStatToBackend('saper_wins', sapWins);
             
-            // ДОБАВЛЕНЫ ВСЕ РАЗМЕРЫ САПЕРА
             const sapBest6 = parseInt(localStorage.getItem('saper_best_6') || 999999);
             if(sapBest6 < 999999 && sapBest6 > 0) sendStatToBackend('saper_best_6', sapBest6);
 
@@ -442,11 +436,10 @@
                     if (!category.isTime && userVal === 0) hasStats = false;
                 }
 
-                // ВАЖНО: ТУТ ТЕПЕРЬ ЕСТЬ PHOTO_URL
                 const displayList = data.map((item) => ({
                     user_id: item.user_id,
                     username: item.username,
-                    photo_url: item.photo_url, // Берем фото
+                    photo_url: item.photo_url, 
                     score: item.score,
                     isMe: item.user_id.toString() === user.id.toString()
                 }));
@@ -524,7 +517,6 @@
                         if(lbObserver) lbObserver.observe(item);
                     }
 
-                    // ОТОБРАЖЕНИЕ АВАТАРКИ: ЕСЛИ ЕСТЬ URL - ПОКАЗЫВАЕМ, ЕСЛИ НЕТ - ЦВЕТ
                     let avatarHtml = '';
                     if (u.photo_url && u.photo_url.startsWith('http')) {
                         avatarHtml = `<img src="${u.photo_url}" class="lb-avatar">`;
@@ -632,7 +624,44 @@
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
         function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
         function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
-        function spawnShapes() { bbShapes = []; for(let i=0; i<3; i++) { const shapeIdx = Math.floor(Math.random() * SHAPES.length); const color = COLORS[Math.floor(Math.random() * COLORS.length)]; bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); renderShapePreview(i, SHAPES[shapeIdx], color); } }
+
+        function countFreeCells() {
+            let free = 0;
+            for(let r=0; r<BB_ROWS; r++) {
+                for(let c=0; c<BB_COLS; c++) {
+                    if(bbGrid[r][c] === 0) free++;
+                }
+            }
+            return free;
+        }
+
+        function spawnShapes() { 
+            bbShapes = []; 
+            const freeCells = countFreeCells();
+            
+            // Фильтруем фигуры: если мало места (<25), оставляем только маленькие (<=4 блока)
+            let availableIndices = [];
+            for(let i=0; i<SHAPES.length; i++) {
+                const matrix = SHAPES[i];
+                // Считаем количество блоков в фигуре (сумма всех 1)
+                const size = matrix.reduce((acc, row) => acc + row.reduce((a,b)=>a+b, 0), 0);
+                
+                if (freeCells < 25) {
+                    if (size <= 4) availableIndices.push(i);
+                } else {
+                    availableIndices.push(i);
+                }
+            }
+
+            for(let i=0; i<3; i++) { 
+                const rand = Math.floor(Math.random() * availableIndices.length);
+                const shapeIdx = availableIndices[rand];
+                const color = COLORS[Math.floor(Math.random() * COLORS.length)]; 
+                bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); 
+                renderShapePreview(i, SHAPES[shapeIdx], color); 
+            } 
+        }
+
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
         function startDrag(e, slotId, matrix, color) { e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
@@ -645,7 +674,49 @@
         function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
         function onTouchEnd(e) { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); if(dragGhost) dragGhost.remove(); const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; if(dragData.validPos) { placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; const linesCleared = checkLines(); if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } else { if(bbShapes.every(s => s === null)) spawnShapes(); } } }
         function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.remove('bb-shadow'); cell.classList.add('filled', color); placedCount++; } } } addScore(placedCount); }
-        function checkLines() { let linesCleared = 0; const rowsToClear = []; const colsToClear = []; for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } const totalCleared = rowsToClear.length + colsToClear.length; if(totalCleared > 0) { bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) animateClear(r, c); }); colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) animateClear(r, c); }); setTimeout(() => { rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); let points = totalCleared * 10; if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } addScore(points); saveBBState(); checkGameOver(); }, 200); return totalCleared; } return 0; }
+        
+        function checkLines() { 
+            let linesCleared = 0; 
+            const rowsToClear = []; 
+            const colsToClear = []; 
+            for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
+            for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } 
+            const totalCleared = rowsToClear.length + colsToClear.length; 
+            
+            if(totalCleared > 0) { 
+                bbCombo++; 
+                bbComboBuffer = 3; 
+                updateBBScoreUI(); 
+                tg.HapticFeedback.notificationOccurred('success'); 
+                rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) animateClear(r, c); }); 
+                colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) animateClear(r, c); }); 
+                
+                setTimeout(() => { 
+                    rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
+                    colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
+                    
+                    // --- НОВАЯ СИСТЕМА ОЧКОВ ---
+                    let points = totalCleared * 10; 
+                    
+                    // Если удалено 2 или более линии за раз - умножаем очки!
+                    if (totalCleared >= 2) {
+                        points = points * totalCleared;
+                        showComboPopup(`X${totalCleared} MULTIPLIER!`);
+                    } else if(bbCombo > 1) {
+                         // Если просто комбо (подряд ходы), но одна линия - оставляем старый бонус
+                         points += bbCombo * 10; 
+                         showComboPopup(`COMBO x${bbCombo}!`); 
+                    }
+
+                    addScore(points); 
+                    saveBBState(); 
+                    checkGameOver(); 
+                }, 200); 
+                return totalCleared; 
+            } 
+            return 0; 
+        }
+
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
         function animateClear(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.classList.add('clearing'); setTimeout(() => cell.classList.remove('clearing'), 200); } }
         function updateCellUI(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell'; }
