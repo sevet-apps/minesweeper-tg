@@ -245,6 +245,8 @@
         function initApp() {
             applyTheme();
             loadProfile();
+            // Запускаем синхронизацию старых рекордов при старте
+            setTimeout(syncLocalStatsToServer, 2000);
         }
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
@@ -323,6 +325,33 @@
             } catch (error) {
                 console.error("Failed to send stat:", error);
             }
+        }
+        
+        // --- НОВАЯ ФУНКЦИЯ: СИНХРОНИЗАЦИЯ ЛОКАЛЬНЫХ ДАННЫХ С СЕРВЕРОМ ---
+        function syncLocalStatsToServer() {
+            console.log("Starting background sync...");
+            
+            // Block Blast
+            const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0);
+            if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
+            
+            const bbGames = parseInt(localStorage.getItem('bb_total_games') || 0);
+            if(bbGames > 0) sendStatToBackend('bb_total_games', bbGames);
+
+            // Сапёр (Победы)
+            const sapWins = parseInt(localStorage.getItem('saper_wins') || 0);
+            if(sapWins > 0) sendStatToBackend('saper_wins', sapWins);
+            
+            // Сапёр (Лучшее время) - тут важно отправлять только если оно реальное (не 0 и не 999999)
+            const sapBest8 = parseInt(localStorage.getItem('saper_best_8') || 999999);
+            if(sapBest8 < 999999 && sapBest8 > 0) sendStatToBackend('saper_best_8', sapBest8);
+            
+            // Шашки
+            const chTotal = parseInt(localStorage.getItem('checkers_total') || 0);
+            if(chTotal > 0) sendStatToBackend('checkers_total', chTotal);
+            
+            const chWins = parseInt(localStorage.getItem('checkers_wins_pve') || 0);
+            if(chWins > 0) sendStatToBackend('checkers_wins_pve', chWins);
         }
 
         // --- LEADERBOARD LOGIC ---
