@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v15.0 Gameplay Update</title>
+    <title>Glass Super App v16.0 Sudoku</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; }
-        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); }
+        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; --sudoku-border: rgba(0,0,0,0.1); --sudoku-sel: rgba(0,122,255,0.15); --sudoku-same: rgba(0,122,255,0.1); --sudoku-err: rgba(255, 59, 48, 0.15); }
+        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); --sudoku-border: rgba(255,255,255,0.15); --sudoku-sel: rgba(10, 132, 255, 0.25); --sudoku-same: rgba(10, 132, 255, 0.15); --sudoku-err: rgba(255, 69, 58, 0.25); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
@@ -105,6 +105,26 @@
         @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
         
         .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+
+        /* SUDOKU STYLES */
+        .sudo-board { display: grid; grid-template-columns: repeat(9, 1fr); width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bg-color); border: 2px solid var(--text-color); margin: 10px auto; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .sudo-cell { border: 1px solid var(--sudoku-border); display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 500; position: relative; cursor: pointer; transition: background 0.1s; }
+        .sudo-cell:nth-child(3n) { border-right: 2px solid var(--text-color); }
+        .sudo-cell:nth-child(9n) { border-right: none; }
+        .sudo-cell:nth-child(n+19):nth-child(-n+27), .sudo-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--text-color); }
+        .sudo-cell.selected { background: var(--sudoku-sel); }
+        .sudo-cell.highlight { background: rgba(0,0,0,0.03); [data-theme="dark"] & { background: rgba(255,255,255,0.05); } }
+        .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; }
+        .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; }
+        .sudo-cell.given { font-weight: 800; color: var(--text-color); }
+        .sudo-cell.user-val { color: var(--accent); }
+        
+        .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; max-width: 350px; margin: 20px auto 0; }
+        .num-btn { background: var(--glass-bg); height: 45px; border-radius: 10px; border: 1px solid var(--glass-border); font-size: 20px; font-weight: 600; color: var(--accent); display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .num-btn:active { transform: scale(0.9); background: rgba(0,122,255,0.1); }
+        
+        .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
     </style>
 </head>
 <body>
@@ -127,6 +147,12 @@
         <div class="card" onclick="openLeaderboardDetail('bb')">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Block Blast</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+
+        <div class="card" onclick="openLeaderboardDetail('sudoku')">
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Судоку</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
     </div>
@@ -156,6 +182,7 @@
         <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card" onclick="openGameModal('sudoku')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Судоку</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тренировка мозга</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
     </div>
 
     <div id="view-profile" class="screen"> 
@@ -183,11 +210,9 @@
 
             <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-sudoku-wins" style="font-size:20px; font-weight:800; color:#5856d6;">0</div> <div style="font-size:12px; color:#8e8e93;">Судоку Побед</div> </div> 
             </div>
         </div> 
     </div>
@@ -213,11 +238,35 @@
     <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
     <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    
+    <div id="sudoku-screen" class="game-overlay"> 
+        <div class="game-top-bar"> 
+            <div class="back-btn" onclick="closeGame('sudoku')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> 
+            <div class="lives-box">Ошибки: <span id="sudokuLives">0/3</span></div>
+        </div> 
+        <div class="game-area" style="justify-content: flex-start; padding-top: 20px;">
+            <div id="sudokuBoard" class="sudo-board"></div>
+            <div class="numpad" id="sudokuNumpad">
+                <div class="num-btn" onclick="sudoInput(1)">1</div>
+                <div class="num-btn" onclick="sudoInput(2)">2</div>
+                <div class="num-btn" onclick="sudoInput(3)">3</div>
+                <div class="num-btn" onclick="sudoInput(4)">4</div>
+                <div class="num-btn" onclick="sudoInput(5)">5</div>
+                <div class="num-btn" onclick="sudoInput(6)">6</div>
+                <div class="num-btn" onclick="sudoInput(7)">7</div>
+                <div class="num-btn" onclick="sudoInput(8)">8</div>
+                <div class="num-btn" onclick="sudoInput(9)">9</div>
+                <div class="num-btn" onclick="sudoInput(0)" style="color:var(--danger)">✕</div>
+            </div>
+        </div> 
+    </div>
+
     <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
+    <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите сложность</p><div class="diff-grid" style="grid-template-columns:1fr;"><div class="diff-btn" onclick="launchSudoku(30)">Легко</div><div class="diff-btn selected" onclick="launchSudoku(40)">Средне</div><div class="diff-btn" onclick="launchSudoku(50)">Сложно</div></div><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudoku').classList.remove('visible')">Отмена</button></div></div>
 
     <script>
         const tg = window.Telegram.WebApp; tg.expand();
@@ -229,7 +278,7 @@
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
 
-        const SYNC_KEYS = ['saper_total', 'saper_wins', 'saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15', 'checkers_total', 'checkers_wins_pve', 'bb_total_games', 'bb_best_score'];
+        const SYNC_KEYS = ['saper_total', 'saper_wins', 'saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15', 'checkers_total', 'checkers_wins_pve', 'bb_total_games', 'bb_best_score', 'sudoku_wins'];
 
         function initApp() {
             applyTheme();
@@ -249,7 +298,12 @@
             if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); 
         }
 
-        function openGameModal(game) { if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); tg.HapticFeedback.impactOccurred('light'); }
+        function openGameModal(game) { 
+            if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
+            if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
+            if(game==='sudoku') document.getElementById('modalSudoku').classList.add('visible');
+            tg.HapticFeedback.impactOccurred('light'); 
+        }
         function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
@@ -267,6 +321,7 @@
             document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; 
             document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
             document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; 
+            document.getElementById('stat-sudoku-wins').innerText = localStorage.getItem('sudoku_wins') || 0;
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; 
         }
         
@@ -335,6 +390,9 @@
             
             const chWins = parseInt(localStorage.getItem('checkers_wins_pve') || 0);
             if(chWins > 0) sendStatToBackend('checkers_wins_pve', chWins);
+
+            const sudoWins = parseInt(localStorage.getItem('sudoku_wins') || 0);
+            if(sudoWins > 0) sendStatToBackend('sudoku_wins', sudoWins);
         }
 
         // --- LEADERBOARD LOGIC ---
@@ -359,6 +417,10 @@
             { id: 'bb_total_games', name: 'Всего игр' }
         ];
 
+        const SUDOKU_CATS = [
+            { id: 'sudoku_wins', name: 'Количество побед' }
+        ];
+
         function openLeaderboardDetail(game) {
             currentLbGame = game;
             if(game === 'saper') {
@@ -370,6 +432,9 @@
             } else if (game === 'bb') {
                 document.getElementById('lbGameTitle').innerText = 'Топы Block Blast';
                 loadLeaderboardData(BB_CATS[0]);
+            } else if (game === 'sudoku') {
+                document.getElementById('lbGameTitle').innerText = 'Топы Судоку';
+                loadLeaderboardData(SUDOKU_CATS[0]);
             }
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
@@ -389,6 +454,7 @@
                 if(currentLbGame === 'saper') cats = SAPER_CATS;
                 else if(currentLbGame === 'checkers') cats = CHECKERS_CATS;
                 else if(currentLbGame === 'bb') cats = BB_CATS;
+                else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS;
 
                 cats.forEach(cat => {
                     const el = document.createElement('div');
@@ -638,21 +704,16 @@
         function spawnShapes() { 
             bbShapes = []; 
             const freeCells = countFreeCells();
-            
-            // Фильтруем фигуры: если мало места (<25), оставляем только маленькие (<=4 блока)
             let availableIndices = [];
             for(let i=0; i<SHAPES.length; i++) {
                 const matrix = SHAPES[i];
-                // Считаем количество блоков в фигуре (сумма всех 1)
                 const size = matrix.reduce((acc, row) => acc + row.reduce((a,b)=>a+b, 0), 0);
-                
                 if (freeCells < 25) {
                     if (size <= 4) availableIndices.push(i);
                 } else {
                     availableIndices.push(i);
                 }
             }
-
             for(let i=0; i<3; i++) { 
                 const rand = Math.floor(Math.random() * availableIndices.length);
                 const shapeIdx = availableIndices[rand];
@@ -674,7 +735,6 @@
         function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
         function onTouchEnd(e) { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); if(dragGhost) dragGhost.remove(); const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; if(dragData.validPos) { placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; const linesCleared = checkLines(); if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } else { if(bbShapes.every(s => s === null)) spawnShapes(); } } }
         function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.remove('bb-shadow'); cell.classList.add('filled', color); placedCount++; } } } addScore(placedCount); }
-        
         function checkLines() { 
             let linesCleared = 0; 
             const rowsToClear = []; 
@@ -695,15 +755,11 @@
                     rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     
-                    // --- НОВАЯ СИСТЕМА ОЧКОВ ---
                     let points = totalCleared * 10; 
-                    
-                    // Если удалено 2 или более линии за раз - умножаем очки!
                     if (totalCleared >= 2) {
                         points = points * totalCleared;
                         showComboPopup(`X${totalCleared} MULTIPLIER!`);
                     } else if(bbCombo > 1) {
-                         // Если просто комбо (подряд ходы), но одна линия - оставляем старый бонус
                          points += bbCombo * 10; 
                          showComboPopup(`COMBO x${bbCombo}!`); 
                     }
@@ -737,17 +793,11 @@
                 await animateGameOverFill(); 
                 const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); 
                 const isRecord = bbScore > currentBest; 
-                
-                if(isRecord) {
-                    saveStatToCloud('bb_best_score', bbScore);
-                    sendStatToBackend('bb_best_score', bbScore); 
-                }
-                
+                if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); }
                 localStorage.removeItem('bb_state'); 
                 let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; 
                 saveStatToCloud('bb_total_games', t); 
                 sendStatToBackend('bb_total_games', t); 
-                
                 showBBGameOverModal(isRecord, bbScore, currentBest); 
             } 
         }
@@ -756,6 +806,185 @@
         function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); }
         function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
+
+
+        /* --- SUDOKU LOGIC --- */
+        let sudoBoard = [], sudoSolution = [], sudoSelected = null, sudoLives = 3, sudoFilled = 0;
+        
+        function launchSudoku(difficulty) {
+            document.getElementById('modalSudoku').classList.remove('visible');
+            document.getElementById('sudoku-screen').classList.add('visible');
+            generateSudoku(difficulty);
+        }
+
+        function generateSudoku(holes) {
+            sudoBoard = Array(81).fill(0);
+            sudoSolution = Array(81).fill(0);
+            sudoLives = 3;
+            sudoFilled = 0;
+            sudoSelected = null;
+            document.getElementById('sudokuLives').innerText = "0/3";
+            document.getElementById('sudokuLives').style.color = "var(--text-color)";
+
+            // 1. Generate full valid board
+            fillSudo(0, 0);
+            sudoSolution = [...sudoBoard];
+
+            // 2. Remove digits
+            let removed = 0;
+            while (removed < holes) {
+                let idx = Math.floor(Math.random() * 81);
+                if (sudoBoard[idx] !== 0) {
+                    sudoBoard[idx] = 0;
+                    removed++;
+                }
+            }
+
+            renderSudoku();
+        }
+
+        function fillSudo(row, col) {
+            if (col === 9) { row++; col = 0; }
+            if (row === 9) return true;
+
+            const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+
+            for (let num of nums) {
+                if (isValidSudo(sudoBoard, row, col, num)) {
+                    sudoBoard[row * 9 + col] = num;
+                    if (fillSudo(row, col + 1)) return true;
+                    sudoBoard[row * 9 + col] = 0;
+                }
+            }
+            return false;
+        }
+
+        function isValidSudo(board, row, col, num) {
+            for (let x = 0; x < 9; x++) if (board[row * 9 + x] === num) return false;
+            for (let x = 0; x < 9; x++) if (board[x * 9 + col] === num) return false;
+            let startRow = Math.floor(row / 3) * 3, startCol = Math.floor(col / 3) * 3;
+            for (let i = 0; i < 3; i++)
+                for (let j = 0; j < 3; j++)
+                    if (board[(startRow + i) * 9 + (startCol + j)] === num) return false;
+            return true;
+        }
+
+        function renderSudoku() {
+            const el = document.getElementById('sudokuBoard');
+            el.innerHTML = '';
+            sudoFilled = 0;
+            
+            for (let i = 0; i < 81; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'sudo-cell';
+                if (sudoBoard[i] !== 0) {
+                    cell.innerText = sudoBoard[i];
+                    cell.classList.add('given');
+                    sudoFilled++;
+                } else {
+                    cell.onclick = () => selectSudoCell(i);
+                }
+                cell.dataset.idx = i;
+                el.appendChild(cell);
+            }
+        }
+
+        function selectSudoCell(idx) {
+            if (sudoBoard[idx] !== 0) { // Select existing number for highlight
+                sudoSelected = idx;
+                highlightSudo(idx);
+                return;
+            }
+            sudoSelected = idx;
+            highlightSudo(idx);
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function highlightSudo(idx) {
+            const cells = document.querySelectorAll('.sudo-cell');
+            cells.forEach(c => c.classList.remove('selected', 'highlight', 'same-num'));
+            
+            if (idx === null) return;
+
+            const r = Math.floor(idx / 9);
+            const c = idx % 9;
+            const val = cells[idx].innerText;
+
+            cells[idx].classList.add('selected');
+
+            // Highlight Row & Col
+            for (let i = 0; i < 9; i++) {
+                cells[r * 9 + i].classList.add('highlight');
+                cells[i * 9 + c].classList.add('highlight');
+            }
+
+            // Highlight Same Numbers
+            if (val) {
+                cells.forEach(cell => {
+                    if (cell.innerText === val) cell.classList.add('same-num');
+                });
+            }
+        }
+
+        function sudoInput(num) {
+            if (sudoSelected === null) return;
+            const cells = document.querySelectorAll('.sudo-cell');
+            const cell = cells[sudoSelected];
+
+            if (num === 0) { // Erase is not really allowed if it's correct, but let's allow basic interaction
+                return; 
+            }
+
+            if (cell.classList.contains('given') || cell.classList.contains('correct')) return;
+
+            const r = Math.floor(sudoSelected / 9);
+            const c = sudoSelected % 9;
+            const correctVal = sudoSolution[sudoSelected];
+
+            if (num === correctVal) {
+                // Correct
+                cell.innerText = num;
+                cell.classList.add('user-val', 'correct');
+                cell.onclick = () => selectSudoCell(sudoSelected); // Can highlight now
+                sudoBoard[sudoSelected] = num;
+                sudoFilled++;
+                highlightSudo(sudoSelected);
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                // Animation pop
+                cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 });
+
+                checkSudokuWin();
+            } else {
+                // Wrong
+                cell.innerText = num;
+                cell.classList.add('error');
+                tg.HapticFeedback.notificationOccurred('error');
+                
+                sudoLives--;
+                document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`;
+                document.getElementById('sudokuLives').style.color = "var(--danger)";
+
+                setTimeout(() => {
+                    cell.innerText = '';
+                    cell.classList.remove('error');
+                }, 400);
+
+                if (sudoLives <= 0) {
+                    setTimeout(() => showResult('Поражение', 'Слишком много ошибок'), 500);
+                }
+            }
+        }
+
+        function checkSudokuWin() {
+            if (sudoFilled === 81) {
+                confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
+                let w = parseInt(localStorage.getItem('sudoku_wins')||0)+1;
+                saveStatToCloud('sudoku_wins', w);
+                sendStatToBackend('sudoku_wins', w);
+                showResult('Победа!', 'Судоку решено!');
+            }
+        }
 
         // Start
         initApp();
