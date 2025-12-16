@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v17.0 Fixed</title>
+    <title>Glass Super App v18.0 Sudoku New Input</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; --sudoku-border: rgba(0,0,0,0.1); --sudoku-sel: rgba(0,122,255,0.25); --sudoku-same: rgba(0,122,255,0.15); --sudoku-err: rgba(255, 59, 48, 0.2); }
-        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); --sudoku-border: rgba(255,255,255,0.15); --sudoku-sel: rgba(10, 132, 255, 0.4); --sudoku-same: rgba(10, 132, 255, 0.2); --sudoku-err: rgba(255, 69, 58, 0.3); }
+        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; --sudoku-border: rgba(0,0,0,0.1); --sudoku-sel: rgba(0,122,255,0.25); --sudoku-same: rgba(0,122,255,0.2); --sudoku-err: rgba(255, 59, 48, 0.2); }
+        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); --sudoku-border: rgba(255,255,255,0.15); --sudoku-sel: rgba(10, 132, 255, 0.4); --sudoku-same: rgba(10, 132, 255, 0.25); --sudoku-err: rgba(255, 69, 58, 0.3); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
@@ -113,16 +113,15 @@
         .sudo-cell:nth-child(9n) { border-right: none; }
         .sudo-cell:nth-child(n+19):nth-child(-n+27), .sudo-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--text-color); }
         
-        /* Исправленная подсветка судоку */
-        .sudo-cell.selected { background: var(--sudoku-sel) !important; z-index: 2; border-color: var(--accent); }
         .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; color: var(--accent); }
         .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; }
         .sudo-cell.given { font-weight: 800; color: var(--text-color); }
         .sudo-cell.user-val { color: var(--accent); font-weight: 600; }
         
-        .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; max-width: 350px; margin: 20px auto 0; }
-        .num-btn { background: var(--glass-bg); height: 45px; border-radius: 10px; border: 1px solid var(--glass-border); font-size: 20px; font-weight: 600; color: var(--accent); display: flex; justify-content: center; align-items: center; cursor: pointer; }
-        .num-btn:active { transform: scale(0.9); background: rgba(0,122,255,0.1); }
+        /* NEW NUMPAD STYLES */
+        .numpad { display: flex; justify-content: space-between; gap: 4px; width: 90vw; max-width: 350px; margin: 20px auto 0; }
+        .num-btn { flex: 1; height: 48px; background: var(--glass-bg); border-radius: 10px; border: 1px solid var(--glass-border); font-size: 20px; font-weight: 600; color: var(--accent); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .num-btn.active-digit { background: var(--accent); color: white; border-color: transparent; transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,122,255,0.4); z-index: 10; }
         
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
@@ -251,16 +250,15 @@
         <div class="game-area" style="justify-content: flex-start; padding-top: 20px;">
             <div id="sudokuBoard" class="sudo-board"></div>
             <div class="numpad" id="sudokuNumpad">
-                <div class="num-btn" onclick="sudoInput(1)">1</div>
-                <div class="num-btn" onclick="sudoInput(2)">2</div>
-                <div class="num-btn" onclick="sudoInput(3)">3</div>
-                <div class="num-btn" onclick="sudoInput(4)">4</div>
-                <div class="num-btn" onclick="sudoInput(5)">5</div>
-                <div class="num-btn" onclick="sudoInput(6)">6</div>
-                <div class="num-btn" onclick="sudoInput(7)">7</div>
-                <div class="num-btn" onclick="sudoInput(8)">8</div>
-                <div class="num-btn" onclick="sudoInput(9)">9</div>
-                <div class="num-btn" onclick="sudoInput(0)" style="color:var(--danger)">✕</div>
+                <div class="num-btn" onclick="activateDigit(1, this)">1</div>
+                <div class="num-btn" onclick="activateDigit(2, this)">2</div>
+                <div class="num-btn" onclick="activateDigit(3, this)">3</div>
+                <div class="num-btn" onclick="activateDigit(4, this)">4</div>
+                <div class="num-btn" onclick="activateDigit(5, this)">5</div>
+                <div class="num-btn" onclick="activateDigit(6, this)">6</div>
+                <div class="num-btn" onclick="activateDigit(7, this)">7</div>
+                <div class="num-btn" onclick="activateDigit(8, this)">8</div>
+                <div class="num-btn" onclick="activateDigit(9, this)">9</div>
             </div>
         </div> 
     </div>
@@ -320,7 +318,6 @@
         function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
-        // --- FIXED LOAD PROFILE ---
         function loadProfile() { 
             const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
             document.getElementById('user-name').innerText = user.first_name; 
@@ -329,7 +326,6 @@
             if(user.photo_url) ava.src = user.photo_url; 
             else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
             
-            // Восстановлено чтение всех ключей
             document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
             document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best_8') || '--'; 
             document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
@@ -562,14 +558,13 @@
         async function checkGameOver() { const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         
-        // --- FIXED BLOCK BLAST GAME OVER MODAL ---
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `${ICON_CROWN}<h2 style="margin:0 0 10px 0; font-size:24px;">Новый Рекорд!</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">Играть снова</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">Рекорд не побит</h2><p style="color:#8e8e93; margin:0 0 20px 0;">Попробуйте еще раз!</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">Лучший: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; } overlay.classList.add('visible'); }
         function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); }
         function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
-        /* --- SUDOKU LOGIC (IMPROVED SELECTION & HIGHLIGHT) --- */
-        let sudoBoard = [], sudoSolution = [], sudoSelected = null, sudoLives = 3, sudoFilled = 0;
+        /* --- SUDOKU LOGIC (REWRITTEN: DIGIT FIRST) --- */
+        let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0;
         let selectedSudoDiff = 40;
 
         function selectSudokuDiff(diff, btn) {
@@ -590,7 +585,9 @@
             sudoSolution = Array(81).fill(0);
             sudoLives = 3;
             sudoFilled = 0;
-            sudoSelected = null;
+            activeDigit = null;
+            document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit'));
+            
             document.getElementById('sudokuLives').innerText = "0/3";
             document.getElementById('sudokuLives').style.color = "var(--text-color)";
             fillSudo(0, 0);
@@ -630,70 +627,73 @@
             for (let i = 0; i < 81; i++) {
                 const cell = document.createElement('div'); cell.className = 'sudo-cell';
                 if (sudoBoard[i] !== 0) { cell.innerText = sudoBoard[i]; cell.classList.add('given'); sudoFilled++; } 
-                cell.onclick = () => selectSudoCell(i);
+                // Теперь клик по клетке вызывает проверку заполнения
+                cell.onclick = () => onCellClick(i, cell);
                 cell.dataset.idx = i;
                 el.appendChild(cell);
             }
         }
 
-        function selectSudoCell(idx) {
-            sudoSelected = idx;
-            highlightSudo(idx);
+        // --- NEW INPUT LOGIC: DIGIT FIRST ---
+        function activateDigit(num, btn) {
+            // Если уже выбран - снимаем выбор
+            if (activeDigit === num) {
+                activeDigit = null;
+                btn.classList.remove('active-digit');
+                highlightSameNumbers(null);
+                tg.HapticFeedback.selectionChanged();
+                return;
+            }
+
+            // Иначе выбираем новый
+            activeDigit = num;
+            document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit'));
+            btn.classList.add('active-digit');
+            
+            highlightSameNumbers(num);
             tg.HapticFeedback.selectionChanged();
         }
 
-        function highlightSudo(idx) {
+        function highlightSameNumbers(num) {
             const cells = document.querySelectorAll('.sudo-cell');
-            cells.forEach(c => c.classList.remove('selected', 'highlight', 'same-num'));
-            if (idx === null) return;
+            cells.forEach(c => c.classList.remove('same-num'));
             
-            const r = Math.floor(idx / 9);
-            const c = idx % 9;
-            const val = cells[idx].innerText; // Get value of clicked cell
+            if (num === null) return;
 
-            cells[idx].classList.add('selected'); // Strong highlight for selected
-
-            // Highlight Row & Col
-            for (let i = 0; i < 9; i++) {
-                cells[r * 9 + i].classList.add('highlight');
-                cells[i * 9 + c].classList.add('highlight');
-            }
-
-            // Highlight ALL same numbers on board
-            if (val) {
-                cells.forEach(cell => {
-                    if (cell.innerText === val) cell.classList.add('same-num');
-                });
-            }
+            cells.forEach(cell => {
+                if (parseInt(cell.innerText) === num) cell.classList.add('same-num');
+            });
         }
 
-        function sudoInput(num) {
-            if (sudoSelected === null) return;
-            const cells = document.querySelectorAll('.sudo-cell');
-            const cell = cells[sudoSelected];
+        function onCellClick(idx, cell) {
+            // Если цифра не выбрана, или клетка уже заполнена - ничего не делаем
+            if (activeDigit === null) return;
+            if (sudoBoard[idx] !== 0) return;
 
-            if (num === 0) return; // Ignore delete
-            if (cell.classList.contains('given') || cell.classList.contains('correct')) return;
+            const correctVal = sudoSolution[idx];
 
-            const correctVal = sudoSolution[sudoSelected];
-
-            if (num === correctVal) {
-                cell.innerText = num;
+            if (activeDigit === correctVal) {
+                // Correct
+                cell.innerText = activeDigit;
                 cell.classList.add('user-val', 'correct');
-                sudoBoard[sudoSelected] = num;
+                cell.classList.add('same-num'); // Сразу подсвечиваем, так как эта цифра активна
+                sudoBoard[idx] = activeDigit;
                 sudoFilled++;
-                highlightSudo(sudoSelected); // Re-highlight to show same numbers
                 tg.HapticFeedback.notificationOccurred('success');
                 cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 });
                 checkSudokuWin();
             } else {
-                cell.innerText = num;
+                // Wrong
+                cell.innerText = activeDigit;
                 cell.classList.add('error');
                 tg.HapticFeedback.notificationOccurred('error');
                 sudoLives--;
                 document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`;
                 document.getElementById('sudokuLives').style.color = "var(--danger)";
-                setTimeout(() => { cell.innerText = ''; cell.classList.remove('error'); }, 400);
+                setTimeout(() => { 
+                    cell.innerText = ''; 
+                    cell.classList.remove('error'); 
+                }, 400);
                 if (sudoLives <= 0) setTimeout(() => showResult('Поражение', 'Слишком много ошибок'), 500);
             }
         }
