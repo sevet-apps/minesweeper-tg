@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v13.0 Server Edition</title>
+    <title>Glass Super App v14.0 Final</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -13,13 +13,11 @@
         img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
         
-        /* ICONS & GENERAL */
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-bottom: 110px; overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; } .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
         .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .game-overlay.visible { transform: translateY(0); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        /* CARDS & GAME ICONS */
         .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
@@ -27,13 +25,11 @@
         .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
         .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
 
-        /* TAB BAR */
         .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; background: var(--tab-bg); backdrop-filter: blur(30px); border-top: 0.5px solid var(--glass-border); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; } 
         .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } 
         .tab-item.active { color: var(--accent); background: transparent !important; } 
         .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
 
-        /* LEADERBOARD SPECIFIC STYLES */
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
@@ -48,14 +44,12 @@
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
-        /* STICKY USER RANK (Z-INDEX 22000) */
         .lb-sticky-user { position: fixed; bottom: 30px; left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
         .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
         .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
         .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
         .lb-sticky-user .lb-name { color: white; }
 
-        /* THEME & PROFILE */
         .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
         .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
         .settings-row:last-child { border-bottom: none; }
@@ -65,8 +59,6 @@
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
         [data-theme="dark"] .switch-circle { transform: translateX(30px); }
 
-        /* MODALS */
-        /* Overlay needs to be HIGHER than sticky user (22000) so dropdown (on top of overlay) covers sticky */
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
@@ -76,14 +68,12 @@
         .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
         .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
         
-        /* DROPDOWN MENU - Highest Z-Index */
         .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
         .dropdown-menu.active { transform: translateY(0); }
         .dd-item { padding: 15px; font-size: 17px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
         .dd-item:last-child { border: none; }
         .dd-item.selected { color: var(--accent); font-weight: 600; }
 
-        /* GAME STYLES */
         .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
         .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
@@ -233,7 +223,6 @@
         const tg = window.Telegram.WebApp; tg.expand();
         let isDark = tg.colorScheme === 'dark';
         
-        // --- НОВАЯ КОНСТАНТА С АДРЕСОМ СЕРВЕРА ---
         const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
         
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
@@ -282,19 +271,12 @@
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; 
         }
         
-        /**
-         * Сохраняет статистику локально.
-         * Отправка на бэкенд теперь происходит отдельно в sendStatToBackend.
-         */
         function saveStatToCloud(key, value) { 
             localStorage.setItem(key, value); 
-            // Обновляем статистику в профиле сразу
             loadProfile();
         }
 
-        // --------------------------------------------------------
-        // --- ОТПРАВКА СТАТИСТИКИ НА СЕРВЕР (POST) ---
-        // --------------------------------------------------------
+        // --- ОТПРАВКА СТАТИСТИКИ (ИСПРАВЛЕНО: ФОТО + ИМЯ) ---
         async function sendStatToBackend(game_type, score) {
             const user = tg.initDataUnsafe.user;
             if (!user) {
@@ -302,13 +284,16 @@
                 return;
             }
             
-            // Используем имя пользователя или имя
-            const usernameToSend = user.username ? user.username : (user.first_name + ' ' + (user.last_name || '')).trim();
+            // ОТПРАВЛЯЕМ FIRST_NAME ВМЕСТО USERNAME
+            const firstName = user.first_name || "Unknown";
+            const lastName = user.last_name ? " " + user.last_name : "";
+            const displayName = (firstName + lastName).trim();
 
             const url = `${API_BASE_URL}/save-stat`;
             const payload = {
                 user_id: user.id.toString(),
-                username: usernameToSend,
+                username: displayName, // Теперь тут реальное имя
+                photo_url: user.photo_url || "", // Ссылка на фото
                 game_type: game_type,
                 score: score
             };
@@ -320,33 +305,37 @@
                     body: JSON.stringify(payload)
                 });
                 if (!response.ok) throw new Error(`Server error: ${response.status}`);
-                const result = await response.json();
-                console.log("Stat saved:", result);
             } catch (error) {
                 console.error("Failed to send stat:", error);
             }
         }
         
-        // --- НОВАЯ ФУНКЦИЯ: СИНХРОНИЗАЦИЯ ЛОКАЛЬНЫХ ДАННЫХ С СЕРВЕРОМ ---
+        // --- СИНХРОНИЗАЦИЯ (ИСПРАВЛЕНО: ДОБАВЛЕН SAPER 6x6) ---
         function syncLocalStatsToServer() {
             console.log("Starting background sync...");
             
-            // Block Blast
             const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0);
             if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
             
             const bbGames = parseInt(localStorage.getItem('bb_total_games') || 0);
             if(bbGames > 0) sendStatToBackend('bb_total_games', bbGames);
 
-            // Сапёр (Победы)
             const sapWins = parseInt(localStorage.getItem('saper_wins') || 0);
             if(sapWins > 0) sendStatToBackend('saper_wins', sapWins);
             
-            // Сапёр (Лучшее время) - тут важно отправлять только если оно реальное (не 0 и не 999999)
+            // ДОБАВЛЕНЫ ВСЕ РАЗМЕРЫ САПЕРА
+            const sapBest6 = parseInt(localStorage.getItem('saper_best_6') || 999999);
+            if(sapBest6 < 999999 && sapBest6 > 0) sendStatToBackend('saper_best_6', sapBest6);
+
             const sapBest8 = parseInt(localStorage.getItem('saper_best_8') || 999999);
             if(sapBest8 < 999999 && sapBest8 > 0) sendStatToBackend('saper_best_8', sapBest8);
+
+            const sapBest10 = parseInt(localStorage.getItem('saper_best_10') || 999999);
+            if(sapBest10 < 999999 && sapBest10 > 0) sendStatToBackend('saper_best_10', sapBest10);
+
+            const sapBest15 = parseInt(localStorage.getItem('saper_best_15') || 999999);
+            if(sapBest15 < 999999 && sapBest15 > 0) sendStatToBackend('saper_best_15', sapBest15);
             
-            // Шашки
             const chTotal = parseInt(localStorage.getItem('checkers_total') || 0);
             if(chTotal > 0) sendStatToBackend('checkers_total', chTotal);
             
@@ -424,9 +413,6 @@
 
         let lbObserver = null;
         
-        // --------------------------------------------------------
-        // --- ЗАГРУЗКА ТОПОВ С СЕРВЕРА ---
-        // --------------------------------------------------------
         async function loadLeaderboardData(category) {
             currentLbCat = category;
             document.getElementById('lbCurrentCat').innerText = category.name;
@@ -438,13 +424,11 @@
             if(lbObserver) lbObserver.disconnect();
             
             try {
-                // 1. Запрос к бэкенду
                 const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Error: ${response.status}`);
                 const data = await response.json();
                 
-                // 2. Данные пользователя
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id);
                 let userVal = parseInt(userValRaw);
@@ -458,31 +442,29 @@
                     if (!category.isTime && userVal === 0) hasStats = false;
                 }
 
-                // 3. Формируем список
-                const displayList = data.map((item, index) => ({
+                // ВАЖНО: ТУТ ТЕПЕРЬ ЕСТЬ PHOTO_URL
+                const displayList = data.map((item) => ({
                     user_id: item.user_id,
                     username: item.username,
+                    photo_url: item.photo_url, // Берем фото
                     score: item.score,
                     isMe: item.user_id.toString() === user.id.toString()
                 }));
                 
-                // Проверяем, есть ли я в топе
                 let myRankRow = displayList.find(u => u.isMe);
 
-                // Если меня нет в топе, но есть локальные данные - добавляем временно
                 if (hasStats && !myRankRow) {
                     const me = { 
                         user_id: user.id.toString(), 
                         username: (user.first_name + ' ' + (user.last_name || '')).trim(), 
+                        photo_url: user.photo_url,
                         score: userVal, 
                         isMe: true 
                     };
                     displayList.push(me);
-                    // Пересортировка
                     if (category.isTime) displayList.sort((a, b) => a.score - b.score); 
                     else displayList.sort((a, b) => b.score - a.score); 
                 } 
-                // Если я в топе, но локальный результат лучше - обновляем визуально
                 else if (hasStats && myRankRow) {
                      if ((category.isTime && userVal < myRankRow.score) || (!category.isTime && userVal > myRankRow.score)) {
                          myRankRow.score = userVal;
@@ -491,11 +473,9 @@
                      }
                 }
 
-                // 4. Рендер списка
                 listEl.innerHTML = '';
                 const finalDisplayList = displayList.slice(0, 100);
 
-                // Sticky Bar
                 const meInList = finalDisplayList.find(u => u.isMe);
                 const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 
@@ -516,7 +496,6 @@
                      stickyValEl.innerText = "Нет данных";
                 }
 
-                // Логика скрытия Sticky Bar при скролле
                 if(hasStats && myRank > 0) {
                      lbObserver = new IntersectionObserver((entries) => {
                          entries.forEach(entry => {
@@ -545,9 +524,17 @@
                         if(lbObserver) lbObserver.observe(item);
                     }
 
+                    // ОТОБРАЖЕНИЕ АВАТАРКИ: ЕСЛИ ЕСТЬ URL - ПОКАЗЫВАЕМ, ЕСЛИ НЕТ - ЦВЕТ
+                    let avatarHtml = '';
+                    if (u.photo_url && u.photo_url.startsWith('http')) {
+                        avatarHtml = `<img src="${u.photo_url}" class="lb-avatar">`;
+                    } else {
+                        avatarHtml = `<div class="lb-avatar" style="background: linear-gradient(45deg, ${getRandomColor(u.username)}, #ddd)"></div>`;
+                    }
+
                     item.innerHTML = `
                         <div class="lb-rank">${rank}</div>${medal}
-                        <div class="lb-avatar" style="background: linear-gradient(45deg, ${getRandomColor(u.username)}, #ddd)"></div>
+                        ${avatarHtml}
                         <div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? '(Вы)' : ''}</div></div>
                         <div class="lb-val">${displayVal}</div>
                     `;
@@ -561,7 +548,7 @@
             }
         }
 
-        const MOCK_NAMES = ["Alex", "Sam"]; // Больше не используется, но оставил чтобы не ломать ссылки если есть
+        const MOCK_NAMES = ["Alex", "Sam"];
         function getRandomColor(str) { let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash); const c = (hash & 0x00FFFFFF).toString(16).toUpperCase(); return '#' + "00000".substring(0, 6 - c.length) + c; }
 
         /* --- SAPER --- */
@@ -592,9 +579,8 @@
                 let b=parseInt(localStorage.getItem(key)||9999);
                 if(sTimer<b) saveStatToCloud(key, sTimer);
                 
-                // --- ОТПРАВКА НА СЕРВЕР ---
-                sendStatToBackend(`saper_best_${sRows}`, sTimer); // Лучшее время
-                sendStatToBackend('saper_wins', w);               // Кол-во побед
+                sendStatToBackend(`saper_best_${sRows}`, sTimer); 
+                sendStatToBackend('saper_wins', w);               
 
                 showResult('Победа!',`Время: ${sTimer} с`, 'Круто');
             }
@@ -613,12 +599,12 @@
         function endGame(w){
             let t=parseInt(localStorage.getItem('checkers_total')||0)+1;
             saveStatToCloud('checkers_total',t);
-            sendStatToBackend('checkers_total', t); // --- ОТПРАВКА ---
+            sendStatToBackend('checkers_total', t); 
 
             if(isPvE&&w==='white') {
                 const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1;
                 saveStatToCloud('checkers_wins_pve', wins);
-                sendStatToBackend('checkers_wins_pve', wins); // --- ОТПРАВКА ---
+                sendStatToBackend('checkers_wins_pve', wins); 
             }
             
             tg.HapticFeedback.notificationOccurred('success');
@@ -683,13 +669,13 @@
                 
                 if(isRecord) {
                     saveStatToCloud('bb_best_score', bbScore);
-                    sendStatToBackend('bb_best_score', bbScore); // --- ОТПРАВКА ---
+                    sendStatToBackend('bb_best_score', bbScore); 
                 }
                 
                 localStorage.removeItem('bb_state'); 
                 let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; 
                 saveStatToCloud('bb_total_games', t); 
-                sendStatToBackend('bb_total_games', t); // --- ОТПРАВКА ---
+                sendStatToBackend('bb_total_games', t); 
                 
                 showBBGameOverModal(isRecord, bbScore, currentBest); 
             } 
