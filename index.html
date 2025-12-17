@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Glass Super App v18.0 Sudoku New Input</title>
+    <title>Glass Super App v19.0 Gameplay Polish</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; --sudoku-border: rgba(0,0,0,0.1); --sudoku-sel: rgba(0,122,255,0.25); --sudoku-same: rgba(0,122,255,0.2); --sudoku-err: rgba(255, 59, 48, 0.2); }
-        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); --sudoku-border: rgba(255,255,255,0.15); --sudoku-sel: rgba(10, 132, 255, 0.4); --sudoku-same: rgba(10, 132, 255, 0.25); --sudoku-err: rgba(255, 69, 58, 0.3); }
+        :root { --bg-color: #f2f2f7; --text-color: #000000; --glass-bg: rgba(255, 255, 255, 0.75); --glass-border: rgba(255, 255, 255, 0.5); --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); --accent: #007aff; --danger: #ff3b30; --success: #34c759; --tab-bg: rgba(255,255,255,0.95); --toggle-bg: #e9e9ea; --toggle-circle: #ffffff; --icon-color: #3a3a3c; --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32; --sudoku-border: rgba(0,0,0,0.1); --sudoku-thick: #000000; --sudoku-sel: rgba(0,122,255,0.25); --sudoku-same: rgba(0,122,255,0.2); --sudoku-err: rgba(255, 59, 48, 0.2); }
+        [data-theme="dark"] { --bg-color: #000000; --text-color: #ffffff; --glass-bg: rgba(30, 30, 30, 0.75); --glass-border: rgba(255, 255, 255, 0.15); --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; --icon-color: #aeaeb2; --accent: #0a84ff; --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); --sudoku-border: rgba(255,255,255,0.15); --sudoku-thick: #ffffff; --sudoku-sel: rgba(10, 132, 255, 0.4); --sudoku-same: rgba(10, 132, 255, 0.25); --sudoku-err: rgba(255, 69, 58, 0.3); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; transition: background-color 0.4s ease; }
@@ -106,23 +106,52 @@
         
         .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
 
-        /* SUDOKU STYLES */
-        .sudo-board { display: grid; grid-template-columns: repeat(9, 1fr); width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bg-color); border: 2px solid var(--text-color); margin: 10px auto; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .sudo-cell { border: 1px solid var(--sudoku-border); display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 500; position: relative; cursor: pointer; transition: background 0.1s; }
-        .sudo-cell:nth-child(3n) { border-right: 2px solid var(--text-color); }
-        .sudo-cell:nth-child(9n) { border-right: none; }
-        .sudo-cell:nth-child(n+19):nth-child(-n+27), .sudo-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--text-color); }
+        /* SUDOKU STYLES REFINED */
+        .sudo-board { 
+            display: grid; 
+            grid-template-columns: repeat(9, 1fr); 
+            width: 90vw; 
+            height: 90vw; 
+            max-width: 350px; 
+            max-height: 350px; 
+            background: var(--bg-color); 
+            border: 2px solid var(--sudoku-thick); 
+            margin: 10px auto; 
+            border-radius: 4px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
+            position: relative;
+        }
+        
+        /* White lines (Solid Overlays) */
+        .sudo-board::before {
+            content: ''; position: absolute; top: 0; left: 33.33%; width: 33.33%; height: 100%;
+            border-left: 2px solid var(--sudoku-thick); border-right: 2px solid var(--sudoku-thick);
+            pointer-events: none; z-index: 5;
+        }
+        .sudo-board::after {
+            content: ''; position: absolute; left: 0; top: 33.33%; width: 100%; height: 33.33%;
+            border-top: 2px solid var(--sudoku-thick); border-bottom: 2px solid var(--sudoku-thick);
+            pointer-events: none; z-index: 5;
+        }
+
+        .sudo-cell { 
+            border: 0.5px solid var(--sudoku-border); 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 20px; font-weight: 500; 
+            position: relative; cursor: pointer; 
+            transition: background 0.1s; 
+        }
         
         .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; color: var(--accent); }
         .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; }
         .sudo-cell.given { font-weight: 800; color: var(--text-color); }
         .sudo-cell.user-val { color: var(--accent); font-weight: 600; }
         
-        /* NEW NUMPAD STYLES */
-        .numpad { display: flex; justify-content: space-between; gap: 4px; width: 90vw; max-width: 350px; margin: 20px auto 0; }
+        .numpad { display: flex; justify-content: space-between; gap: 4px; width: 90vw; max-width: 350px; margin: 40px auto 0; }
         .num-btn { flex: 1; height: 48px; background: var(--glass-bg); border-radius: 10px; border: 1px solid var(--glass-border); font-size: 20px; font-weight: 600; color: var(--accent); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .num-btn.active-digit { background: var(--accent); color: white; border-color: transparent; transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,122,255,0.4); z-index: 10; }
-        
+        .num-btn.disabled { opacity: 0.3; background: #ccc; color: #666; pointer-events: none; border-color: transparent; transform: scale(0.95); }
+
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
     </style>
@@ -182,7 +211,7 @@
         <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Классика</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">С Роботом v2.0</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тетрис без гравитации</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="openGameModal('sudoku')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Судоку</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тренировка мозга</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card" onclick="startSudokuCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Судоку</h3> <p style="margin:4px 0 0; font-size:13px; color:#8e8e93;">Тренировка мозга</p> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
     </div>
 
     <div id="view-profile" class="screen"> 
@@ -238,7 +267,7 @@
     <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
     <div class="dropdown-menu" id="dropdownMenu"></div>
     
-    <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
+    <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.00</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
     <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
@@ -250,15 +279,15 @@
         <div class="game-area" style="justify-content: flex-start; padding-top: 20px;">
             <div id="sudokuBoard" class="sudo-board"></div>
             <div class="numpad" id="sudokuNumpad">
-                <div class="num-btn" onclick="activateDigit(1, this)">1</div>
-                <div class="num-btn" onclick="activateDigit(2, this)">2</div>
-                <div class="num-btn" onclick="activateDigit(3, this)">3</div>
-                <div class="num-btn" onclick="activateDigit(4, this)">4</div>
-                <div class="num-btn" onclick="activateDigit(5, this)">5</div>
-                <div class="num-btn" onclick="activateDigit(6, this)">6</div>
-                <div class="num-btn" onclick="activateDigit(7, this)">7</div>
-                <div class="num-btn" onclick="activateDigit(8, this)">8</div>
-                <div class="num-btn" onclick="activateDigit(9, this)">9</div>
+                <div class="num-btn" id="nb1" onclick="activateDigit(1, this)">1</div>
+                <div class="num-btn" id="nb2" onclick="activateDigit(2, this)">2</div>
+                <div class="num-btn" id="nb3" onclick="activateDigit(3, this)">3</div>
+                <div class="num-btn" id="nb4" onclick="activateDigit(4, this)">4</div>
+                <div class="num-btn" id="nb5" onclick="activateDigit(5, this)">5</div>
+                <div class="num-btn" id="nb6" onclick="activateDigit(6, this)">6</div>
+                <div class="num-btn" id="nb7" onclick="activateDigit(7, this)">7</div>
+                <div class="num-btn" id="nb8" onclick="activateDigit(8, this)">8</div>
+                <div class="num-btn" id="nb9" onclick="activateDigit(9, this)">9</div>
             </div>
         </div> 
     </div>
@@ -271,13 +300,15 @@
     
     <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите сложность</p>
         <div class="diff-grid" style="grid-template-columns:1fr;">
-            <div class="diff-btn" id="sudoDiff30" onclick="selectSudokuDiff(30, this)">Легко</div>
-            <div class="diff-btn selected" id="sudoDiff40" onclick="selectSudokuDiff(40, this)">Средне</div>
-            <div class="diff-btn" id="sudoDiff50" onclick="selectSudokuDiff(50, this)">Сложно</div>
+            <div class="diff-btn" id="sudoDiff30" onclick="selectSudokuDiff(30, this)">Легко (+1)</div>
+            <div class="diff-btn selected" id="sudoDiff40" onclick="selectSudokuDiff(40, this)">Средне (+2)</div>
+            <div class="diff-btn" id="sudoDiff50" onclick="selectSudokuDiff(50, this)">Сложно (+3)</div>
         </div>
         <button class="btn-main" onclick="startSudoku()">Играть</button>
         <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudoku').classList.remove('visible')">Отмена</button>
     </div></div>
+    
+    <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')">Отмена</button></div></div>
 
     <script>
         const tg = window.Telegram.WebApp; tg.expand();
@@ -312,10 +343,9 @@
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
-            if(game==='sudoku') document.getElementById('modalSudoku').classList.add('visible');
             tg.HapticFeedback.impactOccurred('light'); 
         }
-        function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(saperTimerInt); if(game==='bb') saveBBState(); }
+        function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(sTimerInt); if(game==='bb') saveBBState(); if(game==='sudoku') saveSudokuState(); }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
         function loadProfile() { 
@@ -491,18 +521,18 @@
         }
         function getRandomColor(str) { let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash); const c = (hash & 0x00FFFFFF).toString(16).toUpperCase(); return '#' + "00000".substring(0, 6 - c.length) + c; }
 
-        /* --- SAPER --- */
-        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false;
+        /* --- SAPER WITH MS TIMER --- */
+        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); initSaper(); }
         function setSaperMode(m) { sMode=m; document.getElementById('btnDig').classList.toggle('active', m==='dig'); document.getElementById('btnFlag').classList.toggle('active', m==='flag'); tg.HapticFeedback.selectionChanged(); }
-        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
-        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c);sTimerInt=setInterval(()=>{sTimer++;document.getElementById('saperTimer').innerText=sTimer.toString().padStart(3,'0');},1000);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();tg.HapticFeedback.selectionChanged();}}
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let t=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',t);showResult('Бум!','Не повезло', 'Закрыть');}
-        function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let t=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',t); let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); const key = `saper_best_${sRows}`; let b=parseInt(localStorage.getItem(key)||9999); if(sTimer<b) saveStatToCloud(key, sTimer); sendStatToBackend(`saper_best_${sRows}`, sTimer); sendStatToBackend('saper_wins', w); showResult('Победа!',`Время: ${sTimer} с`, 'Круто'); } }
+        function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let t=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',t); let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); const key = `saper_best_${sRows}`; let b=parseFloat(localStorage.getItem(key)||9999); if(sTimer<b) saveStatToCloud(key, sTimer); sendStatToBackend(`saper_best_${sRows}`, sTimer); sendStatToBackend('saper_wins', w); showResult('Победа!',`Время: ${sTimer.toFixed(2)} с`, 'Круто'); } }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
@@ -563,9 +593,21 @@
         function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
-        /* --- SUDOKU LOGIC (REWRITTEN: DIGIT FIRST) --- */
+        /* --- SUDOKU LOGIC UPDATED --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0;
         let selectedSudoDiff = 40;
+        let currentSudoMode = 1; // 1 = easy (1pt), 2 = med (2pt), 3 = hard (3pt)
+
+        function startSudokuCheck() { 
+            if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); 
+            else document.getElementById('modalSudoku').classList.add('visible');
+        }
+
+        function resumeSudoku() {
+            document.getElementById('modalSudokuResume').classList.remove('visible');
+            document.getElementById('sudoku-screen').classList.add('visible');
+            restoreSudokuState();
+        }
 
         function selectSudokuDiff(diff, btn) {
             selectedSudoDiff = diff;
@@ -581,12 +623,16 @@
         }
 
         function generateSudoku(holes) {
+            if (holes === 30) currentSudoMode = 1;
+            else if (holes === 40) currentSudoMode = 2;
+            else currentSudoMode = 3;
+
             sudoBoard = Array(81).fill(0);
             sudoSolution = Array(81).fill(0);
             sudoLives = 3;
             sudoFilled = 0;
             activeDigit = null;
-            document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit'));
+            document.querySelectorAll('.num-btn').forEach(b => { b.classList.remove('active-digit', 'disabled'); });
             
             document.getElementById('sudokuLives').innerText = "0/3";
             document.getElementById('sudokuLives').style.color = "var(--text-color)";
@@ -598,6 +644,8 @@
                 if (sudoBoard[idx] !== 0) { sudoBoard[idx] = 0; removed++; }
             }
             renderSudoku();
+            checkNumberCompletion(); // Initial check
+            saveSudokuState();
         }
 
         function fillSudo(row, col) {
@@ -627,16 +675,14 @@
             for (let i = 0; i < 81; i++) {
                 const cell = document.createElement('div'); cell.className = 'sudo-cell';
                 if (sudoBoard[i] !== 0) { cell.innerText = sudoBoard[i]; cell.classList.add('given'); sudoFilled++; } 
-                // Теперь клик по клетке вызывает проверку заполнения
                 cell.onclick = () => onCellClick(i, cell);
                 cell.dataset.idx = i;
                 el.appendChild(cell);
             }
         }
 
-        // --- NEW INPUT LOGIC: DIGIT FIRST ---
         function activateDigit(num, btn) {
-            // Если уже выбран - снимаем выбор
+            if (btn.classList.contains('disabled')) return;
             if (activeDigit === num) {
                 activeDigit = null;
                 btn.classList.remove('active-digit');
@@ -644,12 +690,9 @@
                 tg.HapticFeedback.selectionChanged();
                 return;
             }
-
-            // Иначе выбираем новый
             activeDigit = num;
             document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit'));
             btn.classList.add('active-digit');
-            
             highlightSameNumbers(num);
             tg.HapticFeedback.selectionChanged();
         }
@@ -657,55 +700,93 @@
         function highlightSameNumbers(num) {
             const cells = document.querySelectorAll('.sudo-cell');
             cells.forEach(c => c.classList.remove('same-num'));
-            
             if (num === null) return;
-
             cells.forEach(cell => {
                 if (parseInt(cell.innerText) === num) cell.classList.add('same-num');
             });
         }
 
+        function checkNumberCompletion() {
+            for(let i=1; i<=9; i++) {
+                let count = 0;
+                for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++;
+                
+                const btn = document.getElementById(`nb${i}`);
+                if(count >= 9) {
+                    btn.classList.add('disabled');
+                    btn.classList.remove('active-digit');
+                    if(activeDigit === i) {
+                        activeDigit = null;
+                        highlightSameNumbers(null);
+                    }
+                } else {
+                    btn.classList.remove('disabled');
+                }
+            }
+        }
+
         function onCellClick(idx, cell) {
-            // Если цифра не выбрана, или клетка уже заполнена - ничего не делаем
             if (activeDigit === null) return;
             if (sudoBoard[idx] !== 0) return;
 
             const correctVal = sudoSolution[idx];
 
             if (activeDigit === correctVal) {
-                // Correct
                 cell.innerText = activeDigit;
-                cell.classList.add('user-val', 'correct');
-                cell.classList.add('same-num'); // Сразу подсвечиваем, так как эта цифра активна
+                cell.classList.add('user-val', 'correct', 'same-num');
                 sudoBoard[idx] = activeDigit;
                 sudoFilled++;
                 tg.HapticFeedback.notificationOccurred('success');
                 cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 });
+                checkNumberCompletion();
+                saveSudokuState();
                 checkSudokuWin();
             } else {
-                // Wrong
                 cell.innerText = activeDigit;
                 cell.classList.add('error');
                 tg.HapticFeedback.notificationOccurred('error');
                 sudoLives--;
                 document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`;
                 document.getElementById('sudokuLives').style.color = "var(--danger)";
-                setTimeout(() => { 
-                    cell.innerText = ''; 
-                    cell.classList.remove('error'); 
-                }, 400);
-                if (sudoLives <= 0) setTimeout(() => showResult('Поражение', 'Слишком много ошибок'), 500);
+                setTimeout(() => { cell.innerText = ''; cell.classList.remove('error'); }, 400);
+                saveSudokuState();
+                if (sudoLives <= 0) {
+                     localStorage.removeItem('sudo_state');
+                     setTimeout(() => showResult('Поражение', 'Слишком много ошибок'), 500);
+                }
             }
         }
 
         function checkSudokuWin() {
             if (sudoFilled === 81) {
                 confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
-                let w = parseInt(localStorage.getItem('sudoku_wins')||0)+1;
+                let points = currentSudoMode; 
+                let w = parseInt(localStorage.getItem('sudoku_wins')||0) + points;
                 saveStatToCloud('sudoku_wins', w);
                 sendStatToBackend('sudoku_wins', w);
-                showResult('Победа!', 'Судоку решено!');
+                localStorage.removeItem('sudo_state');
+                showResult('Победа!', `Судоку решено! (+${points})`);
             }
+        }
+
+        function saveSudokuState() {
+            if(sudoFilled === 81 || sudoLives <= 0) return;
+            const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode };
+            localStorage.setItem('sudo_state', JSON.stringify(state));
+        }
+
+        function restoreSudokuState() {
+            const data = JSON.parse(localStorage.getItem('sudo_state'));
+            if(!data) { generateSudoku(40); return; }
+            sudoBoard = data.board;
+            sudoSolution = data.sol;
+            sudoLives = data.lives;
+            currentSudoMode = data.mode;
+            document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`;
+            if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)";
+            
+            renderSudoku();
+            checkNumberCompletion();
         }
 
         // Start
