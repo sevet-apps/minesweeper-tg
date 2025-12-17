@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v21.0 Fixed Gestures</title>
+    <title>Glass Super App v22.0 Safe Area Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -57,7 +57,6 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         
-        /* БЛОКИРОВКА СВАЙПОВ И РЕЗИНКИ */
         body { 
             background-color: var(--bg-color); 
             color: var(--text-color); 
@@ -65,16 +64,16 @@
             margin: 0; 
             padding: 0; 
             width: 100%;
-            height: 100dvh; /* Dynamic Height */
-            overflow: hidden; /* Важно: отключаем скролл body */
-            overscroll-behavior: none; /* Запрет "резинки" */
-            touch-action: none; /* Запрет жестов браузера по умолчанию */
+            height: 100dvh; 
+            overflow: hidden; 
+            overscroll-behavior: none; 
+            touch-action: none; 
             transition: background-color 0.4s ease; 
         }
         
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
         
-        /* SCREEN: Теперь скролл живет здесь */
+        /* SCREEN: Отступ увеличен до 90px + safe-top */
         .screen { 
             position: absolute; 
             top: 0; 
@@ -82,16 +81,15 @@
             width: 100%; 
             height: 100%; 
             padding: 20px; 
-            /* УВЕЛИЧЕННЫЙ ОТСТУП СВЕРХУ: 44px + safe-area */
-            padding-top: calc(44px + var(--safe-top)); 
+            padding-top: calc(90px + var(--safe-top)); 
             padding-bottom: calc(110px + var(--safe-bottom)); 
-            overflow-y: auto; /* Скролл только внутри экрана */
-            -webkit-overflow-scrolling: touch; /* Инерция на iOS */
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; 
             opacity: 0; 
             pointer-events: none; 
             transform: scale(0.98); 
             transition: opacity 0.3s ease, transform 0.3s ease; 
-            touch-action: pan-y; /* Разрешаем вертикальный скролл внутри контента */
+            touch-action: pan-y; 
         } 
         .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
         
@@ -102,7 +100,7 @@
             transform: translateY(100%); 
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             overflow: hidden;
-            touch-action: none; /* В играх свайпы вообще запрещены */
+            touch-action: none; 
         } 
         .game-overlay.visible { transform: translateY(0); }
 
@@ -112,10 +110,10 @@
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
-        /* GAME TOP BAR: Также увеличен отступ */
+        /* GAME TOP BAR: Отступ увеличен до 90px + safe-top */
         .game-top-bar { 
             padding: 15px 20px; 
-            padding-top: calc(44px + var(--safe-top)); 
+            padding-top: calc(90px + var(--safe-top)); 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
@@ -440,11 +438,9 @@
         const tg = window.Telegram.WebApp; 
         tg.expand();
         
-        // НОВАЯ ФУНКЦИЯ: БЛОКИРУЕМ СВАЙПЫ
         if (tg.isVerticalSwipesEnabled !== undefined) {
             tg.isVerticalSwipesEnabled = false;
         }
-        // ДОП. ЗАЩИТА
         tg.enableClosingConfirmation();
 
         if (tg.requestFullscreen) {
