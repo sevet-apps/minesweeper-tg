@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v22.0 Safe Area Fix</title>
+    <title>Glass Super App v23.0 Stars Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -30,6 +30,7 @@
             --sudoku-sel: rgba(0,122,255,0.25); 
             --sudoku-same: rgba(0,122,255,0.2); 
             --sudoku-err: rgba(255, 59, 48, 0.2);
+            --star-gold: #FFD700;
             /* Безопасные зоны */
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -73,7 +74,7 @@
         
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
         
-        /* SCREEN: Отступ увеличен до 90px + safe-top */
+        /* SCREEN */
         .screen { 
             position: absolute; 
             top: 0; 
@@ -110,7 +111,7 @@
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
-        /* GAME TOP BAR: Отступ увеличен до 90px + safe-top */
+        /* GAME TOP BAR */
         .game-top-bar { 
             padding: 15px 20px; 
             padding-top: calc(90px + var(--safe-top)); 
@@ -178,6 +179,7 @@
         .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
         .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
         .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
+        .btn-main:active { opacity: 0.8; transform: scale(0.98); transition: transform 0.1s; }
         
         .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
         .dropdown-menu.active { transform: translateY(0); }
@@ -278,10 +280,58 @@
 
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+
+        /* STARS STYLES */
+        .star-balance-card {
+            display: flex; flex-direction: column; align-items: center;
+            background: var(--glass-bg); backdrop-filter: blur(20px);
+            border-radius: 24px; border: 1px solid var(--glass-border);
+            padding: 30px 20px; margin-bottom: 20px; box-shadow: var(--shadow);
+            text-align: center;
+        }
+        .star-big-icon {
+            width: 80px; height: 80px; margin-bottom: 10px;
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+            fill: url(#starGradient);
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+        
+        .star-input-wrapper {
+            position: relative; width: 100%; max-width: 200px; margin: 15px 0;
+        }
+        .star-input {
+            width: 100%; border: none; background: rgba(128,128,128,0.1);
+            border-radius: 16px; padding: 15px; font-size: 32px; font-weight: 800;
+            text-align: center; color: var(--text-color); outline: none;
+            transition: background 0.2s;
+        }
+        .star-input:focus { background: rgba(128,128,128,0.15); }
+        
+        .chip-grid {
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px;
+        }
+        .chip {
+            padding: 8px 16px; background: var(--toggle-bg); border-radius: 20px;
+            font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-color);
+            transition: all 0.2s; border: 1px solid transparent;
+        }
+        .chip:active { transform: scale(0.95); }
+        .chip.selected { background: var(--accent); color: white; box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
+
     </style>
 </head>
 <body>
     
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" version="1.1" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="starGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#FFD700; stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#FFA500; stop-opacity:1" />
+            </linearGradient>
+        </defs>
+    </svg>
+
     <div id="view-leaderboard" class="screen">
         <div class="header"><div class="app-title">Топы</div></div>
         
@@ -338,6 +388,35 @@
         <div class="card" onclick="startSudokuCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Судоку</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
     </div>
 
+    <div id="view-stars" class="screen">
+        <div class="header"><div class="app-title">Звёзды</div></div>
+        
+        <div class="star-balance-card">
+            <svg class="star-big-icon" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            <h2 style="margin:0;">Пополнение</h2>
+            <p style="color:#8e8e93; margin:5px 0 20px; font-size:15px;">Введите количество звезд</p>
+            
+            <div class="star-input-wrapper">
+                <input type="number" id="starInput" class="star-input" value="50" min="1" max="10000" inputmode="numeric">
+            </div>
+
+            <div class="chip-grid">
+                <div class="chip" onclick="selectStars(50, this)">50</div>
+                <div class="chip" onclick="selectStars(100, this)">100</div>
+                <div class="chip" onclick="selectStars(250, this)">250</div>
+                <div class="chip" onclick="selectStars(500, this)">500</div>
+                <div class="chip" onclick="selectStars(1000, this)">1000</div>
+            </div>
+
+            <button class="btn-main" onclick="buyStars()">Купить за Telegram Stars</button>
+            <p style="color:#8e8e93; font-size:12px; margin-top:15px;">
+                Оплата происходит через официальный интерфейс Telegram.
+            </p>
+        </div>
+    </div>
+
     <div id="view-profile" class="screen"> 
         <div class="header"><div class="app-title">Профиль</div></div> 
         <div style="display:flex; flex-direction:column; align-items:center;"> 
@@ -382,6 +461,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
             Игры
         </div> 
+        <div class="tab-item" onclick="switchTab('stars', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            Звёзды
+        </div>
         <div class="tab-item" onclick="switchTab('profile', this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Профиль
@@ -469,10 +552,63 @@
         function switchTab(t, el) { 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
             document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); 
+            
             if(t==='games') document.getElementById('view-games').classList.add('active'); 
             else if(t==='leaderboard') document.getElementById('view-leaderboard').classList.add('active'); 
+            else if(t==='stars') document.getElementById('view-stars').classList.add('active'); 
             else { document.getElementById('view-profile').classList.add('active'); loadProfile(); } 
+            
             if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); 
+        }
+
+        function selectStars(amount, el) {
+            document.getElementById('starInput').value = amount;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        async function buyStars() {
+            const amount = document.getElementById('starInput').value;
+            if(!amount || amount < 1) {
+                tg.HapticFeedback.notificationOccurred('error');
+                tg.showAlert("Введите корректное количество звезд");
+                return;
+            }
+            
+            tg.HapticFeedback.impactOccurred('medium');
+            
+            // Здесь должна быть логика запроса к вашему бекенду
+            // чтобы получить ссылку на инвойс (createInvoiceLink)
+            
+            // ПРИМЕР:
+            /*
+            try {
+                const response = await fetch(`${API_BASE_URL}/create-stars-invoice`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ amount: amount, user_id: tg.initDataUnsafe.user.id })
+                });
+                const data = await response.json();
+                if(data.invoice_url) {
+                    tg.openInvoice(data.invoice_url, (status) => {
+                        if (status === 'paid') {
+                            tg.showAlert('Оплата прошла успешно!');
+                            confetti();
+                        }
+                    });
+                }
+            } catch (e) { console.error(e); }
+            */
+
+            // Для демонстрации (так как нет реального бекенда в этом коде):
+            tg.showConfirm(`Вы хотите пополнить баланс на ${amount} звезд?`, (confirm) => {
+                if(confirm) {
+                    // Эмуляция вызова официального окна (требует реальной ссылки от @BotFather)
+                    // tg.openInvoice("INVOICE_URL_FROM_BOT_API"); 
+                    tg.showAlert("Для работы платежей необходимо настроить backend бота (createInvoiceLink).");
+                }
+            });
         }
 
         function openGameModal(game) { 
