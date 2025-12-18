@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v22.0 Safe Area Fix</title>
+    <title>Glass Super App v23.0 Spring Sliders</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -73,7 +73,6 @@
         
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
         
-        /* SCREEN: Отступ увеличен до 90px + safe-top */
         .screen { 
             position: absolute; 
             top: 0; 
@@ -110,7 +109,6 @@
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
-        /* GAME TOP BAR: Отступ увеличен до 90px + safe-top */
         .game-top-bar { 
             padding: 15px 20px; 
             padding-top: calc(90px + var(--safe-top)); 
@@ -174,10 +172,22 @@
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
         .modal.rotate-180 { transform: rotate(180deg); }
+        
+        /* NEW SEGMENTED CONTROLS (Spring Physics) */
+        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 14px; padding: 4px; display: flex; width: 100%; margin-top: 15px; overflow: hidden; }
+        .segment-control.vertical { flex-direction: column; }
+        
+        .segment-glider { position: absolute; top: 4px; left: 4px; background: var(--accent); border-radius: 10px; width: calc(50% - 4px); height: calc(100% - 8px); z-index: 1; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .vertical .segment-glider { width: calc(100% - 8px); height: calc(33.33% - 5px); }
+        
+        .segment-item { position: relative; flex: 1; text-align: center; padding: 12px; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+        .segment-item.active { color: white; opacity: 1; }
+
         .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
         .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
         .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
-        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; } 
+        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 20px; cursor: pointer; transition: transform 0.1s; } 
+        .btn-main:active { transform: scale(0.98); }
         
         .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
         .dropdown-menu.active { transform: translateY(0); }
@@ -417,16 +427,27 @@
     </div>
 
     <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
-    <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p><div class="diff-grid"><div class="diff-btn selected" id="pvpBtn" onclick="setCheckersMode(false, this)">2 Игрока</div><div class="diff-btn" id="pveBtn" onclick="setCheckersMode(true, this)">С Роботом</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button></div></div>
+    
+    <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите режим игры</p>
+        <div class="segment-control">
+            <div class="segment-glider" id="checkersGlider"></div>
+            <div class="segment-item active" onclick="setCheckersMode(false, this, 0)">2 Игрока</div>
+            <div class="segment-item" onclick="setCheckersMode(true, this, 1)">С Роботом</div>
+        </div>
+        <button class="btn-main" onclick="launchCheckers()">Играть</button>
+        <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button>
+    </div></div>
+    
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
     
     <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите сложность</p>
-        <div class="diff-grid" style="grid-template-columns:1fr;">
-            <div class="diff-btn" id="sudoDiff30" onclick="selectSudokuDiff(30, this)">Легко (+1)</div>
-            <div class="diff-btn selected" id="sudoDiff40" onclick="selectSudokuDiff(40, this)">Средне (+2)</div>
-            <div class="diff-btn" id="sudoDiff50" onclick="selectSudokuDiff(50, this)">Сложно (+3)</div>
+        <div class="segment-control vertical" style="height: 180px;">
+            <div class="segment-glider" id="sudokuGlider" style="transform: translateY(100%);"></div>
+            <div class="segment-item" onclick="selectSudokuDiff(30, this, 0)">Легко (+1)</div>
+            <div class="segment-item active" onclick="selectSudokuDiff(40, this, 1)">Средне (+2)</div>
+            <div class="segment-item" onclick="selectSudokuDiff(50, this, 2)">Сложно (+3)</div>
         </div>
         <button class="btn-main" onclick="startSudoku()">Играть</button>
         <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudoku').classList.remove('visible')">Отмена</button>
@@ -671,7 +692,19 @@
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
-        function setCheckersMode(pve,btn){isPvE=pve;document.getElementById('pvpBtn').classList.remove('selected');document.getElementById('pveBtn').classList.remove('selected');btn.classList.add('selected');tg.HapticFeedback.selectionChanged();}
+        
+        function setCheckersMode(pve, btn, index){
+            isPvE = pve;
+            const glider = document.getElementById('checkersGlider');
+            glider.style.transform = `translateX(${index * 100}%)`;
+            
+            const items = btn.parentNode.querySelectorAll('.segment-item');
+            items.forEach(i => i.classList.remove('active'));
+            btn.classList.add('active');
+            
+            tg.HapticFeedback.selectionChanged();
+        }
+
         function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
         function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
         function onBoardClick(r,c){if(isPvE&&turn==='black')return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
@@ -744,10 +777,15 @@
             restoreSudokuState();
         }
 
-        function selectSudokuDiff(diff, btn) {
+        function selectSudokuDiff(diff, btn, index) {
             selectedSudoDiff = diff;
-            document.querySelectorAll('#modalSudoku .diff-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            const glider = document.getElementById('sudokuGlider');
+            glider.style.transform = `translateY(${index * 100}%)`;
+            
+            const items = btn.parentNode.querySelectorAll('.segment-item');
+            items.forEach(i => i.classList.remove('active'));
+            btn.classList.add('active');
+            
             tg.HapticFeedback.selectionChanged();
         }
 
