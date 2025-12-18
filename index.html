@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v24.0 Round Sliders</title>
+    <title>Glass Super App v25.0 All Clear Logic</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -109,9 +109,10 @@
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
+        /* Увеличен отступ сверху, чтобы кнопки были ниже */
         .game-top-bar { 
             padding: 15px 20px; 
-            padding-top: calc(90px + var(--safe-top)); 
+            padding-top: calc(110px + var(--safe-top)); 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
@@ -173,16 +174,10 @@
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
         .modal.rotate-180 { transform: rotate(180deg); }
         
-        /* ROUNDED SEGMENTED CONTROLS */
         .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 4px; display: flex; width: 100%; margin-top: 15px; overflow: hidden; }
         .segment-control.vertical { flex-direction: column; }
-        
-        /* Исправленный расчет высоты и радиусы */
         .segment-glider { position: absolute; top: 4px; left: 4px; background: var(--accent); border-radius: 26px; width: calc(50% - 4px); height: calc(100% - 8px); z-index: 1; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        
-        /* Исправлено выравнивание для вертикального слайдера */
         .vertical .segment-glider { width: calc(100% - 8px); height: calc((100% - 8px) / 3); }
-        
         .segment-item { position: relative; flex: 1; text-align: center; padding: 12px; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
         .segment-item.active { color: white; opacity: 1; }
 
@@ -225,7 +220,10 @@
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
-        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } .bb-cell.clearing { transform: scale(0); opacity: 0; }
+        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } 
+        .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } 
+        .bb-cell.clearing { transform: scale(0); opacity: 0; }
+        .bb-cell.pre-clear { box-shadow: inset 0 0 0 2px currentColor; opacity: 0.6; transform: scale(0.95); }
         
         .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
         
@@ -234,8 +232,11 @@
         .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
         .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
-        .bb-c-1 { background: #ff3b30; } .bb-c-2 { background: #ff9500; } .bb-c-3 { background: #ffcc00; } .bb-c-4 { background: #34c759; } .bb-c-5 { background: #007aff; } .bb-c-6 { background: #5856d6; } .bb-c-7 { background: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
+        .bb-c-1 { background: #ff3b30; color: #ff3b30; } .bb-c-2 { background: #ff9500; color: #ff9500; } .bb-c-3 { background: #ffcc00; color: #ffcc00; } .bb-c-4 { background: #34c759; color: #34c759; } .bb-c-5 { background: #007aff; color: #007aff; } .bb-c-6 { background: #5856d6; color: #5856d6; } .bb-c-7 { background: #af52de; color: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
+        .all-clear-popup { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; z-index: 1002; pointer-events: none; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .ac-text { font-size: 42px; font-weight: 900; background: linear-gradient(135deg, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 10px 30px rgba(255, 165, 0, 0.5); letter-spacing: -1px; }
+        .ac-score { font-size: 24px; font-weight: 700; color: var(--text-color); margin-top: 10px; background: var(--glass-bg); padding: 5px 15px; border-radius: 12px; }
         @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
         
         .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
@@ -401,7 +402,7 @@
     
     <div id="saper-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
-            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> 
+            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> 
             <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
                 <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> 
                 <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.00</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> 
@@ -417,7 +418,7 @@
         </div> 
     </div>
     
-    <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
+    <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
@@ -699,10 +700,7 @@
         function launchSaper() { 
             document.getElementById('modalSaper').classList.remove('visible'); 
             document.getElementById('saper-screen').classList.add('visible'); 
-            
-            // Reset Saper Slider to DIG
             setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0);
-            
             initSaper(); 
         }
         
@@ -710,11 +708,9 @@
             sMode = m; 
             const glider = document.getElementById('saperGlider');
             if(glider) glider.style.transform = `translateX(${index * 100}%)`;
-            
             const items = btn.parentNode.querySelectorAll('.segment-item');
             items.forEach(i => i.classList.remove('active'));
             btn.classList.add('active');
-            
             tg.HapticFeedback.selectionChanged(); 
         }
 
@@ -733,11 +729,9 @@
             isPvE = pve;
             const glider = document.getElementById('checkersGlider');
             glider.style.transform = `translateX(${index * 100}%)`;
-            
             const items = btn.parentNode.querySelectorAll('.segment-item');
             items.forEach(i => i.classList.remove('active'));
             btn.classList.add('active');
-            
             tg.HapticFeedback.selectionChanged();
         }
 
@@ -760,36 +754,227 @@
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
-        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0; 
+        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false; 
         const SHAPES = [[[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],[[1,1,1,1]],[[1],[1],[1],[1]],[[1,1,1,1,1]],[[1],[1],[1],[1],[1]],[[1,1],[1,1]],[[1,1,1],[1,1,1]],[[1,1],[1,1],[1,1]],[[1,1,1],[1,1,1],[1,1,1]],[[1,0],[1,0],[1,1]],[[1,1,1],[1,0,0]],[[1,1],[0,1],[0,1]],[[0,0,1],[1,1,1]],[[0,1],[0,1],[1,1]],[[1,0,0],[1,1,1]],[[1,1],[1,0],[1,0]],[[1,1,1],[0,0,1]],[[1,0],[1,1]],[[1,1],[1,0]],[[1,1],[0,1]],[[0,1],[1,1]],[[1,1,1],[0,1,0]],[[0,1,0],[1,1,1]],[[1,0],[1,1],[1,0]],[[0,1],[1,1],[0,1]]];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
         const DRAG_LIFT_Y = 150; 
         function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
         function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
-        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
+        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
         function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
         function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
         function spawnShapes() { bbShapes = []; const freeCells = countFreeCells(); let availableIndices = []; for(let i=0; i<SHAPES.length; i++) { const matrix = SHAPES[i]; const size = matrix.reduce((acc, row) => acc + row.reduce((a,b)=>a+b, 0), 0); if (freeCells < 25) { if (size <= 4) availableIndices.push(i); } else { availableIndices.push(i); } } for(let i=0; i<3; i++) { const rand = Math.floor(Math.random() * availableIndices.length); const shapeIdx = availableIndices[rand]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); renderShapePreview(i, SHAPES[shapeIdx], color); } }
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
-        function startDrag(e, slotId, matrix, color) { e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
+        
+        function startDrag(e, slotId, matrix, color) { if(bbIsAnimating) return; e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
         function handleMove(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; const relX = ghostX - gridRect.left; const relY = ghostY - gridRect.top; const col = Math.round(relX / cellFullSize); const row = Math.round(relY / cellFullSize); checkPlacement(row, col); }
         function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } }
-        function checkPlacement(r, c) { document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); if(canPlace(dragData.matrix, r, c)) { drawShadow(dragData.matrix, r, c, dragData.color); dragData.validPos = { r: r, c: c }; } else { dragData.validPos = null; } }
+        
+        function checkPlacement(r, c) { 
+            // Clear previous shadows and pre-clears
+            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.color = ''; });
+
+            if(canPlace(dragData.matrix, r, c)) { 
+                drawShadow(dragData.matrix, r, c, dragData.color); 
+                dragData.validPos = { r: r, c: c }; 
+                
+                // PREVIEW HIGHLIGHT LOGIC
+                // Create a temporary grid state
+                let tempGrid = bbGrid.map(row => [...row]);
+                let rowsToClear = [], colsToClear = [];
+                // Place shape in temp grid
+                for(let i=0; i<dragData.matrix.length; i++) {
+                    for(let j=0; j<dragData.matrix[0].length; j++) {
+                        if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1;
+                    }
+                }
+                // Check lines in temp grid
+                for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr].every(val => val !== 0)) rowsToClear.push(rr);
+                for(let cc=0; cc<BB_COLS; cc++) {
+                    let full = true; for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr][cc] === 0) full = false;
+                    if(full) colsToClear.push(cc);
+                }
+                // Apply pre-clear style
+                rowsToClear.forEach(rr => { for(let cc=0; cc<BB_COLS; cc++) highlightPreClear(rr, cc, dragData.color); });
+                colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) highlightPreClear(rr, cc, dragData.color); });
+
+            } else { 
+                dragData.validPos = null; 
+            } 
+        }
+        
+        function highlightPreClear(r, c, color) {
+            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
+            if(cell) { 
+                cell.classList.add('pre-clear');
+                cell.classList.add(color); // Add color class to inherit CSS color
+            }
+        }
+
         function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
         function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
-        function onTouchEnd(e) { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); if(dragGhost) dragGhost.remove(); const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; if(dragData.validPos) { placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; const linesCleared = checkLines(); if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } else { if(bbShapes.every(s => s === null)) spawnShapes(); } } }
+        
+        function onTouchEnd(e) { 
+            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
+            if(dragGhost) dragGhost.remove(); 
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.color = ''; }); // Clear highlights
+            const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
+            if(dragData.validPos) { 
+                placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
+                document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
+                container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
+                const linesCleared = checkLines(dragData.color); // Pass color for animation
+                if(linesCleared === 0) { 
+                    if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } 
+                    if(bbShapes.every(s => s === null)) spawnShapes(); 
+                    checkGameOver(); saveBBState(); 
+                } else { 
+                    if(bbShapes.every(s => s === null)) spawnShapes(); 
+                    // checkAllClear called inside checkLines after delay
+                } 
+            } 
+        }
+
         function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.remove('bb-shadow'); cell.classList.add('filled', color); placedCount++; } } } addScore(placedCount); }
-        function checkLines() { let linesCleared = 0; const rowsToClear = []; const colsToClear = []; for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } const totalCleared = rowsToClear.length + colsToClear.length; if(totalCleared > 0) { bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) animateClear(r, c); }); colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) animateClear(r, c); }); setTimeout(() => { rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); let points = totalCleared * 10; if (totalCleared >= 2) { points = points * totalCleared; showComboPopup(`X${totalCleared} MULTIPLIER!`); } else if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } addScore(points); saveBBState(); checkGameOver(); }, 200); return totalCleared; } return 0; }
+        
+        function checkLines(triggerColor) { 
+            let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
+            for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
+            for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } 
+            const totalCleared = rowsToClear.length + colsToClear.length; 
+            
+            if(totalCleared > 0) { 
+                bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); 
+                
+                // Colorize then clear
+                rowsToClear.forEach(r => { 
+                    fireLineParticles(r, -1, triggerColor); // Horizontal
+                    for(let c=0; c<BB_COLS; c++) animateClear(r, c, triggerColor); 
+                }); 
+                colsToClear.forEach(c => { 
+                    fireLineParticles(-1, c, triggerColor); // Vertical
+                    for(let r=0; r<BB_ROWS; r++) animateClear(r, c, triggerColor); 
+                }); 
+                
+                setTimeout(() => { 
+                    rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
+                    colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
+                    let points = totalCleared * 10; 
+                    if (totalCleared >= 2) { points = points * totalCleared; showComboPopup(`X${totalCleared} MULTIPLIER!`); } 
+                    else if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } 
+                    addScore(points); 
+                    saveBBState(); 
+                    
+                    // CHECK FOR ALL CLEAR AFTER CLEARING
+                    setTimeout(checkAllClear, 50);
+                    checkGameOver(); 
+                }, 300); // Wait for animation
+                return totalCleared; 
+            } 
+            return 0; 
+        }
+
+        function fireLineParticles(row, col, colorClass) {
+            // Get color hex code from class or random
+            const colorMap = { 'bb-c-1':'#ff3b30', 'bb-c-2':'#ff9500', 'bb-c-3':'#ffcc00', 'bb-c-4':'#34c759', 'bb-c-5':'#007aff', 'bb-c-6':'#5856d6', 'bb-c-7':'#af52de' };
+            const colorHex = colorMap[colorClass] || '#ffffff';
+            
+            const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
+            let x, y;
+
+            if(row !== -1) { // Horizontal line
+                 x = (gridRect.left + gridRect.width / 2) / window.innerWidth;
+                 const cellH = gridRect.height / 8;
+                 y = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight;
+            } else { // Vertical line
+                 const cellW = gridRect.width / 8;
+                 x = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth;
+                 y = (gridRect.top + gridRect.height / 2) / window.innerHeight;
+            }
+            
+            confetti({
+                particleCount: 20, spread: 50, startVelocity: 20, origin: { x: x, y: y }, colors: [colorHex], disableForReducedMotion: true, zIndex: 10005
+            });
+        }
+
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-        function animateClear(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.classList.add('clearing'); setTimeout(() => cell.classList.remove('clearing'), 200); } }
+        
+        function animateClear(r, c, color) { 
+            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
+            if(cell) { 
+                // Set color immediately to trigger shape color
+                cell.className = `bb-cell filled ${color} clearing`;
+                setTimeout(() => { cell.className = 'bb-cell'; }, 300); 
+            } 
+        }
+        
         function updateCellUI(r, c) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell'; }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
-        async function checkGameOver() { const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
+        
+        function checkAllClear() {
+            if(bbIsAnimating) return;
+            const free = countFreeCells();
+            if(free === BB_ROWS * BB_COLS) {
+                // ALL CLEAR!
+                bbIsAnimating = true;
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                const bonus = 500 * (bbCombo > 0 ? bbCombo : 1);
+                
+                // Animate rows filling up
+                let delay = 0;
+                for(let r=BB_ROWS-1; r>=0; r--) {
+                    setTimeout(() => {
+                        for(let c=0; c<BB_COLS; c++) {
+                            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
+                            const randColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+                            cell.className = `bb-cell filled ${randColor}`;
+                        }
+                        tg.HapticFeedback.impactOccurred('light');
+                    }, delay);
+                    delay += 50;
+                }
+                
+                // Clear and Show Popup
+                setTimeout(() => {
+                    for(let r=0; r<BB_ROWS; r++) {
+                        for(let c=0; c<BB_COLS; c++) {
+                            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
+                            cell.className = 'bb-cell clearing'; 
+                        }
+                    }
+                    setTimeout(() => { renderBBGrid(); }, 200);
+
+                    // Show Popup
+                    const container = document.querySelector('.bb-game-container');
+                    const pop = document.createElement('div');
+                    pop.className = 'all-clear-popup';
+                    pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`;
+                    container.appendChild(pop);
+                    
+                    confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 });
+                    addScore(bonus);
+                    
+                    setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000);
+                }, delay + 200);
+            }
+        }
+
+        async function checkGameOver() { 
+            if(bbIsAnimating) return;
+            const shapesLeft = bbShapes.filter(s => s !== null); 
+            if(shapesLeft.length === 0) return; 
+            const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); 
+            if(!canMove) { 
+                tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); 
+            } 
+        }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `${ICON_CROWN}<h2 style="margin:0 0 10px 0; font-size:24px;">Новый Рекорд!</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">Играть снова</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">Рекорд не побит</h2><p style="color:#8e8e93; margin:0 0 20px 0;">Попробуйте еще раз!</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">Лучший: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; } overlay.classList.add('visible'); }
