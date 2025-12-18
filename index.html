@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v25.0 All Clear Logic</title>
+    <title>Glass Super App v26.0 Particles & Color Logic</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -109,7 +109,6 @@
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
-        /* Увеличен отступ сверху, чтобы кнопки были ниже */
         .game-top-bar { 
             padding: 15px 20px; 
             padding-top: calc(110px + var(--safe-top)); 
@@ -220,10 +219,12 @@
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
-        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s; } 
+        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s, background-color 0.1s; } 
         .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } 
         .bb-cell.clearing { transform: scale(0); opacity: 0; }
-        .bb-cell.pre-clear { box-shadow: inset 0 0 0 2px currentColor; opacity: 0.6; transform: scale(0.95); }
+        
+        /* Preview Highlight style */
+        .bb-cell.pre-clear { opacity: 1; transform: scale(0.95); transition: background-color 0.1s, transform 0.1s; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
         
         .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
         
@@ -232,7 +233,10 @@
         .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
         .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
+        
+        /* ЦВЕТА ФИГУР */
         .bb-c-1 { background: #ff3b30; color: #ff3b30; } .bb-c-2 { background: #ff9500; color: #ff9500; } .bb-c-3 { background: #ffcc00; color: #ffcc00; } .bb-c-4 { background: #34c759; color: #34c759; } .bb-c-5 { background: #007aff; color: #007aff; } .bb-c-6 { background: #5856d6; color: #5856d6; } .bb-c-7 { background: #af52de; color: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
+        
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
         .all-clear-popup { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; z-index: 1002; pointer-events: none; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .ac-text { font-size: 42px; font-weight: 900; background: linear-gradient(135deg, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 10px 30px rgba(255, 165, 0, 0.5); letter-spacing: -1px; }
@@ -493,6 +497,7 @@
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
 
         const SYNC_KEYS = ['saper_total', 'saper_wins', 'saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15', 'checkers_total', 'checkers_wins_pve', 'bb_total_games', 'bb_best_score', 'sudoku_wins'];
+        const COLOR_MAP = { 'bb-c-1':'#ff3b30', 'bb-c-2':'#ff9500', 'bb-c-3':'#ffcc00', 'bb-c-4':'#34c759', 'bb-c-5':'#007aff', 'bb-c-6':'#5856d6', 'bb-c-7':'#af52de' };
 
         function initApp() {
             applyTheme();
@@ -768,6 +773,13 @@
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
         
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
         function startDrag(e, slotId, matrix, color) { if(bbIsAnimating) return; e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
@@ -777,7 +789,7 @@
         function checkPlacement(r, c) { 
             // Clear previous shadows and pre-clears
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.color = ''; });
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
 
             if(canPlace(dragData.matrix, r, c)) { 
                 drawShadow(dragData.matrix, r, c, dragData.color); 
@@ -808,11 +820,12 @@
             } 
         }
         
-        function highlightPreClear(r, c, color) {
+        function highlightPreClear(r, c, colorClass) {
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
             if(cell) { 
                 cell.classList.add('pre-clear');
-                cell.classList.add(color); // Add color class to inherit CSS color
+                const hex = COLOR_MAP[colorClass] || '#007aff';
+                cell.style.backgroundColor = hexToRgba(hex, 0.4); // 40% opacity
             }
         }
 
@@ -822,20 +835,19 @@
         function onTouchEnd(e) { 
             document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
             if(dragGhost) dragGhost.remove(); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.color = ''; }); // Clear highlights
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
             if(dragData.validPos) { 
                 placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
                 document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
                 container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
-                const linesCleared = checkLines(dragData.color); // Pass color for animation
+                const linesCleared = checkLines(dragData.color); 
                 if(linesCleared === 0) { 
                     if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } 
                     if(bbShapes.every(s => s === null)) spawnShapes(); 
                     checkGameOver(); saveBBState(); 
                 } else { 
                     if(bbShapes.every(s => s === null)) spawnShapes(); 
-                    // checkAllClear called inside checkLines after delay
                 } 
             } 
         }
@@ -851,13 +863,12 @@
             if(totalCleared > 0) { 
                 bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); 
                 
-                // Colorize then clear
                 rowsToClear.forEach(r => { 
-                    fireLineParticles(r, -1, triggerColor); // Horizontal
+                    spawnLineParticles(r, -1, triggerColor);
                     for(let c=0; c<BB_COLS; c++) animateClear(r, c, triggerColor); 
                 }); 
                 colsToClear.forEach(c => { 
-                    fireLineParticles(-1, c, triggerColor); // Vertical
+                    spawnLineParticles(-1, c, triggerColor);
                     for(let r=0; r<BB_ROWS; r++) animateClear(r, c, triggerColor); 
                 }); 
                 
@@ -870,35 +881,48 @@
                     addScore(points); 
                     saveBBState(); 
                     
-                    // CHECK FOR ALL CLEAR AFTER CLEARING
                     setTimeout(checkAllClear, 50);
                     checkGameOver(); 
-                }, 300); // Wait for animation
+                }, 300); 
                 return totalCleared; 
             } 
             return 0; 
         }
 
-        function fireLineParticles(row, col, colorClass) {
-            // Get color hex code from class or random
-            const colorMap = { 'bb-c-1':'#ff3b30', 'bb-c-2':'#ff9500', 'bb-c-3':'#ffcc00', 'bb-c-4':'#34c759', 'bb-c-5':'#007aff', 'bb-c-6':'#5856d6', 'bb-c-7':'#af52de' };
-            const colorHex = colorMap[colorClass] || '#ffffff';
-            
+        function spawnLineParticles(row, col, colorClass) {
+            const hex = COLOR_MAP[colorClass] || '#ffffff';
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
-            let x, y;
+            const cellW = gridRect.width / 8;
+            const cellH = gridRect.height / 8;
 
-            if(row !== -1) { // Horizontal line
-                 x = (gridRect.left + gridRect.width / 2) / window.innerWidth;
-                 const cellH = gridRect.height / 8;
-                 y = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight;
-            } else { // Vertical line
-                 const cellW = gridRect.width / 8;
-                 x = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth;
-                 y = (gridRect.top + gridRect.height / 2) / window.innerHeight;
+            if (row !== -1) { // Row
+                for(let c=0; c<8; c++) {
+                     let x = (gridRect.left + (c * cellW) + (cellW/2)) / window.innerWidth;
+                     let y = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight;
+                     fireCellParticle(x, y, hex);
+                }
+            } else { // Col
+                for(let r=0; r<8; r++) {
+                     let x = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth;
+                     let y = (gridRect.top + (r * cellH) + (cellH/2)) / window.innerHeight;
+                     fireCellParticle(x, y, hex);
+                }
             }
-            
-            confetti({
-                particleCount: 20, spread: 50, startVelocity: 20, origin: { x: x, y: y }, colors: [colorHex], disableForReducedMotion: true, zIndex: 10005
+        }
+
+        function fireCellParticle(x, y, hex) {
+             confetti({
+                particleCount: 5,
+                startVelocity: 15,
+                spread: 360,
+                origin: { x: x, y: y },
+                colors: [hex],
+                shapes: ['circle'],
+                scalar: 0.6,
+                drift: 0,
+                ticks: 40, // Disappear faster
+                zIndex: 11000,
+                disableForReducedMotion: true
             });
         }
 
@@ -907,9 +931,10 @@
         function animateClear(r, c, color) { 
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(cell) { 
-                // Set color immediately to trigger shape color
                 cell.className = `bb-cell filled ${color} clearing`;
-                setTimeout(() => { cell.className = 'bb-cell'; }, 300); 
+                // Force background color via style to ensure it paints over during animation
+                cell.style.backgroundColor = COLOR_MAP[color];
+                setTimeout(() => { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; }, 300); 
             } 
         }
         
@@ -921,13 +946,9 @@
             if(bbIsAnimating) return;
             const free = countFreeCells();
             if(free === BB_ROWS * BB_COLS) {
-                // ALL CLEAR!
                 bbIsAnimating = true;
                 tg.HapticFeedback.notificationOccurred('success');
-                
                 const bonus = 500 * (bbCombo > 0 ? bbCombo : 1);
-                
-                // Animate rows filling up
                 let delay = 0;
                 for(let r=BB_ROWS-1; r>=0; r--) {
                     setTimeout(() => {
@@ -940,27 +961,16 @@
                     }, delay);
                     delay += 50;
                 }
-                
-                // Clear and Show Popup
                 setTimeout(() => {
-                    for(let r=0; r<BB_ROWS; r++) {
-                        for(let c=0; c<BB_COLS; c++) {
-                            const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`);
-                            cell.className = 'bb-cell clearing'; 
-                        }
-                    }
+                    for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell clearing'; } }
                     setTimeout(() => { renderBBGrid(); }, 200);
-
-                    // Show Popup
                     const container = document.querySelector('.bb-game-container');
                     const pop = document.createElement('div');
                     pop.className = 'all-clear-popup';
                     pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`;
                     container.appendChild(pop);
-                    
                     confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 });
                     addScore(bonus);
-                    
                     setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000);
                 }, delay + 200);
             }
