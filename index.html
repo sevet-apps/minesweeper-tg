@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v23.0 Spring Sliders</title>
+    <title>Glass Super App v24.0 Round Sliders</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -173,12 +173,15 @@
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
         .modal.rotate-180 { transform: rotate(180deg); }
         
-        /* NEW SEGMENTED CONTROLS (Spring Physics) */
-        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 14px; padding: 4px; display: flex; width: 100%; margin-top: 15px; overflow: hidden; }
+        /* ROUNDED SEGMENTED CONTROLS */
+        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 4px; display: flex; width: 100%; margin-top: 15px; overflow: hidden; }
         .segment-control.vertical { flex-direction: column; }
         
-        .segment-glider { position: absolute; top: 4px; left: 4px; background: var(--accent); border-radius: 10px; width: calc(50% - 4px); height: calc(100% - 8px); z-index: 1; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .vertical .segment-glider { width: calc(100% - 8px); height: calc(33.33% - 5px); }
+        /* Исправленный расчет высоты и радиусы */
+        .segment-glider { position: absolute; top: 4px; left: 4px; background: var(--accent); border-radius: 26px; width: calc(50% - 4px); height: calc(100% - 8px); z-index: 1; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        
+        /* Исправлено выравнивание для вертикального слайдера */
+        .vertical .segment-glider { width: calc(100% - 8px); height: calc((100% - 8px) / 3); }
         
         .segment-item { position: relative; flex: 1; text-align: center; padding: 12px; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
         .segment-item.active { color: white; opacity: 1; }
@@ -206,13 +209,8 @@
             left: 50%; 
             transform: translateX(-50%); 
             display: flex; 
-            gap: 10px; 
-            background: var(--glass-bg); 
-            padding: 8px; 
-            border-radius: 25px; 
-            backdrop-filter: blur(20px); 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
             z-index: 10001; 
+            min-width: 220px;
         } 
         .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } 
         .control-btn.active { background: var(--accent); color: white; }
@@ -401,7 +399,24 @@
     <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
     <div class="dropdown-menu" id="dropdownMenu"></div>
     
-    <div id="saper-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.00</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> </div> </div> <div class="game-area"><div class="grid" id="saperGrid"></div></div> <div class="bottom-controls"> <button class="control-btn active" id="btnDig" onclick="setSaperMode('dig')">Копать</button> <button class="control-btn" id="btnFlag" onclick="setSaperMode('flag')">Флаг</button> </div> </div>
+    <div id="saper-screen" class="game-overlay"> 
+        <div class="game-top-bar"> 
+            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> 
+            <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
+                <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> 
+                <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.00</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> 
+            </div> 
+        </div> 
+        <div class="game-area"><div class="grid" id="saperGrid"></div></div> 
+        <div class="bottom-controls">
+            <div class="segment-control" style="margin: 0; min-width: 220px;">
+                <div class="segment-glider" id="saperGlider"></div>
+                <div class="segment-item active" onclick="setSaperMode('dig', this, 0)">Копать</div>
+                <div class="segment-item" onclick="setSaperMode('flag', this, 1)">Флаг</div>
+            </div>
+        </div> 
+    </div>
+    
     <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Закрыть</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
@@ -680,8 +695,29 @@
         /* --- SAPER WITH MS TIMER --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
-        function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); initSaper(); }
-        function setSaperMode(m) { sMode=m; document.getElementById('btnDig').classList.toggle('active', m==='dig'); document.getElementById('btnFlag').classList.toggle('active', m==='flag'); tg.HapticFeedback.selectionChanged(); }
+        
+        function launchSaper() { 
+            document.getElementById('modalSaper').classList.remove('visible'); 
+            document.getElementById('saper-screen').classList.add('visible'); 
+            
+            // Reset Saper Slider to DIG
+            setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0);
+            
+            initSaper(); 
+        }
+        
+        function setSaperMode(m, btn, index) { 
+            sMode = m; 
+            const glider = document.getElementById('saperGlider');
+            if(glider) glider.style.transform = `translateX(${index * 100}%)`;
+            
+            const items = btn.parentNode.querySelectorAll('.segment-item');
+            items.forEach(i => i.classList.remove('active'));
+            btn.classList.add('active');
+            
+            tg.HapticFeedback.selectionChanged(); 
+        }
+
         function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
         function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
