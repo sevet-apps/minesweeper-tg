@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v26.0 Particles & Color Logic</title>
+    <title>Glass Super App v27.0 Neon & Performance</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -167,6 +167,8 @@
         .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
         [data-theme="dark"] .switch-circle { transform: translateX(30px); }
+        /* Состояние для Lite Mode переключателя */
+        .theme-switch.active .switch-circle { transform: translateX(30px); }
 
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
@@ -219,10 +221,28 @@
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
-        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s, background-color 0.1s; } 
+        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } 
+        .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s, background-color 0.15s; } 
         .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } 
-        .bb-cell.clearing { transform: scale(0); opacity: 0; }
+        .bb-cell.no-transition { transition: none !important; }
         
+        /* Lite Mode Animation */
+        .bb-cell.clearing-lite { transform: scale(0.1); opacity: 0; }
+        
+        /* Neon Animation */
+        .bb-cell.clearing-neon { 
+            animation: neonFlash 0.3s ease-out forwards; 
+            z-index: 10;
+        }
+        @keyframes neonFlash {
+            0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+            30% { transform: scale(1.1); filter: brightness(2.5); background-color: #fff !important; box-shadow: 0 0 15px 5px rgba(255,255,255,0.8); }
+            100% { transform: scale(0.8); opacity: 0; }
+        }
+        
+        .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shakeGame { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-2px, 0, 0); } 40%, 60% { transform: translate3d(2px, 0, 0); } }
+
         /* Preview Highlight style */
         .bb-cell.pre-clear { opacity: 1; transform: scale(0.95); transition: background-color 0.1s, transform 0.1s; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
         
@@ -372,6 +392,17 @@
                         <div class="switch-circle"></div> 
                     </div>
                 </div>
+                
+                <div class="settings-row">
+                    <div class="settings-label">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        Упрощенная графика
+                    </div>
+                    <div class="theme-switch" id="liteToggle" onclick="toggleLiteMode()"> 
+                        <div class="theme-icons"></div>
+                        <div class="switch-circle"></div> 
+                    </div>
+                </div>
             </div>
 
             <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
@@ -489,6 +520,7 @@
         }
 
         let isDark = tg.colorScheme === 'dark';
+        let isLiteMode = localStorage.getItem('lite_mode') === 'true'; // false = Beautiful, true = Performance
         
         const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
         
@@ -501,6 +533,7 @@
 
         function initApp() {
             applyTheme();
+            applyLiteMode();
             loadProfile();
             setTimeout(syncLocalStatsToServer, 2000);
         }
@@ -508,6 +541,17 @@
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
         function toggleTheme() { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); }
         
+        function applyLiteMode() { 
+            const el = document.getElementById('liteToggle');
+            if(isLiteMode) el.classList.add('active'); else el.classList.remove('active');
+        }
+        function toggleLiteMode() {
+            isLiteMode = !isLiteMode;
+            localStorage.setItem('lite_mode', isLiteMode);
+            applyLiteMode();
+            tg.HapticFeedback.selectionChanged();
+        }
+
         function switchTab(t, el) { 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
             document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); 
@@ -787,7 +831,7 @@
         function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } }
         
         function checkPlacement(r, c) { 
-            // Clear previous shadows and pre-clears
+            // Clear previous highlights
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
             document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
 
@@ -796,25 +840,20 @@
                 dragData.validPos = { r: r, c: c }; 
                 
                 // PREVIEW HIGHLIGHT LOGIC
-                // Create a temporary grid state
                 let tempGrid = bbGrid.map(row => [...row]);
                 let rowsToClear = [], colsToClear = [];
-                // Place shape in temp grid
                 for(let i=0; i<dragData.matrix.length; i++) {
                     for(let j=0; j<dragData.matrix[0].length; j++) {
                         if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1;
                     }
                 }
-                // Check lines in temp grid
                 for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr].every(val => val !== 0)) rowsToClear.push(rr);
                 for(let cc=0; cc<BB_COLS; cc++) {
                     let full = true; for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr][cc] === 0) full = false;
                     if(full) colsToClear.push(cc);
                 }
-                // Apply pre-clear style
                 rowsToClear.forEach(rr => { for(let cc=0; cc<BB_COLS; cc++) highlightPreClear(rr, cc, dragData.color); });
                 colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) highlightPreClear(rr, cc, dragData.color); });
-
             } else { 
                 dragData.validPos = null; 
             } 
@@ -825,7 +864,7 @@
             if(cell) { 
                 cell.classList.add('pre-clear');
                 const hex = COLOR_MAP[colorClass] || '#007aff';
-                cell.style.backgroundColor = hexToRgba(hex, 0.4); // 40% opacity
+                cell.style.backgroundColor = hexToRgba(hex, 0.4); 
             }
         }
 
@@ -835,7 +874,10 @@
         function onTouchEnd(e) { 
             document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
             if(dragGhost) dragGhost.remove(); 
+            // Cleanup highlights
             document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
+            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
+
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
             if(dragData.validPos) { 
                 placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
@@ -852,7 +894,26 @@
             } 
         }
 
-        function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.remove('bb-shadow'); cell.classList.add('filled', color); placedCount++; } } } addScore(placedCount); }
+        function placeShape(matrix, r, c, color) { 
+            tg.HapticFeedback.impactOccurred('light'); 
+            let placedCount = 0; 
+            for(let i=0; i<matrix.length; i++) { 
+                for(let j=0; j<matrix[0].length; j++) { 
+                    if(matrix[i][j] === 1) { 
+                        bbGrid[r+i][c+j] = color; 
+                        const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); 
+                        // Fix flicker: remove transition, set class, force repaint if needed
+                        cell.classList.add('no-transition');
+                        cell.classList.add('filled', color); 
+                        // Force styles to apply immediately
+                        cell.style.backgroundColor = ''; 
+                        setTimeout(() => cell.classList.remove('no-transition'), 50);
+                        placedCount++; 
+                    } 
+                } 
+            } 
+            addScore(placedCount); 
+        }
         
         function checkLines(triggerColor) { 
             let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
@@ -863,16 +924,20 @@
             if(totalCleared > 0) { 
                 bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); 
                 
+                // Shake screen if fancy graphics enabled
+                if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
+
                 rowsToClear.forEach(r => { 
-                    spawnLineParticles(r, -1, triggerColor);
+                    if(!isLiteMode) fireNeonParticles(r, -1, triggerColor);
                     for(let c=0; c<BB_COLS; c++) animateClear(r, c, triggerColor); 
                 }); 
                 colsToClear.forEach(c => { 
-                    spawnLineParticles(-1, c, triggerColor);
+                    if(!isLiteMode) fireNeonParticles(-1, c, triggerColor);
                     for(let r=0; r<BB_ROWS; r++) animateClear(r, c, triggerColor); 
                 }); 
                 
                 setTimeout(() => { 
+                    document.querySelector('.bb-game-container').classList.remove('shake-screen');
                     rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     let points = totalCleared * 10; 
@@ -889,38 +954,37 @@
             return 0; 
         }
 
-        function spawnLineParticles(row, col, colorClass) {
+        function fireNeonParticles(row, col, colorClass) {
             const hex = COLOR_MAP[colorClass] || '#ffffff';
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect();
             const cellW = gridRect.width / 8;
             const cellH = gridRect.height / 8;
 
+            // Determine origin based on line type
+            let xOrigin, yOrigin;
+            
             if (row !== -1) { // Row
-                for(let c=0; c<8; c++) {
-                     let x = (gridRect.left + (c * cellW) + (cellW/2)) / window.innerWidth;
-                     let y = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight;
-                     fireCellParticle(x, y, hex);
-                }
+                 // Center of the row
+                 xOrigin = (gridRect.left + gridRect.width / 2) / window.innerWidth;
+                 yOrigin = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight;
             } else { // Col
-                for(let r=0; r<8; r++) {
-                     let x = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth;
-                     let y = (gridRect.top + (r * cellH) + (cellH/2)) / window.innerHeight;
-                     fireCellParticle(x, y, hex);
-                }
+                 // Center of the column
+                 xOrigin = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth;
+                 yOrigin = (gridRect.top + gridRect.height / 2) / window.innerHeight;
             }
-        }
 
-        function fireCellParticle(x, y, hex) {
-             confetti({
-                particleCount: 5,
-                startVelocity: 15,
+            // Burst of tiny high-velocity particles (Sparks)
+            confetti({
+                particleCount: 40,
+                startVelocity: 35, // Fast!
                 spread: 360,
-                origin: { x: x, y: y },
-                colors: [hex],
-                shapes: ['circle'],
-                scalar: 0.6,
+                origin: { x: xOrigin, y: yOrigin },
+                colors: [hex, '#ffffff'],
+                shapes: ['square'], // Tiny squares look like sparks
+                scalar: 0.5,
                 drift: 0,
-                ticks: 40, // Disappear faster
+                ticks: 50, // Die fast
+                gravity: 0.5,
                 zIndex: 11000,
                 disableForReducedMotion: true
             });
@@ -931,10 +995,22 @@
         function animateClear(r, c, color) { 
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(cell) { 
-                cell.className = `bb-cell filled ${color} clearing`;
-                // Force background color via style to ensure it paints over during animation
-                cell.style.backgroundColor = COLOR_MAP[color];
-                setTimeout(() => { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; }, 300); 
+                if (isLiteMode) {
+                    // Simple animation for weak phones
+                    cell.className = `bb-cell filled ${color} clearing-lite`;
+                } else {
+                    // Neon flash animation
+                    cell.className = `bb-cell filled ${color} clearing-neon`;
+                }
+                
+                // Ensure color is applied for the animation
+                if(!isLiteMode) cell.style.backgroundColor = COLOR_MAP[color];
+                
+                setTimeout(() => { 
+                    cell.className = 'bb-cell'; 
+                    cell.style.backgroundColor = ''; 
+                    cell.style.boxShadow = '';
+                }, 300); 
             } 
         }
         
