@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v28.0 Fixed Slider</title>
+    <title>Glass Super App v29.0 Perfect UI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -30,7 +30,6 @@
             --sudoku-sel: rgba(0,122,255,0.25); 
             --sudoku-same: rgba(0,122,255,0.2); 
             --sudoku-err: rgba(255, 59, 48, 0.2);
-            /* Безопасные зоны */
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
@@ -139,10 +138,38 @@
         .tab-item.active { color: var(--accent); background: transparent !important; } 
         .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
 
+        /* LEADERBOARD & DROPDOWN */
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
-        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; }
+        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
         .lb-list { padding-bottom: 100px; }
+        
+        /* NEW DROPDOWN STYLE */
+        .dropdown-menu { 
+            position: absolute; 
+            top: 230px; /* Примерное положение под хедером, будет корректироваться JS */
+            left: 20px; 
+            right: 20px; 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(30px);
+            border-radius: 16px; 
+            padding: 10px; 
+            z-index: 23000; 
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            transform-origin: top center;
+            transform: scaleY(0);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+            pointer-events: none;
+        }
+        .dropdown-menu.active { transform: scaleY(1); opacity: 1; pointer-events: auto; }
+        
+        .dd-item { padding: 12px 15px; font-size: 16px; border-radius: 10px; cursor: pointer; margin-bottom: 2px; transition: background 0.2s; }
+        .dd-item:last-child { margin-bottom: 0; }
+        .dd-item:active { background: rgba(0,0,0,0.05); }
+        .dd-item.selected { color: var(--accent); font-weight: 700; background: rgba(0,122,255,0.1); }
+
         .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
         .lb-item:active { transform: scale(0.98); }
         .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
@@ -165,14 +192,8 @@
         .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
         .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
-        
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
-        
-        /* Исправленная логика переключателей */
-        /* Только переключатель ТЕМЫ реагирует на data-theme */
         [data-theme="dark"] #themeToggle .switch-circle { transform: translateX(30px); }
-        
-        /* Переключатель LITE MODE реагирует только на класс active */
         #liteToggle.active .switch-circle { transform: translateX(30px); }
 
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
@@ -180,11 +201,23 @@
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
         .modal.rotate-180 { transform: rotate(180deg); }
         
-        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 4px; display: flex; width: 100%; margin-top: 15px; overflow: hidden; }
-        .segment-control.vertical { flex-direction: column; }
-        .segment-glider { position: absolute; top: 4px; left: 4px; background: var(--accent); border-radius: 26px; width: calc(50% - 4px); height: calc(100% - 8px); z-index: 1; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .vertical .segment-glider { width: calc(100% - 8px); height: calc((100% - 8px) / 3); }
-        .segment-item { position: relative; flex: 1; text-align: center; padding: 12px; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+        /* UPDATED SLIDERS (Full Height) */
+        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 0; display: flex; width: 100%; margin-top: 15px; overflow: hidden; height: 46px; border: 2px solid var(--toggle-bg); }
+        .segment-control.vertical { flex-direction: column; height: 100%; }
+        
+        .segment-glider { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 50%; height: 100%; 
+            background: var(--accent); 
+            border-radius: 28px; 
+            z-index: 1; 
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); 
+        }
+        .vertical .segment-glider { width: 100%; height: 33.33%; border-radius: 28px; }
+        
+        .segment-item { position: relative; flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.6; }
         .segment-item.active { color: white; opacity: 1; }
 
         .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
@@ -193,12 +226,6 @@
         .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 20px; cursor: pointer; transition: transform 0.1s; } 
         .btn-main:active { transform: scale(0.98); }
         
-        .dropdown-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-color); border-radius: 20px 20px 0 0; padding: 20px; z-index: 23000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
-        .dropdown-menu.active { transform: translateY(0); }
-        .dd-item { padding: 15px; font-size: 17px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
-        .dd-item:last-child { border: none; }
-        .dd-item.selected { color: var(--accent); font-weight: 600; }
-
         .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
         .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
@@ -213,8 +240,6 @@
             z-index: 10001; 
             min-width: 220px;
         } 
-        .control-btn { border: none; background: transparent; color: var(--text-color); padding: 10px 24px; border-radius: 18px; font-size: 16px; font-weight: 600; cursor: pointer; } 
-        .control-btn.active { background: var(--accent); color: white; }
 
         .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
         .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; } 
@@ -231,35 +256,30 @@
         .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } 
         .bb-cell.no-transition { transition: none !important; }
         
-        /* Lite Mode Animation */
         .bb-cell.clearing-lite { transform: scale(0.1); opacity: 0; }
         
         /* Neon Animation */
         .bb-cell.clearing-neon { 
-            animation: neonFlash 0.3s ease-out forwards; 
+            animation: neonFlash 0.35s ease-out forwards; 
             z-index: 10;
         }
         @keyframes neonFlash {
-            0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
-            30% { transform: scale(1.1); filter: brightness(2.5); background-color: #fff !important; box-shadow: 0 0 15px 5px rgba(255,255,255,0.8); }
-            100% { transform: scale(0.8); opacity: 0; }
+            0% { transform: scale(1); filter: brightness(1); }
+            40% { transform: scale(1.15); filter: brightness(3); background-color: #fff !important; box-shadow: 0 0 20px 5px rgba(255,255,255,0.9); }
+            100% { transform: scale(0.5); opacity: 0; }
         }
         
         .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shakeGame { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-2px, 0, 0); } 40%, 60% { transform: translate3d(2px, 0, 0); } }
 
-        /* Preview Highlight style */
         .bb-cell.pre-clear { opacity: 1; transform: scale(0.95); transition: background-color 0.1s, transform 0.1s; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-        
         .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
-        
         .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
         .bb-shape-preview { display: grid; gap: 2px; pointer-events: none; touch-action: none; transition: opacity 0.2s; } 
         .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
         .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
         
-        /* ЦВЕТА ФИГУР */
         .bb-c-1 { background: #ff3b30; color: #ff3b30; } .bb-c-2 { background: #ff9500; color: #ff9500; } .bb-c-3 { background: #ffcc00; color: #ffcc00; } .bb-c-4 { background: #34c759; color: #34c759; } .bb-c-5 { background: #007aff; color: #007aff; } .bb-c-6 { background: #5856d6; color: #5856d6; } .bb-c-7 { background: #af52de; color: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
         
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
@@ -358,6 +378,8 @@
             <span id="lbCurrentCat">Category</span>
             <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
+        <div class="dropdown-menu" id="dropdownMenu"></div>
+        
         <div class="lb-list" id="lbList"></div>
     </div>
     
@@ -438,7 +460,6 @@
     </div>
 
     <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
-    <div class="dropdown-menu" id="dropdownMenu"></div>
     
     <div id="saper-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -658,11 +679,19 @@
         function closeLeaderboardDetail() {
             document.getElementById('view-leaderboard-detail').classList.remove('active');
             document.getElementById('lbStickyUser').classList.remove('visible');
+            const menu = document.getElementById('dropdownMenu');
+            menu.classList.remove('active');
         }
 
         function toggleDropdown() {
             const menu = document.getElementById('dropdownMenu');
             const overlay = document.getElementById('dropdownOverlay');
+            const selector = document.getElementById('lbSelector');
+            
+            // Calc position just to be sure (simple logic)
+            const rect = selector.getBoundingClientRect();
+            menu.style.top = (rect.bottom + 5) + 'px';
+            
             if(!menu.classList.contains('active')) {
                 menu.innerHTML = '';
                 let cats = [];
@@ -678,6 +707,7 @@
                     menu.appendChild(el);
                 });
                 menu.classList.add('active'); overlay.classList.add('visible');
+                tg.HapticFeedback.selectionChanged();
             } else { menu.classList.remove('active'); overlay.classList.remove('visible'); }
         }
 
@@ -953,7 +983,7 @@
                     
                     setTimeout(checkAllClear, 50);
                     checkGameOver(); 
-                }, 300); 
+                }, 350); // Increased slightly to match animation end
                 return totalCleared; 
             } 
             return 0; 
@@ -965,30 +995,26 @@
             const cellW = gridRect.width / 8;
             const cellH = gridRect.height / 8;
 
-            // Determine origin based on line type
             let xOrigin, yOrigin;
             
-            if (row !== -1) { // Row
-                 // Center of the row
+            if (row !== -1) { 
                  xOrigin = (gridRect.left + gridRect.width / 2) / window.innerWidth;
                  yOrigin = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight;
-            } else { // Col
-                 // Center of the column
+            } else { 
                  xOrigin = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth;
                  yOrigin = (gridRect.top + gridRect.height / 2) / window.innerHeight;
             }
 
-            // Burst of tiny high-velocity particles (Sparks)
             confetti({
                 particleCount: 40,
-                startVelocity: 35, // Fast!
+                startVelocity: 35,
                 spread: 360,
                 origin: { x: xOrigin, y: yOrigin },
                 colors: [hex, '#ffffff'],
-                shapes: ['square'], // Tiny squares look like sparks
+                shapes: ['square'], 
                 scalar: 0.5,
                 drift: 0,
-                ticks: 50, // Die fast
+                ticks: 50, 
                 gravity: 0.5,
                 zIndex: 11000,
                 disableForReducedMotion: true
@@ -1001,21 +1027,24 @@
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(cell) { 
                 if (isLiteMode) {
-                    // Simple animation for weak phones
                     cell.className = `bb-cell filled ${color} clearing-lite`;
                 } else {
-                    // Neon flash animation
                     cell.className = `bb-cell filled ${color} clearing-neon`;
                 }
                 
-                // Ensure color is applied for the animation
                 if(!isLiteMode) cell.style.backgroundColor = COLOR_MAP[color];
+                
+                // IMPORTANT FIX: Force opacity 0 right after animation ends so it doesn't flicker back
+                setTimeout(() => { 
+                    cell.style.opacity = '0';
+                    cell.style.boxShadow = '';
+                }, 340); // Slightly less than checkLines timeout
                 
                 setTimeout(() => { 
                     cell.className = 'bb-cell'; 
                     cell.style.backgroundColor = ''; 
-                    cell.style.boxShadow = '';
-                }, 300); 
+                    cell.style.opacity = ''; // Reset opacity for next usage
+                }, 360); 
             } 
         }
         
