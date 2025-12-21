@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v31.2 Fix UI</title>
+    <title>Glass App v32.0 Online</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
     <style>
         :root { 
             --bg-color: #f2f2f7; 
@@ -200,7 +201,7 @@
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
-        /* MODAL FIXED: Added max-height and overflow for small screens */
+        
         .modal { 
             background: var(--bg-color); 
             width: 90%; 
@@ -217,7 +218,6 @@
         }
         .modal.rotate-180 { transform: rotate(180deg); }
         
-        /* SLIDERS FIXED */
         .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 0; display: flex; width: 100%; margin-top: 15px; overflow: hidden; height: 46px; border: none; }
         .segment-control.vertical { flex-direction: column; height: 100%; }
         
@@ -236,7 +236,6 @@
         .segment-item { position: relative; flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.6; }
         .segment-item.active { color: white; opacity: 1; }
 
-        /* Online UI Classes */
         .panel-hidden { display: none; opacity: 0; transform: translateX(20px); transition: opacity 0.3s, transform 0.3s; }
         .panel-visible { display: block; opacity: 1; transform: translateX(0); animation: fadeInSlide 0.3s ease forwards; }
         @keyframes fadeInSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
@@ -551,8 +550,8 @@
             <div id="ch-online-panel" class="panel-hidden">
                 <button class="btn-main" style="margin-top:0; margin-bottom:8px; background:linear-gradient(135deg, #007aff, #00c6ff); padding: 12px;" onclick="joinGame()">Найти соперника</button>
                 <div class="input-group">
-                    <input type="text" class="input-glass" placeholder="Код..." maxlength="5">
-                    <button class="btn-secondary" onclick="joinGame()">Войти</button>
+                    <input type="text" id="joinCodeInput" class="input-glass" placeholder="Код..." maxlength="5">
+                    <button class="btn-secondary" onclick="joinGameByCode()">Войти</button>
                 </div>
                 <button class="btn-secondary" style="width:100%; margin-top:8px; color:#8e8e93; padding: 10px;" onclick="createGame()">Создать комнату</button>
             </div>
@@ -560,6 +559,8 @@
             <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button>
         </div>
     </div>
+    
+    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2>Ожидание...</h2><p style="color:#8e8e93;">Код комнаты:</p><div style="font-size:32px; font-weight:800; letter-spacing:5px; margin:10px 0; color:var(--accent);" id="displayRoomCode">-----</div><p style="font-size:14px; color:#8e8e93;">Передай этот код другу</p><button style="margin-top:10px; background:none; border:none; color:#ff3b30; font-size:16px;" onclick="cancelOnlineWait()">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
@@ -596,6 +597,13 @@
         
         const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
         
+        // --- SOCKET.IO INIT ---
+        const socket = io(API_BASE_URL);
+        
+        let onlineRoomCode = null;
+        let onlineMyColor = null;
+        let isOnlineGame = false;
+        
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
@@ -608,6 +616,41 @@
             applyLiteMode();
             loadProfile();
             setTimeout(syncLocalStatsToServer, 2000);
+            
+            // Socket Listeners
+            socket.on('game_created', (data) => {
+                onlineRoomCode = data.roomCode;
+                onlineMyColor = data.color;
+                document.getElementById('displayRoomCode').innerText = onlineRoomCode;
+                document.getElementById('modalWaitOpponent').classList.add('visible');
+            });
+            
+            socket.on('start_game', (data) => {
+                document.getElementById('modalWaitOpponent').classList.remove('visible');
+                document.getElementById('modalCheckers').classList.remove('visible');
+                
+                if (data.color) onlineMyColor = data.color;
+                isOnlineGame = true;
+                
+                document.getElementById('checkers-screen').classList.add('visible');
+                initCheckers(); // Init board
+                
+                tg.HapticFeedback.notificationOccurred('success');
+                showResult(`Игра началась!`, `Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}`, "Погнали");
+            });
+            
+            socket.on('opponent_move', (move) => {
+                // Apply move locally without emission
+                executeMove(move, false); 
+            });
+            
+            socket.on('opponent_disconnected', () => {
+                showResult("Победа!", "Соперник отключился", "В меню", () => { closeResult(); closeGame('checkers'); });
+            });
+            
+            socket.on('error_message', (msg) => {
+                alert(msg);
+            });
         }
 
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
@@ -878,11 +921,33 @@
             tg.HapticFeedback.selectionChanged();
         }
 
-        function joinGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Онлайн режим!'); }
-        function createGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Создание комнат!'); }
+        function createGame() {
+            const user = tg.initDataUnsafe.user || { first_name: "Player" };
+            const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
+            socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '' });
+        }
+
+        function joinGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Поиск случайного соперника'); }
+
+        function joinGameByCode() {
+            const code = document.getElementById('joinCodeInput').value;
+            if (code.length < 5) {
+                tg.HapticFeedback.notificationOccurred('error');
+                return;
+            }
+            const user = tg.initDataUnsafe.user || { first_name: "Player" };
+            const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
+            socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } });
+        }
+
+        function cancelOnlineWait() {
+            document.getElementById('modalWaitOpponent').classList.remove('visible');
+            onlineRoomCode = null;
+        }
 
         function setCheckersMode(pve, btn, index){
             isPvE = pve;
+            isOnlineGame = false;
             const glider = document.getElementById('checkersGlider');
             glider.style.transform = `translateX(${index * 100}%)`;
             const items = btn.parentNode.querySelectorAll('.segment-item');
@@ -893,18 +958,52 @@
 
         function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
         function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
-        function onBoardClick(r,c){if(isPvE&&turn==='black')return;const cell=board[r][c];if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move);}}
+        
+        function onBoardClick(r,c){
+            // Online Check
+            if (isOnlineGame) {
+                if (turn !== onlineMyColor) return; // Not my turn
+            } else {
+                if(isPvE&&turn==='black')return;
+            }
+            
+            const cell=board[r][c];
+            if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move, true);}
+        }
+        
         function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
-        function executeMove(m){const p=board[m.fromR][m.fromC].piece;board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);}
+        
+        function executeMove(m, isLocal = true){
+            const p=board[m.fromR][m.fromC].piece;
+            
+            // ONLINE: Emit move
+            if(isOnlineGame && isLocal) {
+                socket.emit('move', { roomCode: onlineRoomCode, move: m });
+            }
+
+            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);
+        }
+        
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
         function endGame(w){
             let t=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',t); sendStatToBackend('checkers_total', t); 
             if(isPvE&&w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
             tg.HapticFeedback.notificationOccurred('success');
             const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');
-            if(isPvE){ if(w==='white'){ tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText="Поражение";txt.innerText="Робот победил."; } }
-            else{ tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
+            
+            if (isOnlineGame) {
+                if (w === onlineMyColor) {
+                    tit.innerText="Победа!";txt.innerText="Вы победили соперника!";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
+                } else {
+                    tit.innerText="Поражение";txt.innerText="Соперник оказался сильнее.";
+                }
+                socket.emit('game_over', { roomCode: onlineRoomCode, winner: w });
+            } else if(isPvE){ 
+                if(w==='white'){ tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText="Поражение";txt.innerText="Робот победил."; } 
+            } else{ 
+                tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} 
+            }
             setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
         }
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
