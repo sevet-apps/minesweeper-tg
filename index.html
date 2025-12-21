@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v32.0 Online</title>
+    <title>Glass App v32.1 Online Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -636,7 +636,16 @@
                 initCheckers(); // Init board
                 
                 tg.HapticFeedback.notificationOccurred('success');
-                showResult(`Игра началась!`, `Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}`, "Погнали");
+                
+                // --- FIX: Закрываем только модальное окно, НЕ закрываем игру ---
+                showResult(
+                    `Игра началась!`, 
+                    `Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}`, 
+                    "Погнали", 
+                    () => {
+                        document.getElementById('modalResult').classList.remove('visible');
+                    }
+                );
             });
             
             socket.on('opponent_move', (move) => {
