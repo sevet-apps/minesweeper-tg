@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v30.0 Polish</title>
+    <title>Glass Super App v31.0 Final Polish</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -143,7 +143,6 @@
         .lb-selector:active { background: rgba(0,0,0,0.05); }
         .lb-list { padding-bottom: 100px; }
         
-        /* DROPDOWN - NO BLUR OVERLAY */
         .dropdown-menu { 
             position: absolute; 
             top: 230px; 
@@ -197,7 +196,6 @@
         [data-theme="dark"] #themeToggle .switch-circle { transform: translateX(30px); }
         #liteToggle.active .switch-circle { transform: translateX(30px); }
 
-        /* Lite Toggle Labels */
         .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
@@ -205,7 +203,7 @@
         .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
         .modal.rotate-180 { transform: rotate(180deg); }
         
-        /* SLIDERS FIXED (Full Height & Spring) */
+        /* SLIDERS FIXED (Updated Spring Physics) */
         .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 0; display: flex; width: 100%; margin-top: 15px; overflow: hidden; height: 46px; border: none; }
         .segment-control.vertical { flex-direction: column; height: 100%; }
         
@@ -216,8 +214,8 @@
             background: var(--accent); 
             border-radius: 30px; 
             z-index: 1; 
-            /* Spring Physics */
-            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+            /* FIXED: Positive curve for overshoot without pullback */
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
         }
         .vertical .segment-glider { width: 100%; height: 33.33%; border-radius: 30px; }
@@ -261,17 +259,14 @@
         .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } 
         .bb-cell.no-transition { transition: none !important; }
         
-        .bb-cell.clearing-lite { transform: scale(0.1); opacity: 0; }
-        
-        /* Neon Animation */
-        .bb-cell.clearing-neon { 
-            animation: neonFlash 0.35s ease-out forwards; 
-            z-index: 10;
+        /* NEW GRAY POP IN ANIMATION */
+        @keyframes popInGray {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        @keyframes neonFlash {
-            0% { transform: scale(1); filter: brightness(1); }
-            40% { transform: scale(1.15); filter: brightness(3); background-color: #fff !important; box-shadow: 0 0 20px 5px rgba(255,255,255,0.9); }
-            100% { transform: scale(0.5); opacity: 0; }
+        .bb-cell.appear-gray {
+            animation: popInGray 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         
         .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
@@ -973,17 +968,21 @@
 
                 rowsToClear.forEach(r => { 
                     if(!isLiteMode) fireNeonParticles(r, -1, triggerColor);
-                    for(let c=0; c<BB_COLS; c++) animateClear(r, c, triggerColor); 
+                    for(let c=0; c<BB_COLS; c++) {
+                        bbGrid[r][c] = 0; // Clear Data immediately
+                        animateClear(r, c, triggerColor); // Animate UI
+                    }
                 }); 
                 colsToClear.forEach(c => { 
                     if(!isLiteMode) fireNeonParticles(-1, c, triggerColor);
-                    for(let r=0; r<BB_ROWS; r++) animateClear(r, c, triggerColor); 
+                    for(let r=0; r<BB_ROWS; r++) {
+                        bbGrid[r][c] = 0; // Clear Data immediately
+                        animateClear(r, c, triggerColor); // Animate UI
+                    }
                 }); 
                 
                 setTimeout(() => { 
                     document.querySelector('.bb-game-container').classList.remove('shake-screen');
-                    rowsToClear.forEach(r => { for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
-                    colsToClear.forEach(c => { for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; updateCellUI(r,c); } }); 
                     let points = totalCleared * 10; 
                     if (totalCleared >= 2) { points = points * totalCleared; showComboPopup(`X${totalCleared} MULTIPLIER!`); } 
                     else if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } 
@@ -1035,27 +1034,17 @@
         function animateClear(r, c, color) { 
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(cell) { 
-                if (isLiteMode) {
-                    cell.className = `bb-cell filled ${color} clearing-lite`;
-                } else {
-                    cell.className = `bb-cell filled ${color} clearing-neon`;
-                }
+                // INSTANTLY remove color and filled status
+                cell.className = 'bb-cell'; 
+                cell.style.backgroundColor = ''; 
+                cell.style.boxShadow = '';
                 
-                if(!isLiteMode) cell.style.backgroundColor = COLOR_MAP[color];
+                // Add class to animate the gray cell popping in from scale 0
+                cell.classList.add('appear-gray');
                 
-                // IMPORTANT FIX: Disable transition before removing class so no "fade to gray" happens
                 setTimeout(() => { 
-                    cell.classList.add('no-transition');
-                    cell.className = 'bb-cell no-transition'; 
-                    cell.style.backgroundColor = ''; 
-                    cell.style.opacity = ''; 
-                    cell.style.boxShadow = '';
-                    
-                    // Force reflow
-                    void cell.offsetWidth;
-                    
-                    setTimeout(() => cell.classList.remove('no-transition'), 50);
-                }, 340); 
+                    cell.classList.remove('appear-gray');
+                }, 400); 
             } 
         }
         
