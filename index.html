@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass Super App v31.1 Online UI</title>
+    <title>Glass Super App v31.2 Fix UI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -200,10 +200,24 @@
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
-        .modal { background: var(--bg-color); width: 85%; max-width: 320px; padding: 25px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid var(--glass-border); transition: transform 0.4s ease; }
+        /* MODAL FIXED: Added max-height and overflow for small screens */
+        .modal { 
+            background: var(--bg-color); 
+            width: 90%; 
+            max-width: 320px; 
+            max-height: 85vh; 
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px; 
+            border-radius: 24px; 
+            text-align: center; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
+            border: 1px solid var(--glass-border); 
+            transition: transform 0.4s ease; 
+        }
         .modal.rotate-180 { transform: rotate(180deg); }
         
-        /* SLIDERS FIXED (Updated Spring Physics) */
+        /* SLIDERS FIXED */
         .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 0; display: flex; width: 100%; margin-top: 15px; overflow: hidden; height: 46px; border: none; }
         .segment-control.vertical { flex-direction: column; height: 100%; }
         
@@ -227,7 +241,7 @@
         .panel-visible { display: block; opacity: 1; transform: translateX(0); animation: fadeInSlide 0.3s ease forwards; }
         @keyframes fadeInSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        .input-group { display: flex; gap: 8px; margin-top: 10px; }
+        .input-group { display: flex; gap: 8px; margin-top: 8px; }
         .input-glass { flex: 1; background: var(--toggle-bg); border: none; padding: 12px; border-radius: 12px; font-size: 16px; color: var(--text-color); outline: none; text-align: center; font-weight: 600; }
         .btn-secondary { background: var(--toggle-bg); color: var(--text-color); font-weight: 600; padding: 12px; border-radius: 12px; border: none; cursor: pointer; }
         .btn-secondary:active { opacity: 0.7; }
@@ -235,7 +249,7 @@
         .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
         .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
         .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
-        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 20px; cursor: pointer; transition: transform 0.1s; } 
+        .btn-main { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; transition: transform 0.1s; } 
         .btn-main:active { transform: scale(0.98); }
         
         .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
@@ -518,7 +532,7 @@
         <div class="modal">
             <h2>Шашки</h2>
             
-            <div class="segment-control" style="margin-bottom: 20px;">
+            <div class="segment-control" style="margin-bottom: 15px;">
                 <div class="segment-glider" id="checkersMainGlider"></div>
                 <div class="segment-item active" onclick="setCheckersMainMode('offline', this, 0)">Offline</div>
                 <div class="segment-item" onclick="setCheckersMainMode('online', this, 1)">Online</div>
@@ -535,12 +549,12 @@
             </div>
 
             <div id="ch-online-panel" class="panel-hidden">
-                <button class="btn-main" style="margin-top:0; margin-bottom:10px; background:linear-gradient(135deg, #007aff, #00c6ff);" onclick="joinGame()">Найти соперника</button>
+                <button class="btn-main" style="margin-top:0; margin-bottom:8px; background:linear-gradient(135deg, #007aff, #00c6ff); padding: 12px;" onclick="joinGame()">Найти соперника</button>
                 <div class="input-group">
                     <input type="text" class="input-glass" placeholder="Код..." maxlength="5">
                     <button class="btn-secondary" onclick="joinGame()">Войти</button>
                 </div>
-                <button class="btn-secondary" style="width:100%; margin-top:10px; color:#8e8e93;" onclick="createGame()">Создать комнату</button>
+                <button class="btn-secondary" style="width:100%; margin-top:8px; color:#8e8e93; padding: 10px;" onclick="createGame()">Создать комнату</button>
             </div>
 
             <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button>
