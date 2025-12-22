@@ -357,6 +357,9 @@
 
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+        /* --- ДОБАВИТЬ ЭТО --- */
+        .checkers-board.rotated { transform: rotate(180deg); }
+        .checkers-board.rotated .checker { transform: rotate(-180deg); } /* Поворачиваем шашки обратно, чтобы тени падали правильно */
     </style>
 </head>
 <body>
@@ -634,13 +637,21 @@
                 
                 document.getElementById('checkers-screen').classList.add('visible');
                 initCheckers(); // Init board
+
+                // --- НОВЫЙ КУСОК ДЛЯ ПОВОРОТА ДОСКИ ---
+                const boardEl = document.getElementById('checkersBoard');
+                boardEl.classList.remove('rotated'); 
+                if (onlineMyColor === 'black') {
+                    boardEl.classList.add('rotated');
+                }
+                // --------------------------------------
                 
                 tg.HapticFeedback.notificationOccurred('success');
                 
-                // --- FIX: Закрываем только модальное окно, НЕ закрываем игру ---
+                // --- ИСПРАВЛЕННАЯ КНОПКА "ПОГНАЛИ" ---
                 showResult(
-                    `Игра началась!`, 
-                    `Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}`, 
+                    Игра началась!, 
+                    Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}, 
                     "Погнали", 
                     () => {
                         document.getElementById('modalResult').classList.remove('visible');
@@ -944,6 +955,9 @@
                 tg.HapticFeedback.notificationOccurred('error');
                 return;
             }
+            // --- ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАПОМИНАЕМ КОД КОМНАТЫ ---
+            onlineRoomCode = code; 
+            // ---------------------------------------------------
             const user = tg.initDataUnsafe.user || { first_name: "Player" };
             const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
             socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } });
@@ -1484,3 +1498,4 @@
     </script>
 </body>
 </html>
+
