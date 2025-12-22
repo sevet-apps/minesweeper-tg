@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v32.1 Online Fix</title>
+    <title>Glass App v32.2 Final Fix</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -357,9 +357,11 @@
 
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
-        /* --- ДОБАВИТЬ ЭТО --- */
+
+        /* ВСТАВЛЯЙ СЮДА, В САМЫЙ КОНЕЦ */
         .checkers-board.rotated { transform: rotate(180deg); }
-        .checkers-board.rotated .checker { transform: rotate(-180deg); } /* Поворачиваем шашки обратно, чтобы тени падали правильно */
+        .checkers-board.rotated .checker { transform: rotate(-180deg); }
+
     </style>
 </head>
 <body>
@@ -650,8 +652,8 @@
                 
                 // --- ИСПРАВЛЕННАЯ КНОПКА "ПОГНАЛИ" ---
                 showResult(
-                    Игра началась!, 
-                    Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}, 
+                    `Игра началась!`, 
+                    `Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}`, 
                     "Погнали", 
                     () => {
                         document.getElementById('modalResult').classList.remove('visible');
@@ -1053,7 +1055,7 @@
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        function startDrag(e, slotId, matrix, color) { if(bbIsAnimating) return; e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) b.className = `bb-block ${color}`; else b.style.opacity = 0; dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
+        function startDrag(e, slotId, matrix, color) { if(bbIsAnimating) return; e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
         function handleMove(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; const relX = ghostX - gridRect.left; const relY = ghostY - gridRect.top; const col = Math.round(relX / cellFullSize); const row = Math.round(relY / cellFullSize); checkPlacement(row, col); }
@@ -1498,4 +1500,3 @@
     </script>
 </body>
 </html>
-
