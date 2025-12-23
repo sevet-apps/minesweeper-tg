@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v32.2 Final Fix</title>
+    <title>Glass App v33.0 UI/Logic Fixes</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -240,9 +240,10 @@
         .panel-visible { display: block; opacity: 1; transform: translateX(0); animation: fadeInSlide 0.3s ease forwards; }
         @keyframes fadeInSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        .input-group { display: flex; gap: 8px; margin-top: 8px; }
-        .input-glass { flex: 1; background: var(--toggle-bg); border: none; padding: 12px; border-radius: 12px; font-size: 16px; color: var(--text-color); outline: none; text-align: center; font-weight: 600; }
-        .btn-secondary { background: var(--toggle-bg); color: var(--text-color); font-weight: 600; padding: 12px; border-radius: 12px; border: none; cursor: pointer; }
+        /* ИСПРАВЛЕНИЕ: КНОПКА ВОЙТИ ТЕПЕРЬ РОВНАЯ */
+        .input-group { display: flex; gap: 8px; margin-top: 8px; width: 100%; box-sizing: border-box; }
+        .input-glass { flex: 1; background: var(--toggle-bg); border: none; padding: 12px; border-radius: 12px; font-size: 16px; color: var(--text-color); outline: none; text-align: center; font-weight: 600; min-width: 0; }
+        .btn-secondary { background: var(--toggle-bg); color: var(--text-color); font-weight: 600; padding: 12px; border-radius: 12px; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .btn-secondary:active { opacity: 0.7; }
 
         .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
@@ -272,6 +273,9 @@
         .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
         
         .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
+
+        /* ИСПРАВЛЕНИЕ: ПОДНИМАЕМ ДОСКУ ВЫШЕ ЧЕРЕЗ PADDING ВНИЗУ */
+        .checkers-wrapper { width:100%; height:100%; display:flex; justify-content:center; align-items:center; padding-bottom: 25vh; }
 
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
@@ -357,8 +361,11 @@
 
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+        
+        /* Loading Spinner */
+        .loader { border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 4px solid var(--accent); width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ВСТАВЛЯЙ СЮДА, В САМЫЙ КОНЕЦ */
         .checkers-board.rotated { transform: rotate(180deg); }
         .checkers-board.rotated .checker { transform: rotate(-180deg); }
 
@@ -571,6 +578,8 @@
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
     
+    <div class="modal-overlay" id="modalLoading"><div class="modal" style="display:flex; flex-direction:column; align-items:center;"><div class="loader"></div><h3>Создание комнаты...</h3></div></div>
+
     <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите сложность</p>
         <div class="segment-control vertical" style="height: 180px;">
             <div class="segment-glider" id="sudokuGlider" style="transform: translateY(100%);"></div>
@@ -624,6 +633,9 @@
             
             // Socket Listeners
             socket.on('game_created', (data) => {
+                // HIDE LOADER
+                document.getElementById('modalLoading').classList.remove('visible');
+                
                 onlineRoomCode = data.roomCode;
                 onlineMyColor = data.color;
                 document.getElementById('displayRoomCode').innerText = onlineRoomCode;
@@ -640,17 +652,14 @@
                 document.getElementById('checkers-screen').classList.add('visible');
                 initCheckers(); // Init board
 
-                // --- НОВЫЙ КУСОК ДЛЯ ПОВОРОТА ДОСКИ ---
                 const boardEl = document.getElementById('checkersBoard');
                 boardEl.classList.remove('rotated'); 
                 if (onlineMyColor === 'black') {
                     boardEl.classList.add('rotated');
                 }
-                // --------------------------------------
                 
                 tg.HapticFeedback.notificationOccurred('success');
                 
-                // --- ИСПРАВЛЕННАЯ КНОПКА "ПОГНАЛИ" ---
                 showResult(
                     `Игра началась!`, 
                     `Ваш цвет: ${onlineMyColor === 'white' ? 'Белые' : 'Чёрные'}\nСоперник: ${data.opponent.name}`, 
@@ -944,12 +953,14 @@
         }
 
         function createGame() {
+            // SHOW LOADER
+            document.getElementById('modalLoading').classList.add('visible');
+
             const user = tg.initDataUnsafe.user || { first_name: "Player" };
             const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
             socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '' });
         }
-
-        function joinGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Поиск случайного соперника'); }
+                function joinGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Поиск случайного соперника'); }
 
         function joinGameByCode() {
             const code = document.getElementById('joinCodeInput').value;
@@ -957,9 +968,7 @@
                 tg.HapticFeedback.notificationOccurred('error');
                 return;
             }
-            // --- ВАЖНОЕ ИСПРАВЛЕНИЕ: ЗАПОМИНАЕМ КОД КОМНАТЫ ---
             onlineRoomCode = code; 
-            // ---------------------------------------------------
             const user = tg.initDataUnsafe.user || { first_name: "Player" };
             const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
             socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } });
@@ -985,9 +994,8 @@
         function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
         
         function onBoardClick(r,c){
-            // Online Check
             if (isOnlineGame) {
-                if (turn !== onlineMyColor) return; // Not my turn
+                if (turn !== onlineMyColor) return; 
             } else {
                 if(isPvE&&turn==='black')return;
             }
@@ -1001,16 +1009,45 @@
         
         function executeMove(m, isLocal = true){
             const p=board[m.fromR][m.fromC].piece;
-            
-            // ONLINE: Emit move
-            if(isOnlineGame && isLocal) {
-                socket.emit('move', { roomCode: onlineRoomCode, move: m });
-            }
+            if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
 
-            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;checkWin();turn=turn==='white'?'black':'white';document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";if(isPvE&&turn==='black')setTimeout(aiMove,600);
+            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
+            
+            // Проверка на полную потерю шашек
+            checkWin(); 
+            
+            // Смена хода
+            turn=turn==='white'?'black':'white';
+            document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";
+
+            // --- НОВАЯ ЛОГИКА: ПРОВЕРКА НА ТУПИК (НЕТ ХОДОВ) ---
+            if (!hasAnyMoves(turn)) {
+                // Если у текущего игрока нет ходов, побеждает предыдущий (тот, кто только что походил)
+                const winner = turn === 'white' ? 'black' : 'white';
+                endGame(winner);
+                return;
+            }
+            // ----------------------------------------------------
+
+            if(isPvE&&turn==='black')setTimeout(aiMove,600);
+        }
+
+        // Проверяет, есть ли у игрока хоть один доступный ход
+        function hasAnyMoves(color) {
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    const cell = board[r][c];
+                    if (cell.piece && cell.piece.color === color) {
+                        const moves = getValidMoves(r, c, board);
+                        if (moves.length > 0) return true;
+                    }
+                }
+            }
+            return false;
         }
         
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
+        
         function endGame(w){
             let t=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',t); sendStatToBackend('checkers_total', t); 
             if(isPvE&&w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
@@ -1019,9 +1056,9 @@
             
             if (isOnlineGame) {
                 if (w === onlineMyColor) {
-                    tit.innerText="Победа!";txt.innerText="Вы победили соперника!";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
+                    tit.innerText="Победа!";txt.innerText="Вы победили!";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647});
                 } else {
-                    tit.innerText="Поражение";txt.innerText="Соперник оказался сильнее.";
+                    tit.innerText="Поражение";txt.innerText="Нет ходов или шашек.";
                 }
                 socket.emit('game_over', { roomCode: onlineRoomCode, winner: w });
             } else if(isPvE){ 
@@ -1031,6 +1068,7 @@
             }
             setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
         }
+
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST --- */
@@ -1500,3 +1538,5 @@
     </script>
 </body>
 </html>
+
+        
