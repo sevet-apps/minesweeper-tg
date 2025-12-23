@@ -1020,14 +1020,13 @@
             turn=turn==='white'?'black':'white';
             document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";
 
-            // --- НОВАЯ ЛОГИКА: ПРОВЕРКА НА ТУПИК (НЕТ ХОДОВ) ---
+            // --- ПРОВЕРКА НА ТУПИК ---
             if (!hasAnyMoves(turn)) {
-                // Если у текущего игрока нет ходов, побеждает предыдущий (тот, кто только что походил)
                 const winner = turn === 'white' ? 'black' : 'white';
                 endGame(winner);
                 return;
             }
-            // ----------------------------------------------------
+            // -------------------------
 
             if(isPvE&&turn==='black')setTimeout(aiMove,600);
         }
@@ -1093,7 +1092,50 @@
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        function startDrag(e, slotId, matrix, color) { if(bbIsAnimating) return; e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; matrix.forEach(row => { row.forEach(val => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } dragGhost.appendChild(b); }); }); document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); }
+        // --- ИСПРАВЛЕНИЕ: ДОБАВЛЕНЫ ri и ci ---
+        function startDrag(e, slotId, matrix, color) { 
+            if(bbIsAnimating) return; 
+            e.preventDefault(); 
+            const touch = e.touches ? e.touches[0] : e; 
+            const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
+            const cellFullSize = gridRect.width / 8; 
+            dragData = { slotId, matrix, color }; 
+            dragGhost = document.createElement('div'); 
+            dragGhost.className = 'drag-ghost'; 
+            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
+            dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; 
+            dragGhost.style.gap = '4px'; 
+            dragGhost.style.display = 'grid'; 
+            const shapePixelW = matrix[0].length * cellFullSize; 
+            
+            // ВОТ ТУТ БЫЛА ОШИБКА, ТЕПЕРЬ ИСПРАВЛЕНО: (row, ri) и (val, ci)
+            matrix.forEach((row, ri) => { 
+                row.forEach((val, ci) => { 
+                    const b = document.createElement('div'); 
+                    if(val) { 
+                        b.className = `bb-block ${color}`; 
+                        b.dataset.ri = ri; 
+                        b.dataset.ci = ci; 
+                    } else { 
+                        b.style.opacity = 0; 
+                    } 
+                    dragGhost.appendChild(b); 
+                }); 
+            }); 
+            
+            document.body.appendChild(dragGhost); 
+            touchOffsetX = (shapePixelW / 2); 
+            touchOffsetY = (shapePixelW / 2); 
+            moveGhost(touch.clientX, touch.clientY); 
+            const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); 
+            if(preview) preview.style.opacity = 0; 
+            document.addEventListener('touchmove', onTouchMove, {passive: false}); 
+            document.addEventListener('touchend', onTouchEnd); 
+            document.addEventListener('mousemove', onMouseMove); 
+            document.addEventListener('mouseup', onTouchEnd); 
+        }
+        // ----------------------------------------
+
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
         function handleMove(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; const relX = ghostX - gridRect.left; const relY = ghostY - gridRect.top; const col = Math.round(relX / cellFullSize); const row = Math.round(relY / cellFullSize); checkPlacement(row, col); }
@@ -1539,4 +1581,3 @@
 </body>
 </html>
 
-        
