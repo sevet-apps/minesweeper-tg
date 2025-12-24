@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v34.0 Monopoly Beta</title>
+    <title>Glass App v35.0 All Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -11,9 +11,9 @@
         :root { 
             --bg-color: #f2f2f7; 
             --text-color: #000000; 
-            --glass-bg: rgba(255, 255, 255, 0.75); 
+            --glass-bg: rgba(255, 255, 255, 0.85); 
             --glass-border: rgba(255, 255, 255, 0.5); 
-            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); 
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); 
             --accent: #007aff; 
             --danger: #ff3b30; 
             --success: #34c759; 
@@ -21,461 +21,146 @@
             --toggle-bg: #e9e9ea; 
             --toggle-circle: #ffffff; 
             --icon-color: #3a3a3c; 
-            --bb-grid: rgba(0,0,0,0.05); 
-            --bb-cell: rgba(255,255,255,0.5); 
-            --rank-gold: #ffd700; 
-            --rank-silver: #c0c0c0; 
-            --rank-bronze: #cd7f32; 
-            --sudoku-border: rgba(0,0,0,0.1); 
-            --sudoku-thick: #000000; 
-            --sudoku-sel: rgba(0,122,255,0.25); 
-            --sudoku-same: rgba(0,122,255,0.2); 
-            --sudoku-err: rgba(255, 59, 48, 0.2);
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
+            
+            /* Monopoly Colors */
+            --mono-line-yellow: #FFD700;
+            --mono-line-orange: #FF8C00;
+            --mono-line-peach: #FF9999;
+            --mono-line-red: #FF0000;
+            --mono-line-pale-green: #90EE90;
+            --mono-line-dark-green: #006400;
+            --mono-line-blue: #0000FF;
+            --mono-line-violet: #800080;
+            
+            /* Old Games Vars */
+            --bb-grid: rgba(0,0,0,0.05); --bb-cell: rgba(255,255,255,0.5); 
+            --sudoku-border: rgba(0,0,0,0.1); --sudoku-thick: #000000; 
+            --sudoku-sel: rgba(0,122,255,0.25); --sudoku-same: rgba(0,122,255,0.2); --sudoku-err: rgba(255, 59, 48, 0.2);
+            --rank-gold: #ffd700; --rank-silver: #c0c0c0; --rank-bronze: #cd7f32;
         }
         [data-theme="dark"] { 
-            --bg-color: #000000; 
-            --text-color: #ffffff; 
-            --glass-bg: rgba(30, 30, 30, 0.75); 
-            --glass-border: rgba(255, 255, 255, 0.15); 
+            --bg-color: #000000; --text-color: #ffffff; 
+            --glass-bg: rgba(30, 30, 30, 0.8); --glass-border: rgba(255, 255, 255, 0.15); 
             --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); 
-            --tab-bg: rgba(30,30,30, 0.95); 
-            --toggle-bg: #2c2c2e; 
-            --toggle-circle: #636366; 
-            --icon-color: #aeaeb2; 
-            --accent: #0a84ff; 
-            --bb-grid: rgba(255,255,255,0.05); 
-            --bb-cell: rgba(255,255,255,0.1); 
-            --sudoku-border: rgba(255,255,255,0.15); 
-            --sudoku-thick: #ffffff; 
-            --sudoku-sel: rgba(10, 132, 255, 0.4); 
-            --sudoku-same: rgba(10, 132, 255, 0.25); 
-            --sudoku-err: rgba(255, 69, 58, 0.3); 
+            --tab-bg: rgba(30,30,30, 0.95); --toggle-bg: #2c2c2e; --toggle-circle: #636366; 
+            --icon-color: #aeaeb2; --accent: #0a84ff; 
+            --bb-grid: rgba(255,255,255,0.05); --bb-cell: rgba(255,255,255,0.1); 
+            --sudoku-border: rgba(255,255,255,0.15); --sudoku-thick: #ffffff; 
+            --sudoku-sel: rgba(10, 132, 255, 0.4); --sudoku-same: rgba(10, 132, 255, 0.25); --sudoku-err: rgba(255, 69, 58, 0.3); 
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; width: 100%; height: 100dvh; overflow: hidden; overscroll-behavior: none; touch-action: none; transition: background 0.4s; }
         
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            width: 100%;
-            height: 100dvh; 
-            overflow: hidden; 
-            overscroll-behavior: none; 
-            touch-action: none; 
-            transition: background-color 0.4s ease; 
-        }
-        
-        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .icon-sm { width: 18px; height: 18px; }
-        
-        .screen { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            padding: 20px; 
-            padding-top: calc(90px + var(--safe-top)); 
-            padding-bottom: calc(110px + var(--safe-bottom)); 
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch; 
-            opacity: 0; 
-            pointer-events: none; 
-            transform: scale(0.98); 
-            transition: opacity 0.3s ease, transform 0.3s ease; 
-            touch-action: pan-y; 
-        } 
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; padding-top: calc(80px + var(--safe-top)); padding-bottom: calc(100px + var(--safe-bottom)); overflow-y: auto; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s, transform 0.3s; } 
         .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
         
-        .game-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: var(--bg-color); z-index: 9999; 
-            display: flex; flex-direction: column; 
-            transform: translateY(100%); 
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            overflow: hidden;
-            touch-action: none; 
-        } 
+        .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); touch-action: none; overflow: hidden; } 
         .game-overlay.visible { transform: translateY(0); }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
-        .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
-        .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+        /* MONOPOLY STYLES */
+        .mono-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 50px; position: relative; width: 100%; overflow: hidden; }
         
-        .game-top-bar { 
-            padding: 15px 20px; 
-            padding-top: calc(110px + var(--safe-top)); 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-        } 
-        
-        .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
-        .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
-
-        .tab-bar { 
-            position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            width: 100%; 
-            height: calc(75px + var(--safe-bottom)); 
-            background: var(--tab-bg); 
-            backdrop-filter: blur(30px); 
-            border-top: 0.5px solid var(--glass-border); 
-            display: flex; 
-            justify-content: space-around; 
-            padding-top: 10px; 
-            padding-bottom: var(--safe-bottom); 
-            z-index: 50; 
-        } 
-        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } 
-        .tab-item.active { color: var(--accent); background: transparent !important; } 
-        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
-
-        .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
-        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
-        .lb-selector:active { background: rgba(0,0,0,0.05); }
-        .lb-list { padding-bottom: 100px; }
-        
-        .dropdown-menu { 
-            position: absolute; 
-            top: 230px; 
-            left: 20px; 
-            right: 20px; 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(40px);
-            border-radius: 16px; 
-            padding: 10px; 
-            z-index: 23000; 
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.25);
-            transform-origin: top center;
-            transform: scaleY(0);
-            opacity: 0;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
-            pointer-events: none;
-        }
-        .dropdown-menu.active { transform: scaleY(1); opacity: 1; pointer-events: auto; }
-        .dropdown-catcher { position: fixed; top:0; left:0; width:100%; height:100%; z-index: 22999; display: none; }
-        .dropdown-catcher.active { display: block; }
-
-        .dd-item { padding: 12px 15px; font-size: 16px; border-radius: 10px; cursor: pointer; margin-bottom: 2px; transition: background 0.2s; }
-        .dd-item:last-child { margin-bottom: 0; }
-        .dd-item:active { background: rgba(0,0,0,0.05); }
-        .dd-item.selected { color: var(--accent); font-weight: 700; background: rgba(0,122,255,0.1); }
-
-        .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
-        .lb-item:active { transform: scale(0.98); }
-        .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
-        .lb-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 12px; background: #ddd; }
-        .lb-info { flex: 1; }
-        .lb-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
-        .lb-val { font-size: 13px; color: #8e8e93; font-weight: 500; }
-        .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
-        .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
-
-        .lb-sticky-user { position: fixed; bottom: calc(30px + var(--safe-bottom)); left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
-        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
-        .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
-        .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
-        .lb-sticky-user .lb-name { color: white; }
-
-        .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
-        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
-        .settings-row:last-child { border-bottom: none; }
-        .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
-        .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
-        .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
-        .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
-        [data-theme="dark"] #themeToggle .switch-circle { transform: translateX(30px); }
-        #liteToggle.active .switch-circle { transform: translateX(30px); }
-
-        .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
-        
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
-        .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
-        
-        .modal { 
-            background: var(--bg-color); 
-            width: 90%; 
-            max-width: 320px; 
-            max-height: 85vh; 
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 20px; 
-            border-radius: 24px; 
-            text-align: center; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
-            border: 1px solid var(--glass-border); 
-            transition: transform 0.4s ease; 
-        }
-        .modal.rotate-180 { transform: rotate(180deg); }
-        
-        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 0; display: flex; width: 100%; margin-top: 15px; overflow: hidden; height: 46px; border: none; }
-        .segment-control.vertical { flex-direction: column; height: 100%; }
-        
-        .segment-glider { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 50%; height: 100%; 
-            background: var(--accent); 
-            border-radius: 30px; 
-            z-index: 1; 
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
-        }
-        .vertical .segment-glider { width: 100%; height: 33.33%; border-radius: 30px; }
-        
-        .segment-item { position: relative; flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.6; }
-        .segment-item.active { color: white; opacity: 1; }
-
-        .panel-hidden { display: none; opacity: 0; transform: translateX(20px); transition: opacity 0.3s, transform 0.3s; }
-        .panel-visible { display: block; opacity: 1; transform: translateX(0); animation: fadeInSlide 0.3s ease forwards; }
-        @keyframes fadeInSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-
-        .input-group { display: flex; gap: 8px; margin-top: 8px; width: 100%; box-sizing: border-box; }
-        .input-glass { flex: 1; background: var(--toggle-bg); border: none; padding: 12px; border-radius: 12px; font-size: 16px; color: var(--text-color); outline: none; text-align: center; font-weight: 600; min-width: 0; }
-        .btn-secondary { background: var(--toggle-bg); color: var(--text-color); font-weight: 600; padding: 12px; border-radius: 12px; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-        .btn-secondary:active { opacity: 0.7; }
-
-        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } 
-        .diff-btn { background: var(--toggle-bg); padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid transparent; color: var(--text-color); } 
-        .diff-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,122,255,0.1); } 
-        .btn-main { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 15px; cursor: pointer; transition: transform 0.1s; } 
-        .btn-main:active { transform: scale(0.98); }
-        
-        .saper-icon { width: 22px; height: 22px; stroke-width: 2; }
-        .saper-mine { width: 24px; height: 24px; fill: var(--danger); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .saper-flag { width: 20px; height: 20px; fill: #ff3b30; stroke: none; animation: popIn 0.2s ease; }
-        .crown-icon { width: 60px; height: 60px; margin-bottom: 10px; fill: #000; [data-theme="dark"] & { fill: #fff; } }
-        
-        .bottom-controls { 
-            position: fixed; 
-            bottom: calc(40px + var(--safe-bottom)); 
-            left: 50%; 
-            transform: translateX(-50%); 
-            display: flex; 
-            z-index: 10001; 
-            min-width: 220px;
-        } 
-
-        .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
-        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; } 
-        .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } } 
-        .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
-        
-        .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
-
-        .checkers-wrapper { width:100%; height:100%; display:flex; justify-content:center; align-items:center; padding-bottom: 25vh; }
-
-        .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
-        .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
-        .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
-        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } 
-        .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s, background-color 0.15s; } 
-        .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); } 
-        .bb-cell.no-transition { transition: none !important; }
-        
-        @keyframes popInGray {
-            0% { transform: scale(0); opacity: 0; }
-            60% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .bb-cell.appear-gray {
-            animation: popInGray 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        
-        .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shakeGame { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-2px, 0, 0); } 40%, 60% { transform: translate3d(2px, 0, 0); } }
-
-        .bb-cell.pre-clear { opacity: 1; transform: scale(0.95); transition: background-color 0.1s, transform 0.1s; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-        .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
-        .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
-        .bb-shape-preview { display: grid; gap: 2px; pointer-events: none; touch-action: none; transition: opacity 0.2s; } 
-        .bb-block { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
-        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
-        .drag-ghost .bb-block { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); } 
-        
-        .bb-c-1 { background: #ff3b30; color: #ff3b30; } .bb-c-2 { background: #ff9500; color: #ff9500; } .bb-c-3 { background: #ffcc00; color: #ffcc00; } .bb-c-4 { background: #34c759; color: #34c759; } .bb-c-5 { background: #007aff; color: #007aff; } .bb-c-6 { background: #5856d6; color: #5856d6; } .bb-c-7 { background: #af52de; color: #af52de; } .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
-        
-        .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
-        .all-clear-popup { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; z-index: 1002; pointer-events: none; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .ac-text { font-size: 42px; font-weight: 900; background: linear-gradient(135deg, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 10px 30px rgba(255, 165, 0, 0.5); letter-spacing: -1px; }
-        .ac-score { font-size: 24px; font-weight: 700; color: var(--text-color); margin-top: 10px; background: var(--glass-bg); padding: 5px 15px; border-radius: 12px; }
-        @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
-        
-        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
-
-        .sudo-board { 
-            display: grid; 
-            grid-template-columns: repeat(9, 1fr); 
-            width: 90vw; 
-            height: 90vw; 
-            max-width: 350px; 
-            max-height: 350px; 
-            background: var(--bg-color); 
-            border: 2px solid var(--sudoku-thick); 
-            margin: 10px auto; 
-            border-radius: 4px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
-            position: relative;
-        }
-        
-        .sudo-board::before {
-            content: ''; position: absolute; top: 0; left: 33.33%; width: 33.33%; height: 100%;
-            border-left: 2px solid var(--sudoku-thick); border-right: 2px solid var(--sudoku-thick);
-            pointer-events: none; z-index: 5;
-        }
-        .sudo-board::after {
-            content: ''; position: absolute; left: 0; top: 33.33%; width: 100%; height: 33.33%;
-            border-top: 2px solid var(--sudoku-thick); border-bottom: 2px solid var(--sudoku-thick);
-            pointer-events: none; z-index: 5;
-        }
-
-        .sudo-cell { 
-            border: 0.5px solid var(--sudoku-border); 
-            display: flex; justify-content: center; align-items: center; 
-            font-size: 20px; font-weight: 500; 
-            position: relative; cursor: pointer; 
-            transition: background 0.1s; 
-        }
-        
-        .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; color: var(--accent); }
-        .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; }
-        .sudo-cell.given { font-weight: 800; color: var(--text-color); }
-        .sudo-cell.user-val { color: var(--accent); font-weight: 600; }
-        
-        .numpad { display: flex; justify-content: space-between; gap: 4px; width: 90vw; max-width: 350px; margin: 40px auto 0; }
-        .num-btn { flex: 1; height: 48px; background: var(--glass-bg); border-radius: 10px; border: 1px solid var(--glass-border); font-size: 20px; font-weight: 600; color: var(--accent); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .num-btn.active-digit { background: var(--accent); color: white; border-color: transparent; transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,122,255,0.4); z-index: 10; }
-        .num-btn.disabled { opacity: 0.3; background: #ccc; color: #666; pointer-events: none; border-color: transparent; transform: scale(0.95); }
-
-        .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
-        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
-        
-        .loader { border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 4px solid var(--accent); width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .checkers-board.rotated { transform: rotate(180deg); }
-        .checkers-board.rotated .checker { transform: rotate(-180deg); }
-
-        /* --- MONOPOLY STYLES --- */
-        .mono-wrapper { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         .mono-board { 
             display: grid; 
-            grid-template-columns: repeat(11, 1fr); 
-            grid-template-rows: repeat(11, 1fr); 
+            grid-template-columns: 1.4fr repeat(9, 1fr) 1.4fr; 
+            grid-template-rows: 1.4fr repeat(9, 1fr) 1.4fr; 
             width: 95vw; height: 95vw; 
-            max-width: 600px; max-height: 600px; 
-            background: #d4eec9; /* Цвет сукна */
-            border: 2px solid #333; 
-            font-size: 8px;
-            position: relative;
-        }
-        
-        .mono-cell { border: 1px solid rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; background: #fff; padding: 1px; }
-        .mono-cell .color-bar { width: 100%; height: 20%; border-bottom: 1px solid #ccc; }
-        .mono-cell .name { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 600; line-height: 1; padding: 1px; word-break: break-word; }
-        .mono-cell .price { font-weight: 700; color: #555; margin-bottom: 2px; }
-        
-        /* Цвета групп (IT тематика) */
-        .group-0 { background: #8B4513; } /* Brown */
-        .group-1 { background: #87CEEB; } /* Light Blue */
-        .group-2 { background: #FF69B4; } /* Pink */
-        .group-3 { background: #FFA500; } /* Orange */
-        .group-4 { background: #FF0000; } /* Red */
-        .group-5 { background: #FFD700; } /* Yellow */
-        .group-6 { background: #008000; } /* Green */
-        .group-7 { background: #0000FF; } /* Blue */
-        
-        .corner { background: #f0f0f0; font-weight: bold; justify-content: center; font-size: 9px; }
-        .mono-center { 
-            grid-column: 2 / 11; 
-            grid-row: 2 / 11; 
-            background: rgba(255,255,255,0.8); 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 10px;
-            border: 1px solid #ccc;
+            max-width: 500px; max-height: 500px; 
+            background: #fdfdfd; border: 2px solid #222; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3); font-size: 7px; 
+            position: relative; margin-bottom: 20px; 
         }
 
-        .mono-token { 
-            width: 12px; height: 12px; 
-            border-radius: 50%; border: 2px solid #fff; 
-            position: absolute; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5); 
-            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-            z-index: 10;
-        }
+        .m-cell { border: 0.5px solid #ccc; position: relative; display: flex; justify-content: center; align-items: center; text-align: center; background: #fff; overflow: hidden; }
+        .m-cell .name { font-weight: 700; color: #000; z-index: 2; line-height: 1; padding: 2px; }
+        .m-cell .price { position: absolute; font-size: 6px; color: #555; z-index: 2; }
+        .m-corner { background: #eee; font-weight: 900; font-size: 9px; }
         
-        .dice-area { display: flex; gap: 10px; margin: 10px 0; }
-        .die { width: 40px; height: 40px; background: white; border-radius: 8px; border: 1px solid #ccc; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 900; box-shadow: 0 4px 0 #bbb; cursor: pointer; }
-        .die:active { transform: translateY(4px); box-shadow: none; }
-        
-        .lobby-list { width: 100%; background: var(--glass-bg); border-radius: 12px; padding: 10px; margin-bottom: 10px; max-height: 200px; overflow-y: auto; }
-        .lobby-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .lobby-item img { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; }
+        /* Color Lines Logic - "Inner Edge" */
+        .m-left { flex-direction: row; }
+        .m-left .color-stripe { width: 6px; height: 100%; order: 2; margin-left: auto; border-left: 1px solid rgba(0,0,0,0.1); }
+        .m-left .name { width: 100%; }
+        .m-left .price { bottom: 2px; left: 2px; }
 
+        .m-top { flex-direction: column; }
+        .m-top .color-stripe { width: 100%; height: 6px; order: 2; margin-top: auto; border-top: 1px solid rgba(0,0,0,0.1); }
+        .m-top .name { height: 100%; display: flex; align-items: center; }
+        .m-top .price { top: 2px; right: 2px; }
+
+        .m-right { flex-direction: row; }
+        .m-right .color-stripe { width: 6px; height: 100%; order: -1; margin-right: auto; border-right: 1px solid rgba(0,0,0,0.1); }
+        .m-right .name { width: 100%; }
+        .m-right .price { top: 2px; right: 2px; }
+
+        .m-bottom { flex-direction: column; }
+        .m-bottom .color-stripe { width: 100%; height: 6px; order: -1; margin-bottom: auto; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .m-bottom .name { height: 100%; display: flex; align-items: center; }
+        .m-bottom .price { bottom: 2px; right: 2px; }
+        
+        .m-center { grid-column: 2 / 11; grid-row: 2 / 11; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #ddd; }
+        .turn-indicator { font-size: 20px; font-weight: 800; text-align: center; color: #ccc; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* 3D DICE CSS */
+        .dice-stage { width: 120px; height: 60px; display: flex; justify-content: center; gap: 30px; perspective: 600px; margin-top: 10px; }
+        .cube { width: 40px; height: 40px; position: relative; transform-style: preserve-3d; transform: rotateX(-30deg) rotateY(-45deg); transition: transform 1s cubic-bezier(0.1, 1.5, 0.2, 1); }
+        .face { position: absolute; width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; color: #333; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); }
+        .face:nth-child(1) { transform: rotateY(0deg) translateZ(20px); }
+        .face:nth-child(2) { transform: rotateY(90deg) translateZ(20px); }
+        .face:nth-child(3) { transform: rotateY(180deg) translateZ(20px); }
+        .face:nth-child(4) { transform: rotateY(-90deg) translateZ(20px); }
+        .face:nth-child(5) { transform: rotateX(90deg) translateZ(20px); }
+        .face:nth-child(6) { transform: rotateX(-90deg) translateZ(20px); }
+        
+        .mono-controls { width: 100%; padding: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; background: var(--bg-color); border-top: 1px solid var(--glass-border); }
+        .player-cards-scroll { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 10px; margin-bottom: 10px; min-height: 60px; }
+        .prop-card-mini { min-width: 50px; height: 70px; border-radius: 6px; background: #fff; border: 1px solid #ccc; display: flex; flex-direction: column; align-items: center; font-size: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); animation: popIn 0.4s; }
+        .prop-head { width: 100%; height: 15px; border-radius: 6px 6px 0 0; }
+        
+        .mono-token { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; position: absolute; box-shadow: 0 3px 6px rgba(0,0,0,0.4); z-index: 20; transition: top 0.3s linear, left 0.3s linear; }
+
+        .buy-popup { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); padding: 20px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 200; text-align: center; width: 280px; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; opacity: 0; }
+        .buy-popup.active { transform: translate(-50%, -50%) scale(1); pointer-events: auto; opacity: 1; }
+        .card-preview { width: 120px; height: 160px; border: 2px solid #333; margin: 0 auto 15px; border-radius: 10px; background: white; overflow: hidden; display: flex; flex-direction: column; }
+        .cp-header { width: 100%; height: 35px; border-bottom: 2px solid #333; }
+        .cp-body { flex: 1; padding: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; font-weight: 600; }
+
+        /* GENERAL UI */
+        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; cursor: pointer; transition: transform 0.1s; } .card:active { transform: scale(0.97); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; }
+        .btn-main { background: var(--accent); color: white; border: none; padding: 14px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; }
+        .input-glass { width: 100%; background: var(--toggle-bg); border: none; padding: 12px; border-radius: 12px; font-size: 16px; margin-bottom: 10px; text-align: center; }
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 10000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--bg-color); width: 90%; max-width: 320px; padding: 20px; border-radius: 24px; text-align: center; max-height: 85vh; overflow-y: auto; }
+        .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
+        .game-top-bar { padding: 15px 20px; padding-top: calc(110px + var(--safe-top)); display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); } 
+        
+        /* CHECKERS CSS */
+        .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; margin: 0 auto; } 
+        .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
+        
+        /* OTHER GAMES CSS */
+        .segment-control { position: relative; background: var(--toggle-bg); border-radius: 30px; padding: 0; display: flex; width: 100%; margin-top: 15px; overflow: hidden; height: 46px; border: none; }
+        .segment-glider { position: absolute; top: 0; left: 0; width: 50%; height: 100%; background: var(--accent); border-radius: 30px; z-index: 1; transition: transform 0.4s; }
+        .segment-item { position: relative; flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text-color); cursor: pointer; z-index: 2; transition: color 0.2s; display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+        .segment-item.active { color: white; opacity: 1; }
+        .loader { border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 4px solid var(--accent); width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+        .panel-hidden { display: none; } .panel-visible { display: block; animation: fadeInSlide 0.3s ease forwards; } @keyframes fadeInSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+        /* Add BB, Saper, Sudoku styles briefly */
+        .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; margin: 0 auto; } 
+        .bb-cell { background: var(--bb-cell); border-radius: 6px; } .bb-cell.filled { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
+        .sudo-board { display: grid; grid-template-columns: repeat(9, 1fr); width: 90vw; height: 90vw; max-width: 350px; background: var(--bg-color); border: 2px solid var(--sudoku-thick); margin: 0 auto; }
+        .sudo-cell { border: 0.5px solid var(--sudoku-border); display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 500; }
+        .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; margin: 0 auto; }
+        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-weight: 700; }
+        .cell.revealed { background: rgba(220,220,220,0.5); }
     </style>
 </head>
 <body>
-    
-    <div id="view-leaderboard" class="screen">
-        <div class="header"><div class="app-title">Топы</div></div>
-        
-        <div class="card" onclick="openLeaderboardDetail('saper')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Сапёра</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-        
-        <div class="card" onclick="openLeaderboardDetail('checkers')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Шашек</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-        
-        <div class="card" onclick="openLeaderboardDetail('bb')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Block Blast</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-
-        <div class="card" onclick="openLeaderboardDetail('sudoku')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;">Топы Судоку</h3></div>
-            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
-        </div>
-    </div>
-
-    <div id="view-leaderboard-detail" class="screen" style="z-index: 200; background: var(--bg-color);">
-        <div class="header">
-            <div class="back-btn" onclick="closeLeaderboardDetail()" style="font-size: 17px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Назад</div>
-        </div>
-        
-        <div class="lb-title-lg" id="lbGameTitle">Title</div>
-        <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
-            <span id="lbCurrentCat">Category</span>
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-        <div class="dropdown-menu" id="dropdownMenu"></div>
-        <div class="dropdown-catcher" id="dropdownCatcher" onclick="toggleDropdown()"></div>
-        
-        <div class="lb-list" id="lbList"></div>
-    </div>
-    
-    <div class="lb-sticky-user" id="lbStickyUser">
-        <div class="lb-rank" id="stickyRank">#</div>
-        <img src="" class="lb-avatar" id="stickyAvatar">
-        <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
-        <div class="lb-val" id="stickyVal">0</div>
-    </div>
 
     <div id="view-games" class="screen active"> 
         <div class="header"> <div class="app-title">Игры</div> </div> 
@@ -485,8 +170,8 @@
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> 
             </div> 
             <div style="flex:1;"> 
-                <h3 style="margin:0; font-size:17px;">IT Монополия</h3> 
-                <div style="font-size:10px; color:#ff9500; font-weight:700; margin-top:2px;">НАХОДИТСЯ В РАЗРАБОТКЕ</div>
+                <h3 style="margin:0; font-size:17px;">Монополия</h3> 
+                <div style="font-size:10px; color:#ff9500; font-weight:700; margin-top:2px;">BETA • КЛАССИКА</div>
             </div> 
             <div style="color:var(--accent); font-weight:600;">Play</div> 
         </div>
@@ -496,42 +181,20 @@
         <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startSudokuCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Судоку</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
     </div>
-
+    
     <div id="view-profile" class="screen"> 
         <div class="header"><div class="app-title">Профиль</div></div> 
         <div style="display:flex; flex-direction:column; align-items:center;"> 
-            <img id="user-avatar" src="" alt="" class="avatar"> 
+            <img id="user-avatar" src="" alt="" class="avatar" style="width:100px;height:100px;border-radius:50%;margin-bottom:15px;"> 
             <h2 id="user-name" style="margin:0;">Loading...</h2> 
             <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
-            
-            <div class="settings-group">
-                <div class="settings-row">
-                    <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                        Тема
-                    </div>
-                    <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
-                        <div class="theme-icons"> 
-                            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
-                            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
-                        </div> 
-                        <div class="switch-circle"></div> 
-                    </div>
-                </div>
-                
-                <div class="settings-row">
-                    <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                        Упрощенная графика
-                    </div>
-                    <div class="theme-switch" id="liteToggle" onclick="toggleLiteMode()"> 
-                        <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
-                        <div class="switch-circle"></div> 
-                    </div>
+            <div class="settings-group" style="width:100%; background:var(--glass-bg); padding:15px; border-radius:15px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>Темная тема</span>
+                    <div class="theme-switch" id="themeToggle" onclick="toggleTheme()" style="width:50px;height:30px;background:var(--toggle-bg);border-radius:20px;position:relative;"><div style="width:26px;height:26px;background:white;border-radius:50%;position:absolute;top:2px;left:2px;"></div></div>
                 </div>
             </div>
-
-            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top: 10px;"> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> </div> 
@@ -542,182 +205,109 @@
             </div>
         </div> 
     </div>
-    
-    <div class="tab-bar"> 
-        <div class="tab-item" onclick="switchTab('leaderboard', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8v15H8z"/><path d="M2 13h6v8H2z"/><path d="M16 13h6v8H16z"/></svg>
-            Топы
-        </div>
-        <div class="tab-item active" onclick="switchTab('games', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
-            Игры
-        </div> 
-        <div class="tab-item" onclick="switchTab('profile', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Профиль
-        </div> 
+
+    <div class="tab-bar" style="position:fixed; bottom:0; width:100%; height:80px; background:var(--tab-bg); display:flex; justify-content:space-around; align-items:center; z-index:50; border-top:0.5px solid rgba(0,0,0,0.1);"> 
+        <div class="tab-item active" onclick="switchTab('games', this)" style="text-align:center; flex:1;">Games</div> 
+        <div class="tab-item" onclick="switchTab('profile', this)" style="text-align:center; flex:1;">Profile</div> 
     </div>
 
-    <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
-    
     <div id="saper-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
-            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> 
-            <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
-                <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> 
-                <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.00</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> 
-            </div> 
+            <div class="back-btn" onclick="closeGame('saper')">Меню</div> 
+            <div style="display:flex; gap:15px; font-weight:600;"> <span id="saperFlags">0</span> <span id="saperTimer">000.00</span> </div> 
         </div> 
-        <div class="game-area"><div class="grid" id="saperGrid"></div></div> 
-        <div class="bottom-controls">
-            <div class="segment-control" style="margin: 0; min-width: 220px;">
-                <div class="segment-glider" id="saperGlider"></div>
-                <div class="segment-item active" onclick="setSaperMode('dig', this, 0)">Копать</div>
-                <div class="segment-item" onclick="setSaperMode('flag', this, 1)">Флаг</div>
-            </div>
+        <div style="flex:1; display:flex; justify-content:center; align-items:center;"><div class="grid" id="saperGrid"></div></div> 
+        <div style="position:fixed; bottom:120px; left:50%; transform:translateX(-50%); width:200px;">
+            <div class="segment-control"><div class="segment-glider" id="saperGlider"></div><div class="segment-item active" onclick="setSaperMode('dig', this, 0)">Копать</div><div class="segment-item" onclick="setSaperMode('flag', this, 1)">Флаг</div></div>
         </div> 
     </div>
     
-    <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;" id="checkersStatus">Ход Белых</div> </div> <div class="game-area"> <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div> </div> </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> <div style="font-weight:700; font-size:18px;">Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
-    
-    <div id="sudoku-screen" class="game-overlay"> 
-        <div class="game-top-bar"> 
-            <div class="back-btn" onclick="closeGame('sudoku')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> 
-            <div class="lives-box">Ошибки: <span id="sudokuLives">0/3</span></div>
-        </div> 
-        <div class="game-area" style="justify-content: flex-start; padding-top: 20px;">
-            <div id="sudokuBoard" class="sudo-board"></div>
-            <div class="numpad" id="sudokuNumpad">
-                <div class="num-btn" id="nb1" onclick="activateDigit(1, this)">1</div>
-                <div class="num-btn" id="nb2" onclick="activateDigit(2, this)">2</div>
-                <div class="num-btn" id="nb3" onclick="activateDigit(3, this)">3</div>
-                <div class="num-btn" id="nb4" onclick="activateDigit(4, this)">4</div>
-                <div class="num-btn" id="nb5" onclick="activateDigit(5, this)">5</div>
-                <div class="num-btn" id="nb6" onclick="activateDigit(6, this)">6</div>
-                <div class="num-btn" id="nb7" onclick="activateDigit(7, this)">7</div>
-                <div class="num-btn" id="nb8" onclick="activateDigit(8, this)">8</div>
-                <div class="num-btn" id="nb9" onclick="activateDigit(9, this)">9</div>
-            </div>
-        </div> 
-    </div>
-
-    <div class="modal-overlay" id="modalMonopolyMenu">
-        <div class="modal">
-            <h2>IT Монополия</h2>
-            <p style="color:#8e8e93; font-size:14px;">Покупай стартапы, строй сервера, разори конкурентов.</p>
-            <button class="btn-main" onclick="createMonopolyGame()">Создать комнату</button>
-            <div class="input-group">
-                <input type="text" id="monoJoinCode" class="input-glass" placeholder="Код комнаты" maxlength="5">
-                <button class="btn-secondary" onclick="joinMonopolyGame()">Войти</button>
-            </div>
-            <button style="margin-top:10px; background:none; border:none; color:#8e8e93;" onclick="document.getElementById('modalMonopolyMenu').classList.remove('visible')">Отмена</button>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modalMonopolyLobby">
-        <div class="modal">
-            <h2>Комната <span id="monoLobbyCode" style="color:var(--accent); letter-spacing:2px;">---</span></h2>
-            <p style="color:#8e8e93; margin-top:0;">Ожидание игроков...</p>
-            <div class="lobby-list" id="monoLobbyList"></div>
-            <button class="btn-main" id="monoStartBtn" style="display:none;" onclick="startMonopolyGame()">Начать игру</button>
-            <button style="margin-top:10px; background:none; border:none; color:var(--danger);" onclick="leaveMonopolyLobby()">Выйти</button>
-        </div>
-    </div>
+    <div id="checkers-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('checkers')">Меню</div> <div id="checkersStatus">Ход Белых</div> </div> <div style="flex:1; display:flex; justify-content:center; align-items:center;"><div id="checkersBoard" class="checkers-board"></div></div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')">Меню</div> <div>Best: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container" style="display:flex; flex-direction:column; align-items:center;"> <div id="bbScore" style="font-size:40px; font-weight:800; color:var(--accent); margin-bottom:20px;">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer" style="display:flex; justify-content:space-around; width:100%; margin-top:20px;"> <div id="shape0"></div> <div id="shape1"></div> <div id="shape2"></div> </div> </div> </div>
+    <div id="sudoku-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('sudoku')">Меню</div> <div id="sudokuLives" style="color:var(--danger);">0/3</div> </div> <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;"> <div id="sudokuBoard" class="sudo-board"></div> <div class="numpad" style="display:flex; gap:5px; margin-top:20px;"> <div class="num-btn" id="nb1" onclick="activateDigit(1,this)" style="padding:10px; background:white; border-radius:5px;">1</div><div class="num-btn" id="nb2" onclick="activateDigit(2,this)" style="padding:10px; background:white; border-radius:5px;">2</div><div class="num-btn" id="nb3" onclick="activateDigit(3,this)" style="padding:10px; background:white; border-radius:5px;">3</div><div class="num-btn" id="nb4" onclick="activateDigit(4,this)" style="padding:10px; background:white; border-radius:5px;">4</div><div class="num-btn" id="nb5" onclick="activateDigit(5,this)" style="padding:10px; background:white; border-radius:5px;">5</div><div class="num-btn" id="nb6" onclick="activateDigit(6,this)" style="padding:10px; background:white; border-radius:5px;">6</div><div class="num-btn" id="nb7" onclick="activateDigit(7,this)" style="padding:10px; background:white; border-radius:5px;">7</div><div class="num-btn" id="nb8" onclick="activateDigit(8,this)" style="padding:10px; background:white; border-radius:5px;">8</div><div class="num-btn" id="nb9" onclick="activateDigit(9,this)" style="padding:10px; background:white; border-radius:5px;">9</div> </div> </div> </div>
 
     <div id="monopoly-screen" class="game-overlay">
-        <div class="game-top-bar">
+        <div class="game-top-bar" style="background: var(--bg-color); z-index:101;">
             <div class="back-btn" onclick="closeGame('monopoly')">Выйти</div>
-            <div style="font-weight:700;">Баланс: <span id="myMoney" style="color:var(--success);">1500</span> sc</div>
+            <div style="font-weight:700;">Баланс: <span id="myMoney" style="color:var(--success); transition: transform 0.2s;">200 000</span></div>
         </div>
-        <div class="mono-wrapper">
+        
+        <div class="mono-container">
             <div id="monoBoard" class="mono-board">
-                <div class="mono-center">
-                    <div style="font-size:12px; color:#8e8e93; margin-bottom:10px;" id="monoStatus">Ожидание хода...</div>
-                    <div class="dice-area">
-                        <div class="die" id="die1">?</div>
-                        <div class="die" id="die2">?</div>
+                <div class="m-center">
+                    <div id="turnText" class="turn-indicator">ВАШ ХОД</div>
+                    <div class="dice-stage">
+                        <div class="cube" id="cube1"><div class="face">1</div><div class="face">2</div><div class="face">3</div><div class="face">4</div><div class="face">5</div><div class="face">6</div></div>
+                        <div class="cube" id="cube2"><div class="face">1</div><div class="face">2</div><div class="face">3</div><div class="face">4</div><div class="face">5</div><div class="face">6</div></div>
                     </div>
-                    <button class="btn-main" id="btnRoll" onclick="rollDice()" disabled>Бросить кубики</button>
                 </div>
             </div>
-        </div>
-        </div>
-
-    <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
-    
-    <div class="modal-overlay" id="modalCheckers">
-        <div class="modal">
-            <h2>Шашки</h2>
             
-            <div class="segment-control" style="margin-bottom: 15px;">
-                <div class="segment-glider" id="checkersMainGlider"></div>
-                <div class="segment-item active" onclick="setCheckersMainMode('offline', this, 0)">Offline</div>
-                <div class="segment-item" onclick="setCheckersMainMode('online', this, 1)">Online</div>
-            </div>
-
-            <div id="ch-offline-panel" class="panel-visible">
-                <p style="color:#8e8e93; margin-bottom:15px; margin-top:0;">Выберите режим игры</p>
-                <div class="segment-control">
-                    <div class="segment-glider" id="checkersGlider"></div>
-                    <div class="segment-item active" onclick="setCheckersMode(false, this, 0)">2 Игрока</div>
-                    <div class="segment-item" onclick="setCheckersMode(true, this, 1)">С Роботом</div>
+            <div id="buyPopup" class="buy-popup">
+                <div class="card-preview" id="buyCardPrev">
+                    <div class="cp-header" id="buyCardColor"></div>
+                    <div class="cp-body" id="buyCardName">Название</div>
                 </div>
-                <button class="btn-main" onclick="launchCheckers()">Играть</button>
+                <div style="font-size:18px; font-weight:700; margin-bottom:15px;" id="buyCardPrice">20 000</div>
+                <button class="btn-main" onclick="buyPropertyAction()">Купить</button>
+                <button style="margin-top:10px; background:none; border:none; color:var(--danger);" onclick="closeBuyPopup()">Аукцион</button>
             </div>
+        </div>
 
-            <div id="ch-online-panel" class="panel-hidden">
-                <button class="btn-main" style="margin-top:0; margin-bottom:8px; background:linear-gradient(135deg, #007aff, #00c6ff); padding: 12px;" onclick="joinGame()">Найти соперника</button>
-                <div class="input-group">
-                    <input type="text" id="joinCodeInput" class="input-glass" placeholder="Код..." maxlength="5">
-                    <button class="btn-secondary" onclick="joinGameByCode()">Войти</button>
-                </div>
-                <button class="btn-secondary" style="width:100%; margin-top:8px; color:#8e8e93; padding: 10px;" onclick="createGame()">Создать комнату</button>
-            </div>
+        <div class="mono-controls">
+            <div style="font-size:12px; color:#8e8e93; margin-bottom:5px;">Ваши предприятия:</div>
+            <div class="player-cards-scroll" id="myPropsList"><div style="color:#ccc; font-size:12px; padding:10px;">Пусто</div></div>
+            <button class="btn-main" id="btnRoll" onclick="rollDice()">Бросить кубики</button>
+        </div>
+    </div>
 
-            <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button>
+    <div class="modal-overlay" id="modalSaper"><div class="modal"><h2>Сапёр</h2><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93;" onclick="document.getElementById('modalSaper').classList.remove('visible')">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalCheckers"><div class="modal"><h2>Шашки</h2>
+        <div class="segment-control"><div class="segment-glider" id="checkersMainGlider"></div><div class="segment-item active" onclick="setCheckersMainMode('offline', this, 0)">Offline</div><div class="segment-item" onclick="setCheckersMainMode('online', this, 1)">Online</div></div>
+        <div id="ch-offline-panel" class="panel-visible"><p style="color:#8e8e93;">Режим</p><div class="segment-control"><div class="segment-glider" id="checkersGlider"></div><div class="segment-item active" onclick="setCheckersMode(false, this, 0)">2 Игрока</div><div class="segment-item" onclick="setCheckersMode(true, this, 1)">Робот</div></div><button class="btn-main" onclick="launchCheckers()">Играть</button></div>
+        <div id="ch-online-panel" class="panel-hidden"><button class="btn-main" onclick="joinGame()">Поиск (Скоро)</button><div style="display:flex; gap:5px; margin-top:10px;"><input type="text" id="joinCodeInput" class="input-glass" placeholder="Код"><button class="btn-main" style="width:auto;" onclick="joinGameByCode()">OK</button></div><button class="btn-main" style="background:var(--toggle-bg); color:black; margin-top:10px;" onclick="createGame()">Создать</button></div>
+        <button style="margin-top:10px; background:none; border:none; color:#8e8e93;" onclick="document.getElementById('modalCheckers').classList.remove('visible')">Отмена</button>
+    </div></div>
+    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2>Код: <span id="displayRoomCode" style="letter-spacing:2px; color:var(--accent);"></span></h2><p>Ожидание...</p><button style="color:var(--danger); background:none; border:none;" onclick="cancelOnlineWait()">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая</button></div></div>
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle"></h2><p id="resText"></p><button class="btn-main" id="resBtn" onclick="closeResult()">OK</button></div></div>
+    <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
+    <div class="modal-overlay" id="modalLoading"><div class="loader"></div></div>
+    <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2>Судоку</h2><div class="segment-control"><div class="segment-glider" id="sudokuGlider"></div><div class="segment-item" onclick="selectSudokuDiff(30,this,0)">Easy</div><div class="segment-item active" onclick="selectSudokuDiff(40,this,1)">Med</div><div class="segment-item" onclick="selectSudokuDiff(50,this,2)">Hard</div></div><button class="btn-main" onclick="startSudoku()">Играть</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93;" onclick="document.getElementById('modalSudoku').classList.remove('visible')">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая</button></div></div>
+    
+    <div class="modal-overlay" id="modalMonopolyMenu">
+        <div class="modal">
+            <h2>Монополия</h2>
+            <p style="color:#8e8e93;">Классическая версия</p>
+            <button class="btn-main" onclick="createMonopolyGame()">Создать комнату</button>
+            <input type="text" id="monoJoinCode" class="input-glass" placeholder="Код комнаты" style="margin-top:10px;">
+            <button class="btn-main" style="background:var(--toggle-bg); color:var(--text-color);" onclick="joinMonopolyGame()">Войти</button>
+            <button style="margin-top:15px; border:none; background:none; color:#8e8e93;" onclick="document.getElementById('modalMonopolyMenu').classList.remove('visible')">Отмена</button>
         </div>
     </div>
     
-    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2>Ожидание...</h2><p style="color:#8e8e93;">Код комнаты:</p><div style="font-size:32px; font-weight:800; letter-spacing:5px; margin:10px 0; color:var(--accent);" id="displayRoomCode">-----</div><p style="font-size:14px; color:#8e8e93;">Передай этот код другу</p><button style="margin-top:10px; background:none; border:none; color:#ff3b30; font-size:16px;" onclick="cancelOnlineWait()">Отмена</button></div></div>
-    
-    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2>Block Blast</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')">Отмена</button></div></div>
-    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
-    <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
-    
-    <div class="modal-overlay" id="modalLoading"><div class="modal" style="display:flex; flex-direction:column; align-items:center;"><div class="loader"></div><h3>Создание комнаты...</h3></div></div>
-
-    <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93; margin-bottom:20px;">Выберите сложность</p>
-        <div class="segment-control vertical" style="height: 180px;">
-            <div class="segment-glider" id="sudokuGlider" style="transform: translateY(100%);"></div>
-            <div class="segment-item" onclick="selectSudokuDiff(30, this, 0)">Легко (+1)</div>
-            <div class="segment-item active" onclick="selectSudokuDiff(40, this, 1)">Средне (+2)</div>
-            <div class="segment-item" onclick="selectSudokuDiff(50, this, 2)">Сложно (+3)</div>
+    <div class="modal-overlay" id="modalMonopolyLobby">
+        <div class="modal">
+            <h2>Комната <span id="monoLobbyCode" style="color:var(--accent);">---</span></h2>
+            <div id="monoLobbyList" style="text-align:left; margin:15px 0;"></div>
+            <button class="btn-main" id="monoStartBtn" style="display:none;" onclick="startMonopolyGame()">Начать игру</button>
+            <button style="margin-top:10px; border:none; background:none; color:var(--danger);" onclick="location.reload()">Выйти</button>
         </div>
-        <button class="btn-main" onclick="startSudoku()">Играть</button>
-        <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudoku').classList.remove('visible')">Отмена</button>
-    </div></div>
-    
-    <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')">Отмена</button></div></div>
-        <script>
+    </div>
+    <script>
         const tg = window.Telegram.WebApp; 
         tg.expand();
-        
-        if (tg.isVerticalSwipesEnabled !== undefined) {
-            tg.isVerticalSwipesEnabled = false;
-        }
+        // Отключаем свайпы и зум
+        if (tg.isVerticalSwipesEnabled !== undefined) tg.isVerticalSwipesEnabled = false;
+        if (tg.requestFullscreen) tg.requestFullscreen();
         tg.enableClosingConfirmation();
-
-        if (tg.requestFullscreen) {
-            tg.requestFullscreen();
-        }
 
         let isDark = tg.colorScheme === 'dark';
         let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
         
-        const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
-        
         // --- SOCKET.IO INIT ---
+        const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
         const socket = io(API_BASE_URL);
         
         let onlineRoomCode = null;
@@ -730,6 +320,61 @@
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
         const COLOR_MAP = { 'bb-c-1':'#ff3b30', 'bb-c-2':'#ff9500', 'bb-c-3':'#ffcc00', 'bb-c-4':'#34c759', 'bb-c-5':'#007aff', 'bb-c-6':'#5856d6', 'bb-c-7':'#af52de' };
 
+        // --- КАРТА МОНОПОЛИИ (СССР / Питер) ---
+        // Индексы: 0 (Низ-Лево) -> По часовой -> 1-9 (Лево) -> 10 (Верх-Лево) ...
+        const LOCAL_MONOPOLY_MAP = [
+            { id: 0, type: 'start', name: 'СТАРТ' },
+            // ЛЕВАЯ СТОРОНА (Снизу Вверх)
+            { id: 1, type: 'prop', name: 'Ф-ка ПОБЕДА', price: 5000, group: 'yellow' },
+            { id: 2, type: 'prop', name: 'Ф-ка ВОЛОДАР', price: 6000, group: 'yellow' },
+            { id: 3, type: 'prop', name: 'Ф-ка БОЛЬШЕВ', price: 7000, group: 'yellow' },
+            { id: 4, type: 'prop', name: 'СКК ЮБИЛЕЙ', price: 9000, group: 'orange' },
+            { id: 5, type: 'util', name: 'Транспорт', price: 15000 },
+            { id: 6, type: 'prop', name: 'СКК ЛЕНИНА', price: 10000, group: 'orange' },
+            { id: 7, type: 'prop', name: 'Стад. КИРОВА', price: 11000, group: 'orange' },
+            { id: 8, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 9, type: 'prop', name: 'ТРОЛЛЕЙБУС', price: 13000, group: 'peach' },
+            // ВЕРХНИЙ ЛЕВЫЙ УГОЛ
+            { id: 10, type: 'jail', name: 'ТЮРЬМА' },
+            // ВЕРХНЯЯ СТОРОНА (Слева Направо)
+            { id: 11, type: 'prop', name: 'МЕТРО', price: 14000, group: 'peach' },
+            { id: 12, type: 'prop', name: 'БМП', price: 15000, group: 'peach' },
+            { id: 13, type: 'prop', name: 'К-тр КОЛИЗЕЙ', price: 17000, group: 'red' },
+            { id: 14, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 15, type: 'prop', name: 'К-тр ЛЕНИНГР', price: 18000, group: 'red' },
+            { id: 16, type: 'prop', name: 'Театр КИРОВА', price: 19000, group: 'red' },
+            { id: 17, type: 'prop', name: 'Р-н УНИВЕРС', price: 21000, group: 'pale-green' },
+            { id: 18, type: 'prop', name: 'Р-н СЕВЕР', price: 22000, group: 'pale-green' },
+            { id: 19, type: 'prop', name: 'Р-н МЕТРОП', price: 23000, group: 'pale-green' },
+            // ВЕРХНИЙ ПРАВЫЙ УГОЛ
+            { id: 20, type: 'parking', name: 'СТОЯНКА' },
+            // ПРАВАЯ СТОРОНА (Сверху Вниз)
+            { id: 21, type: 'prop', name: 'Гос ЛЕНИНГР', price: 25000, group: 'dark-green' },
+            { id: 22, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 23, type: 'prop', name: 'Гос АСТОРИЯ', price: 26000, group: 'dark-green' },
+            { id: 24, type: 'prop', name: 'Гос ПРИБАЛТ', price: 27000, group: 'dark-green' },
+            { id: 25, type: 'util', name: 'Электро', price: 15000 },
+            { id: 26, type: 'prop', name: 'Ун-г ЮБИЛЕЙ', price: 29000, group: 'blue' },
+            { id: 27, type: 'prop', name: 'Т-Ф ДЛТ', price: 30000, group: 'blue' },
+            { id: 28, type: 'prop', name: 'ГОСТ. ДВОР', price: 31000, group: 'blue' },
+            { id: 29, type: 'chance', name: 'ШАНС', price: 0 },
+            // НИЖНИЙ ПРАВЫЙ УГОЛ
+            { id: 30, type: 'gotojail', name: 'АРЕСТ' },
+            // НИЖНЯЯ СТОРОНА (Справа Налево)
+            { id: 31, type: 'prop', name: 'Об. КИРОВСК', price: 33000, group: 'violet' },
+            { id: 32, type: 'tax', name: 'НАЛОГ', price: 10000 },
+            { id: 33, type: 'prop', name: 'Об. ЛОМО', price: 34000, group: 'violet' },
+            { id: 34, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 35, type: 'prop', name: 'ЭЛЕКТРОСИЛ', price: 35000, group: 'violet' },
+            { id: 36, type: 'chance', name: '?', price: 0 },
+            { id: 37, type: 'tax', name: 'Налог', price: 20000 },
+            { id: 38, type: 'chance', name: '?', price: 0 },
+            { id: 39, type: 'chance', name: '?', price: 0 }
+        ];
+        
+        // ! Исправляем массив, чтобы ровно 40 полей легло в сетку 11x11
+        // (Остальные поля пустые/заглушки, если массив < 40, но у нас 40).
+
         function initApp() {
             applyTheme();
             applyLiteMode();
@@ -738,7 +383,7 @@
             
             // --- SOCKET LISTENERS ---
 
-            // 1. Шашки (Старое)
+            // 1. ШАШКИ
             socket.on('game_created', (data) => {
                 document.getElementById('modalLoading').classList.remove('visible');
                 onlineRoomCode = data.roomCode;
@@ -748,10 +393,11 @@
             });
             
             socket.on('start_game', (data) => {
+                // ВАЖНО: Ставим флаг онлайн игры, чтобы отключить бота
+                isOnlineGame = true; 
                 document.getElementById('modalWaitOpponent').classList.remove('visible');
                 document.getElementById('modalCheckers').classList.remove('visible');
                 if (data.color) onlineMyColor = data.color;
-                isOnlineGame = true;
                 document.getElementById('checkers-screen').classList.add('visible');
                 initCheckers(); 
                 const boardEl = document.getElementById('checkersBoard');
@@ -764,92 +410,65 @@
             socket.on('opponent_move', (move) => { executeMove(move, false); });
             socket.on('opponent_disconnected', () => { showResult("Победа!", "Соперник отключился", "В меню", () => { closeResult(); closeGame('checkers'); }); });
             
-            // 2. Монополия (Новое)
+            // 2. МОНОПОЛИЯ
             socket.on('monopoly_created', (data) => {
                 document.getElementById('modalLoading').classList.remove('visible');
                 document.getElementById('modalMonopolyMenu').classList.remove('visible');
-                enterMonopolyLobby(data.roomCode, true);
+                enterLobby(data.roomCode, true);
             });
 
-            socket.on('monopoly_player_update', (data) => {
-                updateLobbyUI(data.players);
-            });
+            socket.on('monopoly_player_update', (data) => { updateLobby(data.players); });
 
             socket.on('monopoly_game_started', (data) => {
                 document.getElementById('modalMonopolyLobby').classList.remove('visible');
                 document.getElementById('monopoly-screen').classList.add('visible');
-                initMonopolyBoard(data.map, data.players);
+                initMonoBoard(data.players);
             });
             
             socket.on('monopoly_roll_result', (data) => {
-                animateDice(data.d1, data.d2);
-                movePlayerToken(data.playerIndex, data.newPos);
-                if(data.playerIndex === myPlayerIndex) {
-                    // Анимация изменения баланса
-                    const moneyEl = document.getElementById('myMoney');
-                    moneyEl.innerText = data.playerMoney;
-                    moneyEl.style.transform = "scale(1.2)";
-                    setTimeout(() => moneyEl.style.transform = "scale(1)", 200);
-                }
+                animateDice3D(data.d1, data.d2);
+                setTimeout(() => {
+                    moveTokenSmoothly(data.playerIndex, data.oldPos, data.newPos);
+                    if(data.playerIndex === myPlayerIndex) {
+                        const moneyEl = document.getElementById('myMoney');
+                        moneyEl.innerText = data.playerMoney.toLocaleString();
+                        moneyEl.style.transform = "scale(1.2)";
+                        setTimeout(() => moneyEl.style.transform = "scale(1)", 200);
+                    }
+                }, 1500);
             });
 
             socket.on('monopoly_turn', (data) => {
-                const isMe = data.playerIndex === myPlayerIndex;
                 const btn = document.getElementById('btnRoll');
-                const status = document.getElementById('monoStatus');
-                
-                if (isMe) {
-                    btn.disabled = false;
-                    btn.style.opacity = 1;
-                    status.innerText = "Ваш ход!";
-                    status.style.fontWeight = "800";
-                    status.style.color = "var(--accent)";
+                const txt = document.getElementById('turnText');
+                if(data.playerIndex === myPlayerIndex) {
+                    btn.disabled = false; btn.style.opacity = 1; btn.innerText = "Бросить кубики";
+                    txt.innerText = "ВАШ ХОД"; txt.style.color = "var(--accent)";
                     tg.HapticFeedback.notificationOccurred('success');
                 } else {
-                    btn.disabled = true;
-                    btn.style.opacity = 0.5;
-                    // Ищем имя игрока
-                    const pName = monoPlayers[data.playerIndex] ? monoPlayers[data.playerIndex].name : `Игрок ${data.playerIndex+1}`;
-                    status.innerText = `Ходит ${pName}`;
-                    status.style.fontWeight = "400";
-                    status.style.color = "#8e8e93";
+                    btn.disabled = true; btn.style.opacity = 0.5; btn.innerText = "Ожидание...";
+                    const name = monoPlayers[data.playerIndex] ? monoPlayers[data.playerIndex].name : "Игрок";
+                    txt.innerText = "ХОДИТ " + name; txt.style.color = "#ccc";
                 }
             });
 
-            // Общие ошибки
             socket.on('error_message', (msg) => { alert(msg); document.getElementById('modalLoading').classList.remove('visible'); });
         }
 
+        // --- COMMON UI FUNCTIONS ---
         function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
         function toggleTheme() { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); }
+        function applyLiteMode() { const el = document.getElementById('liteToggle'); if(isLiteMode) el.classList.add('active'); else el.classList.remove('active'); }
+        function toggleLiteMode() { isLiteMode = !isLiteMode; localStorage.setItem('lite_mode', isLiteMode); applyLiteMode(); tg.HapticFeedback.selectionChanged(); }
+        function switchTab(t, el) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); if(t==='games') document.getElementById('view-games').classList.add('active'); else if(t==='leaderboard') document.getElementById('view-leaderboard').classList.add('active'); else { document.getElementById('view-profile').classList.add('active'); loadProfile(); } if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
         
-        function applyLiteMode() { 
-            const el = document.getElementById('liteToggle');
-            if(isLiteMode) el.classList.add('active'); else el.classList.remove('active');
-        }
-        function toggleLiteMode() {
-            isLiteMode = !isLiteMode;
-            localStorage.setItem('lite_mode', isLiteMode);
-            applyLiteMode();
-            tg.HapticFeedback.selectionChanged();
-        }
-
-        function switchTab(t, el) { 
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
-            document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active')); 
-            if(t==='games') document.getElementById('view-games').classList.add('active'); 
-            else if(t==='leaderboard') document.getElementById('view-leaderboard').classList.add('active'); 
-            else { document.getElementById('view-profile').classList.add('active'); loadProfile(); } 
-            if(el) el.classList.add('active'); tg.HapticFeedback.selectionChanged(); 
-        }
-
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
             tg.HapticFeedback.impactOccurred('light'); 
         }
         function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(sTimerInt); if(game==='bb') saveBBState(); if(game==='sudoku') saveSudokuState(); }
-        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
+        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
         function loadProfile() { 
             const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
@@ -857,7 +476,7 @@
             document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; 
             const ava = document.getElementById('user-avatar'); 
             if(user.photo_url) ava.src = user.photo_url; 
-            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
+            else ava.src = `https://ui-avatars.com/api/?name=${user.first_name}&background=007aff&color=fff`; 
             
             document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
             document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best_8') || '--'; 
@@ -878,136 +497,232 @@
         }
         function syncLocalStatsToServer() {
             const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
-            const bbGames = parseInt(localStorage.getItem('bb_total_games') || 0); if(bbGames > 0) sendStatToBackend('bb_total_games', bbGames);
-            const sapWins = parseInt(localStorage.getItem('saper_wins') || 0); if(sapWins > 0) sendStatToBackend('saper_wins', sapWins);
-            const chTotal = parseInt(localStorage.getItem('checkers_total') || 0); if(chTotal > 0) sendStatToBackend('checkers_total', chTotal);
-            const chWins = parseInt(localStorage.getItem('checkers_wins_pve') || 0); if(chWins > 0) sendStatToBackend('checkers_wins_pve', chWins);
         }
 
-        // --- LEADERBOARD LOGIC ---
-        let currentLbGame = 'saper';
-        let currentLbCat = { id: 'saper_wins', name: 'Количество побед' };
-        const SAPER_CATS = [{ id: 'saper_wins', name: 'Количество побед' },{ id: 'saper_best_6', name: 'Лучшее время 6x6', isTime: true },{ id: 'saper_best_8', name: 'Лучшее время 8x8', isTime: true },{ id: 'saper_best_10', name: 'Лучшее время 10x10', isTime: true },{ id: 'saper_best_15', name: 'Лучшее время 15x15', isTime: true }];
-        const CHECKERS_CATS = [{ id: 'checkers_total', name: 'Всего игр' },{ id: 'checkers_wins_pve', name: 'Побед над роботом' }];
-        const BB_CATS = [{ id: 'bb_best_score', name: 'Рекорд очков' },{ id: 'bb_total_games', name: 'Всего игр' }];
-        const SUDOKU_CATS = [{ id: 'sudoku_wins', name: 'Количество побед' }];
+        // --- MONOPOLY LOGIC ---
+        let monoPlayers = [];
+        let myPlayerIndex = -1;
+        let currentBuyCell = null;
 
-        function openLeaderboardDetail(game) {
-            currentLbGame = game;
-            if(game === 'saper') { document.getElementById('lbGameTitle').innerText = 'Топы Сапёра'; loadLeaderboardData(SAPER_CATS[0]); } 
-            else if (game === 'checkers') { document.getElementById('lbGameTitle').innerText = 'Топы Шашек'; loadLeaderboardData(CHECKERS_CATS[0]); } 
-            else if (game === 'bb') { document.getElementById('lbGameTitle').innerText = 'Топы Block Blast'; loadLeaderboardData(BB_CATS[0]); } 
-            else if (game === 'sudoku') { document.getElementById('lbGameTitle').innerText = 'Топы Судоку'; loadLeaderboardData(SUDOKU_CATS[0]); }
-            document.getElementById('view-leaderboard-detail').classList.add('active');
+        function openMonopolyMenu() { document.getElementById('modalMonopolyMenu').classList.add('visible'); }
+        function createMonopolyGame() {
+            document.getElementById('modalLoading').classList.add('visible');
+            const user = tg.initDataUnsafe.user || { first_name: "Player" };
+            socket.emit('create_game', { username: user.first_name, photo_url: user.photo_url, gameType: 'monopoly' });
         }
-        function closeLeaderboardDetail() { document.getElementById('view-leaderboard-detail').classList.remove('active'); document.getElementById('lbStickyUser').classList.remove('visible'); const menu = document.getElementById('dropdownMenu'); menu.classList.remove('active'); document.getElementById('dropdownCatcher').classList.remove('active'); }
-        function toggleDropdown() {
-            const menu = document.getElementById('dropdownMenu'); const catcher = document.getElementById('dropdownCatcher'); const selector = document.getElementById('lbSelector');
-            const rect = selector.getBoundingClientRect(); menu.style.top = (rect.bottom + 5) + 'px';
-            if(!menu.classList.contains('active')) {
-                menu.innerHTML = ''; let cats = [];
-                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS;
-                cats.forEach(cat => { const el = document.createElement('div'); el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`; el.innerText = cat.name; el.onclick = () => { loadLeaderboardData(cat); toggleDropdown(); }; menu.appendChild(el); });
-                menu.classList.add('active'); catcher.classList.add('active'); tg.HapticFeedback.selectionChanged();
-            } else { menu.classList.remove('active'); catcher.classList.remove('active'); }
+        function joinMonopolyGame() {
+            const code = document.getElementById('monoJoinCode').value;
+            if(code.length < 5) return tg.HapticFeedback.notificationOccurred('error');
+            const user = tg.initDataUnsafe.user || { first_name: "Player" };
+            socket.emit('join_game', { roomCode: code, userData: { username: user.first_name, photo_url: user.photo_url } });
+            document.getElementById('modalMonopolyMenu').classList.remove('visible');
+            enterLobby(code, false);
         }
-        let lbObserver = null;
-        async function loadLeaderboardData(category) {
-            currentLbCat = category; document.getElementById('lbCurrentCat').innerText = category.name; const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">Загрузка...</div>'; stickyEl.classList.remove('visible');
-            try {
-                const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
-                const response = await fetch(url); const data = await response.json();
-                const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
-                const userValRaw = localStorage.getItem(category.id); let userVal = parseInt(userValRaw); let hasStats = true;
-                if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal === 999999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
-                const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, isMe: item.user_id.toString() === user.id.toString() }));
-                let myRankRow = displayList.find(u => u.isMe);
-                if (hasStats && !myRankRow) { displayList.push({ user_id: user.id.toString(), username: (user.first_name + ' ' + (user.last_name || '')).trim(), photo_url: user.photo_url, score: userVal, isMe: true }); if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } 
-                else if (hasStats && myRankRow) { if ((category.isTime && userVal < myRankRow.score) || (!category.isTime && userVal > myRankRow.score)) { myRankRow.score = userVal; if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } }
-                listEl.innerHTML = ''; const finalDisplayList = displayList.slice(0, 100); const meInList = finalDisplayList.find(u => u.isMe); const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
-                document.getElementById('stickyName').innerText = (user.first_name + ' ' + (user.last_name || '')).trim() + " (Вы)";
-                if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url; else document.getElementById('stickyAvatar').style.background = '#ddd';
-                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? (userVal === 999999 ? '--' : userVal + 'с') : userVal; } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = "Нет данных"; }
-                if(hasStats && myRank > 0) { lbObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) stickyEl.classList.remove('visible'); else if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }); }, { threshold: 0.1 }); } else { if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }
-                finalDisplayList.forEach((u, index) => {
-                    const rank = index + 1; let medal = ''; if(rank === 1) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-gold); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`; if(rank === 2) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-silver); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`; if(rank === 3) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-bronze); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
-                    let displayVal = u.score; if(category.isTime) displayVal = (u.score === 999999) ? '--' : u.score + 'с';
-                    const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
-                    let avatarHtml = u.photo_url && u.photo_url.startsWith('http') ? `<img src="${u.photo_url}" class="lb-avatar">` : `<div class="lb-avatar" style="background:#ddd"></div>`;
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? '(Вы)' : ''}</div></div><div class="lb-val">${displayVal}</div>`;
-                    listEl.appendChild(item);
-                });
-            } catch (error) { listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">Ошибка сети.</div>`; }
+        function enterLobby(code, isCreator) {
+            onlineRoomCode = code;
+            document.getElementById('modalMonopolyLobby').classList.add('visible');
+            document.getElementById('monoLobbyCode').innerText = code;
+            document.getElementById('monoStartBtn').style.display = isCreator ? 'block' : 'none';
+        }
+        function updateLobby(players) {
+            const list = document.getElementById('monoLobbyList');
+            list.innerHTML = '';
+            const user = tg.initDataUnsafe.user || { first_name: "Player" };
+            players.forEach((p, i) => {
+                if(p.name === user.first_name) myPlayerIndex = i;
+                const row = document.createElement('div');
+                row.style.cssText = "display:flex; align-items:center; margin-bottom:10px; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:5px;";
+                const ava = p.avatar || `https://ui-avatars.com/api/?name=${p.name}&background=random`;
+                row.innerHTML = `<img src="${ava}" style="width:30px;height:30px;border-radius:50%;margin-right:10px;"><b>${p.name}</b>`;
+                list.appendChild(row);
+            });
+            monoPlayers = players;
+        }
+        function startMonopolyGame() { socket.emit('monopoly_start', { roomCode: onlineRoomCode }); }
+
+        function initMonoBoard(players) {
+            monoPlayers = players;
+            const board = document.getElementById('monoBoard');
+            const center = board.querySelector('.m-center');
+            board.innerHTML = ''; board.appendChild(center);
+
+            LOCAL_MONOPOLY_MAP.forEach(cell => {
+                const el = document.createElement('div');
+                el.className = 'm-cell';
+                el.id = `cell-${cell.id}`;
+                
+                const pos = getGridPos(cell.id);
+                el.style.gridRow = pos.r;
+                el.style.gridColumn = pos.c;
+
+                if (cell.id > 0 && cell.id < 10) el.classList.add('m-left');
+                else if (cell.id > 10 && cell.id < 20) el.classList.add('m-top');
+                else if (cell.id > 20 && cell.id < 30) el.classList.add('m-right');
+                else if (cell.id > 30) el.classList.add('m-bottom');
+                else el.classList.add('m-corner');
+
+                if(cell.type === 'prop' || cell.type === 'util') {
+                    if(cell.group) {
+                         const colorLine = document.createElement('div');
+                         colorLine.className = 'color-stripe';
+                         colorLine.style.backgroundColor = `var(--mono-line-${cell.group})`;
+                         el.appendChild(colorLine);
+                    }
+                    el.innerHTML += `<div class="name">${cell.name}</div><div class="price">${cell.price/1000}k</div>`;
+                } else if (cell.type === 'station') {
+                     el.innerHTML += `<div class="name">${cell.name}</div><div class="price">200k</div>`;
+                } else {
+                    el.innerHTML += `<div class="name">${cell.name}</div>`;
+                }
+                board.appendChild(el);
+            });
+
+            // Фишки
+            players.forEach((p, i) => {
+                const t = document.createElement('div');
+                t.className = 'mono-token';
+                const colors = ['#ff3b30', '#007aff', '#34c759', '#ffcc00'];
+                t.style.backgroundColor = colors[i%4];
+                t.id = `token-${i}`;
+                board.appendChild(t);
+                updateTokenPos(i, 0);
+            });
         }
 
-        /* --- SAPER WITH MS TIMER --- */
+        // --- ГЛАВНАЯ ЛОГИКА СЕТКИ (11x11, Старт СЛЕВА СНИЗУ) ---
+        function getGridPos(id) {
+            // 0 = Start (Row 11, Col 1)
+            if(id === 0) return { r: 11, c: 1 };
+            // 1-9 = Левая сторона (вверх) -> Row 10..2, Col 1
+            if(id > 0 && id < 10) return { r: 11 - id, c: 1 };
+            // 10 = Тюрьма (Верх Лево) -> Row 1, Col 1
+            if(id === 10) return { r: 1, c: 1 };
+            // 11-19 = Верхняя сторона (вправо) -> Row 1, Col 2..10
+            if(id > 10 && id < 20) return { r: 1, c: id - 9 };
+            // 20 = Парковка (Верх Право) -> Row 1, Col 11
+            if(id === 20) return { r: 1, c: 11 };
+            // 21-29 = Правая сторона (вниз) -> Row 2..10, Col 11
+            if(id > 20 && id < 30) return { r: id - 19, c: 11 };
+            // 30 = Арест (Низ Право) -> Row 11, Col 11
+            if(id === 30) return { r: 11, c: 11 };
+            // 31-39 = Нижняя сторона (влево) -> Row 11, Col 10..2
+            if(id > 30) return { r: 11, c: 11 - (id - 30) };
+            
+            return { r: 11, c: 1 };
+        }
+
+        function updateTokenPos(playerIdx, cellId) {
+            const token = document.getElementById(`token-${playerIdx}`);
+            const cell = document.getElementById(`cell-${cellId}`);
+            if(!token || !cell) return;
+            const cellRect = cell.getBoundingClientRect();
+            const boardRect = document.getElementById('monoBoard').getBoundingClientRect();
+            const offsetMap = [{x: -3, y: -3}, {x: 3, y: -3}, {x: -3, y: 3}, {x: 3, y: 3}];
+            const off = offsetMap[playerIdx % 4];
+            const top = cellRect.top - boardRect.top + (cellRect.height/2) - 8 + off.y;
+            const left = cellRect.left - boardRect.left + (cellRect.width/2) - 8 + off.x;
+            token.style.top = top + 'px';
+            token.style.left = left + 'px';
+        }
+
+        function moveTokenSmoothly(playerIdx, startPos, endPos) {
+            let current = startPos;
+            function step() {
+                if (current === endPos) { checkLanding(playerIdx, endPos); return; }
+                current++; if(current > 39) current = 0;
+                updateTokenPos(playerIdx, current); tg.HapticFeedback.impactOccurred('light');
+                setTimeout(step, 150);
+            }
+            step();
+        }
+
+        function rollDice() { document.getElementById('btnRoll').disabled = true; socket.emit('monopoly_roll', { roomCode: onlineRoomCode }); }
+
+        function animateDice3D(d1, d2) {
+            const c1 = document.getElementById('cube1'); const c2 = document.getElementById('cube2');
+            const r1x = 720 + (Math.random() * 360); const r1y = 720 + (Math.random() * 360);
+            c1.style.transition = "transform 0.8s ease-in"; c1.style.transform = `rotateX(${r1x}deg) rotateY(${r1y}deg)`;
+            const r2x = 720 + (Math.random() * 360); const r2y = 720 + (Math.random() * 360);
+            c2.style.transition = "transform 0.8s ease-in"; c2.style.transform = `rotateX(${r2x}deg) rotateY(${r2y}deg)`;
+            setTimeout(() => {
+                c1.style.transition = "transform 0.2s cubic-bezier(0.1, 1.5, 0.2, 1)";
+                c2.style.transition = "transform 0.2s cubic-bezier(0.1, 1.5, 0.2, 1)";
+                setCubeFace(c1, d1); setCubeFace(c2, d2);
+            }, 800);
+        }
+
+        function setCubeFace(el, num) {
+            let rx=0, ry=0;
+            switch(num) {
+                case 1: rx=0; ry=0; break; case 2: rx=0; ry=-90; break; case 3: rx=0; ry=180; break;
+                case 4: rx=0; ry=90; break; case 5: rx=-90; ry=0; break; case 6: rx=90; ry=0; break;
+            }
+            el.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+        }
+
+        function checkLanding(pIdx, pos) {
+            if(pIdx !== myPlayerIndex) return;
+            const cell = LOCAL_MONOPOLY_MAP.find(c => c.id === pos);
+            if(cell && (cell.type === 'prop' || cell.type === 'util' || cell.type === 'station')) showBuyPopup(cell);
+        }
+        function showBuyPopup(cell) {
+            currentBuyCell = cell;
+            document.getElementById('buyCardName').innerText = cell.name;
+            document.getElementById('buyCardPrice').innerText = cell.price.toLocaleString() + " sc";
+            const header = document.getElementById('buyCardColor');
+            header.style.background = cell.group ? `var(--mono-line-${cell.group})` : '#333';
+            document.getElementById('buyPopup').classList.add('active');
+            tg.HapticFeedback.notificationOccurred('warning');
+        }
+        function closeBuyPopup() { document.getElementById('buyPopup').classList.remove('active'); currentBuyCell = null; }
+        function buyPropertyAction() {
+            if(!currentBuyCell) return;
+            const list = document.getElementById('myPropsList');
+            if(list.innerText.includes("Пусто")) list.innerHTML = '';
+            const card = document.createElement('div'); card.className = 'prop-card-mini';
+            const color = currentBuyCell.group ? `var(--mono-line-${currentBuyCell.group})` : '#333';
+            card.innerHTML = `<div class="prop-head" style="background:${color}"></div><div style="margin-top:5px;text-align:center;">${currentBuyCell.name}</div>`;
+            list.appendChild(card);
+            const cellEl = document.getElementById(`cell-${currentBuyCell.id}`);
+            cellEl.style.border = "2px solid var(--accent)";
+            tg.HapticFeedback.notificationOccurred('success');
+            closeBuyPopup();
+        }
+
+        /* --- SAPER LOGIC --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
         function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
-        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();tg.HapticFeedback.selectionChanged();}}
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},3);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let t=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',t);showResult('Бум!','Не повезло', 'Закрыть');}
         function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let t=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',t); let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); const key = `saper_best_${sRows}`; let b=parseFloat(localStorage.getItem(key)||9999); if(sTimer<b) saveStatToCloud(key, sTimer); sendStatToBackend(`saper_best_${sRows}`, sTimer); sendStatToBackend('saper_wins', w); showResult('Победа!',`Время: ${sTimer.toFixed(2)} с`, 'Круто'); } }
 
-        /* --- CHECKERS --- */
+        /* --- CHECKERS LOGIC --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
-        
-        function setCheckersMainMode(mode, btn, index) {
-            const glider = document.getElementById('checkersMainGlider'); glider.style.transform = `translateX(${index * 100}%)`;
-            const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active');
-            const offline = document.getElementById('ch-offline-panel'); const online = document.getElementById('ch-online-panel');
-            if(mode === 'online') { offline.classList.replace('panel-visible', 'panel-hidden'); online.classList.replace('panel-hidden', 'panel-visible'); } else { online.classList.replace('panel-visible', 'panel-hidden'); offline.classList.replace('panel-hidden', 'panel-visible'); } tg.HapticFeedback.selectionChanged();
-        }
-
-        function createGame() {
-            document.getElementById('modalLoading').classList.add('visible');
-            const user = tg.initDataUnsafe.user || { first_name: "Player" };
-            const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
-            // !ВАЖНО: Добавил gameType: 'checkers'
-            socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '', gameType: 'checkers' });
-        }
-
+        function setCheckersMainMode(mode, btn, index) { const glider = document.getElementById('checkersMainGlider'); glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); const offline = document.getElementById('ch-offline-panel'); const online = document.getElementById('ch-online-panel'); if(mode === 'online') { offline.classList.replace('panel-visible', 'panel-hidden'); online.classList.replace('panel-hidden', 'panel-visible'); } else { online.classList.replace('panel-visible', 'panel-hidden'); offline.classList.replace('panel-hidden', 'panel-visible'); } tg.HapticFeedback.selectionChanged(); }
+        function createGame() { document.getElementById('modalLoading').classList.add('visible'); const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = (user.first_name + ' ' + (user.last_name || '')).trim(); socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '', gameType: 'checkers' }); }
         function joinGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Поиск случайного соперника'); }
         function joinGameByCode() { const code = document.getElementById('joinCodeInput').value; if (code.length < 5) { tg.HapticFeedback.notificationOccurred('error'); return; } onlineRoomCode = code; const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = (user.first_name + ' ' + (user.last_name || '')).trim(); socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } }); }
         function cancelOnlineWait() { document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
-
         function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
+        function startLocalCheckers() { isPvE = true; isOnlineGame = false; document.getElementById('modalCheckers').classList.remove('visible'); document.getElementById('checkers-screen').classList.add('visible'); setTimeout(initCheckers, 50); }
         function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
         function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
-        
-        function onBoardClick(r,c){
-            if (isOnlineGame) { if (turn !== onlineMyColor) return; } else { if(isPvE&&turn==='black')return; }
-            const cell=board[r][c];
-            if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move, true);}
-        }
+        function onBoardClick(r,c){ if (isOnlineGame) { if (turn !== onlineMyColor) return; } else { if(isPvE && turn==='black') return; } const cell=board[r][c]; if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move, true);} }
         function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
         function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
-        
-        function executeMove(m, isLocal = true){
-            const p=board[m.fromR][m.fromC].piece;
-            if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
-            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
-            checkWin(); turn=turn==='white'?'black':'white'; document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";
-            if (!hasAnyMoves(turn)) { const winner = turn === 'white' ? 'black' : 'white'; endGame(winner); return; }
-            if(isPvE&&turn==='black')setTimeout(aiMove,600);
-        }
-        function hasAnyMoves(color) { for(let r=0; r<BOARD_SIZE; r++) { for(let c=0; c<BOARD_SIZE; c++) { const cell = board[r][c]; if (cell.piece && cell.piece.color === color) { const moves = getValidMoves(r, c, board); if (moves.length > 0) return true; } } } return false; }
+        function executeMove(m, isLocal = true){ const p=board[m.fromR][m.fromC].piece; if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); } board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null; checkWin(); turn=turn==='white'?'black':'white'; document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных"; if (!hasAnyMoves(turn)) { const winner = turn === 'white' ? 'black' : 'white'; endGame(winner); return; } if(!isOnlineGame && isPvE && turn==='black') setTimeout(aiMove, 600); }
+        function aiMove(){ if(isOnlineGame) return; const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white'); }
+        function hasAnyMoves(color) { for(let r=0; r<8; r++) { for(let c=0; c<8; c++) { const cell = board[r][c]; if (cell.piece && cell.piece.color === color) { const moves = getValidMoves(r, c, board); if (moves.length > 0) return true; } } } return false; }
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        
-        function endGame(w){
-            let t=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',t); sendStatToBackend('checkers_total', t); 
-            if(isPvE&&w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
-            tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');
-            if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText="Победа!";txt.innerText="Вы победили!";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText="Поражение";txt.innerText="Нет ходов или шашек."; } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText="Поражение";txt.innerText="Робот победил."; } } else{ tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
-            setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
-        }
-        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
-        
-        /* --- BLOCK BLAST (FIXED) --- */
+        function endGame(w){ const tit=document.getElementById('resText'); tit.innerText = w==='white'?"Белые победили!":"Чёрные победили!"; document.getElementById('modalResult').classList.add('visible'); if(isOnlineGame) socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); }
+
+        /* --- BLOCK BLAST (RESTORED) --- */
         const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false; 
         const SHAPES = [[[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],[[1,1,1,1]],[[1],[1],[1],[1]],[[1,1,1,1,1]],[[1],[1],[1],[1],[1]],[[1,1],[1,1]],[[1,1,1],[1,1,1]],[[1,1],[1,1],[1,1]],[[1,1,1],[1,1,1],[1,1,1]],[[1,0],[1,0],[1,1]],[[1,1,1],[1,0,0]],[[1,1],[0,1],[0,1]],[[0,0,1],[1,1,1]],[[0,1],[0,1],[1,1]],[[1,0,0],[1,1,1]],[[1,1],[1,0],[1,0]],[[1,1,1],[0,0,1]],[[1,0],[1,1]],[[1,1],[1,0]],[[1,1],[0,1]],[[0,1],[1,1]],[[1,1,1],[0,1,0]],[[0,1,0],[1,1,1]],[[1,0],[1,1],[1,0]],[[0,1],[1,1],[0,1]]];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
@@ -1022,100 +737,23 @@
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
         function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
-
-        // --- FIXED DRAG FUNCTION ---
         function startDrag(e, slotId, matrix, color) { 
-            if(bbIsAnimating) return; 
-            e.preventDefault(); 
-            const touch = e.touches ? e.touches[0] : e; 
-            const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
-            const cellFullSize = gridRect.width / 8; 
-            dragData = { slotId, matrix, color }; 
-            dragGhost = document.createElement('div'); 
-            dragGhost.className = 'drag-ghost'; 
-            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
-            dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; 
-            dragGhost.style.gap = '4px'; 
-            dragGhost.style.display = 'grid'; 
-            const shapePixelW = matrix[0].length * cellFullSize; 
-            
-            // Исправленный цикл
-            matrix.forEach((row, ri) => { 
-                row.forEach((val, ci) => { 
-                    const b = document.createElement('div'); 
-                    if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } 
-                    dragGhost.appendChild(b); 
-                }); 
-            }); 
-            
-            document.body.appendChild(dragGhost); 
-            touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); 
-            moveGhost(touch.clientX, touch.clientY); 
-            const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; 
-            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
+            if(bbIsAnimating) return; e.preventDefault(); const touch = e.touches ? e.touches[0] : e; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; dragData = { slotId, matrix, color }; dragGhost = document.createElement('div'); dragGhost.className = 'drag-ghost'; dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; dragGhost.style.gap = '4px'; dragGhost.style.display = 'grid'; const shapePixelW = matrix[0].length * cellFullSize; 
+            matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } dragGhost.appendChild(b); }); }); 
+            document.body.appendChild(dragGhost); touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); moveGhost(touch.clientX, touch.clientY); const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
         }
-
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
         function handleMove(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; const relX = ghostX - gridRect.left; const relY = ghostY - gridRect.top; const col = Math.round(relX / cellFullSize); const row = Math.round(relY / cellFullSize); checkPlacement(row, col); }
         function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } }
-        
-        function checkPlacement(r, c) { 
-            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
-            if(canPlace(dragData.matrix, r, c)) { 
-                drawShadow(dragData.matrix, r, c, dragData.color); 
-                dragData.validPos = { r: r, c: c }; 
-                let tempGrid = bbGrid.map(row => [...row]); let rowsToClear = [], colsToClear = [];
-                for(let i=0; i<dragData.matrix.length; i++) { for(let j=0; j<dragData.matrix[0].length; j++) { if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1; } }
-                for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr].every(val => val !== 0)) rowsToClear.push(rr);
-                for(let cc=0; cc<BB_COLS; cc++) { let full = true; for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr][cc] === 0) full = false; if(full) colsToClear.push(cc); }
-                rowsToClear.forEach(rr => { for(let cc=0; cc<BB_COLS; cc++) highlightPreClear(rr, cc, dragData.color); });
-                colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) highlightPreClear(rr, cc, dragData.color); });
-            } else { dragData.validPos = null; } 
-        }
+        function checkPlacement(r, c) { document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; }); if(canPlace(dragData.matrix, r, c)) { drawShadow(dragData.matrix, r, c, dragData.color); dragData.validPos = { r: r, c: c }; let tempGrid = bbGrid.map(row => [...row]); let rowsToClear = [], colsToClear = []; for(let i=0; i<dragData.matrix.length; i++) { for(let j=0; j<dragData.matrix[0].length; j++) { if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1; } } for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr].every(val => val !== 0)) rowsToClear.push(rr); for(let cc=0; cc<BB_COLS; cc++) { let full = true; for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr][cc] === 0) full = false; if(full) colsToClear.push(cc); } rowsToClear.forEach(rr => { for(let cc=0; cc<BB_COLS; cc++) highlightPreClear(rr, cc, dragData.color); }); colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) highlightPreClear(rr, cc, dragData.color); }); } else { dragData.validPos = null; } }
         function highlightPreClear(r, c, colorClass) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.classList.add('pre-clear'); const hex = COLOR_MAP[colorClass] || '#007aff'; cell.style.backgroundColor = hexToRgba(hex, 0.4); } }
         function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
         function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
-        
-        function onTouchEnd(e) { 
-            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
-            if(dragGhost) dragGhost.remove(); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
-            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
-            if(dragData.validPos) { 
-                placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
-                document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
-                const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
-                const linesCleared = checkLines(dragData.color); 
-                if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } 
-                else { if(bbShapes.every(s => s === null)) spawnShapes(); } 
-            } 
-        }
-
-        function placeShape(matrix, r, c, color) { 
-            tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; 
-            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); 
-        }
-        function checkLines(triggerColor) { 
-            let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
-            for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
-            for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } 
-            const totalCleared = rowsToClear.length + colsToClear.length; 
-            if(totalCleared > 0) { 
-                bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); 
-                if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
-                rowsToClear.forEach(r => { if(!isLiteMode) fireNeonParticles(r, -1, triggerColor); for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; animateClear(r, c, triggerColor); } }); 
-                colsToClear.forEach(c => { if(!isLiteMode) fireNeonParticles(-1, c, triggerColor); for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; animateClear(r, c, triggerColor); } }); 
-                setTimeout(() => { document.querySelector('.bb-game-container').classList.remove('shake-screen'); let points = totalCleared * 10; if (totalCleared >= 2) { points = points * totalCleared; showComboPopup(`X${totalCleared} MULTIPLIER!`); } else if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } addScore(points); saveBBState(); setTimeout(checkAllClear, 50); checkGameOver(); }, 350); return totalCleared; 
-            } return 0; 
-        }
-        function fireNeonParticles(row, col, colorClass) {
-            const hex = COLOR_MAP[colorClass] || '#ffffff'; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellW = gridRect.width / 8; const cellH = gridRect.height / 8;
-            let xOrigin, yOrigin; if (row !== -1) { xOrigin = (gridRect.left + gridRect.width / 2) / window.innerWidth; yOrigin = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight; } else { xOrigin = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth; yOrigin = (gridRect.top + gridRect.height / 2) / window.innerHeight; }
-            confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true });
-        }
+        function onTouchEnd(e) { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); if(dragGhost) dragGhost.remove(); document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; }); document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; if(dragData.validPos) { placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; const linesCleared = checkLines(dragData.color); if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } else { if(bbShapes.every(s => s === null)) spawnShapes(); } } }
+        function placeShape(matrix, r, c, color) { tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); }
+        function checkLines(triggerColor) { let linesCleared = 0; const rowsToClear = []; const colsToClear = []; for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } const totalCleared = rowsToClear.length + colsToClear.length; if(totalCleared > 0) { bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen'); rowsToClear.forEach(r => { if(!isLiteMode) fireNeonParticles(r, -1, triggerColor); for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; animateClear(r, c, triggerColor); } }); colsToClear.forEach(c => { if(!isLiteMode) fireNeonParticles(-1, c, triggerColor); for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; animateClear(r, c, triggerColor); } }); setTimeout(() => { document.querySelector('.bb-game-container').classList.remove('shake-screen'); let points = totalCleared * 10; if (totalCleared >= 2) { points = points * totalCleared; showComboPopup(`X${totalCleared} MULTIPLIER!`); } else if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } addScore(points); saveBBState(); setTimeout(checkAllClear, 50); checkGameOver(); }, 350); return totalCleared; } return 0; }
+        function fireNeonParticles(row, col, colorClass) { const hex = COLOR_MAP[colorClass] || '#ffffff'; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellW = gridRect.width / 8; const cellH = gridRect.height / 8; let xOrigin, yOrigin; if (row !== -1) { xOrigin = (gridRect.left + gridRect.width / 2) / window.innerWidth; yOrigin = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight; } else { xOrigin = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth; yOrigin = (gridRect.top + gridRect.height / 2) / window.innerHeight; } confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true }); }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
         function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
@@ -1128,7 +766,7 @@
         function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
-        /* --- SUDOKU LOGIC --- */
+        /* --- SUDOKU LOGIC (RESTORED) --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1;
         function startSudokuCheck() { if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); else document.getElementById('modalSudoku').classList.add('visible'); }
         function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); restoreSudokuState(); }
@@ -1152,141 +790,8 @@
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
 
-        /* --- MONOPOLY LOGIC (NEW) --- */
-        let monoMap = [];
-        let monoPlayers = [];
-        let myPlayerIndex = -1;
-        
-        function openMonopolyMenu() { document.getElementById('modalMonopolyMenu').classList.add('visible'); }
-        
-        function createMonopolyGame() {
-            document.getElementById('modalLoading').classList.add('visible');
-            const user = tg.initDataUnsafe.user || { first_name: "Player" };
-            // !ВАЖНО: gameType: 'monopoly'
-            socket.emit('create_game', { username: user.first_name, photo_url: user.photo_url, gameType: 'monopoly' });
-        }
-        
-        function joinMonopolyGame() {
-            const code = document.getElementById('monoJoinCode').value;
-            if(code.length < 5) return tg.HapticFeedback.notificationOccurred('error');
-            onlineRoomCode = code;
-            const user = tg.initDataUnsafe.user || { first_name: "Player" };
-            socket.emit('join_game', { roomCode: code, userData: { username: user.first_name, photo_url: user.photo_url } });
-            document.getElementById('modalMonopolyMenu').classList.remove('visible');
-            enterMonopolyLobby(code, false);
-        }
-
-        function enterMonopolyLobby(code, isCreator) {
-            onlineRoomCode = code;
-            document.getElementById('modalMonopolyLobby').classList.add('visible');
-            document.getElementById('monoLobbyCode').innerText = code;
-            const btn = document.getElementById('monoStartBtn');
-            if(isCreator) btn.style.display = 'block'; else btn.style.display = 'none';
-        }
-
-        function updateLobbyUI(players) {
-            const list = document.getElementById('monoLobbyList');
-            list.innerHTML = '';
-            const user = tg.initDataUnsafe.user || { first_name: "Player" };
-            players.forEach((p, i) => {
-                if(p.name === user.first_name) myPlayerIndex = i;
-                const row = document.createElement('div');
-                row.className = 'lobby-item';
-                const ava = p.avatar || `https://ui-avatars.com/api/?name=${p.name}&background=random`;
-                row.innerHTML = `<img src="${ava}"><div><b>${p.name}</b><br><span style="font-size:12px;color:#8e8e93;">1500 sc</span></div>`;
-                list.appendChild(row);
-            });
-            monoPlayers = players;
-        }
-        
-        function leaveMonopolyLobby() { location.reload(); }
-        function startMonopolyGame() { socket.emit('monopoly_start', { roomCode: onlineRoomCode }); }
-        
-        function initMonopolyBoard(mapData, players) {
-            monoMap = mapData;
-            monoPlayers = players;
-            const board = document.getElementById('monoBoard');
-            const center = board.querySelector('.mono-center');
-            board.innerHTML = '';
-            board.appendChild(center);
-            
-            // Generate Cells 0-39
-            mapData.forEach(cell => {
-                const el = document.createElement('div');
-                el.className = 'mono-cell';
-                if([0,10,20,30].includes(cell.id)) el.classList.add('corner');
-                const pos = getGridPos(cell.id);
-                el.style.gridColumn = pos.col;
-                el.style.gridRow = pos.row;
-                if(cell.type === 'property' || cell.type === 'station' || cell.type === 'util') {
-                    if(cell.group >= 0) { const bar = document.createElement('div'); bar.className = `color-bar group-${cell.group}`; el.appendChild(bar); }
-                    el.innerHTML += `<div class="name">${cell.name}</div><div class="price">${cell.price}sc</div>`;
-                } else {
-                    el.innerHTML += `<div class="name" style="height:100%;">${cell.name}</div>`;
-                }
-                el.id = `cell-${cell.id}`;
-                board.appendChild(el);
-            });
-            
-            // Render Tokens
-            players.forEach((p, i) => {
-                const token = document.createElement('div');
-                token.className = 'mono-token';
-                const colors = ['#ff3b30', '#007aff', '#34c759', '#ffcc00']; // Red, Blue, Green, Yellow
-                token.style.background = colors[i % 4];
-                token.id = `token-${i}`;
-                board.appendChild(token);
-                updateTokenPos(token, 0, i);
-            });
-        }
-        
-        function getGridPos(index) {
-            // Mapping 0-39 to Grid 11x11
-            if (index === 0) return { row: 11, col: 11 };
-            if (index > 0 && index < 10) return { row: 11, col: 11 - index };
-            if (index === 10) return { row: 11, col: 1 };
-            if (index > 10 && index < 20) return { row: 11 - (index - 10), col: 1 };
-            if (index === 20) return { row: 1, col: 1 };
-            if (index > 20 && index < 30) return { row: 1, col: 1 + (index - 20) };
-            if (index === 30) return { row: 1, col: 11 };
-            if (index > 30) return { row: 1 + (index - 30), col: 11 };
-            return { row: 1, col: 1 };
-        }
-        
-        function rollDice() { document.getElementById('btnRoll').disabled = true; socket.emit('monopoly_roll', { roomCode: onlineRoomCode }); }
-        
-        function animateDice(d1, d2) {
-            const el1 = document.getElementById('die1');
-            const el2 = document.getElementById('die2');
-            let i = 0;
-            const int = setInterval(() => {
-                el1.innerText = Math.floor(Math.random()*6)+1;
-                el2.innerText = Math.floor(Math.random()*6)+1;
-                i++;
-                if(i > 10) { clearInterval(int); el1.innerText = d1; el2.innerText = d2; }
-            }, 50);
-        }
-        
-        function movePlayerToken(playerIndex, newPos) {
-            const token = document.getElementById(`token-${playerIndex}`);
-            updateTokenPos(token, newPos, playerIndex);
-        }
-        
-        function updateTokenPos(token, cellIndex, offsetIndex) {
-            const cell = document.getElementById(`cell-${cellIndex}`);
-            if(!cell) return;
-            const offsetX = (offsetIndex % 2) * 5 - 2.5;
-            const offsetY = Math.floor(offsetIndex / 2) * 5 - 2.5;
-            const pos = getGridPos(cellIndex);
-            const topPerc = (pos.row - 1) * (100/11) + (100/22);
-            const leftPerc = (pos.col - 1) * (100/11) + (100/22);
-            token.style.top = `calc(${topPerc}% + ${offsetY}px)`;
-            token.style.left = `calc(${leftPerc}% + ${offsetX}px)`;
-        }
-
         // Start App
         initApp();
     </script>
 </body>
 </html>
-
