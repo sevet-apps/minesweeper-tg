@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v34.0 Monopoly Beta</title>
+    <title>Glass App v34.1 Fixed</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -290,6 +290,30 @@
         }
         .bb-cell.appear-gray {
             animation: popInGray 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        /* FIXED v34.1: Lite Mode - отключаем тяжёлые эффекты для Android */
+        body.lite-mode .bb-cell {
+            transition: none !important;
+            animation: none !important;
+        }
+        body.lite-mode .bb-cell.appear-gray {
+            animation: none !important;
+        }
+        body.lite-mode .card,
+        body.lite-mode .modal,
+        body.lite-mode .settings-group,
+        body.lite-mode .dropdown-menu {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.lite-mode .tab-bar {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.lite-mode .modal-overlay {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }
         
         .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
@@ -752,6 +776,7 @@
                 document.getElementById('modalCheckers').classList.remove('visible');
                 if (data.color) onlineMyColor = data.color;
                 isOnlineGame = true;
+                isPvE = false; // FIXED v34.1: Сброс режима бота при онлайн-игре
                 document.getElementById('checkers-screen').classList.add('visible');
                 initCheckers(); 
                 const boardEl = document.getElementById('checkersBoard');
@@ -825,7 +850,13 @@
         
         function applyLiteMode() { 
             const el = document.getElementById('liteToggle');
-            if(isLiteMode) el.classList.add('active'); else el.classList.remove('active');
+            if(isLiteMode) {
+                el.classList.add('active');
+                document.body.classList.add('lite-mode');
+            } else {
+                el.classList.remove('active');
+                document.body.classList.remove('lite-mode');
+            }
         }
         function toggleLiteMode() {
             isLiteMode = !isLiteMode;
@@ -848,7 +879,22 @@
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
             tg.HapticFeedback.impactOccurred('light'); 
         }
-        function closeGame(game) { document.getElementById(game+'-screen').classList.remove('visible'); if(game==='saper') clearInterval(sTimerInt); if(game==='bb') saveBBState(); if(game==='sudoku') saveSudokuState(); }
+        function closeGame(game) { 
+            document.getElementById(game+'-screen').classList.remove('visible'); 
+            if(game==='saper') clearInterval(sTimerInt); 
+            if(game==='bb') saveBBState(); 
+            if(game==='sudoku') saveSudokuState();
+            // FIXED v34.1: Сброс флагов при закрытии игры
+            if(game==='checkers') {
+                isOnlineGame = false;
+                isPvE = false;
+                onlineRoomCode = null;
+                onlineMyColor = null;
+            }
+            if(game==='monopoly') {
+                onlineRoomCode = null;
+            }
+        }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
         function loadProfile() { 
@@ -990,10 +1036,10 @@
         function executeMove(m, isLocal = true){
             const p=board[m.fromR][m.fromC].piece;
             if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
-            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE&&turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
+            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
             checkWin(); turn=turn==='white'?'black':'white'; document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";
             if (!hasAnyMoves(turn)) { const winner = turn === 'white' ? 'black' : 'white'; endGame(winner); return; }
-            if(isPvE&&turn==='black')setTimeout(aiMove,600);
+            if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,600);
         }
         function hasAnyMoves(color) { for(let r=0; r<BOARD_SIZE; r++) { for(let c=0; c<BOARD_SIZE; c++) { const cell = board[r][c]; if (cell.piece && cell.piece.color === color) { const moves = getValidMoves(r, c, board); if (moves.length > 0) return true; } } } return false; }
         function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
@@ -1117,7 +1163,7 @@
             confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true });
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } }
+        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; if(!isLiteMode) { cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } } }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
