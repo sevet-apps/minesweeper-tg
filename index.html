@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v35.0 Monopoly</title>
+    <title>Glass App v35.0 Monopoly USSR</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -390,415 +390,356 @@
         .checkers-board.rotated { transform: rotate(180deg); }
         .checkers-board.rotated .checker { transform: rotate(-180deg); }
 
-        /* --- MONOPOLY STYLES v2.0 --- */
-        .mono-wrapper { 
-            width: 100%; 
-            height: 100%; 
+        /* --- MONOPOLY STYLES v2.0 (СССР) --- */
+        /* Цветовые переменные для групп */
+        :root {
+            --mono-line-yellow: #e8c547;
+            --mono-line-orange: #e87a24;
+            --mono-line-peach: #f5b895;
+            --mono-line-red: #d63b3b;
+            --mono-line-pale-green: #8fc98f;
+            --mono-line-dark-green: #2d7a2d;
+            --mono-line-blue: #3b5998;
+            --mono-line-violet: #8e44ad;
+        }
+        
+        .mono-container { 
+            flex: 1; 
             display: flex; 
-            flex-direction: column;
+            flex-direction: column; 
             align-items: center; 
-            padding: 10px;
-            padding-top: 5px;
+            justify-content: flex-start; 
+            padding-top: 10px; 
+            position: relative; 
+            width: 100%; 
+            overflow: hidden; 
+            background: linear-gradient(145deg, #c8d9c8, #a8c4a8);
+        }
+
+        /* Доска - Строго КВАДРАТНАЯ */
+        .mono-board { 
+            display: grid; 
+            grid-template-columns: 1.4fr repeat(9, 1fr) 1.4fr; 
+            grid-template-rows: 1.4fr repeat(9, 1fr) 1.4fr; 
+            width: 96vw; 
+            height: 96vw; 
+            max-width: 420px; 
+            max-height: 420px; 
+            background: #fdfdfd; 
+            border: 2px solid #333; 
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4); 
+            font-size: 7px; 
+            position: relative; 
+            border-radius: 4px;
+        }
+
+        /* Клетка */
+        .m-cell { 
+            border: 0.5px solid #aaa; 
+            position: relative; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            background: #fff; 
             overflow: hidden; 
         }
-        
-        .mono-board { 
-            width: min(88vw, 380px);
-            height: min(88vw, 380px);
-            display: grid;
-            grid-template-columns: 2fr repeat(9, 1fr) 2fr;
-            grid-template-rows: 2fr repeat(9, 1fr) 2fr;
-            background: linear-gradient(145deg, #c8e6c9, #a5d6a7);
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2), inset 0 0 60px rgba(255,255,255,0.3);
-            position: relative;
-            overflow: hidden;
+        .m-cell .name { 
+            font-weight: 700; 
+            color: #000; 
+            z-index: 2; 
+            line-height: 1; 
+            padding: 1px; 
+            word-break: break-word; 
+            font-size: 5.5px;
         }
-        
-        /* Corner cells */
-        .mono-cell.corner {
-            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 7px;
-            font-weight: 700;
-            color: #333;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border: 1px solid rgba(0,0,0,0.1);
+        .m-cell .price { 
+            position: absolute; 
+            font-size: 5px; 
+            color: #555; 
+            z-index: 2; 
+            font-weight: 600; 
         }
-        .mono-cell.corner svg { width: 20px; height: 20px; margin-bottom: 2px; }
-        
-        /* Regular cells */
-        .mono-cell {
-            background: #fff;
-            border: 1px solid rgba(0,0,0,0.08);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
+        .m-corner { 
+            background: linear-gradient(135deg, #e8e8e8, #d0d0d0); 
+            font-weight: 900; 
+            font-size: 6px; 
+            color: #333; 
         }
-        .mono-cell:active { transform: scale(0.95); }
-        
-        /* Horizontal cells (top and bottom rows) */
-        .mono-cell.horizontal {
-            flex-direction: column;
+
+        /* Левая сторона (вертикальная ориентация, линия справа) */
+        .m-left { flex-direction: row; }
+        .m-left .color-stripe { 
+            width: 6px; 
+            height: 100%; 
+            order: 2; 
+            margin-left: auto; 
+            border-left: 1px solid rgba(0,0,0,0.2); 
         }
-        .mono-cell.horizontal .color-bar {
-            width: 100%;
-            height: 8px;
-            min-height: 8px;
+        .m-left .name { 
+            width: 100%; 
+            transform: rotate(90deg); 
+            white-space: nowrap;
         }
-        .mono-cell.horizontal.bottom .color-bar {
-            order: -1;
+        .m-left .price { bottom: 1px; left: 1px; transform: rotate(90deg); transform-origin: left bottom; }
+
+        /* Верхняя сторона (горизонтальная ориентация, линия снизу) */
+        .m-top { flex-direction: column; }
+        .m-top .color-stripe { 
+            width: 100%; 
+            height: 6px; 
+            order: 2; 
+            margin-top: auto; 
+            border-top: 1px solid rgba(0,0,0,0.2); 
         }
-        .mono-cell.horizontal .cell-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1px;
+        .m-top .name { 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            transform: rotate(180deg); 
         }
-        
-        /* Vertical cells (left and right columns) */
-        .mono-cell.vertical {
-            flex-direction: row;
+        .m-top .price { top: 1px; right: 1px; transform: rotate(180deg); }
+
+        /* Правая сторона (вертикальная ориентация, линия слева) */
+        .m-right { flex-direction: row; }
+        .m-right .color-stripe { 
+            width: 6px; 
+            height: 100%; 
+            order: -1; 
+            margin-right: auto; 
+            border-right: 1px solid rgba(0,0,0,0.2); 
         }
-        .mono-cell.vertical .color-bar {
-            width: 8px;
-            min-width: 8px;
-            height: 100%;
+        .m-right .name { 
+            width: 100%; 
+            transform: rotate(-90deg); 
+            white-space: nowrap;
         }
-        .mono-cell.vertical.left .color-bar {
-            order: 1;
+        .m-right .price { top: 1px; right: 1px; transform: rotate(-90deg); transform-origin: right top; }
+
+        /* Нижняя сторона (горизонтальная ориентация, линия сверху) */
+        .m-bottom { flex-direction: column; }
+        .m-bottom .color-stripe { 
+            width: 100%; 
+            height: 6px; 
+            order: -1; 
+            margin-bottom: auto; 
+            border-bottom: 1px solid rgba(0,0,0,0.2); 
         }
-        .mono-cell.vertical .cell-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1px;
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
+        .m-bottom .name { 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
         }
-        .mono-cell.vertical.left .cell-content {
-            transform: rotate(180deg);
+        .m-bottom .price { bottom: 1px; right: 1px; }
+
+        /* Центр поля */
+        .m-center { 
+            grid-column: 2 / 11; 
+            grid-row: 2 / 11; 
+            background: linear-gradient(145deg, #fafafa, #f0f0f0); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
         }
-        
-        .mono-cell .cell-content .name {
-            font-size: 5px;
-            font-weight: 600;
-            color: #333;
-            text-align: center;
-            line-height: 1.1;
-            margin-bottom: 1px;
+        .turn-indicator { 
+            font-size: 16px; 
+            font-weight: 900; 
+            text-align: center; 
+            color: #bbb; 
+            margin-bottom: 15px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            transition: all 0.3s;
         }
-        .mono-cell .cell-content .price {
-            font-size: 5px;
-            font-weight: 700;
-            color: #666;
-        }
-        
-        /* Special cells without color bar */
-        .mono-cell.special .cell-content {
-            writing-mode: horizontal-tb !important;
-            transform: none !important;
-        }
-        .mono-cell.special svg {
-            width: 12px;
-            height: 12px;
-            margin-bottom: 2px;
-        }
-        
-        /* Color bars - Classic Monopoly colors */
-        .color-bar { transition: all 0.3s; }
-        .group-0 { background: linear-gradient(135deg, #8B4513, #A0522D); } /* Brown */
-        .group-1 { background: linear-gradient(135deg, #87CEEB, #ADD8E6); } /* Light Blue */
-        .group-2 { background: linear-gradient(135deg, #DA70D6, #EE82EE); } /* Pink/Magenta */
-        .group-3 { background: linear-gradient(135deg, #FFA500, #FFB347); } /* Orange */
-        .group-4 { background: linear-gradient(135deg, #FF0000, #FF6B6B); } /* Red */
-        .group-5 { background: linear-gradient(135deg, #FFD700, #FFEC8B); } /* Yellow */
-        .group-6 { background: linear-gradient(135deg, #228B22, #32CD32); } /* Green */
-        .group-7 { background: linear-gradient(135deg, #0000CD, #4169E1); } /* Dark Blue */
-        .group-station { background: linear-gradient(135deg, #2c2c2c, #4a4a4a); }
-        .group-utility { background: linear-gradient(135deg, #808080, #a0a0a0); }
-        
-        /* Owned cell highlight */
-        .mono-cell.owned-0 { box-shadow: inset 0 0 0 2px #ff3b30; }
-        .mono-cell.owned-1 { box-shadow: inset 0 0 0 2px #007aff; }
-        .mono-cell.owned-2 { box-shadow: inset 0 0 0 2px #34c759; }
-        .mono-cell.owned-3 { box-shadow: inset 0 0 0 2px #ffcc00; }
-        
-        /* Center area */
-        .mono-center {
-            grid-column: 2 / 11;
-            grid-row: 2 / 11;
-            background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            margin: 4px;
-            position: relative;
-        }
-        
-        .mono-turn-text {
-            font-size: 18px;
-            font-weight: 800;
+        .turn-indicator.my-turn {
             color: var(--accent);
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        .mono-turn-text.waiting {
-            color: #8e8e93;
-            animation: none;
+            animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
         }
-        
-        /* 3D Dice */
-        .dice-container {
-            display: flex;
-            gap: 15px;
-            margin: 15px 0;
-            perspective: 600px;
+
+        /* 3D Кубики */
+        .dice-stage { 
+            width: 120px; 
+            height: 60px; 
+            display: flex; 
+            justify-content: center; 
+            gap: 20px; 
+            perspective: 600px; 
         }
-        
-        .dice-3d {
-            width: 50px;
-            height: 50px;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 0.1s;
+        .cube { 
+            width: 40px; 
+            height: 40px; 
+            position: relative; 
+            transform-style: preserve-3d; 
+            transform: rotateX(-25deg) rotateY(-35deg); 
+            transition: transform 0.8s cubic-bezier(0.2, 1.5, 0.3, 1); 
         }
-        
-        .dice-3d.rolling {
+        .cube.rolling {
             animation: diceRoll 0.8s ease-out;
         }
-        
         @keyframes diceRoll {
-            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-            20% { transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg); }
-            40% { transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg); }
-            60% { transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg); }
-            80% { transform: rotateX(680deg) rotateY(350deg) rotateZ(170deg); }
-            100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg); }
+            0% { transform: rotateX(0deg) rotateY(0deg); }
+            25% { transform: rotateX(360deg) rotateY(180deg); }
+            50% { transform: rotateX(720deg) rotateY(360deg); }
+            75% { transform: rotateX(1080deg) rotateY(540deg); }
+            100% { transform: rotateX(1440deg) rotateY(720deg); }
         }
-        
-        .dice-face {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(145deg, #ffffff, #f0f0f0);
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            display: flex;
+        .face { 
+            position: absolute; 
+            width: 40px; 
+            height: 40px; 
+            background: linear-gradient(145deg, #ffffff, #f0f0f0); 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            display: flex; 
             flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-            gap: 4px;
-            box-shadow: inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 8px rgba(0,0,0,0.2);
+            justify-content: center; 
+            align-items: center; 
+            padding: 6px;
+            gap: 3px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05); 
         }
-        
+        .face:nth-child(1) { transform: rotateY(0deg) translateZ(20px); }
+        .face:nth-child(2) { transform: rotateY(90deg) translateZ(20px); }
+        .face:nth-child(3) { transform: rotateY(180deg) translateZ(20px); }
+        .face:nth-child(4) { transform: rotateY(-90deg) translateZ(20px); }
+        .face:nth-child(5) { transform: rotateX(90deg) translateZ(20px); }
+        .face:nth-child(6) { transform: rotateX(-90deg) translateZ(20px); }
         .dice-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             background: linear-gradient(145deg, #333, #555);
             border-radius: 50%;
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
         }
-        
-        .dice-face.front { transform: translateZ(25px); }
-        .dice-face.back { transform: rotateY(180deg) translateZ(25px); }
-        .dice-face.right { transform: rotateY(90deg) translateZ(25px); }
-        .dice-face.left { transform: rotateY(-90deg) translateZ(25px); }
-        .dice-face.top { transform: rotateX(90deg) translateZ(25px); }
-        .dice-face.bottom { transform: rotateX(-90deg) translateZ(25px); }
-        
-        /* Player tokens */
-        .mono-token {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            position: absolute;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.4);
-            z-index: 20;
-            transition: none;
-            border: 2px solid rgba(255,255,255,0.8);
+
+        /* Фишки игроков */
+        .mono-token { 
+            width: 14px; 
+            height: 14px; 
+            border-radius: 50%; 
+            border: 2px solid #fff; 
+            position: absolute; 
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5); 
+            z-index: 20; 
+            transition: top 0.15s linear, left 0.15s linear; 
         }
-        .mono-token.player-0 { background: linear-gradient(145deg, #ff3b30, #ff6b6b); }
-        .mono-token.player-1 { background: linear-gradient(145deg, #007aff, #5ac8fa); }
-        .mono-token.player-2 { background: linear-gradient(145deg, #34c759, #7ed957); }
-        .mono-token.player-3 { background: linear-gradient(145deg, #ffcc00, #ffdd55); }
-        
-        /* Bottom controls */
-        .mono-controls {
-            width: 100%;
-            max-width: 400px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: auto;
+        .mono-token.player-0 { background: linear-gradient(145deg, #ff3b30, #cc2f26); }
+        .mono-token.player-1 { background: linear-gradient(145deg, #007aff, #0062cc); }
+        .mono-token.player-2 { background: linear-gradient(145deg, #34c759, #2aa048); }
+        .mono-token.player-3 { background: linear-gradient(145deg, #ffcc00, #d4a900); }
+
+        /* Контролы внизу */
+        .mono-controls { 
+            width: 100%; 
+            padding: 12px 15px; 
+            padding-bottom: calc(12px + var(--safe-bottom));
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+            z-index: 100; 
+            background: var(--bg-color); 
+            border-top: 1px solid rgba(0,0,0,0.1); 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
         }
-        
-        .mono-btn-row {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .mono-btn {
-            flex: 1;
-            padding: 14px 10px;
-            border-radius: 14px;
-            border: none;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .mono-btn:active { transform: scale(0.96); }
-        .mono-btn:disabled { opacity: 0.5; pointer-events: none; }
-        
-        .mono-btn.primary {
-            background: linear-gradient(135deg, var(--accent), #5ac8fa);
-            color: white;
-            box-shadow: 0 4px 15px rgba(0,122,255,0.3);
-        }
-        .mono-btn.secondary {
-            background: var(--glass-bg);
-            color: var(--text-color);
-            border: 1px solid var(--glass-border);
-        }
-        .mono-btn.danger {
-            background: linear-gradient(135deg, var(--danger), #ff6b6b);
-            color: white;
-        }
-        
-        .mono-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-        
-        /* Player cards strip */
-        .mono-cards-strip {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            gap: 6px;
-            padding: 10px 0;
-            overflow-x: auto;
+        .player-cards-scroll { 
+            display: flex; 
+            overflow-x: auto; 
+            gap: 8px; 
+            padding-bottom: 5px; 
+            min-height: 70px; 
             -webkit-overflow-scrolling: touch;
         }
-        .mono-cards-strip::-webkit-scrollbar { display: none; }
+        .player-cards-scroll::-webkit-scrollbar { display: none; }
         
-        .mono-mini-card {
-            min-width: 50px;
-            height: 65px;
-            border-radius: 6px;
-            background: #fff;
-            border: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+        .prop-card-mini { 
+            min-width: 50px; 
+            height: 65px; 
+            border-radius: 6px; 
+            background: #fff; 
+            border: 1px solid #ccc; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-size: 5px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            flex-shrink: 0;
             cursor: pointer;
             transition: transform 0.2s;
-            flex-shrink: 0;
         }
-        .mono-mini-card:active { transform: scale(0.95); }
-        .mono-mini-card .mini-bar {
-            height: 12px;
-            width: 100%;
+        .prop-card-mini:active { transform: scale(0.95); }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .mono-mini-card .mini-name {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 6px;
-            font-weight: 600;
-            text-align: center;
-            padding: 2px;
+        .prop-head { 
+            width: 100%; 
+            height: 16px; 
+            border-radius: 5px 5px 0 0; 
+            border-bottom: 1px solid rgba(0,0,0,0.1); 
+        }
+
+        /* Всплывающее окно покупки */
+        .buy-popup { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%) scale(0); 
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); 
+            padding: 20px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
+            z-index: 200; 
+            text-align: center; 
+            width: 240px; 
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            pointer-events: none; 
+            opacity: 0; 
+        }
+        .buy-popup.active { 
+            transform: translate(-50%, -50%) scale(1); 
+            pointer-events: auto; 
+            opacity: 1; 
+        }
+        .card-preview { 
+            width: 120px; 
+            height: 160px; 
+            border: 2px solid #333; 
+            margin: 0 auto 12px; 
+            border-radius: 8px; 
+            background: white; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15); 
+        }
+        .cp-header { 
+            width: 100%; 
+            height: 35px; 
+            border-bottom: 2px solid #333; 
+        }
+        .cp-body { 
+            flex: 1; 
+            padding: 8px; 
+            font-size: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            font-weight: 700; 
+            line-height: 1.3;
             color: #333;
         }
         
-        /* Property modal */
-        .mono-property-modal {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--bg-color);
-            border-radius: 24px 24px 0 0;
-            padding: 20px;
-            padding-bottom: calc(20px + var(--safe-bottom));
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 10002;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-        }
-        .mono-property-modal.visible { transform: translateY(0); }
-        
-        .mono-property-card {
-            background: #fff;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-        .mono-property-header {
-            padding: 20px;
-            text-align: center;
-            color: white;
-            font-size: 18px;
-            font-weight: 700;
-        }
-        .mono-property-body {
-            padding: 15px;
-        }
-        .mono-property-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-        .mono-property-row:last-child { border-bottom: none; }
-        .mono-property-row span:first-child { color: #666; }
-        .mono-property-row span:last-child { font-weight: 600; }
-        
-        .mono-property-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        /* Balance display */
-        .mono-balance {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--success);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .mono-balance.negative { color: var(--danger); }
-        
-        /* Lobby styles */
+        /* Lobby */
         .lobby-list { 
             width: 100%; 
             background: var(--glass-bg); 
@@ -811,23 +752,14 @@
         .lobby-item { 
             display: flex; 
             align-items: center; 
-            padding: 10px; 
-            border-radius: 10px;
-            margin-bottom: 5px;
-            background: rgba(255,255,255,0.5);
+            padding: 8px; 
+            border-bottom: 1px solid rgba(0,0,0,0.05); 
         }
-        .lobby-item:last-child { margin-bottom: 0; }
         .lobby-item img { 
-            width: 36px; 
-            height: 36px; 
+            width: 30px; 
+            height: 30px; 
             border-radius: 50%; 
-            margin-right: 12px; 
-        }
-        .lobby-item .player-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-left: auto;
+            margin-right: 10px; 
         }
 
     </style>
@@ -1013,7 +945,7 @@
     <div class="modal-overlay" id="modalMonopolyMenu">
         <div class="modal">
             <h2>Монополия</h2>
-            <p style="color:#8e8e93; font-size:14px;">Классическая игра! Покупай недвижимость, собирай ренту, разори соперников.</p>
+            <p style="color:#8e8e93; font-size:14px;">Классическая версия с улицами СССР</p>
             <button class="btn-main" onclick="createMonopolyGame()">Создать комнату</button>
             <div class="input-group">
                 <input type="text" id="monoJoinCode" class="input-glass" placeholder="Код комнаты" maxlength="5">
@@ -1026,7 +958,7 @@
     <div class="modal-overlay" id="modalMonopolyLobby">
         <div class="modal">
             <h2>Комната <span id="monoLobbyCode" style="color:var(--accent); letter-spacing:2px;">---</span></h2>
-            <p style="color:#8e8e93; margin-top:0;">Ожидание игроков...</p>
+            <p style="color:#8e8e93; margin-top:0;">Ожидание игроков (2-4)...</p>
             <div class="lobby-list" id="monoLobbyList"></div>
             <button class="btn-main" id="monoStartBtn" style="display:none;" onclick="startMonopolyGame()">Начать игру</button>
             <button style="margin-top:10px; background:none; border:none; color:var(--danger);" onclick="leaveMonopolyLobby()">Выйти</button>
@@ -1034,98 +966,57 @@
     </div>
 
     <div id="monopoly-screen" class="game-overlay">
-        <div class="game-top-bar">
+        <div class="game-top-bar" style="background: var(--bg-color); z-index:101; border-bottom: 1px solid rgba(0,0,0,0.1);">
             <div class="back-btn" onclick="closeGame('monopoly')">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                 Выйти
             </div>
-            <div class="mono-balance" id="monoBalance">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"/></svg>
-                <span id="myMoney">200 000</span>
-            </div>
+            <div style="font-weight:700; font-size: 14px;">Баланс: <span id="myMoney" style="color:var(--success); font-size:18px;">200 000</span> ₽</div>
         </div>
         
-        <div class="mono-wrapper">
+        <div class="mono-container">
             <div id="monoBoard" class="mono-board">
-                <div class="mono-center" id="monoCenter">
-                    <div class="mono-turn-text" id="monoTurnText">Ожидание игроков...</div>
-                    <div class="dice-container" id="diceContainer">
-                        <div class="dice-3d" id="dice1">
-                            <div class="dice-face front"></div>
-                            <div class="dice-face back"></div>
-                            <div class="dice-face right"></div>
-                            <div class="dice-face left"></div>
-                            <div class="dice-face top"></div>
-                            <div class="dice-face bottom"></div>
+                <div class="m-center">
+                    <div id="turnText" class="turn-indicator">ОЖИДАНИЕ...</div>
+                    <div class="dice-stage">
+                        <div class="cube" id="cube1">
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
                         </div>
-                        <div class="dice-3d" id="dice2">
-                            <div class="dice-face front"></div>
-                            <div class="dice-face back"></div>
-                            <div class="dice-face right"></div>
-                            <div class="dice-face left"></div>
-                            <div class="dice-face top"></div>
-                            <div class="dice-face bottom"></div>
+                        <div class="cube" id="cube2">
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
+                            <div class="face"></div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Player's property cards -->
-            <div class="mono-cards-strip" id="monoCardsStrip"></div>
-            
-            <!-- Controls -->
-            <div class="mono-controls">
-                <div class="mono-btn-row">
-                    <button class="mono-btn primary" id="btnRollDice" onclick="rollMonopolyDice()" disabled>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/></svg>
-                        Бросить кубики
-                    </button>
+            <!-- Окно покупки -->
+            <div id="buyPopup" class="buy-popup">
+                <div class="card-preview">
+                    <div class="cp-header" id="buyCardColor"></div>
+                    <div class="cp-body" id="buyCardName">Улица</div>
                 </div>
-                <div class="mono-btn-row">
-                    <button class="mono-btn secondary" id="btnMortgage" onclick="openMortgageMenu()" disabled>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>
-                        Заложить
-                    </button>
-                    <button class="mono-btn secondary" id="btnTrade" onclick="openTradeMenu()" disabled>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-                        Обмен
-                    </button>
-                    <button class="mono-btn secondary" id="btnBuild" onclick="openBuildMenu()" disabled>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M9 21V10l-6 3v8M15 21V10l6 3v8M12 21V3l-3 2v16M12 3l3 2"/></svg>
-                        Строить
-                    </button>
-                </div>
+                <div style="font-size:20px; font-weight:800; margin-bottom:12px; color:var(--text-color);" id="buyCardPrice">0 ₽</div>
+                <button class="btn-main" onclick="buyPropertyAction()">Купить</button>
+                <button style="margin-top:8px; background:none; border:none; color:var(--danger); font-size:15px; padding:8px;" onclick="auctionProperty()">На аукцион</button>
             </div>
         </div>
-    </div>
-    
-    <!-- Property Purchase Modal -->
-    <div class="mono-property-modal" id="modalPropertyBuy">
-        <div class="mono-property-card" id="propertyCard">
-            <div class="mono-property-header" id="propertyHeader">Название</div>
-            <div class="mono-property-body">
-                <div class="mono-property-row"><span>Цена</span><span id="propPrice">0 ₽</span></div>
-                <div class="mono-property-row"><span>Аренда</span><span id="propRent">0 ₽</span></div>
-                <div class="mono-property-row"><span>С 1 домом</span><span id="propRent1">0 ₽</span></div>
-                <div class="mono-property-row"><span>С 2 домами</span><span id="propRent2">0 ₽</span></div>
-                <div class="mono-property-row"><span>С 3 домами</span><span id="propRent3">0 ₽</span></div>
-                <div class="mono-property-row"><span>С 4 домами</span><span id="propRent4">0 ₽</span></div>
-                <div class="mono-property-row"><span>С отелем</span><span id="propRentH">0 ₽</span></div>
-                <div class="mono-property-row"><span>Цена дома</span><span id="propHouse">0 ₽</span></div>
-                <div class="mono-property-actions">
-                    <button class="mono-btn primary" style="flex:2" onclick="buyProperty()">Купить</button>
-                    <button class="mono-btn secondary" style="flex:1" onclick="auctionProperty()">Аукцион</button>
-                </div>
+        
+        <div class="mono-controls">
+            <div style="font-size:11px; color:#8e8e93; margin-bottom:3px; font-weight:600;">Ваши активы:</div>
+            <div class="player-cards-scroll" id="myPropsList">
+                <div style="color:#ccc; font-size:11px; padding:15px; text-align:center; width:100%;">Пока пусто</div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Property Info Modal (when clicking owned property) -->
-    <div class="mono-property-modal" id="modalPropertyInfo">
-        <div class="mono-property-card" id="propertyInfoCard">
-            <div class="mono-property-header" id="propInfoHeader">Название</div>
-            <div class="mono-property-body" id="propInfoBody"></div>
-            <button class="mono-btn secondary" style="margin-top:15px; width:100%;" onclick="closePropertyInfo()">Закрыть</button>
+            <button class="btn-main" id="btnRoll" onclick="rollDice()" disabled style="opacity: 0.5;">Ожидание хода...</button>
         </div>
     </div>
 
@@ -1264,24 +1155,50 @@
             socket.on('monopoly_game_started', (data) => {
                 document.getElementById('modalMonopolyLobby').classList.remove('visible');
                 document.getElementById('monopoly-screen').classList.add('visible');
-                initMonopolyBoard(data.map, data.players);
-                // First turn
-                setTimeout(() => updateMonopolyTurn(0), 500);
+                initMonoBoard(data.players);
+                // Первый ход
+                setTimeout(() => updateTurnIndicator(0), 500);
             });
             
             socket.on('monopoly_roll_result', (data) => {
-                const oldPos = tokenPositions[data.playerIndex] || 0;
-                handleDiceResult(data.d1, data.d2, data.playerIndex, data.newPos, oldPos);
-                if(data.playerIndex === myPlayerIndex) {
-                    const moneyEl = document.getElementById('myMoney');
-                    moneyEl.innerText = formatMoney(data.playerMoney);
-                    moneyEl.style.transform = "scale(1.2)";
-                    setTimeout(() => moneyEl.style.transform = "scale(1)", 200);
+                // Анимация кубиков
+                animateDice3D(data.d1, data.d2);
+                
+                // Плавная анимация хода фишки
+                const oldPos = playerPositions[data.playerIndex] || 0;
+                setTimeout(() => {
+                    moveTokenSmoothly(data.playerIndex, oldPos, data.newPos);
+                }, 300);
+                
+                // Обновление баланса
+                if(data.playerIndex === myPlayerIndex && data.playerMoney !== undefined) {
+                    myMoney = data.playerMoney;
+                    updateMoneyDisplay();
                 }
             });
 
             socket.on('monopoly_turn', (data) => {
-                updateMonopolyTurn(data.playerIndex);
+                updateTurnIndicator(data.playerIndex);
+            });
+            
+            socket.on('monopoly_property_bought', (data) => {
+                // Подсветка клетки для всех игроков
+                const cellEl = document.getElementById(`cell-${data.cellId}`);
+                const colors = ['#ff3b30', '#007aff', '#34c759', '#ffcc00'];
+                if(cellEl) {
+                    cellEl.style.boxShadow = `inset 0 0 0 2px ${colors[data.playerIndex]}`;
+                }
+            });
+            
+            socket.on('monopoly_balances', (data) => {
+                // Обновление балансов всех игроков
+                data.balances.forEach(b => {
+                    const idx = monoPlayers.findIndex(p => p.id === b.id);
+                    if(idx === myPlayerIndex) {
+                        myMoney = b.money;
+                        updateMoneyDisplay();
+                    }
+                });
             });
 
             // Общие ошибки
@@ -1641,87 +1558,78 @@
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
 
-        /* --- MONOPOLY LOGIC v2.0 --- */
+        /* --- MONOPOLY LOGIC v2.0 (СССР) --- */
         
-        // Game state
+        // Карта монополии (СССР тематика)
+        const LOCAL_MONOPOLY_MAP = [
+            { id: 0, type: 'start', name: 'СТАРТ' },
+            // Левая сторона (снизу вверх): Жёлтые, Оранжевые
+            { id: 1, type: 'prop', name: 'Ф-ка ПОБЕДА', price: 5000, group: 'yellow' },
+            { id: 2, type: 'prop', name: 'Ф-ка ВОЛОДАР', price: 6000, group: 'yellow' },
+            { id: 3, type: 'prop', name: 'Ф-ка БОЛЬШЕВ', price: 7000, group: 'yellow' },
+            { id: 4, type: 'prop', name: 'СКК ЮБИЛЕЙ', price: 9000, group: 'orange' },
+            { id: 5, type: 'util', name: 'Транспорт', price: 15000 },
+            { id: 6, type: 'prop', name: 'СКК ЛЕНИНА', price: 10000, group: 'orange' },
+            { id: 7, type: 'prop', name: 'Стад. КИРОВА', price: 11000, group: 'orange' },
+            { id: 8, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 9, type: 'prop', name: 'ТРОЛЛЕЙБУС', price: 13000, group: 'peach' },
+            // Угол Верх-Лево
+            { id: 10, type: 'jail', name: 'ТЮРЬМА' },
+            // Верхняя сторона (слева направо): Персиковые, Красные
+            { id: 11, type: 'prop', name: 'МЕТРО', price: 14000, group: 'peach' },
+            { id: 12, type: 'prop', name: 'БМП', price: 15000, group: 'peach' },
+            { id: 13, type: 'prop', name: 'К-тр КОЛИЗЕЙ', price: 17000, group: 'red' },
+            { id: 14, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 15, type: 'prop', name: 'К-тр ЛЕНИНГР', price: 18000, group: 'red' },
+            { id: 16, type: 'prop', name: 'Театр КИРОВА', price: 19000, group: 'red' },
+            { id: 17, type: 'prop', name: 'Р-н УНИВЕРС', price: 21000, group: 'pale-green' },
+            { id: 18, type: 'prop', name: 'Р-н СЕВЕР', price: 22000, group: 'pale-green' },
+            { id: 19, type: 'prop', name: 'Р-н МЕТРОП', price: 23000, group: 'pale-green' },
+            // Угол Верх-Право
+            { id: 20, type: 'parking', name: 'СТОЯНКА' },
+            // Правая сторона (сверху вниз): Тёмно-зелёные, Синие
+            { id: 21, type: 'prop', name: 'Гос ЛЕНИНГР', price: 25000, group: 'dark-green' },
+            { id: 22, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 23, type: 'prop', name: 'Гос АСТОРИЯ', price: 26000, group: 'dark-green' },
+            { id: 24, type: 'prop', name: 'Гос ПРИБАЛТ', price: 27000, group: 'dark-green' },
+            { id: 25, type: 'util', name: 'Электро', price: 15000 },
+            { id: 26, type: 'prop', name: 'Ун-г ЮБИЛЕЙ', price: 29000, group: 'blue' },
+            { id: 27, type: 'prop', name: 'Т-Ф ДЛТ', price: 30000, group: 'blue' },
+            { id: 28, type: 'prop', name: 'ГОСТ. ДВОР', price: 31000, group: 'blue' },
+            { id: 29, type: 'chance', name: 'ШАНС', price: 0 },
+            // Угол Низ-Право
+            { id: 30, type: 'gotojail', name: 'АРЕСТ' },
+            // Нижняя сторона (справа налево): Фиолетовые
+            { id: 31, type: 'prop', name: 'Об. КИРОВСК', price: 33000, group: 'violet' },
+            { id: 32, type: 'tax', name: 'НАЛОГ', price: 10000 },
+            { id: 33, type: 'prop', name: 'Об. ЛОМО', price: 34000, group: 'violet' },
+            { id: 34, type: 'chance', name: 'ШАНС', price: 0 },
+            { id: 35, type: 'prop', name: 'ЭЛЕКТРОСИЛ', price: 35000, group: 'violet' },
+            { id: 36, type: 'chance', name: '?', price: 0 },
+            { id: 37, type: 'tax', name: 'Налог', price: 20000 },
+            { id: 38, type: 'chance', name: '?', price: 0 },
+            { id: 39, type: 'chance', name: '?', price: 0 }
+        ];
+
+        // Переменные
         let monoPlayers = [];
         let myPlayerIndex = -1;
-        let currentTurnIndex = 0;
+        let currentBuyCell = null;
+        let playerPositions = {}; // Позиции всех игроков
+        let myMoney = 200000;
         let myProperties = [];
-        let tokenPositions = {}; // Track all token positions for overlap handling
-        
-        // Classic Monopoly board - 40 cells
-        const MONO_MAP = [
-            // Bottom row (right to left): 0-10
-            { id: 0, type: 'corner', name: 'СТАРТ', icon: 'arrow' },
-            { id: 1, type: 'property', name: 'Житная ул.', price: 6000, rent: [200, 1000, 3000, 9000, 16000, 25000], group: 0, house: 5000 },
-            { id: 2, type: 'chest', name: 'Казна', icon: 'chest' },
-            { id: 3, type: 'property', name: 'Нагатинская ул.', price: 6000, rent: [400, 2000, 6000, 18000, 32000, 45000], group: 0, house: 5000 },
-            { id: 4, type: 'tax', name: 'Подоходный налог', price: 20000, icon: 'tax' },
-            { id: 5, type: 'station', name: 'Рижская ж/д', price: 20000, rent: [2500, 5000, 10000, 20000], group: 'station' },
-            { id: 6, type: 'property', name: 'Варшавское ш.', price: 10000, rent: [600, 3000, 9000, 27000, 40000, 55000], group: 1, house: 5000 },
-            { id: 7, type: 'chance', name: 'Шанс', icon: 'chance' },
-            { id: 8, type: 'property', name: 'Огарёва ул.', price: 10000, rent: [600, 3000, 9000, 27000, 40000, 55000], group: 1, house: 5000 },
-            { id: 9, type: 'property', name: 'Первая Парковая', price: 12000, rent: [800, 4000, 10000, 30000, 45000, 60000], group: 1, house: 5000 },
-            { id: 10, type: 'corner', name: 'ТЮРЬМА', icon: 'jail' },
-            
-            // Left column (bottom to top): 11-19
-            { id: 11, type: 'property', name: 'Полянка ул.', price: 14000, rent: [1000, 5000, 15000, 45000, 62500, 75000], group: 2, house: 10000 },
-            { id: 12, type: 'utility', name: 'Электростанция', price: 15000, rent: [400, 1000], group: 'utility', icon: 'electric' },
-            { id: 13, type: 'property', name: 'Сретенка ул.', price: 14000, rent: [1000, 5000, 15000, 45000, 62500, 75000], group: 2, house: 10000 },
-            { id: 14, type: 'property', name: 'Ростовская наб.', price: 16000, rent: [1200, 6000, 18000, 50000, 70000, 90000], group: 2, house: 10000 },
-            { id: 15, type: 'station', name: 'Курская ж/д', price: 20000, rent: [2500, 5000, 10000, 20000], group: 'station' },
-            { id: 16, type: 'property', name: 'Рязанский пр.', price: 18000, rent: [1400, 7000, 20000, 55000, 75000, 95000], group: 3, house: 10000 },
-            { id: 17, type: 'chest', name: 'Казна', icon: 'chest' },
-            { id: 18, type: 'property', name: 'Ул. Вавилова', price: 18000, rent: [1400, 7000, 20000, 55000, 75000, 95000], group: 3, house: 10000 },
-            { id: 19, type: 'property', name: 'Рублёвское ш.', price: 20000, rent: [1600, 8000, 22000, 60000, 80000, 100000], group: 3, house: 10000 },
-            { id: 20, type: 'corner', name: 'БЕСПЛАТНАЯ ПАРКОВКА', icon: 'parking' },
-            
-            // Top row (left to right): 21-29
-            { id: 21, type: 'property', name: 'Ул. Тверская', price: 22000, rent: [1800, 9000, 25000, 70000, 87500, 105000], group: 4, house: 15000 },
-            { id: 22, type: 'chance', name: 'Шанс', icon: 'chance' },
-            { id: 23, type: 'property', name: 'Пушкинская ул.', price: 22000, rent: [1800, 9000, 25000, 70000, 87500, 105000], group: 4, house: 15000 },
-            { id: 24, type: 'property', name: 'Площадь Маяковского', price: 24000, rent: [2000, 10000, 30000, 75000, 92500, 110000], group: 4, house: 15000 },
-            { id: 25, type: 'station', name: 'Казанская ж/д', price: 20000, rent: [2500, 5000, 10000, 20000], group: 'station' },
-            { id: 26, type: 'property', name: 'Ул. Грузинский Вал', price: 26000, rent: [2200, 11000, 33000, 80000, 97500, 115000], group: 5, house: 15000 },
-            { id: 27, type: 'property', name: 'Чистопрудный б-р', price: 26000, rent: [2200, 11000, 33000, 80000, 97500, 115000], group: 5, house: 15000 },
-            { id: 28, type: 'utility', name: 'Водопровод', price: 15000, rent: [400, 1000], group: 'utility', icon: 'water' },
-            { id: 29, type: 'property', name: 'Ул. Марксистская', price: 28000, rent: [2400, 12000, 36000, 85000, 102500, 120000], group: 5, house: 15000 },
-            { id: 30, type: 'corner', name: 'ИДИТЕ В ТЮРЬМУ', icon: 'gotojail' },
-            
-            // Right column (top to bottom): 31-39
-            { id: 31, type: 'property', name: 'Ул. Щусева', price: 30000, rent: [2600, 13000, 39000, 90000, 110000, 127500], group: 6, house: 20000 },
-            { id: 32, type: 'property', name: 'Гоголевский б-р', price: 30000, rent: [2600, 13000, 39000, 90000, 110000, 127500], group: 6, house: 20000 },
-            { id: 33, type: 'chest', name: 'Казна', icon: 'chest' },
-            { id: 34, type: 'property', name: 'Кутузовский пр.', price: 32000, rent: [2800, 15000, 45000, 100000, 120000, 140000], group: 6, house: 20000 },
-            { id: 35, type: 'station', name: 'Ленинградская ж/д', price: 20000, rent: [2500, 5000, 10000, 20000], group: 'station' },
-            { id: 36, type: 'chance', name: 'Шанс', icon: 'chance' },
-            { id: 37, type: 'property', name: 'Ул. Малая Бронная', price: 35000, rent: [3500, 17500, 50000, 110000, 130000, 150000], group: 7, house: 20000 },
-            { id: 38, type: 'tax', name: 'Сверхналог', price: 10000, icon: 'tax' },
-            { id: 39, type: 'property', name: 'Ул. Арбат', price: 40000, rent: [5000, 20000, 60000, 140000, 170000, 200000], group: 7, house: 20000 },
-        ];
-        
-        const PLAYER_COLORS = ['#ff3b30', '#007aff', '#34c759', '#ffcc00'];
-        const GROUP_COLORS = {
-            0: '#8B4513', 1: '#87CEEB', 2: '#DA70D6', 3: '#FFA500',
-            4: '#FF0000', 5: '#FFD700', 6: '#228B22', 7: '#0000CD',
-            'station': '#333', 'utility': '#808080'
-        };
-        
-        function openMonopolyMenu() { 
-            document.getElementById('modalMonopolyMenu').classList.add('visible'); 
-        }
-        
+
+        function openMonopolyMenu() { document.getElementById('modalMonopolyMenu').classList.add('visible'); }
+
         function createMonopolyGame() {
             document.getElementById('modalLoading').classList.add('visible');
             const user = tg.initDataUnsafe.user || { first_name: "Player" };
             socket.emit('create_game', { username: user.first_name, photo_url: user.photo_url, gameType: 'monopoly' });
         }
-        
+
         function joinMonopolyGame() {
             const code = document.getElementById('monoJoinCode').value;
             if(code.length < 5) return tg.HapticFeedback.notificationOccurred('error');
-            onlineRoomCode = code;
             const user = tg.initDataUnsafe.user || { first_name: "Player" };
             socket.emit('join_game', { roomCode: code, userData: { username: user.first_name, photo_url: user.photo_url } });
             document.getElementById('modalMonopolyMenu').classList.remove('visible');
@@ -1732,262 +1640,146 @@
             onlineRoomCode = code;
             document.getElementById('modalMonopolyLobby').classList.add('visible');
             document.getElementById('monoLobbyCode').innerText = code;
-            const btn = document.getElementById('monoStartBtn');
-            if(isCreator) btn.style.display = 'block'; else btn.style.display = 'none';
+            document.getElementById('monoStartBtn').style.display = isCreator ? 'block' : 'none';
         }
 
         function updateLobbyUI(players) {
             const list = document.getElementById('monoLobbyList');
             list.innerHTML = '';
             const user = tg.initDataUnsafe.user || { first_name: "Player" };
+            const colors = ['#ff3b30', '#007aff', '#34c759', '#ffcc00'];
             players.forEach((p, i) => {
                 if(p.name === user.first_name) myPlayerIndex = i;
                 const row = document.createElement('div');
                 row.className = 'lobby-item';
                 const ava = p.avatar || `https://ui-avatars.com/api/?name=${p.name}&background=random`;
-                row.innerHTML = `
-                    <img src="${ava}">
-                    <div>
-                        <b>${p.name}</b><br>
-                        <span style="font-size:12px;color:#8e8e93;">200 000 ₽</span>
-                    </div>
-                    <div class="player-color" style="background:${PLAYER_COLORS[i]}"></div>
-                `;
+                row.innerHTML = `<img src="${ava}"><div><b>${p.name}</b><br><span style="font-size:12px;color:#8e8e93;">200 000 ₽</span></div><div style="width:14px;height:14px;border-radius:50%;background:${colors[i]};margin-left:auto;"></div>`;
                 list.appendChild(row);
             });
             monoPlayers = players;
         }
-        
+
         function leaveMonopolyLobby() { location.reload(); }
         function startMonopolyGame() { socket.emit('monopoly_start', { roomCode: onlineRoomCode }); }
-        
-        function initMonopolyBoard(mapData, players) {
+
+        // Инициализация доски
+        function initMonoBoard(players) {
             monoPlayers = players;
-            tokenPositions = {};
-            const board = document.getElementById('monoBoard');
-            const center = board.querySelector('.mono-center');
-            board.innerHTML = '';
+            playerPositions = {};
+            players.forEach((p, i) => playerPositions[i] = 0);
             
-            // Render all cells
-            MONO_MAP.forEach(cell => {
+            const board = document.getElementById('monoBoard');
+            const center = board.querySelector('.m-center');
+            board.innerHTML = '';
+            board.appendChild(center);
+
+            // Инициализация кубиков
+            setDiceDots('cube1', 1);
+            setDiceDots('cube2', 1);
+
+            LOCAL_MONOPOLY_MAP.forEach(cell => {
                 const el = document.createElement('div');
-                el.className = 'mono-cell';
+                el.className = 'm-cell';
                 el.id = `cell-${cell.id}`;
                 
-                const pos = getMonoGridPos(cell.id);
-                el.style.gridColumn = pos.col;
-                el.style.gridRow = pos.row;
-                
-                if (cell.type === 'corner') {
-                    el.classList.add('corner');
-                    el.innerHTML = `
-                        ${getCornerIcon(cell.icon)}
-                        <span>${cell.name}</span>
-                    `;
+                const pos = getGridPos(cell.id);
+                el.style.gridRow = pos.r;
+                el.style.gridColumn = pos.c;
+
+                // Поворот контента в зависимости от стороны
+                if (cell.id > 0 && cell.id < 10) el.classList.add('m-left');
+                else if (cell.id > 10 && cell.id < 20) el.classList.add('m-top');
+                else if (cell.id > 20 && cell.id < 30) el.classList.add('m-right');
+                else if (cell.id > 30) el.classList.add('m-bottom');
+                else el.classList.add('m-corner');
+
+                if(cell.type === 'prop' || cell.type === 'util') {
+                    if(cell.group) {
+                        const colorLine = document.createElement('div');
+                        colorLine.className = 'color-stripe';
+                        colorLine.style.backgroundColor = `var(--mono-line-${cell.group})`;
+                        el.appendChild(colorLine);
+                    }
+                    el.innerHTML += `<div class="name">${cell.name}</div><div class="price">${cell.price/1000}k</div>`;
                 } else {
-                    // Determine orientation
-                    if (cell.id > 0 && cell.id < 10) {
-                        el.classList.add('horizontal', 'bottom');
-                    } else if (cell.id > 10 && cell.id < 20) {
-                        el.classList.add('vertical', 'left');
-                    } else if (cell.id > 20 && cell.id < 30) {
-                        el.classList.add('horizontal', 'top');
-                    } else if (cell.id > 30) {
-                        el.classList.add('vertical', 'right');
-                    }
-                    
-                    if (cell.type === 'property' || cell.type === 'station' || cell.type === 'utility') {
-                        const groupClass = cell.group === 'station' ? 'group-station' : 
-                                          cell.group === 'utility' ? 'group-utility' : `group-${cell.group}`;
-                        el.innerHTML = `
-                            <div class="color-bar ${groupClass}"></div>
-                            <div class="cell-content">
-                                <div class="name">${cell.name}</div>
-                                <div class="price">${formatMoney(cell.price)}</div>
-                            </div>
-                        `;
-                    } else {
-                        el.classList.add('special');
-                        el.innerHTML = `
-                            <div class="cell-content">
-                                ${getSpecialIcon(cell.icon)}
-                                <div class="name">${cell.name}</div>
-                            </div>
-                        `;
-                    }
+                    el.innerHTML += `<div class="name">${cell.name}</div>`;
                 }
-                
-                el.onclick = () => onCellClick(cell.id);
                 board.appendChild(el);
             });
-            
-            // Add center back
-            board.appendChild(center);
-            
-            // Create player tokens
+
+            // Фишки игроков
             players.forEach((p, i) => {
-                const token = document.createElement('div');
-                token.className = `mono-token player-${i}`;
-                token.id = `token-${i}`;
-                board.appendChild(token);
-                tokenPositions[i] = 0;
+                const t = document.createElement('div');
+                t.className = `mono-token player-${i}`;
+                t.id = `token-${i}`;
+                board.appendChild(t);
             });
             
-            // Position all tokens at start
-            updateAllTokenPositions();
-            
-            // Set initial dice faces
-            setDiceFace('dice1', 1);
-            setDiceFace('dice2', 1);
-            
-            // Update balance display
-            document.getElementById('myMoney').innerText = formatMoney(200000);
+            // Позиционируем фишки после добавления клеток
+            setTimeout(() => {
+                players.forEach((p, i) => updateTokenPos(i, 0));
+            }, 100);
         }
-        
-        function getMonoGridPos(index) {
-            // Bottom row: index 0-10 → row 11, col 11 down to 1
-            if (index <= 10) {
-                return { row: 11, col: 11 - index };
-            }
-            // Left column: index 11-19 → col 1, row 10 down to 2
-            if (index <= 19) {
-                return { row: 10 - (index - 11), col: 1 };
-            }
-            // Top corner
-            if (index === 20) {
-                return { row: 1, col: 1 };
-            }
-            // Top row: index 21-29 → row 1, col 2 to 10
-            if (index <= 29) {
-                return { row: 1, col: 1 + (index - 20) };
-            }
-            // Top-right corner
-            if (index === 30) {
-                return { row: 1, col: 11 };
-            }
-            // Right column: index 31-39 → col 11, row 2 to 10
-            return { row: 1 + (index - 30), col: 11 };
+
+        // Координаты для сетки 11x11 (СТАРТ в нижнем левом углу)
+        function getGridPos(id) {
+            if(id === 0) return { r: 11, c: 1 }; // Старт (Низ-Лево)
+            if(id > 0 && id < 10) return { r: 11 - id, c: 1 }; // Вверх по левой стороне
+            if(id === 10) return { r: 1, c: 1 }; // Тюрьма (Верх-Лево)
+            if(id > 10 && id < 20) return { r: 1, c: id - 9 }; // Вправо по верхней стороне
+            if(id === 20) return { r: 1, c: 11 }; // Парковка (Верх-Право)
+            if(id > 20 && id < 30) return { r: id - 19, c: 11 }; // Вниз по правой стороне
+            if(id === 30) return { r: 11, c: 11 }; // Арест (Низ-Право)
+            if(id > 30) return { r: 11, c: 11 - (id - 30) }; // Влево по нижней стороне
+            return { r: 11, c: 1 };
         }
-        
-        function getCornerIcon(icon) {
-            const icons = {
-                'arrow': '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>',
-                'jail': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>',
-                'parking': '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3H6v18h4v-6h3c3.31 0 6-2.69 6-6s-2.69-6-6-6zm.2 8H10V7h3.2c1.1 0 2 .9 2 2s-.9 2-2 2z"/></svg>',
-                'gotojail': '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'
-            };
-            return icons[icon] || '';
-        }
-        
-        function getSpecialIcon(icon) {
-            const icons = {
-                'chest': '<svg viewBox="0 0 24 24" fill="var(--accent)" width="16" height="16"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/></svg>',
-                'chance': '<svg viewBox="0 0 24 24" fill="#ff9500" width="16" height="16"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>',
-                'tax': '<svg viewBox="0 0 24 24" fill="var(--danger)" width="16" height="16"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>',
-                'electric': '<svg viewBox="0 0 24 24" fill="#ffcc00" width="16" height="16"><path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z"/></svg>',
-                'water': '<svg viewBox="0 0 24 24" fill="#007aff" width="16" height="16"><path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8z"/></svg>'
-            };
-            return icons[icon] || '';
-        }
-        
-        function formatMoney(amount) {
-            return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + ' ₽';
-        }
-        
-        function updateAllTokenPositions() {
-            // Group tokens by position
-            const positionGroups = {};
-            Object.entries(tokenPositions).forEach(([playerIdx, pos]) => {
-                if (!positionGroups[pos]) positionGroups[pos] = [];
-                positionGroups[pos].push(parseInt(playerIdx));
-            });
-            
-            // Update each token with offset for overlapping
-            Object.entries(positionGroups).forEach(([pos, players]) => {
-                players.forEach((playerIdx, offsetIdx) => {
-                    const token = document.getElementById(`token-${playerIdx}`);
-                    if (token) {
-                        positionTokenOnCell(token, parseInt(pos), offsetIdx, players.length);
-                    }
-                });
-            });
-        }
-        
-        function positionTokenOnCell(token, cellIndex, offsetIndex, totalTokens) {
-            const cell = document.getElementById(`cell-${cellIndex}`);
-            if (!cell) return;
+
+        // Обновление позиции фишки
+        function updateTokenPos(playerIdx, cellId) {
+            const token = document.getElementById(`token-${playerIdx}`);
+            const cell = document.getElementById(`cell-${cellId}`);
+            if(!token || !cell) return;
             
             const cellRect = cell.getBoundingClientRect();
             const boardRect = document.getElementById('monoBoard').getBoundingClientRect();
             
-            // Calculate center of cell relative to board
-            let centerX = (cellRect.left - boardRect.left) + cellRect.width / 2;
-            let centerY = (cellRect.top - boardRect.top) + cellRect.height / 2;
+            // Смещение, чтобы фишки не накладывались
+            const offsetMap = [{x: -4, y: -4}, {x: 4, y: -4}, {x: -4, y: 4}, {x: 4, y: 4}];
+            const off = offsetMap[playerIdx % 4];
+
+            const top = cellRect.top - boardRect.top + (cellRect.height/2) - 7 + off.y;
+            const left = cellRect.left - boardRect.left + (cellRect.width/2) - 7 + off.x;
+
+            token.style.top = top + 'px';
+            token.style.left = left + 'px';
             
-            // Calculate offset for multiple tokens
-            if (totalTokens > 1) {
-                const offsetAngle = (offsetIndex / totalTokens) * Math.PI * 2;
-                const offsetRadius = 6;
-                centerX += Math.cos(offsetAngle) * offsetRadius;
-                centerY += Math.sin(offsetAngle) * offsetRadius;
-            }
-            
-            // Convert to percentage
-            const leftPct = (centerX / boardRect.width) * 100;
-            const topPct = (centerY / boardRect.height) * 100;
-            
-            token.style.left = `calc(${leftPct}% - 8px)`;
-            token.style.top = `calc(${topPct}% - 8px)`;
+            playerPositions[playerIdx] = cellId;
         }
-        
-        // Smooth token movement along the path
-        async function moveTokenAnimated(playerIndex, fromPos, toPos) {
-            const token = document.getElementById(`token-${playerIndex}`);
-            if (!token) return;
+
+        // Плавная анимация хода по клеткам (СТРОГО ПО КРУГУ)
+        async function moveTokenSmoothly(playerIdx, startPos, endPos) {
+            let current = startPos;
             
-            // Remove from old position group
-            tokenPositions[playerIndex] = -1;
-            updateAllTokenPositions();
-            
-            // Enable transition for smooth movement
-            token.style.transition = 'left 0.25s ease-out, top 0.25s ease-out';
-            
-            // Move step by step
-            let current = fromPos;
-            while (current !== toPos) {
-                current = (current + 1) % 40;
-                tokenPositions[playerIndex] = current;
-                
-                // Position only this token (others stay put)
-                const cell = document.getElementById(`cell-${current}`);
-                if (cell) {
-                    const cellRect = cell.getBoundingClientRect();
-                    const boardRect = document.getElementById('monoBoard').getBoundingClientRect();
-                    const centerX = (cellRect.left - boardRect.left) + cellRect.width / 2;
-                    const centerY = (cellRect.top - boardRect.top) + cellRect.height / 2;
-                    const leftPct = (centerX / boardRect.width) * 100;
-                    const topPct = (centerY / boardRect.height) * 100;
-                    token.style.left = `calc(${leftPct}% - 8px)`;
-                    token.style.top = `calc(${topPct}% - 8px)`;
-                }
-                
+            while (current !== endPos) {
+                current++;
+                if(current > 39) current = 0;
+                updateTokenPos(playerIdx, current);
                 tg.HapticFeedback.impactOccurred('light');
-                await sleep(250);
+                await sleep(120);
             }
             
-            // Disable transition and update all positions (handles overlapping)
-            token.style.transition = 'none';
-            updateAllTokenPositions();
+            // После хода проверяем клетку
+            checkLanding(playerIdx, endPos);
         }
         
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
-        
-        // 3D Dice rendering
-        function setDiceFace(diceId, value) {
-            const dice = document.getElementById(diceId);
-            if (!dice) return;
+
+        // 3D Кубики с точками
+        function setDiceDots(cubeId, value) {
+            const cube = document.getElementById(cubeId);
+            if (!cube) return;
             
             const dotPatterns = {
                 1: [[1,1]],
@@ -1998,222 +1790,149 @@
                 6: [[0,0], [0,1], [0,2], [2,0], [2,1], [2,2]]
             };
             
-            const faces = dice.querySelectorAll('.dice-face');
+            const faces = cube.querySelectorAll('.face');
+            const faceValues = [value, (value % 6) + 1, 7 - value, ((value + 1) % 6) + 1, ((value + 2) % 6) + 1, ((value + 3) % 6) + 1];
+            
             faces.forEach((face, i) => {
                 face.innerHTML = '';
-                const faceValue = (value + i) % 6 || 6; // Distribute values on faces
-                const pattern = dotPatterns[faceValue];
-                
-                // Create 3x3 grid
-                for (let row = 0; row < 3; row++) {
-                    for (let col = 0; col < 3; col++) {
-                        const hasDot = pattern.some(p => p[0] === row && p[1] === col);
-                        if (hasDot) {
-                            const dot = document.createElement('div');
-                            dot.className = 'dice-dot';
-                            face.appendChild(dot);
-                        }
-                    }
-                }
+                const pattern = dotPatterns[faceValues[i]] || dotPatterns[1];
+                pattern.forEach(([r, c]) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dice-dot';
+                    face.appendChild(dot);
+                });
             });
         }
-        
-        async function rollMonopolyDice() {
-            const btn = document.getElementById('btnRollDice');
-            btn.disabled = true;
+
+        // Бросок кубиков
+        function rollDice() {
+            document.getElementById('btnRoll').disabled = true;
+            document.getElementById('btnRoll').style.opacity = 0.5;
+            document.getElementById('btnRoll').innerText = 'Бросаем...';
             
-            const dice1 = document.getElementById('dice1');
-            const dice2 = document.getElementById('dice2');
+            // Анимация вращения
+            const cube1 = document.getElementById('cube1');
+            const cube2 = document.getElementById('cube2');
+            cube1.classList.add('rolling');
+            cube2.classList.add('rolling');
             
-            // Add rolling animation
-            dice1.classList.add('rolling');
-            dice2.classList.add('rolling');
-            
-            // Haptic feedback during roll
-            for (let i = 0; i < 8; i++) {
-                tg.HapticFeedback.impactOccurred('light');
-                await sleep(100);
+            // Хаптик
+            for(let i = 0; i < 8; i++) {
+                setTimeout(() => tg.HapticFeedback.impactOccurred('light'), i * 100);
             }
             
-            // Remove animation
-            dice1.classList.remove('rolling');
-            dice2.classList.remove('rolling');
-            
-            // Emit to server
             socket.emit('monopoly_roll', { roomCode: onlineRoomCode });
         }
-        
-        function handleDiceResult(d1, d2, playerIndex, newPos, oldPos) {
-            // Set final dice values
-            setDiceFace('dice1', d1);
-            setDiceFace('dice2', d2);
+
+        function animateDice3D(d1, d2) {
+            const cube1 = document.getElementById('cube1');
+            const cube2 = document.getElementById('cube2');
             
-            tg.HapticFeedback.notificationOccurred('success');
+            cube1.classList.remove('rolling');
+            cube2.classList.remove('rolling');
             
-            // Animate token movement
-            moveTokenAnimated(playerIndex, oldPos, newPos).then(() => {
-                // Check what player landed on
-                const cell = MONO_MAP[newPos];
-                if (playerIndex === myPlayerIndex) {
-                    handleLandedOnCell(cell);
-                }
-            });
+            setTimeout(() => {
+                setDiceDots('cube1', d1);
+                setDiceDots('cube2', d2);
+                tg.HapticFeedback.notificationOccurred('success');
+            }, 100);
         }
-        
-        function handleLandedOnCell(cell) {
-            if (cell.type === 'property' || cell.type === 'station' || cell.type === 'utility') {
-                // Check if unowned
-                // For now, show buy modal (later: check ownership from server)
-                showPropertyBuyModal(cell);
-            } else if (cell.type === 'tax') {
-                // Handle tax
-                tg.HapticFeedback.notificationOccurred('warning');
-            } else if (cell.type === 'chance' || cell.type === 'chest') {
-                // Draw card animation
-                tg.HapticFeedback.notificationOccurred('warning');
-            } else if (cell.id === 30) {
-                // Go to jail
-                tg.HapticFeedback.notificationOccurred('error');
+
+        // Проверка клетки после хода
+        function checkLanding(pIdx, pos) {
+            if(pIdx !== myPlayerIndex) return;
+            const cell = LOCAL_MONOPOLY_MAP.find(c => c.id === pos);
+            
+            if(cell && (cell.type === 'prop' || cell.type === 'util')) {
+                // Проверка: можно ли купить
+                showBuyPopup(cell);
             }
         }
-        
-        function showPropertyBuyModal(cell) {
-            const modal = document.getElementById('modalPropertyBuy');
-            const header = document.getElementById('propertyHeader');
-            const color = GROUP_COLORS[cell.group] || '#333';
+
+        function showBuyPopup(cell) {
+            currentBuyCell = cell;
+            document.getElementById('buyCardName').innerText = cell.name;
+            document.getElementById('buyCardPrice').innerText = cell.price.toLocaleString() + " ₽";
+            const header = document.getElementById('buyCardColor');
+            header.style.background = cell.group ? `var(--mono-line-${cell.group})` : '#333';
+            document.getElementById('buyPopup').classList.add('active');
+            tg.HapticFeedback.notificationOccurred('warning');
+        }
+
+        function closeBuyPopup() {
+            document.getElementById('buyPopup').classList.remove('active');
+            currentBuyCell = null;
+        }
+
+        function buyPropertyAction() {
+            if(!currentBuyCell) return;
             
-            header.innerText = cell.name;
-            header.style.background = `linear-gradient(135deg, ${color}, ${adjustColor(color, 20)})`;
+            // Отправляем на сервер
+            socket.emit('monopoly_buy', { roomCode: onlineRoomCode, cellId: currentBuyCell.id });
             
-            document.getElementById('propPrice').innerText = formatMoney(cell.price);
+            // Добавляем карточку визуально
+            addPropertyCard(currentBuyCell);
             
-            if (cell.rent) {
-                document.getElementById('propRent').innerText = formatMoney(cell.rent[0]);
-                document.getElementById('propRent1').innerText = formatMoney(cell.rent[1] || 0);
-                document.getElementById('propRent2').innerText = formatMoney(cell.rent[2] || 0);
-                document.getElementById('propRent3').innerText = formatMoney(cell.rent[3] || 0);
-                document.getElementById('propRent4').innerText = formatMoney(cell.rent[4] || 0);
-                document.getElementById('propRentH').innerText = formatMoney(cell.rent[5] || 0);
-                document.getElementById('propHouse').innerText = formatMoney(cell.house || 0);
+            // Обновляем баланс
+            myMoney -= currentBuyCell.price;
+            updateMoneyDisplay();
+            
+            // Подсвечиваем клетку
+            const cellEl = document.getElementById(`cell-${currentBuyCell.id}`);
+            if(cellEl) {
+                cellEl.style.boxShadow = `inset 0 0 0 2px var(--accent)`;
             }
             
-            modal.classList.add('visible');
-            modal.dataset.cellId = cell.id;
-        }
-        
-        function adjustColor(color, amount) {
-            // Simple color lightening
-            return color;
-        }
-        
-        function buyProperty() {
-            const modal = document.getElementById('modalPropertyBuy');
-            const cellId = parseInt(modal.dataset.cellId);
-            
-            // Send to server
-            socket.emit('monopoly_buy', { roomCode: onlineRoomCode, cellId: cellId });
-            
-            modal.classList.remove('visible');
             tg.HapticFeedback.notificationOccurred('success');
-            
-            // Add to my cards (visual only, server confirms)
-            addPropertyToStrip(cellId);
+            closeBuyPopup();
         }
         
         function auctionProperty() {
-            const modal = document.getElementById('modalPropertyBuy');
-            modal.classList.remove('visible');
-            // TODO: Implement auction
-            socket.emit('monopoly_auction', { roomCode: onlineRoomCode, cellId: parseInt(modal.dataset.cellId) });
+            if(!currentBuyCell) return;
+            socket.emit('monopoly_auction', { roomCode: onlineRoomCode, cellId: currentBuyCell.id });
+            closeBuyPopup();
         }
-        
-        function addPropertyToStrip(cellId) {
-            const cell = MONO_MAP[cellId];
-            const strip = document.getElementById('monoCardsStrip');
-            const color = GROUP_COLORS[cell.group] || '#333';
+
+        function addPropertyCard(cell) {
+            const list = document.getElementById('myPropsList');
+            if(list.innerText.includes("Пока пусто")) list.innerHTML = '';
             
             const card = document.createElement('div');
-            card.className = 'mono-mini-card';
-            card.dataset.cellId = cellId;
-            card.innerHTML = `
-                <div class="mini-bar" style="background: linear-gradient(135deg, ${color}, ${color})"></div>
-                <div class="mini-name">${cell.name}</div>
-            `;
-            card.onclick = () => showPropertyInfo(cellId);
+            card.className = 'prop-card-mini';
+            const color = cell.group ? `var(--mono-line-${cell.group})` : '#333';
+            card.innerHTML = `<div class="prop-head" style="background:${color}"></div><div style="margin-top:5px;text-align:center;font-size:5px;padding:2px;">${cell.name}</div>`;
+            list.appendChild(card);
             
-            // Animate appearance
-            card.style.transform = 'scale(0)';
-            card.style.opacity = '0';
-            strip.appendChild(card);
-            
-            requestAnimationFrame(() => {
-                card.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                card.style.transform = 'scale(1)';
-                card.style.opacity = '1';
-            });
-            
-            // Mark cell as owned
-            const cellEl = document.getElementById(`cell-${cellId}`);
-            if (cellEl) {
-                cellEl.classList.add(`owned-${myPlayerIndex}`);
-            }
-            
-            myProperties.push(cellId);
+            myProperties.push(cell.id);
         }
-        
-        function showPropertyInfo(cellId) {
-            const cell = MONO_MAP[cellId];
-            const modal = document.getElementById('modalPropertyInfo');
-            const header = document.getElementById('propInfoHeader');
-            const body = document.getElementById('propInfoBody');
-            const color = GROUP_COLORS[cell.group] || '#333';
-            
-            header.innerText = cell.name;
-            header.style.background = `linear-gradient(135deg, ${color}, ${color})`;
-            
-            body.innerHTML = `
-                <div class="mono-property-row"><span>Цена</span><span>${formatMoney(cell.price)}</span></div>
-                <div class="mono-property-row"><span>Аренда</span><span>${formatMoney(cell.rent[0])}</span></div>
-                <div class="mono-property-row"><span>Залоговая стоимость</span><span>${formatMoney(cell.price / 2)}</span></div>
-            `;
-            
-            modal.classList.add('visible');
+
+        function updateMoneyDisplay() {
+            const el = document.getElementById('myMoney');
+            el.innerText = myMoney.toLocaleString();
+            el.style.transform = 'scale(1.2)';
+            setTimeout(() => el.style.transform = 'scale(1)', 200);
         }
-        
-        function closePropertyInfo() {
-            document.getElementById('modalPropertyInfo').classList.remove('visible');
-        }
-        
-        function updateMonopolyTurn(playerIndex) {
-            currentTurnIndex = playerIndex;
-            const isMyTurn = playerIndex === myPlayerIndex;
-            const turnText = document.getElementById('monoTurnText');
-            const rollBtn = document.getElementById('btnRollDice');
+
+        function updateTurnIndicator(playerIndex) {
+            const turnText = document.getElementById('turnText');
+            const btn = document.getElementById('btnRoll');
             
-            if (isMyTurn) {
-                turnText.innerText = 'ВАШ ХОД';
-                turnText.classList.remove('waiting');
-                rollBtn.disabled = false;
+            if (playerIndex === myPlayerIndex) {
+                turnText.innerText = 'ВАШ ХОД!';
+                turnText.classList.add('my-turn');
+                btn.disabled = false;
+                btn.style.opacity = 1;
+                btn.innerText = 'Бросить кубики';
                 tg.HapticFeedback.notificationOccurred('success');
             } else {
-                const playerName = monoPlayers[playerIndex]?.name || `Игрок ${playerIndex + 1}`;
-                turnText.innerText = `Ход: ${playerName}`;
-                turnText.classList.add('waiting');
-                rollBtn.disabled = true;
+                const pName = monoPlayers[playerIndex] ? monoPlayers[playerIndex].name : `Игрок ${playerIndex+1}`;
+                turnText.innerText = `Ход: ${pName}`;
+                turnText.classList.remove('my-turn');
+                btn.disabled = true;
+                btn.style.opacity = 0.5;
+                btn.innerText = 'Ожидание хода...';
             }
         }
-        
-        function onCellClick(cellId) {
-            const cell = MONO_MAP[cellId];
-            if (myProperties.includes(cellId)) {
-                showPropertyInfo(cellId);
-            }
-        }
-        
-        // Placeholder functions for future implementation
-        function openMortgageMenu() { tg.HapticFeedback.notificationOccurred('warning'); }
-        function openTradeMenu() { tg.HapticFeedback.notificationOccurred('warning'); }
-        function openBuildMenu() { tg.HapticFeedback.notificationOccurred('warning'); }
 
         // Start App
         initApp();
