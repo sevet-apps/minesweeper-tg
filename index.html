@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v35.2 Fixes</title>
+    <title>Glass App v36.0 Final Fixes</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -57,23 +57,22 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } 
         
-        /* ИСПРАВЛЕНИЕ БАГОВ С НАЖАТИЕМ: */
-        /* Глобальный canvas (для конфетти) должен пропускать клики и быть НИЖЕ модальных окон */
-        canvas { 
+        /* --- ИСПРАВЛЕНИЕ БЛОКИРОВКИ НАЖАТИЙ --- */
+        /* Применяем pointer-events: none ко всем canvas, КРОМЕ игрового холста башни */
+        canvas:not(#towerCanvas) { 
             position: fixed; 
             top: 0; 
             left: 0; 
             width: 100%; 
             height: 100%; 
-            z-index: 22000; /* Ниже модалок (22500), но выше контента */
-            pointer-events: none; /* Пропускает клики сквозь себя */
+            z-index: 22000; 
+            pointer-events: none !important; 
         }
         
-        /* Специальные настройки для Canvas Башни */
         #towerCanvas {
-            z-index: 1 !important; /* Внутри своего контейнера */
-            position: absolute !important; /* Важно: absolute, чтобы двигался вместе с экраном, а не fixed */
-            pointer-events: auto !important; /* Должен реагировать на клики */
+            z-index: 1 !important; 
+            position: absolute !important; 
+            pointer-events: auto !important; 
         }
 
         body { 
@@ -145,10 +144,11 @@
 
         .game-top-bar { 
             padding: 15px 20px; 
-            padding-top: calc(110px + var(--safe-top)); 
+            padding-top: calc(15px + var(--safe-top)); 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
+            z-index: 100;
         } 
         
         .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
@@ -173,6 +173,7 @@
         .tab-item.active { color: var(--accent); background: transparent !important; } 
         .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
 
+        /* ... Styles for Leaderboards (Same as before) ... */
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
@@ -562,11 +563,11 @@
     <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
     
     <div id="tower-screen" class="game-overlay">
-        <div class="game-top-bar" style="background: transparent; position:absolute; top:0; left:0; width:100%; z-index:10; pointer-events:none;">
-            <div class="back-btn" onclick="closeGame('tower')" style="pointer-events:auto; background:var(--glass-bg); padding:8px 12px; border-radius:20px; backdrop-filter:blur(10px);">
+        <div class="game-top-bar" style="position: absolute; top:0; left:0; width:100%; z-index:10; pointer-events: none;">
+            <div class="back-btn" onclick="closeGame('tower')" style="pointer-events: auto; background: var(--glass-bg); padding: 8px 12px; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню
             </div>
-            <div style="font-weight:800; font-size:42px; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.3);" id="towerScore">0</div>
+            <div style="font-weight:800; font-size:42px; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.3); margin-right: 10px;" id="towerScore">0</div>
         </div>
         <canvas id="towerCanvas"></canvas>
         <div id="towerStartHint" style="position:absolute; bottom:15%; left:0; width:100%; text-align:center; color:white; opacity:0.8; font-weight:600; pointer-events:none; transition: opacity 0.3s;">Нажми, чтобы поставить</div>
@@ -868,7 +869,7 @@
         let tCanvas, tCtx, tReqId;
         let tStack = [];
         let tScore = 0;
-        let tState = 'start'; // start, playing, gameover
+        let tState = 'start'; 
         let tHue = 0;
         let tCameraY = 0;
         let tScrollY = 0;
@@ -876,13 +877,11 @@
         // Settings
         const T_BLOCK_HEIGHT = 20; 
         const T_DEFAULT_SIZE = 120;
-        const T_SPEED_BASE = 3.5; // Слегка уменьшил базу
+        const T_SPEED_BASE = 3.5; 
         
         let tCurrentBlock = null; 
         let tDebris = [];
         
-        // Isometric Projection Helpers
-        // Convert 3D coord to 2D canvas coord. center screen is (0,0) logically for these func
         function toIso(x, y, z) {
             return {
                 x: (x - z),
@@ -904,7 +903,6 @@
             resetTower();
             tLoop();
             
-            // Input listener
             tCanvas.onpointerdown = (e) => {
                 e.preventDefault();
                 handleTowerInput();
@@ -929,36 +927,28 @@
             document.getElementById('towerScore').innerText = '0';
             document.getElementById('towerStartHint').style.opacity = '1';
 
-            // Base block
             tStack.push({
                 x: 0,
                 z: 0,
                 w: T_DEFAULT_SIZE,
                 d: T_DEFAULT_SIZE,
                 y: 0,
-                color: `hsl(${tHue}, 70%, 50%)`
+                color: `hsl(${tHue}, 70%, 50%)`,
+                flash: 0 // Свойство для вспышки
             });
             
-            // Первый блок всегда со стандартной скоростью
             spawnNextBlock(true);
         }
 
         function spawnNextBlock(isFirst = false) {
             const prev = tStack[tStack.length - 1];
-            
-            // COLOR LOGIC FIX: Large step to ensure distinct colors
             tHue = (tHue + 30) % 360;
-            
-            // Determine direction based on score (even/odd)
             const isX = (tScore % 2 === 0);
             
-            // Start far away
             const dist = 250;
             const startX = isX ? -dist : prev.x;
             const startZ = isX ? prev.z : -dist;
 
-            // Расчет скорости: База + 0.001 за каждый блок (почти незаметно)
-            // Если это первый блок после рестарта (isFirst), tScore = 0, и скорость будет базовой.
             const speed = T_SPEED_BASE + (tScore * 0.001);
 
             tCurrentBlock = {
@@ -968,17 +958,16 @@
                 d: prev.d,
                 y: (tScore + 1) * T_BLOCK_HEIGHT,
                 color: `hsl(${tHue}, 70%, 50%)`,
-                dir: 1, // Moving positive first
+                dir: 1, 
                 axis: isX ? 'x' : 'z',
-                speed: speed
+                speed: speed,
+                flash: 0
             };
         }
 
         function handleTowerInput() {
             if(tState !== 'playing') {
-                if(tState === 'gameover') {
-                   // Ignore tap here, handled by modal buttons
-                }
+                if(tState === 'gameover') { /* Ignore */ }
                 return;
             }
             
@@ -990,85 +979,89 @@
             let diff = 0;
             let cutSize = 0;
             
-            // Logic for cutting
+            // --- SNAPPING LOGIC (Магнит) ---
+            // Если разница меньше 3% от ширины предыдущего блока, считаем попадание идеальным
+            const snapThreshold = (curr.axis === 'x' ? prev.w : prev.d) * 0.03;
+
             if (curr.axis === 'x') {
-                diff = curr.x - prev.x;
-                if (Math.abs(diff) > prev.w) {
-                    gameOverTower();
-                    return;
-                }
+                let delta = curr.x - prev.x;
                 
-                // Cut logic
-                if (diff > 0) {
-                    // Overshot to the right
-                    cutSize = diff;
-                    curr.w -= cutSize;
-                    // Debris
-                    addDebris(curr.x + curr.w, curr.z, cutSize, curr.d, curr.y, curr.color);
-                } else if (diff < 0) {
-                    // Overshot to the left
-                    cutSize = -diff;
-                    curr.w -= cutSize;
-                    curr.x = prev.x; // Snap to prev edge
-                    // Debris
-                    addDebris(prev.x - cutSize, curr.z, cutSize, curr.d, curr.y, curr.color);
+                // Если попали в зону магнита
+                if (Math.abs(delta) < snapThreshold) {
+                    curr.x = prev.x; // Выравниваем
+                    diff = 0;
+                    curr.flash = 1.0; // Запускаем вспышку
+                    tg.HapticFeedback.notificationOccurred('success');
                 } else {
-                     // Perfect match visual?
+                    diff = delta;
                 }
-            } else { // axis 'z'
-                diff = curr.z - prev.z;
-                if (Math.abs(diff) > prev.d) {
-                    gameOverTower();
-                    return;
-                }
+            } else {
+                let delta = curr.z - prev.z;
                 
-                if (diff > 0) {
-                    // Overshot 'down' in iso
-                    cutSize = diff;
-                    curr.d -= cutSize;
-                    addDebris(curr.x, curr.z + curr.d, curr.w, cutSize, curr.y, curr.color);
-                } else if (diff < 0) {
-                    // Overshot 'up' in iso
-                    cutSize = -diff;
-                    curr.d -= cutSize;
-                    curr.z = prev.z;
-                    addDebris(curr.x, prev.z - cutSize, curr.w, cutSize, curr.y, curr.color);
+                if (Math.abs(delta) < snapThreshold) {
+                    curr.z = prev.z; // Выравниваем
+                    diff = 0;
+                    curr.flash = 1.0; // Запускаем вспышку
+                    tg.HapticFeedback.notificationOccurred('success');
+                } else {
+                    diff = delta;
                 }
             }
             
-            // Success
+            // Стандартная логика обрезки, если не сработал магнит (или промах большой)
+            if (diff !== 0) {
+                 tg.HapticFeedback.impactOccurred('light');
+                 if (curr.axis === 'x') {
+                    if (Math.abs(diff) > prev.w) {
+                        gameOverTower();
+                        return;
+                    }
+                    if (diff > 0) {
+                        cutSize = diff;
+                        curr.w -= cutSize;
+                        addDebris(curr.x + curr.w, curr.z, cutSize, curr.d, curr.y, curr.color);
+                    } else if (diff < 0) {
+                        cutSize = -diff;
+                        curr.w -= cutSize;
+                        curr.x = prev.x; 
+                        addDebris(prev.x - cutSize, curr.z, cutSize, curr.d, curr.y, curr.color);
+                    }
+                } else { 
+                    if (Math.abs(diff) > prev.d) {
+                        gameOverTower();
+                        return;
+                    }
+                    if (diff > 0) {
+                        cutSize = diff;
+                        curr.d -= cutSize;
+                        addDebris(curr.x, curr.z + curr.d, curr.w, cutSize, curr.y, curr.color);
+                    } else if (diff < 0) {
+                        cutSize = -diff;
+                        curr.d -= cutSize;
+                        curr.z = prev.z;
+                        addDebris(curr.x, prev.z - cutSize, curr.w, cutSize, curr.y, curr.color);
+                    }
+                }
+            }
+            
             tStack.push(curr);
             tScore++;
             document.getElementById('towerScore').innerText = tScore;
-            
-            // Perfect hit confetti
-            if (Math.abs(diff) < 2) {
-                // Snap perfectly if very close
-                tg.HapticFeedback.notificationOccurred('success');
-            } else {
-                tg.HapticFeedback.impactOccurred('light');
-            }
             
             spawnNextBlock();
         }
         
         function addDebris(x, z, w, d, y, color) {
-            tDebris.push({
-                x, z, w, d, y, color,
-                vy: 0,
-                ay: 0.5 // gravity
-            });
+            tDebris.push({ x, z, w, d, y, color, vy: 0, ay: 0.5 });
         }
 
         function gameOverTower() {
             tState = 'gameover';
             tg.HapticFeedback.notificationOccurred('error');
             
-            // Make current block fall as debris
             addDebris(tCurrentBlock.x, tCurrentBlock.z, tCurrentBlock.w, tCurrentBlock.d, tCurrentBlock.y, tCurrentBlock.color);
             tCurrentBlock = null;
 
-            // Check Record
             const savedBest = parseInt(localStorage.getItem('tower_best') || 0);
             let isNewRec = false;
             if (tScore > savedBest) {
@@ -1076,27 +1069,14 @@
                 isNewRec = true;
             }
             
-            // Show Modal
             const modal = document.getElementById('towerGameOverContent');
             const overlay = document.getElementById('modalTowerGameOver');
             
             if (isNewRec) {
                 confetti({ particleCount: 150, zIndex: 30000 });
-                modal.innerHTML = `
-                    ${ICON_CROWN}
-                    <h2>Новый Рекорд!</h2>
-                    <div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;">${tScore}</div>
-                    <button class="btn-main" onclick="closeResult(); launchTowerGame();">Ещё раз</button>
-                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('tower');">Выйти</button>
-                `;
+                modal.innerHTML = `${ICON_CROWN}<h2>Новый Рекорд!</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;">${tScore}</div><button class="btn-main" onclick="closeResult(); launchTowerGame();">Ещё раз</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('tower');">Выйти</button>`;
             } else {
-                modal.innerHTML = `
-                    <h2>Башня упала</h2>
-                    <div style="font-size:32px; font-weight:700; margin:10px 0;">${tScore}</div>
-                    <div style="color:#8e8e93; font-size:14px;">Лучший: ${savedBest}</div>
-                    <button class="btn-main" onclick="closeResult(); launchTowerGame();">Ещё раз</button>
-                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('tower');">Выйти</button>
-                `;
+                modal.innerHTML = `<h2>Башня упала</h2><div style="font-size:32px; font-weight:700; margin:10px 0;">${tScore}</div><div style="color:#8e8e93; font-size:14px;">Лучший: ${savedBest}</div><button class="btn-main" onclick="closeResult(); launchTowerGame();">Ещё раз</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('tower');">Выйти</button>`;
             }
             
             setTimeout(() => overlay.classList.add('visible'), 500);
@@ -1110,15 +1090,12 @@
             const w = window.innerWidth;
             const h = window.innerHeight;
             
-            // Clear
-            // Use a slight gradient for bg
             const grad = tCtx.createLinearGradient(0, 0, 0, h);
             grad.addColorStop(0, isDark ? '#1a1a1a' : '#eef2f3');
             grad.addColorStop(1, isDark ? '#000' : '#d9e4ea');
             tCtx.fillStyle = grad;
             tCtx.fillRect(0, 0, w, h);
             
-            // Update Physics
             if (tState === 'playing' && tCurrentBlock) {
                 const limit = 180;
                 if (tCurrentBlock.axis === 'x') {
@@ -1132,110 +1109,91 @@
                 }
             }
             
-            // Update Debris
             for (let i = tDebris.length - 1; i >= 0; i--) {
                 let d = tDebris[i];
                 d.vy += d.ay;
-                d.y -= d.vy; // falling down means Y decreases visually in 3D space logic? No, screen Y increases.
-                // In our logic, y=0 is bottom block. Higher Y is up. So debris y should decrease.
+                d.y -= d.vy; 
                 if (d.y < tScrollY - 300) {
                     tDebris.splice(i, 1);
                 }
             }
             
-            // Camera Logic
-            // We want the current block to be around the middle-lower part of screen
-            // If stack gets high, scrollY increases
             let targetY = tScore * T_BLOCK_HEIGHT;
             tCameraY += (targetY - tCameraY) * 0.1; 
             
-            // Center of screen
             const cx = w / 2;
-            const cy = h / 1.6 + (tCameraY); // Move world down as camera goes up
+            const cy = h / 1.6 + (tCameraY); 
 
-            // Draw Stack
             for (let b of tStack) {
                 drawIsoBlock(tCtx, b, cx, cy);
             }
             
-            // Draw Debris
             for (let d of tDebris) {
                 drawIsoBlock(tCtx, d, cx, cy);
             }
             
-            // Draw Current
             if (tCurrentBlock) {
                 drawIsoBlock(tCtx, tCurrentBlock, cx, cy);
             }
         }
         
         function drawIsoBlock(ctx, b, cx, cy) {
-            // b has x, z, w, d, y, color
-            // Screen Y is inverted relative to world Y (up is minus in canvas)
-            // World Y 0 is bottom.
-            
-            // Calculate screen coords for the base of the block (at height b.y)
-            const iso = toIso(b.x, b.y, b.z); // Wait, iso func doesn't account for Y height
-            
-            // Correct logic:
-            // Iso grid plane:
             const x1 = (b.x - b.z);
             const y1 = (b.x + b.z) * 0.5;
             
-            // Height offset (going UP on screen means subtracting Y)
             const screenX = cx + x1;
             const screenY = cy + y1 - b.y;
-            
-            // Draw Top Face (Parallelogram)
-            ctx.fillStyle = b.color;
-            ctx.beginPath();
-            ctx.moveTo(screenX, screenY); // Top-center
-            ctx.lineTo(screenX + b.w, screenY + b.w * 0.5); // Right
-            ctx.lineTo(screenX + b.w - b.d, screenY + b.w * 0.5 - b.d * 0.5); // Bottom (in perspective) ? No wait.
-            // Let's use standard projection vectors
-            // X vector: (+1, +0.5)
-            // Z vector: (-1, +0.5)
             
             const vX = { x: 1, y: 0.5 };
             const vZ = { x: -1, y: 0.5 };
             
-            // Vertices of the top face
-            const p1 = { x: screenX, y: screenY }; // Back corner
-            const p2 = { x: screenX + b.w * vX.x, y: screenY + b.w * vX.y }; // Right corner
-            const p3 = { x: screenX + b.w * vX.x + b.d * vZ.x, y: screenY + b.w * vX.y + b.d * vZ.y }; // Front corner
-            const p4 = { x: screenX + b.d * vZ.x, y: screenY + b.d * vZ.y }; // Left corner
+            const p1 = { x: screenX, y: screenY }; 
+            const p2 = { x: screenX + b.w * vX.x, y: screenY + b.w * vX.y }; 
+            const p3 = { x: screenX + b.w * vX.x + b.d * vZ.x, y: screenY + b.w * vX.y + b.d * vZ.y }; 
+            const p4 = { x: screenX + b.d * vZ.x, y: screenY + b.d * vZ.y }; 
             
             // Draw Top
+            ctx.fillStyle = b.color;
             ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y);
-            ctx.lineTo(p4.x, p4.y);
-            ctx.closePath();
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
             ctx.fill();
             
-            // Shading
-            // Right Face (connected to p2 and p3) - Darker
+            // Flash Effect (If block was placed perfectly)
+            if (b.flash && b.flash > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${b.flash})`;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
+                ctx.fill();
+                b.flash -= 0.1; // Fade out
+            }
+            
+            // Right Face 
             ctx.fillStyle = shadeColor(b.color, -10);
             ctx.beginPath();
-            ctx.moveTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y);
-            ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT);
-            ctx.lineTo(p2.x, p2.y + T_BLOCK_HEIGHT);
-            ctx.closePath();
+            ctx.moveTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT); ctx.lineTo(p2.x, p2.y + T_BLOCK_HEIGHT); ctx.closePath();
             ctx.fill();
             
-            // Left Face (connected to p3 and p4) - Even Darker
+            if (b.flash && b.flash > 0) {
+                 ctx.fillStyle = `rgba(255, 255, 255, ${b.flash})`;
+                 ctx.beginPath();
+                 ctx.moveTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT); ctx.lineTo(p2.x, p2.y + T_BLOCK_HEIGHT); ctx.closePath();
+                 ctx.fill();
+            }
+            
+            // Left Face 
             ctx.fillStyle = shadeColor(b.color, -20);
             ctx.beginPath();
-            ctx.moveTo(p3.x, p3.y);
-            ctx.lineTo(p4.x, p4.y);
-            ctx.lineTo(p4.x, p4.y + T_BLOCK_HEIGHT);
-            ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT);
-            ctx.closePath();
+            ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.lineTo(p4.x, p4.y + T_BLOCK_HEIGHT); ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT); ctx.closePath();
             ctx.fill();
             
-            // Highlight edges (optional for glass look)
+            if (b.flash && b.flash > 0) {
+                 ctx.fillStyle = `rgba(255, 255, 255, ${b.flash})`;
+                 ctx.beginPath();
+                 ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.lineTo(p4.x, p4.y + T_BLOCK_HEIGHT); ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT); ctx.closePath();
+                 ctx.fill();
+            }
+
+            // Edges
             ctx.strokeStyle = "rgba(255,255,255,0.3)";
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -1246,9 +1204,7 @@
             ctx.stroke();
         }
         
-        // Helper to darken HSL color string slightly
         function shadeColor(hslStr, percent) {
-            // Parse hsl(h, s%, l%)
             const sep = hslStr.indexOf(",") > -1 ? "," : " ";
             hslStr = hslStr.substr(4).split(")")[0].split(sep);
             
