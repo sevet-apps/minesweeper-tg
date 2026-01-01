@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v35.1 Fixed Tower</title>
+    <title>Glass App v35.2 Fixes</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -57,14 +57,23 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         img { pointer-events: none; } 
         
-        /* GLOBAL CANVAS STYLE (For confetti mainly) */
-        canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647; pointer-events: none; }
+        /* ИСПРАВЛЕНИЕ БАГОВ С НАЖАТИЕМ: */
+        /* Глобальный canvas (для конфетти) должен пропускать клики и быть НИЖЕ модальных окон */
+        canvas { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 22000; /* Ниже модалок (22500), но выше контента */
+            pointer-events: none; /* Пропускает клики сквозь себя */
+        }
         
-        /* TOWER GAME SPECIFIC CANVAS OVERRIDE */
+        /* Специальные настройки для Canvas Башни */
         #towerCanvas {
-            z-index: 5 !important; /* Lower than UI buttons but visible */
-            pointer-events: auto !important; /* ENABLE CLICKS */
-            position: absolute !important;
+            z-index: 1 !important; /* Внутри своего контейнера */
+            position: absolute !important; /* Важно: absolute, чтобы двигался вместе с экраном, а не fixed */
+            pointer-events: auto !important; /* Должен реагировать на клики */
         }
 
         body { 
@@ -867,7 +876,7 @@
         // Settings
         const T_BLOCK_HEIGHT = 20; 
         const T_DEFAULT_SIZE = 120;
-        const T_SPEED_BASE = 4;
+        const T_SPEED_BASE = 3.5; // Слегка уменьшил базу
         
         let tCurrentBlock = null; 
         let tDebris = [];
@@ -930,10 +939,11 @@
                 color: `hsl(${tHue}, 70%, 50%)`
             });
             
-            spawnNextBlock();
+            // Первый блок всегда со стандартной скоростью
+            spawnNextBlock(true);
         }
 
-        function spawnNextBlock() {
+        function spawnNextBlock(isFirst = false) {
             const prev = tStack[tStack.length - 1];
             
             // COLOR LOGIC FIX: Large step to ensure distinct colors
@@ -947,6 +957,10 @@
             const startX = isX ? -dist : prev.x;
             const startZ = isX ? prev.z : -dist;
 
+            // Расчет скорости: База + 0.001 за каждый блок (почти незаметно)
+            // Если это первый блок после рестарта (isFirst), tScore = 0, и скорость будет базовой.
+            const speed = T_SPEED_BASE + (tScore * 0.001);
+
             tCurrentBlock = {
                 x: startX,
                 z: startZ,
@@ -956,7 +970,7 @@
                 color: `hsl(${tHue}, 70%, 50%)`,
                 dir: 1, // Moving positive first
                 axis: isX ? 'x' : 'z',
-                speed: T_SPEED_BASE + (tScore * 0.1) // Gradually faster
+                speed: speed
             };
         }
 
