@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v34.2</title>
+    <title>Glass App v35.0 Tower Update</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -105,10 +105,26 @@
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
+        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; position: relative; overflow: hidden; } 
+        .card:active { transform: scale(0.97); }
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
+        /* New Beta Label Style */
+        .beta-tag {
+            position: absolute;
+            right: -25px;
+            top: 10px;
+            background: #ff3b30;
+            color: white;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 4px 25px;
+            transform: rotate(45deg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+        }
+
         .game-top-bar { 
             padding: 15px 20px; 
             padding-top: calc(110px + var(--safe-top)); 
@@ -292,7 +308,6 @@
             animation: popInGray 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         
-        /* FIXED v34.1: Lite Mode - отключаем тяжёлые эффекты для Android */
         body.lite-mode .bb-cell {
             transition: none !important;
             animation: none !important;
@@ -389,7 +404,14 @@
 
         .checkers-board.rotated { transform: rotate(180deg); }
         .checkers-board.rotated .checker { transform: rotate(-180deg); }
-
+        
+        /* TOWER GAME CANVAS */
+        #towerCanvas {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            touch-action: none;
+        }
 
     </style>
 </head>
@@ -449,6 +471,17 @@
     <div id="view-games" class="screen active"> 
         <div class="header"> <div class="app-title">Игры</div> </div> 
         
+        <div class="card" onclick="openGameModal('tower')"> 
+            <div class="beta-tag">BETA</div>
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #FF9500, #FF3B30);"> 
+                <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div> 
+            <div style="flex:1;"> 
+                <h3 style="margin:0; font-size:17px;">Башня</h3> 
+            </div> 
+            <div style="color:var(--accent); font-weight:600;">Play</div> 
+        </div>
+
         <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Сапёр</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
@@ -518,6 +551,22 @@
 
     <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
     
+    <div id="tower-screen" class="game-overlay">
+        <div class="game-top-bar" style="background: transparent; position:absolute; top:0; left:0; width:100%; z-index:10; pointer-events:none;">
+            <div class="back-btn" onclick="closeGame('tower')" style="pointer-events:auto; background:var(--glass-bg); padding:8px 12px; border-radius:20px; backdrop-filter:blur(10px);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню
+            </div>
+            <div style="font-weight:800; font-size:42px; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.3);" id="towerScore">0</div>
+        </div>
+        <canvas id="towerCanvas"></canvas>
+        <div id="towerStartHint" style="position:absolute; bottom:15%; left:0; width:100%; text-align:center; color:white; opacity:0.8; font-weight:600; pointer-events:none; transition: opacity 0.3s;">Нажми, чтобы поставить</div>
+    </div>
+
+    <div class="modal-overlay" id="modalTowerGameOver">
+        <div class="modal" id="towerGameOverContent">
+            </div>
+    </div>
+
     <div id="saper-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
             <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню</div> 
@@ -615,7 +664,8 @@
     </div></div>
     
     <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')">Отмена</button></div></div>
-        <script>
+
+    <script>
         const tg = window.Telegram.WebApp; 
         tg.expand();
         
@@ -632,15 +682,12 @@
         let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
         
         const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
-        
-        // --- SOCKET.IO INIT ---
         const socket = io(API_BASE_URL);
         
         let onlineRoomCode = null;
-        let onlineMyColor = null; // Для шашек
+        let onlineMyColor = null; 
         let isOnlineGame = false;
         
-        // --- ASSETS ---
         const ICON_MINE = `<svg class="saper-mine" viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-13a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>`;
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
@@ -652,9 +699,6 @@
             loadProfile();
             setTimeout(syncLocalStatsToServer, 2000);
             
-            // --- SOCKET LISTENERS ---
-
-            // 1. Шашки (Старое)
             socket.on('game_created', (data) => {
                 document.getElementById('modalLoading').classList.remove('visible');
                 onlineRoomCode = data.roomCode;
@@ -668,7 +712,7 @@
                 document.getElementById('modalCheckers').classList.remove('visible');
                 if (data.color) onlineMyColor = data.color;
                 isOnlineGame = true;
-                isPvE = false; // FIXED v34.1: Сброс режима бота при онлайн-игре
+                isPvE = false; 
                 document.getElementById('checkers-screen').classList.add('visible');
                 initCheckers(); 
                 const boardEl = document.getElementById('checkersBoard');
@@ -680,8 +724,6 @@
             
             socket.on('opponent_move', (move) => { executeMove(move, false); });
             socket.on('opponent_disconnected', () => { showResult("Победа!", "Соперник отключился", "В меню", () => { closeResult(); closeGame('checkers'); }); });
-            
-            // Общие ошибки
             socket.on('error_message', (msg) => { alert(msg); document.getElementById('modalLoading').classList.remove('visible'); });
         }
 
@@ -690,20 +732,10 @@
         
         function applyLiteMode() { 
             const el = document.getElementById('liteToggle');
-            if(isLiteMode) {
-                el.classList.add('active');
-                document.body.classList.add('lite-mode');
-            } else {
-                el.classList.remove('active');
-                document.body.classList.remove('lite-mode');
-            }
+            if(isLiteMode) { el.classList.add('active'); document.body.classList.add('lite-mode'); } 
+            else { el.classList.remove('active'); document.body.classList.remove('lite-mode'); }
         }
-        function toggleLiteMode() {
-            isLiteMode = !isLiteMode;
-            localStorage.setItem('lite_mode', isLiteMode);
-            applyLiteMode();
-            tg.HapticFeedback.selectionChanged();
-        }
+        function toggleLiteMode() { isLiteMode = !isLiteMode; localStorage.setItem('lite_mode', isLiteMode); applyLiteMode(); tg.HapticFeedback.selectionChanged(); }
 
         function switchTab(t, el) { 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
@@ -717,6 +749,7 @@
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
+            if(game==='tower') { launchTowerGame(); }
             tg.HapticFeedback.impactOccurred('light'); 
         }
         function closeGame(game) { 
@@ -724,15 +757,10 @@
             if(game==='saper') clearInterval(sTimerInt); 
             if(game==='bb') saveBBState(); 
             if(game==='sudoku') saveSudokuState();
-            // FIXED v34.1: Сброс флагов при закрытии игры
-            if(game==='checkers') {
-                isOnlineGame = false;
-                isPvE = false;
-                onlineRoomCode = null;
-                onlineMyColor = null;
-            }
+            if(game==='tower') stopTowerGame();
+            if(game==='checkers') { isOnlineGame = false; isPvE = false; onlineRoomCode = null; onlineMyColor = null; }
         }
-        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
+        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
         
         function loadProfile() { 
             const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
@@ -767,7 +795,7 @@
             const chWins = parseInt(localStorage.getItem('checkers_wins_pve') || 0); if(chWins > 0) sendStatToBackend('checkers_wins_pve', chWins);
         }
 
-        // --- LEADERBOARD LOGIC ---
+        /* --- LEADERBOARD LOGIC --- */
         let currentLbGame = 'saper';
         let currentLbCat = { id: 'saper_wins', name: 'Количество побед' };
         const SAPER_CATS = [{ id: 'saper_wins', name: 'Количество побед' },{ id: 'saper_best_6', name: 'Лучшее время 6x6', isTime: true },{ id: 'saper_best_8', name: 'Лучшее время 8x8', isTime: true },{ id: 'saper_best_10', name: 'Лучшее время 10x10', isTime: true },{ id: 'saper_best_15', name: 'Лучшее время 15x15', isTime: true }];
@@ -823,7 +851,401 @@
             } catch (error) { listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">Ошибка сети.</div>`; }
         }
 
-        /* --- SAPER WITH MS TIMER --- */
+        /* ================================================================
+           TOWER GAME (STACK) - ISOMETRIC LOGIC
+           ================================================================
+        */
+        let tCanvas, tCtx, tReqId;
+        let tStack = [];
+        let tScore = 0;
+        let tState = 'start'; // start, playing, gameover
+        let tHue = 0;
+        let tCameraY = 0;
+        let tScrollY = 0;
+        
+        // Settings
+        const T_BLOCK_HEIGHT = 20; 
+        const T_DEFAULT_SIZE = 120;
+        const T_SPEED_BASE = 4;
+        
+        let tCurrentBlock = null; 
+        let tDebris = [];
+        
+        // Isometric Projection Helpers
+        // Convert 3D coord to 2D canvas coord. center screen is (0,0) logically for these func
+        function toIso(x, y, z) {
+            return {
+                x: (x - z),
+                y: y + (x + z) * 0.5
+            };
+        }
+
+        function launchTowerGame() {
+            document.getElementById('tower-screen').classList.add('visible');
+            tCanvas = document.getElementById('towerCanvas');
+            tCtx = tCanvas.getContext('2d');
+            
+            // Handle Retina/HiDPI
+            const dpr = window.devicePixelRatio || 1;
+            tCanvas.width = window.innerWidth * dpr;
+            tCanvas.height = window.innerHeight * dpr;
+            tCtx.scale(dpr, dpr);
+            
+            resetTower();
+            tLoop();
+            
+            // Input listener
+            tCanvas.onpointerdown = (e) => {
+                e.preventDefault();
+                handleTowerInput();
+            };
+        }
+        
+        function stopTowerGame() {
+            if(tReqId) cancelAnimationFrame(tReqId);
+            tState = 'start';
+            tCanvas.onpointerdown = null;
+        }
+
+        function resetTower() {
+            tStack = [];
+            tDebris = [];
+            tScore = 0;
+            tHue = Math.random() * 360;
+            tScrollY = 0;
+            tCameraY = 0;
+            tState = 'playing';
+            
+            document.getElementById('towerScore').innerText = '0';
+            document.getElementById('towerStartHint').style.opacity = '1';
+
+            // Base block
+            tStack.push({
+                x: 0,
+                z: 0,
+                w: T_DEFAULT_SIZE,
+                d: T_DEFAULT_SIZE,
+                y: 0,
+                color: `hsl(${tHue}, 70%, 50%)`
+            });
+            
+            spawnNextBlock();
+        }
+
+        function spawnNextBlock() {
+            const prev = tStack[tStack.length - 1];
+            tHue += 5;
+            
+            // Determine direction based on score (even/odd)
+            const isX = (tScore % 2 === 0);
+            
+            // Start far away
+            const dist = 250;
+            const startX = isX ? -dist : prev.x;
+            const startZ = isX ? prev.z : -dist;
+
+            tCurrentBlock = {
+                x: startX,
+                z: startZ,
+                w: prev.w,
+                d: prev.d,
+                y: (tScore + 1) * T_BLOCK_HEIGHT,
+                color: `hsl(${tHue}, 70%, 50%)`,
+                dir: 1, // Moving positive first
+                axis: isX ? 'x' : 'z',
+                speed: T_SPEED_BASE + (tScore * 0.1) // Gradually faster
+            };
+        }
+
+        function handleTowerInput() {
+            if(tState !== 'playing') {
+                if(tState === 'gameover') {
+                   // Ignore tap here, handled by modal buttons
+                }
+                return;
+            }
+            
+            document.getElementById('towerStartHint').style.opacity = '0';
+
+            const prev = tStack[tStack.length - 1];
+            const curr = tCurrentBlock;
+            
+            let diff = 0;
+            let cutSize = 0;
+            
+            // Logic for cutting
+            if (curr.axis === 'x') {
+                diff = curr.x - prev.x;
+                if (Math.abs(diff) > prev.w) {
+                    gameOverTower();
+                    return;
+                }
+                
+                // Cut logic
+                if (diff > 0) {
+                    // Overshot to the right
+                    cutSize = diff;
+                    curr.w -= cutSize;
+                    // Debris
+                    addDebris(curr.x + curr.w, curr.z, cutSize, curr.d, curr.y, curr.color);
+                } else if (diff < 0) {
+                    // Overshot to the left
+                    cutSize = -diff;
+                    curr.w -= cutSize;
+                    curr.x = prev.x; // Snap to prev edge
+                    // Debris
+                    addDebris(prev.x - cutSize, curr.z, cutSize, curr.d, curr.y, curr.color);
+                } else {
+                     // Perfect match visual?
+                }
+            } else { // axis 'z'
+                diff = curr.z - prev.z;
+                if (Math.abs(diff) > prev.d) {
+                    gameOverTower();
+                    return;
+                }
+                
+                if (diff > 0) {
+                    // Overshot 'down' in iso
+                    cutSize = diff;
+                    curr.d -= cutSize;
+                    addDebris(curr.x, curr.z + curr.d, curr.w, cutSize, curr.y, curr.color);
+                } else if (diff < 0) {
+                    // Overshot 'up' in iso
+                    cutSize = -diff;
+                    curr.d -= cutSize;
+                    curr.z = prev.z;
+                    addDebris(curr.x, prev.z - cutSize, curr.w, cutSize, curr.y, curr.color);
+                }
+            }
+            
+            // Success
+            tStack.push(curr);
+            tScore++;
+            document.getElementById('towerScore').innerText = tScore;
+            
+            // Perfect hit confetti
+            if (Math.abs(diff) < 2) {
+                // Snap perfectly if very close
+                tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+            
+            spawnNextBlock();
+        }
+        
+        function addDebris(x, z, w, d, y, color) {
+            tDebris.push({
+                x, z, w, d, y, color,
+                vy: 0,
+                ay: 0.5 // gravity
+            });
+        }
+
+        function gameOverTower() {
+            tState = 'gameover';
+            tg.HapticFeedback.notificationOccurred('error');
+            
+            // Make current block fall as debris
+            addDebris(tCurrentBlock.x, tCurrentBlock.z, tCurrentBlock.w, tCurrentBlock.d, tCurrentBlock.y, tCurrentBlock.color);
+            tCurrentBlock = null;
+
+            // Check Record
+            const savedBest = parseInt(localStorage.getItem('tower_best') || 0);
+            let isNewRec = false;
+            if (tScore > savedBest) {
+                localStorage.setItem('tower_best', tScore);
+                isNewRec = true;
+            }
+            
+            // Show Modal
+            const modal = document.getElementById('towerGameOverContent');
+            const overlay = document.getElementById('modalTowerGameOver');
+            
+            if (isNewRec) {
+                confetti({ particleCount: 150, zIndex: 30000 });
+                modal.innerHTML = `
+                    ${ICON_CROWN}
+                    <h2>Новый Рекорд!</h2>
+                    <div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;">${tScore}</div>
+                    <button class="btn-main" onclick="closeResult(); launchTowerGame();">Ещё раз</button>
+                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('tower');">Выйти</button>
+                `;
+            } else {
+                modal.innerHTML = `
+                    <h2>Башня упала</h2>
+                    <div style="font-size:32px; font-weight:700; margin:10px 0;">${tScore}</div>
+                    <div style="color:#8e8e93; font-size:14px;">Лучший: ${savedBest}</div>
+                    <button class="btn-main" onclick="closeResult(); launchTowerGame();">Ещё раз</button>
+                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('tower');">Выйти</button>
+                `;
+            }
+            
+            setTimeout(() => overlay.classList.add('visible'), 500);
+        }
+
+        function tLoop() {
+            if (!document.getElementById('tower-screen').classList.contains('visible')) return;
+            
+            tReqId = requestAnimationFrame(tLoop);
+            
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            
+            // Clear
+            // Use a slight gradient for bg
+            const grad = tCtx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, isDark ? '#1a1a1a' : '#eef2f3');
+            grad.addColorStop(1, isDark ? '#000' : '#d9e4ea');
+            tCtx.fillStyle = grad;
+            tCtx.fillRect(0, 0, w, h);
+            
+            // Update Physics
+            if (tState === 'playing' && tCurrentBlock) {
+                const limit = 180;
+                if (tCurrentBlock.axis === 'x') {
+                    tCurrentBlock.x += tCurrentBlock.speed * tCurrentBlock.dir;
+                    if (tCurrentBlock.x > limit && tCurrentBlock.dir > 0) tCurrentBlock.dir = -1;
+                    if (tCurrentBlock.x < -limit && tCurrentBlock.dir < 0) tCurrentBlock.dir = 1;
+                } else {
+                    tCurrentBlock.z += tCurrentBlock.speed * tCurrentBlock.dir;
+                    if (tCurrentBlock.z > limit && tCurrentBlock.dir > 0) tCurrentBlock.dir = -1;
+                    if (tCurrentBlock.z < -limit && tCurrentBlock.dir < 0) tCurrentBlock.dir = 1;
+                }
+            }
+            
+            // Update Debris
+            for (let i = tDebris.length - 1; i >= 0; i--) {
+                let d = tDebris[i];
+                d.vy += d.ay;
+                d.y -= d.vy; // falling down means Y decreases visually in 3D space logic? No, screen Y increases.
+                // In our logic, y=0 is bottom block. Higher Y is up. So debris y should decrease.
+                if (d.y < tScrollY - 300) {
+                    tDebris.splice(i, 1);
+                }
+            }
+            
+            // Camera Logic
+            // We want the current block to be around the middle-lower part of screen
+            // If stack gets high, scrollY increases
+            let targetY = tScore * T_BLOCK_HEIGHT;
+            tCameraY += (targetY - tCameraY) * 0.1; 
+            
+            // Center of screen
+            const cx = w / 2;
+            const cy = h / 1.6 + (tCameraY); // Move world down as camera goes up
+
+            // Draw Stack
+            for (let b of tStack) {
+                drawIsoBlock(tCtx, b, cx, cy);
+            }
+            
+            // Draw Debris
+            for (let d of tDebris) {
+                drawIsoBlock(tCtx, d, cx, cy);
+            }
+            
+            // Draw Current
+            if (tCurrentBlock) {
+                drawIsoBlock(tCtx, tCurrentBlock, cx, cy);
+            }
+        }
+        
+        function drawIsoBlock(ctx, b, cx, cy) {
+            // b has x, z, w, d, y, color
+            // Screen Y is inverted relative to world Y (up is minus in canvas)
+            // World Y 0 is bottom.
+            
+            // Calculate screen coords for the base of the block (at height b.y)
+            const iso = toIso(b.x, b.y, b.z); // Wait, iso func doesn't account for Y height
+            
+            // Correct logic:
+            // Iso grid plane:
+            const x1 = (b.x - b.z);
+            const y1 = (b.x + b.z) * 0.5;
+            
+            // Height offset (going UP on screen means subtracting Y)
+            const screenX = cx + x1;
+            const screenY = cy + y1 - b.y;
+            
+            // Draw Top Face (Parallelogram)
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.moveTo(screenX, screenY); // Top-center
+            ctx.lineTo(screenX + b.w, screenY + b.w * 0.5); // Right
+            ctx.lineTo(screenX + b.w - b.d, screenY + b.w * 0.5 - b.d * 0.5); // Bottom (in perspective) ? No wait.
+            // Let's use standard projection vectors
+            // X vector: (+1, +0.5)
+            // Z vector: (-1, +0.5)
+            
+            const vX = { x: 1, y: 0.5 };
+            const vZ = { x: -1, y: 0.5 };
+            
+            // Vertices of the top face
+            const p1 = { x: screenX, y: screenY }; // Back corner
+            const p2 = { x: screenX + b.w * vX.x, y: screenY + b.w * vX.y }; // Right corner
+            const p3 = { x: screenX + b.w * vX.x + b.d * vZ.x, y: screenY + b.w * vX.y + b.d * vZ.y }; // Front corner
+            const p4 = { x: screenX + b.d * vZ.x, y: screenY + b.d * vZ.y }; // Left corner
+            
+            // Draw Top
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Shading
+            // Right Face (connected to p2 and p3) - Darker
+            ctx.fillStyle = shadeColor(b.color, -10);
+            ctx.beginPath();
+            ctx.moveTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT);
+            ctx.lineTo(p2.x, p2.y + T_BLOCK_HEIGHT);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Left Face (connected to p3 and p4) - Even Darker
+            ctx.fillStyle = shadeColor(b.color, -20);
+            ctx.beginPath();
+            ctx.moveTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.lineTo(p4.x, p4.y + T_BLOCK_HEIGHT);
+            ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Highlight edges (optional for glass look)
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(p3.x, p3.y); ctx.lineTo(p3.x, p3.y + T_BLOCK_HEIGHT);
+            ctx.stroke();
+        }
+        
+        // Helper to darken HSL color string slightly
+        function shadeColor(hslStr, percent) {
+            // Parse hsl(h, s%, l%)
+            const sep = hslStr.indexOf(",") > -1 ? "," : " ";
+            hslStr = hslStr.substr(4).split(")")[0].split(sep);
+            
+            let h = hslStr[0];
+            let s = hslStr[1];
+            let l = parseFloat(hslStr[2]);
+            
+            l += percent;
+            if (l < 0) l = 0; if (l > 100) l = 100;
+            
+            return `hsl(${h}, ${s}, ${l}%)`;
+        }
+        
+        /* --- RESTORED GAMES LOGIC (SAPER, CHECKERS, BB, SUDOKU) --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
@@ -835,205 +1257,6 @@
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let t=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',t);showResult('Бум!','Не повезло', 'Закрыть');}
         function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let t=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',t); let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); const key = `saper_best_${sRows}`; let b=parseFloat(localStorage.getItem(key)||9999); if(sTimer<b) saveStatToCloud(key, sTimer); sendStatToBackend(`saper_best_${sRows}`, sTimer); sendStatToBackend('saper_wins', w); showResult('Победа!',`Время: ${sTimer.toFixed(2)} с`, 'Круто'); } }
-
-        /* --- CHECKERS --- */
-        const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
-        
-        function setCheckersMainMode(mode, btn, index) {
-            const glider = document.getElementById('checkersMainGlider'); glider.style.transform = `translateX(${index * 100}%)`;
-            const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active');
-            const offline = document.getElementById('ch-offline-panel'); const online = document.getElementById('ch-online-panel');
-            if(mode === 'online') { offline.classList.replace('panel-visible', 'panel-hidden'); online.classList.replace('panel-hidden', 'panel-visible'); } else { online.classList.replace('panel-visible', 'panel-hidden'); offline.classList.replace('panel-hidden', 'panel-visible'); } tg.HapticFeedback.selectionChanged();
-        }
-
-        function createGame() {
-            document.getElementById('modalLoading').classList.add('visible');
-            const user = tg.initDataUnsafe.user || { first_name: "Player" };
-            const displayName = (user.first_name + ' ' + (user.last_name || '')).trim();
-            // !ВАЖНО: Добавил gameType: 'checkers'
-            socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '', gameType: 'checkers' });
-        }
-
-        function joinGame() { tg.HapticFeedback.notificationOccurred('warning'); alert('Скоро: Поиск случайного соперника'); }
-        function joinGameByCode() { const code = document.getElementById('joinCodeInput').value; if (code.length < 5) { tg.HapticFeedback.notificationOccurred('error'); return; } onlineRoomCode = code; const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = (user.first_name + ' ' + (user.last_name || '')).trim(); socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } }); }
-        function cancelOnlineWait() { document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
-
-        function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
-        function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
-        function initCheckers(){turn='white';selectedPiece=null;forcedPiece=null;document.getElementById('checkersStatus').innerText="Ход Белых";const el=document.getElementById('checkersBoard');el.innerHTML='';board=[];for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}}
-        
-        function onBoardClick(r,c){
-            if (isOnlineGame) { if (turn !== onlineMyColor) return; } else { if(isPvE&&turn==='black')return; }
-            const cell=board[r][c];
-            if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move, true);}
-        }
-        function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
-        function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
-        
-        function executeMove(m, isLocal = true){
-            const p=board[m.fromR][m.fromC].piece;
-            if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
-            board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,500);return;}}}else{tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
-            checkWin(); turn=turn==='white'?'black':'white'; document.getElementById('checkersStatus').innerText=turn==='white'?"Ход Белых":"Ход Чёрных";
-            if (!hasAnyMoves(turn)) { const winner = turn === 'white' ? 'black' : 'white'; endGame(winner); return; }
-            if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,600);
-        }
-        function hasAnyMoves(color) { for(let r=0; r<BOARD_SIZE; r++) { for(let c=0; c<BOARD_SIZE; c++) { const cell = board[r][c]; if (cell.piece && cell.piece.color === color) { const moves = getValidMoves(r, c, board); if (moves.length > 0) return true; } } } return false; }
-        function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
-        
-        function endGame(w){
-            let t=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',t); sendStatToBackend('checkers_total', t); 
-            if(isPvE&&w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
-            tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText');
-            if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText="Победа!";txt.innerText="Вы победили!";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText="Поражение";txt.innerText="Нет ходов или шашек."; } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText="Победа!";txt.innerText="Робот повержен.";confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText="Поражение";txt.innerText="Робот победил."; } } else{ tit.innerText=w==='white'?"Белые победили!":"Чёрные победили!";txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
-            setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
-        }
-        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
-        
-        /* --- BLOCK BLAST (FIXED) --- */
-        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false; 
-        const SHAPES = [[[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],[[1,1,1,1]],[[1],[1],[1],[1]],[[1,1,1,1,1]],[[1],[1],[1],[1],[1]],[[1,1],[1,1]],[[1,1,1],[1,1,1]],[[1,1],[1,1],[1,1]],[[1,1,1],[1,1,1],[1,1,1]],[[1,0],[1,0],[1,1]],[[1,1,1],[1,0,0]],[[1,1],[0,1],[0,1]],[[0,0,1],[1,1,1]],[[0,1],[0,1],[1,1]],[[1,0,0],[1,1,1]],[[1,1],[1,0],[1,0]],[[1,1,1],[0,0,1]],[[1,0],[1,1]],[[1,1],[1,0]],[[1,1],[0,1]],[[0,1],[1,1]],[[1,1,1],[0,1,0]],[[0,1,0],[1,1,1]],[[1,0],[1,1],[1,0]],[[0,1],[1,1],[0,1]]];
-        const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
-        const DRAG_LIFT_Y = 150; 
-        function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
-        function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
-        function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
-        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
-        function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
-        function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
-        function spawnShapes() { bbShapes = []; const freeCells = countFreeCells(); let availableIndices = []; for(let i=0; i<SHAPES.length; i++) { const matrix = SHAPES[i]; const size = matrix.reduce((acc, row) => acc + row.reduce((a,b)=>a+b, 0), 0); if (freeCells < 25) { if (size <= 4) availableIndices.push(i); } else { availableIndices.push(i); } } for(let i=0; i<3; i++) { const rand = Math.floor(Math.random() * availableIndices.length); const shapeIdx = availableIndices[rand]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); renderShapePreview(i, SHAPES[shapeIdx], color); } }
-        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
-        let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
-        function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
-
-        // --- FIXED DRAG FUNCTION ---
-        function startDrag(e, slotId, matrix, color) { 
-            if(bbIsAnimating) return; 
-            e.preventDefault(); 
-            const touch = e.touches ? e.touches[0] : e; 
-            const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
-            const cellFullSize = gridRect.width / 8; 
-            dragData = { slotId, matrix, color }; 
-            dragGhost = document.createElement('div'); 
-            dragGhost.className = 'drag-ghost'; 
-            dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
-            dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; 
-            dragGhost.style.gap = '4px'; 
-            dragGhost.style.display = 'grid'; 
-            const shapePixelW = matrix[0].length * cellFullSize; 
-            
-            // Исправленный цикл
-            matrix.forEach((row, ri) => { 
-                row.forEach((val, ci) => { 
-                    const b = document.createElement('div'); 
-                    if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } 
-                    dragGhost.appendChild(b); 
-                }); 
-            }); 
-            
-            document.body.appendChild(dragGhost); 
-            touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); 
-            moveGhost(touch.clientX, touch.clientY); 
-            const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; 
-            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
-        }
-
-        function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
-        function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
-        function handleMove(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellFullSize = gridRect.width / 8; const relX = ghostX - gridRect.left; const relY = ghostY - gridRect.top; const col = Math.round(relX / cellFullSize); const row = Math.round(relY / cellFullSize); checkPlacement(row, col); }
-        function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } }
-        
-        function checkPlacement(r, c) { 
-            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
-            if(canPlace(dragData.matrix, r, c)) { 
-                drawShadow(dragData.matrix, r, c, dragData.color); 
-                dragData.validPos = { r: r, c: c }; 
-                let tempGrid = bbGrid.map(row => [...row]); let rowsToClear = [], colsToClear = [];
-                for(let i=0; i<dragData.matrix.length; i++) { for(let j=0; j<dragData.matrix[0].length; j++) { if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1; } }
-                for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr].every(val => val !== 0)) rowsToClear.push(rr);
-                for(let cc=0; cc<BB_COLS; cc++) { let full = true; for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr][cc] === 0) full = false; if(full) colsToClear.push(cc); }
-                rowsToClear.forEach(rr => { for(let cc=0; cc<BB_COLS; cc++) highlightPreClear(rr, cc, dragData.color); });
-                colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) highlightPreClear(rr, cc, dragData.color); });
-            } else { dragData.validPos = null; } 
-        }
-        function highlightPreClear(r, c, colorClass) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.classList.add('pre-clear'); const hex = COLOR_MAP[colorClass] || '#007aff'; cell.style.backgroundColor = hexToRgba(hex, 0.4); } }
-        function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
-        function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
-        
-        function onTouchEnd(e) { 
-            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
-            if(dragGhost) dragGhost.remove(); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.backgroundColor = ''; });
-            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
-            if(dragData.validPos) { 
-                placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
-                document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
-                const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
-                const linesCleared = checkLines(dragData.color); 
-                if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } 
-                else { if(bbShapes.every(s => s === null)) spawnShapes(); } 
-            } 
-        }
-
-        function placeShape(matrix, r, c, color) { 
-            tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; 
-            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); 
-        }
-        function checkLines(triggerColor) { 
-            let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
-            for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
-            for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } 
-            const totalCleared = rowsToClear.length + colsToClear.length; 
-            if(totalCleared > 0) { 
-                bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); tg.HapticFeedback.notificationOccurred('success'); 
-                if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
-                rowsToClear.forEach(r => { if(!isLiteMode) fireNeonParticles(r, -1, triggerColor); for(let c=0; c<BB_COLS; c++) { bbGrid[r][c] = 0; animateClear(r, c, triggerColor); } }); 
-                colsToClear.forEach(c => { if(!isLiteMode) fireNeonParticles(-1, c, triggerColor); for(let r=0; r<BB_ROWS; r++) { bbGrid[r][c] = 0; animateClear(r, c, triggerColor); } }); 
-                setTimeout(() => { document.querySelector('.bb-game-container').classList.remove('shake-screen'); let points = totalCleared * 10; if (totalCleared >= 2) { points = points * totalCleared; showComboPopup(`X${totalCleared} MULTIPLIER!`); } else if(bbCombo > 1) { points += bbCombo * 10; showComboPopup(`COMBO x${bbCombo}!`); } addScore(points); saveBBState(); setTimeout(checkAllClear, 50); checkGameOver(); }, 350); return totalCleared; 
-            } return 0; 
-        }
-        function fireNeonParticles(row, col, colorClass) {
-            const hex = COLOR_MAP[colorClass] || '#ffffff'; const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); const cellW = gridRect.width / 8; const cellH = gridRect.height / 8;
-            let xOrigin, yOrigin; if (row !== -1) { xOrigin = (gridRect.left + gridRect.width / 2) / window.innerWidth; yOrigin = (gridRect.top + (row * cellH) + (cellH/2)) / window.innerHeight; } else { xOrigin = (gridRect.left + (col * cellW) + (cellW/2)) / window.innerWidth; yOrigin = (gridRect.top + gridRect.height / 2) / window.innerHeight; }
-            confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true });
-        }
-        function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; if(!isLiteMode) { cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } } }
-        function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
-        function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
-        function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
-        async function checkGameOver() { if(bbIsAnimating) return; const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
-        function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
-        function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `${ICON_CROWN}<h2 style="margin:0 0 10px 0; font-size:24px;">Новый Рекорд!</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">Играть снова</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">Рекорд не побит</h2><p style="color:#8e8e93; margin:0 0 20px 0;">Попробуйте еще раз!</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">Лучший: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult()">Выйти</button>`; } overlay.classList.add('visible'); }
-        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
-        function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
-
-        /* --- SUDOKU LOGIC --- */
-        let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1;
-        function startSudokuCheck() { if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); else document.getElementById('modalSudoku').classList.add('visible'); }
-        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); restoreSudokuState(); }
-        function selectSudokuDiff(diff, btn, index) { selectedSudoDiff = diff; const glider = document.getElementById('sudokuGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); tg.HapticFeedback.selectionChanged(); }
-        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); generateSudoku(selectedSudoDiff); }
-        function generateSudoku(holes) {
-            if (holes === 30) currentSudoMode = 1; else if (holes === 40) currentSudoMode = 2; else currentSudoMode = 3;
-            sudoBoard = Array(81).fill(0); sudoSolution = Array(81).fill(0); sudoLives = 3; sudoFilled = 0; activeDigit = null; document.querySelectorAll('.num-btn').forEach(b => { b.classList.remove('active-digit', 'disabled'); });
-            document.getElementById('sudokuLives').innerText = "0/3"; document.getElementById('sudokuLives').style.color = "var(--text-color)";
-            fillSudo(0, 0); sudoSolution = [...sudoBoard]; let removed = 0; while (removed < holes) { let idx = Math.floor(Math.random() * 81); if (sudoBoard[idx] !== 0) { sudoBoard[idx] = 0; removed++; } }
-            renderSudoku(); checkNumberCompletion(); saveSudokuState();
-        }
-        function fillSudo(row, col) { if (col === 9) { row++; col = 0; } if (row === 9) return true; const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5); for (let num of nums) { if (isValidSudo(sudoBoard, row, col, num)) { sudoBoard[row * 9 + col] = num; if (fillSudo(row, col + 1)) return true; sudoBoard[row * 9 + col] = 0; } } return false; }
-        function isValidSudo(board, row, col, num) { for (let x = 0; x < 9; x++) if (board[row * 9 + x] === num) return false; for (let x = 0; x < 9; x++) if (board[x * 9 + col] === num) return false; let startRow = Math.floor(row / 3) * 3, startCol = Math.floor(col / 3) * 3; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (board[(startRow + i) * 9 + (startCol + j)] === num) return false; return true; }
-        function renderSudoku() { const el = document.getElementById('sudokuBoard'); el.innerHTML = ''; sudoFilled = 0; for (let i = 0; i < 81; i++) { const cell = document.createElement('div'); cell.className = 'sudo-cell'; if (sudoBoard[i] !== 0) { cell.innerText = sudoBoard[i]; cell.classList.add('given'); sudoFilled++; } cell.onclick = () => onCellClick(i, cell); cell.dataset.idx = i; el.appendChild(cell); } }
-        function activateDigit(num, btn) { if (btn.classList.contains('disabled')) return; if (activeDigit === num) { activeDigit = null; btn.classList.remove('active-digit'); highlightSameNumbers(null); tg.HapticFeedback.selectionChanged(); return; } activeDigit = num; document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit')); btn.classList.add('active-digit'); highlightSameNumbers(num); tg.HapticFeedback.selectionChanged(); }
-        function highlightSameNumbers(num) { const cells = document.querySelectorAll('.sudo-cell'); cells.forEach(c => c.classList.remove('same-num')); if (num === null) return; cells.forEach(cell => { if (parseInt(cell.innerText) === num) cell.classList.add('same-num'); }); }
-        function checkNumberCompletion() { for(let i=1; i<=9; i++) { let count = 0; for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++; const btn = document.getElementById(`nb${i}`); if(count >= 9) { btn.classList.add('disabled'); btn.classList.remove('active-digit'); if(activeDigit === i) { activeDigit = null; highlightSameNumbers(null); } } else { btn.classList.remove('disabled'); } } }
-        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerText = activeDigit; cell.classList.add('error'); tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerText = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult('Поражение', 'Слишком много ошибок'), 500); } } }
-        function checkSudokuWin() { if (sudoFilled === 81) { confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let points = currentSudoMode; let w = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', w); sendStatToBackend('sudoku_wins', w); localStorage.removeItem('sudo_state'); showResult('Победа!', `Судоку решено! (+${points})`); } }
-        function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
-        function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
 
         // Start App
         initApp();
