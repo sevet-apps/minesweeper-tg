@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v35.0</title>
+    <title>Glass App v34.2</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
@@ -392,21 +392,6 @@
         .checkers-board.rotated { transform: rotate(180deg); }
         .checkers-board.rotated .checker { transform: rotate(-180deg); }
 
-        /* Стили для Башни */
-        #towerCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.6; transform: scale(0.98); }
-            50% { opacity: 1; transform: scale(1.02); }
-            100% { opacity: 0.6; transform: scale(0.98); }
-        }
-        [data-theme="dark"] #tower-game-area {
-            background: linear-gradient(180deg, #1c1c1e 0%, #000000 100%) !important;
-        }
-
 
     </style>
 </head>
@@ -470,17 +455,6 @@
         <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Шашки</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Block Blast</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startSudokuCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;">Судоку</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="openGameModal('tower')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #FF2D55, #FF375F);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 20h20"></path><rect x="6" y="12" width="12" height="8"></rect><rect x="8" y="7" width="8" height="5"></rect><rect x="10" y="3" width="4" height="4"></rect>
-                </svg>
-            </div>
-            <div style="flex:1;">
-                <h3 style="margin:0; font-size:17px;">Башня</h3>
-            </div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
-        </div>
     </div>
 
     <div id="view-profile" class="screen"> 
@@ -525,10 +499,6 @@
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Игр</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> </div> 
                 <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center; grid-column: span 2;"> <div id="stat-sudoku-wins" style="font-size:20px; font-weight:800; color:#5856d6;">0</div> <div style="font-size:12px; color:#8e8e93;">Судоку Побед</div> </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center; grid-column: span 2;">
-                    <div id="stat-tower-best" style="font-size:20px; font-weight:800; color:#FF2D55;">0</div>
-                    <div style="font-size:12px; color:#8e8e93;">Башня Рекорд</div>
-                </div>
             </div>
         </div> 
     </div>
@@ -647,26 +617,6 @@
     </div></div>
     
     <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')">Отмена</button></div></div>
-
-    <div id="tower-screen" class="game-overlay">
-        <div class="game-top-bar" style="position: absolute; width: 100%; z-index: 10;">
-            <div class="back-btn" onclick="closeGame('tower')">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню
-            </div>
-            <div style="font-weight:700; font-size:18px;">Best: <span id="towerBestScore">0</span></div>
-        </div>
-        
-        <div id="tower-game-area" style="width: 100%; height: 100%; position: relative; overflow: hidden; background: linear-gradient(180deg, var(--bg-color) 0%, #e0e0eb 100%); cursor: pointer;">
-            <div id="towerScore" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 200; color: var(--text-color); opacity: 0.5; z-index: 5; pointer-events: none;">0</div>
-            <div id="towerStartMsg" style="position: absolute; bottom: 20%; left: 0; width: 100%; text-align: center; color: var(--accent); font-weight: 600; animation: pulse 1.5s infinite;">Нажми, чтобы строить</div>
-            <canvas id="towerCanvas"></canvas>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modalTowerGameOver">
-        <div class="modal" id="towerGameOverContent"></div>
-    </div>
-
         <script>
         const tg = window.Telegram.WebApp; 
         tg.expand();
@@ -769,7 +719,6 @@
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
-            if(game==='tower') { document.getElementById('tower-screen').classList.add('visible'); initTower(); }
             tg.HapticFeedback.impactOccurred('light'); 
         }
         function closeGame(game) { 
@@ -777,7 +726,6 @@
             if(game==='saper') clearInterval(sTimerInt); 
             if(game==='bb') saveBBState(); 
             if(game==='sudoku') saveSudokuState();
-            if(game==='tower') { cancelAnimationFrame(tReqId); tState='start'; }
             // FIXED v34.1: Сброс флагов при закрытии игры
             if(game==='checkers') {
                 isOnlineGame = false;
@@ -803,7 +751,6 @@
             document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
             document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; 
             document.getElementById('stat-sudoku-wins').innerText = localStorage.getItem('sudoku_wins') || 0;
-            document.getElementById('stat-tower-best').innerText = localStorage.getItem('tower_best') || 0;
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; 
         }
         
@@ -1089,316 +1036,6 @@
         function checkSudokuWin() { if (sudoFilled === 81) { confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let points = currentSudoMode; let w = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', w); sendStatToBackend('sudoku_wins', w); localStorage.removeItem('sudo_state'); showResult('Победа!', `Судоку решено! (+${points})`); } }
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
-
-        /* --- TOWER (STACK) GAME LOGIC --- */
-        const TOWER_CATS = [{ id: 'tower_best', name: 'Высота башни' }];
-        let tCanvas, tCtx, tReqId;
-        let tScore = 0, tBest = 0;
-        let tBlocks = [], tDebris = [];
-        let tState = 'start';
-        let tBaseX, tBaseY, tWidth = 100, tHeight = 100;
-        let tSpeed = 4, tDir = 1;
-        let tHue = 0;
-        let tCurrentBlock = null;
-        let tCombo = 0;
-
-        function initTower() {
-            tCanvas = document.getElementById('towerCanvas');
-            tCtx = tCanvas.getContext('2d');
-            resizeTowerCanvas();
-            window.addEventListener('resize', resizeTowerCanvas);
-            
-            tBest = parseInt(localStorage.getItem('tower_best') || 0);
-            document.getElementById('towerBestScore').innerText = tBest;
-            document.getElementById('stat-tower-best').innerText = tBest;
-
-            const area = document.getElementById('tower-game-area');
-            area.onmousedown = (e) => { e.preventDefault(); handleTowerInput(); };
-            area.ontouchstart = (e) => { e.preventDefault(); handleTowerInput(); };
-
-            resetTowerGame();
-            tLoop();
-        }
-
-        function resizeTowerCanvas() {
-            if(!tCanvas) return;
-            tCanvas.width = window.innerWidth * window.devicePixelRatio;
-            tCanvas.height = window.innerHeight * window.devicePixelRatio;
-            tCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            tBaseX = window.innerWidth / 2;
-            tBaseY = window.innerHeight / 1.5;
-        }
-
-        function resetTowerGame() {
-            tBlocks = [];
-            tDebris = [];
-            tScore = 0;
-            tCombo = 0;
-            tState = 'start';
-            tHue = Math.random() * 360;
-            tWidth = 120;
-            tHeight = 120;
-            tSpeed = 3;
-            
-            document.getElementById('towerScore').innerText = tScore;
-            document.getElementById('towerStartMsg').style.display = 'block';
-
-            addTowerBlock(tBaseX, tBaseY, tWidth, tHeight, 0, 0);
-            spawnNextBlock();
-        }
-
-        function addTowerBlock(x, y, w, h, dx, dy) {
-            const color = `hsl(${tHue}, 60%, ${isDark ? 60 : 50}%)`;
-            tBlocks.push({ x, y, w, h, color, dx, dy });
-        }
-
-        function spawnNextBlock() {
-            const prev = tBlocks[tBlocks.length - 1];
-            tHue += 5;
-            
-            const level = tBlocks.length;
-            const dir = level % 2 === 0 ? 'x' : 'y';
-            
-            let x, y;
-            const dist = 300;
-            
-            if (dir === 'x') {
-                x = prev.x - dist;
-                y = prev.y - dist * 0.5;
-            } else {
-                x = prev.x + dist;
-                y = prev.y - dist * 0.5;
-            }
-
-            tCurrentBlock = {
-                x: x, 
-                y: y,
-                w: prev.w,
-                h: prev.h,
-                color: `hsl(${tHue}, 60%, ${isDark ? 60 : 50}%)`,
-                dir: dir,
-                moveFactor: 0
-            };
-        }
-
-        function handleTowerInput() {
-            if (tState === 'start') {
-                tState = 'playing';
-                document.getElementById('towerStartMsg').style.display = 'none';
-                return;
-            }
-            if (tState === 'gameover') return;
-            
-            placeTowerBlock();
-        }
-
-        function placeTowerBlock() {
-            if (!tCurrentBlock) return;
-            
-            const prev = tBlocks[tBlocks.length - 1];
-            const curr = tCurrentBlock;
-            
-            let diffX = curr.x - prev.x;
-            let diffY = curr.y - prev.y;
-            let magnitude = Math.sqrt(diffX*diffX + diffY*diffY);
-            
-            let isX = curr.dir === 'x';
-            let max = isX ? tWidth : tHeight;
-            let cut = magnitude;
-            
-            if (cut > max) {
-                gameOverTower();
-                return;
-            }
-            
-            if (cut < 3) {
-                cut = 0;
-                curr.x = prev.x;
-                curr.y = prev.y;
-                tCombo++;
-                if(tCombo > 2) {
-                    tScore += tCombo;
-                }
-                tg.HapticFeedback.notificationOccurred('success');
-            } else {
-                tCombo = 0;
-                tg.HapticFeedback.impactOccurred('light');
-            }
-            
-            let newW = tWidth;
-            let newH = tHeight;
-            
-            if (cut > 0) {
-                if (isX) {
-                    newW -= cut;
-                    tWidth = newW;
-                    curr.x = prev.x + (curr.x - prev.x) * (newW / (newW + cut));
-                    curr.y = prev.y + (curr.y - prev.y) * (newW / (newW + cut));
-                    addDebris(curr.x, curr.y, cut, tHeight, curr.color); 
-                } else {
-                    newH -= cut;
-                    tHeight = newH;
-                    curr.x = prev.x + (curr.x - prev.x) * (newH / (newH + cut));
-                    curr.y = prev.y + (curr.y - prev.y) * (newH / (newH + cut));
-                    addDebris(curr.x, curr.y, tWidth, cut, curr.color); 
-                }
-            }
-            
-            curr.w = newW;
-            curr.h = newH;
-            
-            tBlocks.push(curr);
-            tCurrentBlock = null;
-            tScore++;
-            document.getElementById('towerScore').innerText = tScore;
-            
-            tSpeed += 0.05;
-            
-            spawnNextBlock();
-        }
-
-        function addDebris(x, y, w, h, color) {
-            tDebris.push({ x, y, w, h, color, vy: 0, alpha: 1 });
-        }
-
-        function gameOverTower() {
-            tState = 'gameover';
-            tg.HapticFeedback.notificationOccurred('error');
-            
-            let isRecord = false;
-            if (tScore > tBest) {
-                tBest = tScore;
-                isRecord = true;
-                saveStatToCloud('tower_best', tBest);
-                sendStatToBackend('tower_best', tBest);
-                localStorage.setItem('tower_best', tBest);
-                document.getElementById('towerBestScore').innerText = tBest;
-            }
-            
-            const modal = document.getElementById('towerGameOverContent');
-            const overlay = document.getElementById('modalTowerGameOver');
-            
-            let html = '';
-            if (isRecord) {
-                html = `${ICON_CROWN}<h2>Новый Рекорд!</h2>
-                <div style="font-size:64px; font-weight:800; color:var(--accent); margin:10px 0;">${tScore}</div>
-                <button class="btn-main" onclick="closeResult(); resetTowerGame();">Играть снова</button>`;
-                confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 }, zIndex: 22000 });
-            } else {
-                html = `<h2>Башня упала</h2>
-                <div style="font-size:48px; font-weight:700; margin-bottom:10px;">${tScore}</div>
-                <div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">Лучший: ${tBest}</div>
-                <button class="btn-main" onclick="closeResult(); resetTowerGame();">Попробовать еще</button>`;
-            }
-            html += `<button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeGame('tower'); closeResult();">Выйти</button>`;
-            
-            modal.innerHTML = html;
-            setTimeout(() => overlay.classList.add('visible'), 500);
-        }
-
-        function tLoop() {
-            if (!document.getElementById('tower-screen').classList.contains('visible')) return;
-            tReqId = requestAnimationFrame(tLoop);
-            tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
-            
-            const targetY = tBaseY;
-            const topBlock = tBlocks.length > 0 ? tBlocks[tBlocks.length-1] : {y: tBaseY};
-            const stackHeightPx = (tBlocks.length * 15);
-            
-            let camY = 0;
-            if (tBlocks.length > 5) {
-                camY = (tBlocks.length - 5) * 20;
-            }
-            
-            tCtx.save();
-            tCtx.translate(0, camY);
-
-            tBlocks.forEach(b => drawIsoBlock(b.x, b.y, b.w, b.h, b.color));
-            
-            if (tCurrentBlock && tState === 'playing') {
-                updateCurrentBlock();
-                drawIsoBlock(tCurrentBlock.x, tCurrentBlock.y, tCurrentBlock.w, tCurrentBlock.h, tCurrentBlock.color);
-            }
-            
-            tDebris.forEach((d, i) => {
-                d.y += d.vy;
-                d.vy += 1;
-                d.alpha -= 0.02;
-                if (d.alpha <= 0) tDebris.splice(i, 1);
-                else {
-                    tCtx.globalAlpha = d.alpha;
-                    drawIsoBlock(d.x, d.y, d.w, d.h, d.color);
-                    tCtx.globalAlpha = 1;
-                }
-            });
-
-            tCtx.restore();
-        }
-
-        function updateCurrentBlock() {
-            const b = tCurrentBlock;
-            const range = 180;
-            
-            b.moveFactor += tSpeed * 0.02;
-            
-            const offset = Math.sin(b.moveFactor) * range;
-            
-            const prev = tBlocks[tBlocks.length - 1];
-            
-            if (b.dir === 'x') {
-                b.x = prev.x + offset;
-                b.y = prev.y - offset * 0.5;
-            } else {
-                b.x = prev.x - offset;
-                b.y = prev.y - offset * 0.5;
-            }
-        }
-
-        function drawIsoBlock(x, y, w, h, color) {
-            const thickness = 25;
-            
-            const isoW = w; 
-            const isoH = h * 0.5;
-            
-            const p1 = { x: x, y: y - isoH };
-            const p2 = { x: x + isoW, y: y };
-            const p3 = { x: x, y: y + isoH };
-            const p4 = { x: x - isoW, y: y };
-            
-            tCtx.fillStyle = color;
-            
-            tCtx.beginPath();
-            tCtx.moveTo(p1.x, p1.y);
-            tCtx.lineTo(p2.x, p2.y);
-            tCtx.lineTo(p3.x, p3.y);
-            tCtx.lineTo(p4.x, p4.y);
-            tCtx.closePath();
-            tCtx.fill();
-            tCtx.fillStyle = 'rgba(255,255,255,0.15)';
-            tCtx.fill();
-            
-            tCtx.fillStyle = color;
-            tCtx.filter = 'brightness(80%)';
-            tCtx.beginPath();
-            tCtx.moveTo(p2.x, p2.y);
-            tCtx.lineTo(p3.x, p3.y);
-            tCtx.lineTo(p3.x, p3.y + thickness);
-            tCtx.lineTo(p2.x, p2.y + thickness);
-            tCtx.closePath();
-            tCtx.fill();
-            tCtx.filter = 'none';
-
-            tCtx.fillStyle = color;
-            tCtx.filter = 'brightness(60%)';
-            tCtx.beginPath();
-            tCtx.moveTo(p4.x, p4.y);
-            tCtx.lineTo(p3.x, p3.y);
-            tCtx.lineTo(p3.x, p3.y + thickness);
-            tCtx.lineTo(p4.x, p4.y + thickness);
-            tCtx.closePath();
-            tCtx.fill();
-            tCtx.filter = 'none';
-        }
 
         // Start App
         initApp();
