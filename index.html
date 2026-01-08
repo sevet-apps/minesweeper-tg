@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tower Prototype</title>
+    <title>Tower Stack</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -12,37 +12,38 @@
             --bg-dark: #000000;
             --text-light: #000000;
             --text-dark: #ffffff;
-            --accent: #FF2D55; /* Розово-красный акцент для Башни */
+            --accent: #FF2D55;
         }
 
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             background-color: var(--bg-light);
             color: var(--text-light);
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-            touch-action: none; /* Отключаем зум и скролл */
-            transition: background-color 0.3s;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        /* Темная тема через атрибут (эмулируем логику основного аппа) */
         body.dark-mode {
             background-color: var(--bg-dark);
             color: var(--text-dark);
         }
         
-        /* Градиент фона как в оригинальной игре, но мягкий */
+        /* Фон с легким градиентом */
         #game-background {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.05) 100%);
             pointer-events: none;
+            z-index: -1;
         }
         body.dark-mode #game-background {
-            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.2) 100%);
+            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%);
         }
 
         canvas {
@@ -52,7 +53,7 @@
             cursor: pointer;
         }
 
-        /* UI Элементы */
+        /* Интерфейс */
         .ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -67,7 +68,6 @@
             font-weight: 200;
             margin-top: 15vh;
             opacity: 0.8;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
             transition: transform 0.1s;
         }
         #score.bump { transform: scale(1.2); }
@@ -83,7 +83,7 @@
             animation: pulse 1.5s infinite;
         }
 
-        /* Модалка проигрыша */
+        /* Модальное окно Game Over */
         #game-over-modal {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -102,17 +102,18 @@
             opacity: 1;
             pointer-events: auto;
         }
+        
         .card {
-            background: rgba(255,255,255,0.85);
+            background: rgba(255,255,255,0.9);
             padding: 30px;
             border-radius: 24px;
             text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
             width: 80%;
-            max-width: 300px;
+            max-width: 320px;
         }
         body.dark-mode .card {
-            background: rgba(30,30,30,0.85);
+            background: rgba(30,30,30,0.9);
             border: 1px solid rgba(255,255,255,0.1);
         }
 
@@ -127,13 +128,14 @@
             margin-top: 20px;
             cursor: pointer;
             width: 100%;
+            transition: transform 0.1s;
         }
-        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        .btn:active { opacity: 0.9; transform: scale(0.96); }
 
         @keyframes pulse {
-            0% { opacity: 0.5; transform: scale(0.95); }
-            50% { opacity: 1; transform: scale(1.05); }
-            100% { opacity: 0.5; transform: scale(0.95); }
+            0% { opacity: 0.6; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 0.6; transform: scale(0.98); }
         }
     </style>
 </head>
@@ -149,7 +151,7 @@
     <div id="game-over-modal">
         <div class="card">
             <h2 style="margin: 0 0 10px;">Игра окончена</h2>
-            <div id="final-score" style="font-size: 48px; font-weight: 800; color: var(--accent);">0</div>
+            <div id="final-score" style="font-size: 56px; font-weight: 800; color: var(--accent);">0</div>
             <button class="btn" onclick="restartGame()">Играть снова</button>
         </div>
     </div>
@@ -157,61 +159,59 @@
     <canvas id="canvas"></canvas>
 
 <script>
-    // --- НАСТРОЙКИ ---
+    // --- ИНИЦИАЛИЗАЦИЯ TELEGRAM ---
     const tg = window.Telegram.WebApp;
     tg.expand();
     
-    // Определение темы
+    // Определяем тему
     const isDark = tg.colorScheme === 'dark';
     if(isDark) document.body.classList.add('dark-mode');
 
-    // --- ПЕРЕМЕННЫЕ ИГРЫ ---
+    // --- НАСТРОЙКИ КАНВАСА ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    
+    // UI элементы
     const scoreEl = document.getElementById('score');
     const startMsg = document.getElementById('start-msg');
     const modal = document.getElementById('game-over-modal');
     const finalScoreEl = document.getElementById('final-score');
 
-    let blocks = []; // Массив блоков башни
-    let debris = []; // Массив обломков
+    // --- ПЕРЕМЕННЫЕ ИГРЫ ---
+    let blocks = []; // Установленные блоки
+    let debris = []; // Обломки
     let score = 0;
     let state = 'start'; // start, playing, gameover
-    let hue = 0; // Цвет (HSL)
+    let hue = 0; // Цвет для радуги
     
-    // Параметры "Камеры" и размеров
-    let zoom = 1; 
-    let cameraY = 0;
+    let cameraY = 0; // Смещение камеры
     
-    // Текущий движущийся блок
+    // Текущий блок
     let currentBlock = null;
-    let direction = 'x'; // 'x' или 'z' (в изометрии это две диагонали)
-    let speed = 2.5;
+    let direction = 'x'; // Ось движения ('x' или 'z')
+    let speed = 3.5;     // Скорость движения
     
-    // Константы размеров
-    const BLOCK_HEIGHT = 40; // Высота самого "кирпича"
-    const BASE_SIZE = 140;   // Начальная ширина/глубина
+    const BLOCK_HEIGHT = 35; // Высота грани блока
+    const BASE_SIZE = 130;   // Начальный размер базы
     
-    // Инициализация размеров экрана
+    // Обработка размера экрана (High DPI fix)
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
         canvas.height = window.innerHeight * window.devicePixelRatio;
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        // Центр экрана (база башни)
-        cameraY = 0;
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // --- ЛОГИКА ---
+    // --- ЛОГИКА ИГРЫ ---
 
     function startGame() {
         blocks = [];
         debris = [];
         score = 0;
-        speed = 2.5;
+        speed = 3.5;
         direction = 'x';
-        hue = Math.random() * 360;
+        hue = Math.floor(Math.random() * 360);
         state = 'playing';
         cameraY = 0;
         
@@ -219,8 +219,7 @@
         startMsg.style.display = 'none';
         modal.classList.remove('visible');
 
-        // Добавляем Базовый (Нижний) Блок
-        // x, z - логические координаты. w, d - ширина и глубина.
+        // Создаем базу
         addBlock({
             x: 0,
             z: 0,
@@ -230,26 +229,24 @@
         });
 
         spawnNextBlock();
-        loop();
+        loop(); // Запускаем цикл отрисовки
     }
 
     function addBlock(block) {
-        // Вычисляем изометрические координаты для отрисовки (screenX, screenY) один раз
-        // Но для логики храним x, z
         blocks.push(block);
     }
 
     function spawnNextBlock() {
         const prev = blocks[blocks.length - 1];
-        hue += 6; // Сдвиг цвета
-        direction = direction === 'x' ? 'z' : 'x'; // Меняем ось
+        hue += 8; // Меняем цвет для следующего блока
+        direction = direction === 'x' ? 'z' : 'x'; // Меняем направление
         
-        // Начальная позиция спавна (далеко сбоку)
-        let spawnPos = -300; 
+        // Позиция появления (за экраном)
+        const dist = 350;
         
         currentBlock = {
-            x: direction === 'x' ? spawnPos : prev.x,
-            z: direction === 'z' ? spawnPos : prev.z,
+            x: direction === 'x' ? -dist : prev.x,
+            z: direction === 'z' ? -dist : prev.z,
             w: prev.w,
             d: prev.d,
             color: getHSL(hue),
@@ -257,35 +254,35 @@
         };
     }
 
-    function update() {
+    function updatePhysics() {
         if (state !== 'playing' || !currentBlock) return;
 
-        // Движение блока (Пинг-понг)
-        const limit = 320; // Граница движения
-        const moveAmount = speed;
-
+        // Двигаем текущий блок
+        const limit = 350;
+        
         if (direction === 'x') {
-            currentBlock.x += moveAmount * currentBlock.moveDir;
+            currentBlock.x += speed * currentBlock.moveDir;
             if (currentBlock.x > limit) currentBlock.moveDir = -1;
             if (currentBlock.x < -limit) currentBlock.moveDir = 1;
         } else {
-            currentBlock.z += moveAmount * currentBlock.moveDir;
+            currentBlock.z += speed * currentBlock.moveDir;
             if (currentBlock.z > limit) currentBlock.moveDir = -1;
             if (currentBlock.z < -limit) currentBlock.moveDir = 1;
         }
 
-        // Плавное движение камеры вверх
-        // Мы хотим, чтобы верхушка башни была примерно в нижней трети экрана
-        const targetY = (blocks.length * BLOCK_HEIGHT) - 100;
-        cameraY += (targetY - cameraY) * 0.1;
+        // Двигаем камеру вверх плавнее
+        // Цель: держать верхушку башни чуть ниже центра
+        const targetY = (blocks.length * BLOCK_HEIGHT) - 150;
+        if(targetY > 0) {
+            cameraY += (targetY - cameraY) * 0.05;
+        }
     }
 
-    // --- ОБРАБОТКА КЛИКА (ГЛАВНАЯ ЛОГИКА) ---
-    function handleTap(e) {
-        if (e) e.preventDefault();
+    // --- ОБРАБОТКА КЛИКА ---
+    function handleAction(e) {
+        if (e) e.preventDefault(); // Предотвращаем зум/скролл
 
         if (state === 'start' || state === 'gameover') {
-            // Если игра не идет, клик ничего не делает тут (старт через функцию startGame)
             if(state === 'start') startGame();
             return;
         }
@@ -298,46 +295,39 @@
 
         const prev = blocks[blocks.length - 1];
         
-        let diff, overlap;
-        let cutSize, cutPos;
+        let diff; // Разница между центрами
+        let overlap; // Размер перекрытия
+        let cutSize; // Размер отрезанной части
         let isGameOver = false;
 
-        // Расчет обрезки
         if (direction === 'x') {
-            // Двигались по X
             diff = currentBlock.x - prev.x;
-            // Overlap = Ширина минус модуль смещения
             overlap = prev.w - Math.abs(diff);
             
             if (overlap > 0) {
-                // Успех (частично или полностью)
-                cutSize = Math.abs(diff); // Сколько отрезать
+                cutSize = Math.abs(diff);
+                currentBlock.w = overlap; // Обновляем ширину
                 
-                // Обрезаем текущий блок
-                currentBlock.w = overlap;
-                
-                // Сдвигаем текущий блок так, чтобы он лежал ровно на предыдущем
+                // Смещаем центр нового блока
                 if (diff > 0) { 
-                    // Уехал вправо -> отрезаем справа
-                    currentBlock.x = prev.x + (diff / 2); // Новый центр смещается
-                    // Обломок (Debris)
+                    currentBlock.x = prev.x + (diff / 2);
+                    // Создаем обломок справа
                     addDebris(currentBlock.x + (overlap/2) + (cutSize/2), currentBlock.z, cutSize, currentBlock.d);
                 } else {
-                    // Уехал влево -> отрезаем слева
                     currentBlock.x = prev.x + (diff / 2);
+                    // Создаем обломок слева
                     addDebris(currentBlock.x - (overlap/2) - (cutSize/2), currentBlock.z, cutSize, currentBlock.d);
                 }
             } else {
                 isGameOver = true;
             }
-        } else {
-            // Двигались по Z
+        } else { // direction === 'z'
             diff = currentBlock.z - prev.z;
             overlap = prev.d - Math.abs(diff);
             
             if (overlap > 0) {
                 cutSize = Math.abs(diff);
-                currentBlock.d = overlap;
+                currentBlock.d = overlap; // Обновляем глубину
 
                 if (diff > 0) {
                     currentBlock.z = prev.z + (diff / 2);
@@ -356,26 +346,25 @@
             addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d);
             gameOver();
         } else {
-            // Идеальное попадание? (с допуском)
-            if (Math.abs(diff) < 3) {
-                // Восстанавливаем размер (Бонус) или просто эффект
-                scoreEl.classList.add('bump');
-                setTimeout(() => scoreEl.classList.remove('bump'), 100);
-                // Примагничиваем идеально
+            // Идеальное попадание (допуск 4px)
+            if (Math.abs(diff) < 4) {
+                // Примагничиваем
                 currentBlock.x = prev.x;
                 currentBlock.z = prev.z;
                 currentBlock.w = prev.w;
                 currentBlock.d = prev.d;
+                
+                scoreEl.classList.add('bump');
+                setTimeout(() => scoreEl.classList.remove('bump'), 100);
                 tg.HapticFeedback.notificationOccurred('success');
             } else {
                 tg.HapticFeedback.impactOccurred('light');
             }
 
-            // Добавляем блок в башню
             addBlock(currentBlock);
             score++;
             scoreEl.innerText = score;
-            speed += 0.05; // Ускоряем
+            speed += 0.08; // Немного ускоряем игру
             spawnNextBlock();
         }
     }
@@ -384,8 +373,8 @@
         debris.push({
             x: x, z: z, w: w, d: d,
             color: currentBlock.color,
-            vy: 0, // Вертикальная скорость (падение вниз экрана)
-            yOffset: 0, // Смещение по Y (экранное)
+            vy: 0, // Вертикальная скорость падения
+            yOffset: 0, 
             alpha: 1
         });
     }
@@ -404,118 +393,74 @@
     // --- ОТРИСОВКА ---
 
     function loop() {
-        if(state === 'gameover' && debris.length === 0) return; // Останавливаем отрисовку если все упало
+        if(state === 'gameover' && debris.length === 0) return; // Экономим ресурсы при остановке
         requestAnimationFrame(loop);
         
-        // Логика
-        update();
+        updatePhysics();
         
-        // Очистка
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Очистка экрана (используем логические пиксели)
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         
-        // --- РИСОВАНИЕ ---
-        
-        const centerX = canvas.width / 2;
-        const startY = canvas.height / 1.5; // Базовая точка на экране
+        // Центр экрана для отрисовки
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 1.5; 
 
-        // Рисуем блоки (снизу вверх)
-        // Чтобы камера двигалась, мы вычитаем cameraY из позиции Y
-        
-        // Рисуем башню
+        // 1. Рисуем установленные блоки
         blocks.forEach((b, i) => {
-            // Высота в стопке
             const stackY = i * BLOCK_HEIGHT; 
-            drawIsoRect(centerX, startY, b.x, b.z, b.w, b.d, stackY, b.color);
+            drawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color);
         });
 
-        // Рисуем текущий блок
+        // 2. Рисуем текущий блок
         if (currentBlock && state === 'playing') {
             const stackY = blocks.length * BLOCK_HEIGHT;
-            drawIsoRect(centerX, startY, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color);
+            drawIsoBlock(cx, cy, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color);
         }
 
-        // Рисуем обломки (падают)
+        // 3. Рисуем обломки
         debris.forEach((d, i) => {
             d.vy += 1; // Гравитация
-            d.yOffset -= d.vy; // В изометрии Y растет вверх, а падение вниз
-            d.alpha -= 0.02;
+            d.yOffset -= d.vy;
+            d.alpha -= 0.03; // Исчезновение
             
-            // Текущая высота обломка равна высоте блока, от которого он откололся
-            // Для упрощения считаем, что он откололся от вершины
+            // Высота обломка рассчитывается относительно вершины башни
             const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
 
             if (d.alpha <= 0) {
                 debris.splice(i, 1);
             } else {
                 ctx.globalAlpha = d.alpha;
-                drawIsoRect(centerX, startY, d.x, d.z, d.w, d.d, stackY, d.color);
+                drawIsoBlock(cx, cy, d.x, d.z, d.w, d.d, stackY, d.color);
                 ctx.globalAlpha = 1;
             }
         });
     }
 
-    // Главная функция рисования изометрического параллелепипеда
-    // cx, cy - центр экрана (нулевая точка)
-    // x, z - логические координаты смещения центра блока
-    // w, d - ширина и глубина
-    // yLevel - высота блока над землей (stack height)
-    function drawIsoRect(cx, cy, x, z, w, d, yLevel, color) {
-        // Конвертация в изометрию
-        // Формула изометрии: 
-        // isoX = (x - z) * cos(30)
-        // isoY = (x + z) * sin(30) - yLevel
-        
-        // Мы используем коэффициенты 1 и 0.5 для простоты (стандарт пиксель-арта 2:1)
+    // Основная функция рисования изометрического блока
+    function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color) {
+        // Формулы изометрии (2:1 соотношение)
+        // x - идет вправо-вниз, z - идет влево-вниз
         const isoX = (x - z);
         const isoY = (x + z) * 0.5;
         
-        // Экранные координаты центра нижней грани блока
-        // Вычитаем cameraY, чтобы опускать башню
+        // Экранные координаты центра блока
         const screenX = cx + isoX;
         const screenY = cy + isoY - yLevel + cameraY;
 
-        // Рисуем верхнюю грань (Ромб)
-        // Смещение от центра к вершинам
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(screenX, screenY - BLOCK_HEIGHT); // Центр (условно) - НЕТ, это не центр.
+        // Вектора смещения для вершин
+        // Ось X изометрии (w): dx=1, dy=0.5
+        // Ось Z изометрии (d): dx=-1, dy=0.5
         
-        // Давайте вычислим 4 угла верхней грани относительно screenX, screenY (это центр)
-        // Но screenY у нас уже с учетом высоты.
-        
-        // Упрощение:
-        // p1 = Top, p2 = Right, p3 = Bottom, p4 = Left
-        const hw = w; // half width visual? Нет, w и d это реальные размеры
-        const hd = d;
-        
-        // В изометрии:
-        // Вектор X идет вправо-вниз
-        // Вектор Z идет влево-вниз
-        
-        // Проекция векторов базиса
-        const vecX_x = 1;   const vecX_y = 0.5;
-        const vecZ_x = -1;  const vecZ_y = 0.5;
-        
-        // Вершины верхней грани относительно центра (screenX, screenY)
-        // screenY - это уже "поверхность" блока
-        
-        function getIsoPoint(lx, lz) {
-            return {
-                x: screenX + (lx * vecX_x + lz * vecZ_x),
-                y: screenY + (lx * vecX_y + lz * vecZ_y) - BLOCK_HEIGHT // Поднимаем на высоту блока
-            };
-        }
-        
-        const p_far = getIsoPoint(w/2, d/2); // Дальняя точка (верх) ?
-        // Нет, логика координат: x - вправо, z - влево.
-        // Верхняя грань:
-        const p_top = getIsoPoint(-w/2, -d/2); // Верхняя точка ромба
-        const p_right = getIsoPoint(w/2, -d/2);
-        const p_bottom = getIsoPoint(w/2, d/2);
-        const p_left = getIsoPoint(-w/2, d/2);
+        // Вычисляем 4 угла верхней грани
+        // Центр (0,0) - это screenX, screenY
+        // Top: -w/2 по X, -d/2 по Z
+        const p_top = getIsoPoint(screenX, screenY, -w/2, -d/2);
+        const p_right = getIsoPoint(screenX, screenY, w/2, -d/2);
+        const p_bottom = getIsoPoint(screenX, screenY, w/2, d/2);
+        const p_left = getIsoPoint(screenX, screenY, -w/2, d/2);
 
-        // ВЕРХНЯЯ ГРАНЬ
-        ctx.fillStyle = lighten(color, 10); // Светлее
+        // ВЕРХНЯЯ ГРАНЬ (Самая светлая)
+        ctx.fillStyle = lighten(color, 15);
         ctx.beginPath();
         ctx.moveTo(p_top.x, p_top.y);
         ctx.lineTo(p_right.x, p_right.y);
@@ -524,9 +469,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // ПРАВАЯ ГРАНЬ (Видна если мы смотрим сверху? Всегда видна в такой изометрии)
-        // Соединяет p_bottom, p_right и их проекции вниз
-        ctx.fillStyle = darken(color, 10); // Темнее
+        // ПРАВАЯ ГРАНЬ (Средняя тень)
+        ctx.fillStyle = darken(color, 10);
         ctx.beginPath();
         ctx.moveTo(p_right.x, p_right.y);
         ctx.lineTo(p_bottom.x, p_bottom.y);
@@ -535,8 +479,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // ЛЕВАЯ ГРАНЬ
-        ctx.fillStyle = darken(color, 20); // Еще темнее (тень)
+        // ЛЕВАЯ ГРАНЬ (Самая темная тень)
+        ctx.fillStyle = darken(color, 25);
         ctx.beginPath();
         ctx.moveTo(p_left.x, p_left.y);
         ctx.lineTo(p_bottom.x, p_bottom.y);
@@ -545,8 +489,8 @@
         ctx.closePath();
         ctx.fill();
         
-        // Верхняя белая обводка для стиля (Glass)
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        // Тонкая обводка сверху для "стеклянного" эффекта
+        ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(p_top.x, p_top.y);
@@ -556,30 +500,47 @@
         ctx.closePath();
         ctx.stroke();
     }
+    
+    // Вспомогательная для расчета точек
+    function getIsoPoint(cx, cy, dx, dz) {
+        // dx идет по оси X (1, 0.5)
+        // dz идет по оси Z (-1, 0.5)
+        return {
+            x: cx + (dx * 1 + dz * -1),
+            y: cy + (dx * 0.5 + dz * 0.5) - BLOCK_HEIGHT
+        };
+    }
 
-    // --- УТИЛИТЫ ---
+    // --- УТИЛИТЫ ЦВЕТА ---
     function getHSL(h) {
-        return `hsl(${h % 360}, 60%, ${isDark ? 60 : 50}%)`;
+        const sat = 65;
+        const lig = isDark ? 55 : 50;
+        return `hsl(${Math.floor(h % 360)}, ${sat}%, ${lig}%)`;
     }
     
-    // Простые функции затемнения/осветления для HSL строк (грубая обработка)
-    function lighten(hsl, percent) {
-        // hsl(100, 60%, 50%) -> достаем 50, делаем +percent
-        let parts = hsl.match(/hsl\((\d+\.?\d*),\s*(\d+)%,\s*(\d+)%\)/);
-        if(!parts) return hsl;
-        let l = Math.min(100, parseInt(parts[3]) + percent);
-        return `hsl(${parts[1]}, ${parts[2]}%, ${l}%)`;
+    // Функции для создания теней без сторонних библиотек
+    function lighten(hsl, amt) {
+        return adjustLight(hsl, amt);
     }
-    function darken(hsl, percent) {
-        let parts = hsl.match(/hsl\((\d+\.?\d*),\s*(\d+)%,\s*(\d+)%\)/);
+    function darken(hsl, amt) {
+        return adjustLight(hsl, -amt);
+    }
+    function adjustLight(hsl, amt) {
+        // Парсим строку hsl(h, s%, l%)
+        const parts = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
         if(!parts) return hsl;
-        let l = Math.max(0, parseInt(parts[3]) - percent);
-        return `hsl(${parts[1]}, ${parts[2]}%, ${l}%)`;
+        let h = parts[1];
+        let s = parts[2];
+        let l = parseInt(parts[3]) + amt;
+        l = Math.max(0, Math.min(100, l));
+        return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
-    // Запуск по клику на экран
-    document.addEventListener('pointerdown', handleTap);
-    document.addEventListener('keydown', (e) => { if(e.code === 'Space') handleTap(e); });
+    // Слушатели событий
+    document.addEventListener('pointerdown', handleAction);
+    document.addEventListener('keydown', (e) => { 
+        if(e.code === 'Space') handleAction(e); 
+    });
 
 </script>
 </body>
