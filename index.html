@@ -64,7 +64,6 @@
             z-index: 10;
         }
 
-        /* ИСПРАВЛЕНИЕ 1: Новый стиль счетчика (как в Block Blast) */
         #score {
             position: absolute;
             top: 10%;
@@ -72,12 +71,15 @@
             width: 100%;
             text-align: center;
             font-size: 80px; 
-            font-weight: 800; /* Жирный */
-            color: var(--accent); /* Синий цвет */
-            opacity: 1; /* Не прозрачный */
+            font-weight: 800;
+            color: var(--accent);
+            opacity: 1;
             font-feature-settings: "tnum";
-            text-shadow: 0 4px 15px rgba(0, 122, 255, 0.25); /* Легкое свечение/тень */
-            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            
+            /* ИСПРАВЛЕНИЕ: Плавный переход цвета */
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.5s ease;
+            
             pointer-events: none;
         }
         #score.bump { transform: scale(1.2); }
@@ -216,18 +218,27 @@
     window.addEventListener('resize', resize);
     resize();
 
-    function startGame() {
-        speed = 3.0;
+    // Функция жесткого сброса переменных
+    function resetGameVariables() {
         blocks = [];
         debris = [];
         score = 0;
+        speed = 3.0; // Гарантированный сброс скорости
         direction = 'x';
         hue = Math.floor(Math.random() * 360);
         state = 'playing';
         cameraY = 0;
         perfectMatchAlpha = 0;
+        currentBlock = null;
+    }
+
+    function startGame() {
+        resetGameVariables();
         
         scoreEl.innerText = score;
+        // Сброс цвета счетчика на дефолтный (синий) при старте
+        scoreEl.style.color = "var(--accent)"; 
+        
         startMsg.style.display = 'none';
         modal.classList.remove('visible');
 
@@ -247,11 +258,16 @@
         direction = direction === 'x' ? 'z' : 'x'; 
         const dist = 350;
         
+        const nextColor = getHSL(hue);
+
+        // ИСПРАВЛЕНИЕ: Меняем цвет счетчика под цвет фигуры
+        scoreEl.style.color = nextColor;
+        
         currentBlock = {
             x: direction === 'x' ? -dist : prev.x,
             z: direction === 'z' ? -dist : prev.z,
             w: prev.w, d: prev.d,
-            color: getHSL(hue),
+            color: nextColor,
             moveDir: 1 
         };
     }
@@ -312,7 +328,6 @@
         let impulseX = 0, impulseZ = 0;
         let debrisBehind = (diff < 0);
 
-        // ИСПРАВЛЕНИЕ 2: Уменьшена сила импульса (было 4, стало 2.5) для плавности
         if (direction === 'x') {
             overlap = prev.w - Math.abs(diff);
             if (overlap > 0) {
@@ -365,11 +380,8 @@
         spawnNextBlock();
     }
 
-    // ИСПРАВЛЕНИЕ 2: Плавная физика обломков
     function addDebris(x, z, w, d, vx, vz, isBehind) {
-        // Уменьшена скорость вращения (было 0.1, стало 0.04)
         const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.04); 
-        
         debris.push({
             x: x, z: z, w: w, d: d,
             color: currentBlock.color,
@@ -441,12 +453,10 @@
     }
     
     function updateAndDrawDebris(d, cx, cy) {
-        // Уменьшена гравитация с 0.8 до 0.5 (для плавности)
         d.vy += 0.5; 
         d.yOffset -= d.vy;
         d.x += d.vx; d.z += d.vz;
         d.angle += d.vRot; 
-        // Медленное затухание (чтобы успеть увидеть падение)
         d.alpha -= 0.015; 
         
         const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
