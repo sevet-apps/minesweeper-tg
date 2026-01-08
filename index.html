@@ -118,11 +118,8 @@
             text-align: center;
             box-shadow: 0 20px 50px rgba(0,0,0,0.15);
             border: 1px solid var(--glass-border);
-            
-            /* ИСПРАВЛЕНИЕ 1: Ширина окна меньше (70%) */
             width: 70%;
             max-width: 280px;
-            
             transform: scale(0.95);
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -144,12 +141,12 @@
         }
         .btn:active { opacity: 0.8; transform: scale(0.96); }
         
-        /* Иконка короны для рекорда */
+        /* ИСПРАВЛЕНИЕ 1: Иконка короны (центровка и цвет) */
         .crown-icon {
             width: 40px; height: 40px; 
-            fill: #FFD700; 
-            margin-bottom: 10px;
-            display: none; /* Скрыта по умолчанию */
+            fill: #ffffff; /* Белый цвет */
+            margin: 0 auto 10px auto; /* Центровка по горизонтали */
+            display: none;
         }
 
         @keyframes pulse {
@@ -202,12 +199,13 @@
     let state = 'start'; 
     let hue = 0; 
     let cameraY = 0; 
+    // Переменная для эффекта "Идеально"
+    let perfectMatchAlpha = 0;
     
     let currentBlock = null;
     let direction = 'x'; 
     let speed = 3.0;
     
-    // Получаем лучший результат из памяти (для теста)
     let bestScore = parseInt(localStorage.getItem('tower_best') || 0);
 
     const BLOCK_HEIGHT = 35; 
@@ -230,26 +228,21 @@
         hue = Math.floor(Math.random() * 360);
         state = 'playing';
         cameraY = 0;
+        perfectMatchAlpha = 0;
         
         scoreEl.innerText = score;
         startMsg.style.display = 'none';
         modal.classList.remove('visible');
 
         addBlock({
-            x: 0,
-            z: 0,
-            w: BASE_SIZE,
-            d: BASE_SIZE,
-            color: getHSL(hue)
+            x: 0, z: 0, w: BASE_SIZE, d: BASE_SIZE, color: getHSL(hue)
         });
 
         spawnNextBlock();
         loop();
     }
 
-    function addBlock(block) {
-        blocks.push(block);
-    }
+    function addBlock(block) { blocks.push(block); }
 
     function spawnNextBlock() {
         const prev = blocks[blocks.length - 1];
@@ -260,8 +253,7 @@
         currentBlock = {
             x: direction === 'x' ? -dist : prev.x,
             z: direction === 'z' ? -dist : prev.z,
-            w: prev.w,
-            d: prev.d,
+            w: prev.w, d: prev.d,
             color: getHSL(hue),
             moveDir: 1 
         };
@@ -283,6 +275,9 @@
 
         const targetY = (blocks.length * BLOCK_HEIGHT) - 150;
         if(targetY > 0) cameraY += (targetY - cameraY) * 0.05;
+
+        // Затухание эффекта "Идеально"
+        if(perfectMatchAlpha > 0) perfectMatchAlpha -= 0.05;
     }
 
     function handleAction(e) {
@@ -294,18 +289,15 @@
         placeBlock();
     }
 
-    // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ЛОГИКИ РЕЗКИ ---
     function placeBlock() {
         if (!currentBlock) return;
         const prev = blocks[blocks.length - 1];
         let diff;
-        
         if (direction === 'x') diff = currentBlock.x - prev.x;
         else diff = currentBlock.z - prev.z;
 
-        // ШАГ 1: Сначала проверяем на Идеальное Совпадение (threshold 4px)
-        // Если попали идеально - НЕ РЕЖЕМ, а примагничиваем
         if (Math.abs(diff) < 4) {
+            // ИДЕАЛЬНОЕ СОВПАДЕНИЕ
             currentBlock.x = prev.x;
             currentBlock.z = prev.z;
             currentBlock.w = prev.w;
@@ -315,47 +307,54 @@
             setTimeout(() => scoreEl.classList.remove('bump'), 150);
             tg.HapticFeedback.notificationOccurred('success');
             
-            // Сразу добавляем блок без резки
+            // ИСПРАВЛЕНИЕ 3: Запускаем эффект вспышки
+            perfectMatchAlpha = 1.0;
+
             commitBlock();
             return;
         }
 
-        // ШАГ 2: Если не идеально, тогда вычисляем резку
-        let overlap;
-        let cutSize;
+        let overlap, cutSize, debrisX, debrisZ;
         let isGameOver = false;
+        // Импульс для физики обломков
+        let impulseX = 0, impulseZ = 0;
 
         if (direction === 'x') {
             overlap = prev.w - Math.abs(diff);
             if (overlap > 0) {
                 cutSize = Math.abs(diff);
                 currentBlock.w = overlap; 
-                
-                if (diff > 0) { 
+                if (diff > 0) { // Отрезаем справа
                     currentBlock.x = prev.x + (diff / 2);
-                    addDebris(currentBlock.x + (overlap/2) + (cutSize/2), currentBlock.z, cutSize, currentBlock.d);
-                } else {
+                    debrisX = currentBlock.x + (overlap/2) + (cutSize/2);
+                    impulseX = 3; // Толкаем вправо
+                } else { // Отрезаем слева
                     currentBlock.x = prev.x + (diff / 2);
-                    addDebris(currentBlock.x - (overlap/2) - (cutSize/2), currentBlock.z, cutSize, currentBlock.d);
+                    debrisX = currentBlock.x - (overlap/2) - (cutSize/2);
+                    impulseX = -3; // Толкаем влево
                 }
+                addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, impulseX, 0);
             } else isGameOver = true;
         } else { 
             overlap = prev.d - Math.abs(diff);
             if (overlap > 0) {
                 cutSize = Math.abs(diff);
                 currentBlock.d = overlap; 
-                if (diff > 0) {
+                if (diff > 0) { // Отрезаем "снизу" (по Z)
                     currentBlock.z = prev.z + (diff / 2);
-                    addDebris(currentBlock.x, currentBlock.z + (overlap/2) + (cutSize/2), currentBlock.w, cutSize);
-                } else {
+                    debrisZ = currentBlock.z + (overlap/2) + (cutSize/2);
+                    impulseZ = 3;
+                } else { // Отрезаем "сверху" (по Z)
                     currentBlock.z = prev.z + (diff / 2);
-                    addDebris(currentBlock.x, currentBlock.z - (overlap/2) - (cutSize/2), currentBlock.w, cutSize);
+                    debrisZ = currentBlock.z - (overlap/2) - (cutSize/2);
+                    impulseZ = -3;
                 }
+                addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, impulseZ);
             } else isGameOver = true;
         }
 
         if (isGameOver) {
-            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d);
+            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, direction==='x'?currentBlock.moveDir*2:0, direction==='z'?currentBlock.moveDir*2:0);
             gameOver();
         } else {
             tg.HapticFeedback.impactOccurred('light');
@@ -371,17 +370,21 @@
         spawnNextBlock();
     }
 
-    function addDebris(x, z, w, d) {
+    // ИСПРАВЛЕНИЕ 2: Физика обломков (импульс и вращение)
+    function addDebris(x, z, w, d, vx, vz) {
         debris.push({
             x: x, z: z, w: w, d: d,
             color: currentBlock.color,
-            vy: 0,
-            yOffset: 0, 
+            vy: 0, // Вертикальная скорость
+            vx: vx, // Горизонтальная скорость X
+            vz: vz, // Горизонтальная скорость Z
+            yOffset: 0,
+            rotX: 0, rotZ: 0, // Углы вращения
+            vRot: (Math.random() - 0.5) * 0.1, // Скорость вращения
             alpha: 1
         });
     }
 
-    // --- ИСПРАВЛЕНИЕ 2: Рекорд и Конфетти ---
     function gameOver() {
         state = 'gameover';
         tg.HapticFeedback.notificationOccurred('error');
@@ -402,60 +405,68 @@
             goSub.innerText = "Вы построили огромную башню!";
             crown.style.display = "block";
             finalScoreEl.style.color = "var(--accent)";
-            
-            // Запуск конфетти
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                zIndex: 20000
-            });
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 20000 });
         } else {
             goTitle.innerText = "Игра окончена";
             goSub.innerText = `Лучший: ${bestScore}`;
             crown.style.display = "none";
         }
-
         modal.classList.add('visible');
     }
 
-    function restartGame() {
-        startGame();
-    }
+    function restartGame() { startGame(); }
+
+    // --- ОТРИСОВКА ---
 
     function loop() {
-        if(state === 'gameover' && debris.length === 0) return;
+        if(state === 'gameover' && debris.length === 0 && perfectMatchAlpha <= 0) return;
         requestAnimationFrame(loop);
         updatePhysics();
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 1.5; 
 
+        // 1. Рисуем башню
         blocks.forEach((b, i) => {
             const stackY = i * BLOCK_HEIGHT; 
-            drawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color);
+            // Если это последний блок и был идеальный матч, рисуем его с эффектом
+            let highlight = (i === blocks.length - 1 && perfectMatchAlpha > 0);
+            drawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color, highlight);
         });
 
+        // 2. Рисуем текущий блок
         if (currentBlock && state === 'playing') {
             const stackY = blocks.length * BLOCK_HEIGHT;
-            drawIsoBlock(cx, cy, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color);
+            drawIsoBlock(cx, cy, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color, false);
         }
 
+        // 3. Рисуем и обновляем обломки с новой физикой
         debris.forEach((d, i) => {
-            d.vy += 1; 
+            d.vy += 0.8; // Гравитация
             d.yOffset -= d.vy;
-            d.alpha -= 0.03; 
+            d.x += d.vx; // Движение от башни
+            d.z += d.vz;
+            d.rotX += d.vRot; // Вращение (имитация)
+            d.rotZ += d.vRot;
+            d.alpha -= 0.025; 
+            
+            // Имитируем вращение изменением размеров (простой трюк для 2D изометрии)
+            const rotW = d.w * Math.abs(Math.cos(d.rotX));
+            const rotD = d.d * Math.abs(Math.cos(d.rotZ));
+            
             const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
+
             if (d.alpha <= 0) debris.splice(i, 1);
             else {
                 ctx.globalAlpha = d.alpha;
-                drawIsoBlock(cx, cy, d.x, d.z, d.w, d.d, stackY, d.color);
+                drawIsoBlock(cx, cy, d.x, d.z, rotW, rotD, stackY, d.color, false);
                 ctx.globalAlpha = 1;
             }
         });
     }
 
-    function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color) {
+    // ИСПРАВЛЕНИЕ 3: Добавлен параметр highlight для эффекта "Идеально"
+    function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color, highlight) {
         const isoX = (x - z);
         const isoY = (x + z) * 0.5;
         const screenX = cx + isoX;
@@ -466,18 +477,32 @@
         const p_bottom = getIsoPoint(screenX, screenY, w/2, d/2);
         const p_left = getIsoPoint(screenX, screenY, -w/2, d/2);
 
-        ctx.fillStyle = lighten(color, 15);
-        ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
-
-        ctx.fillStyle = darken(color, 10);
-        ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
-
-        ctx.fillStyle = darken(color, 25);
-        ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        // Основная заливка
+        ctx.fillStyle = lighten(color, 15); ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 10); ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 25); ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
         
+        // Обводка (Стеклянный эффект)
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
+
+        // Эффект "Идеально" (Яркая белая обводка стыка)
+        if(highlight) {
+            ctx.save();
+            ctx.globalAlpha = perfectMatchAlpha;
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            // Рисуем линию по нижнему стыку (p_left -> p_bottom -> p_right)
+            ctx.moveTo(p_left.x, p_left.y);
+            ctx.lineTo(p_bottom.x, p_bottom.y);
+            ctx.lineTo(p_right.x, p_right.y);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
     
     function getIsoPoint(cx, cy, dx, dz) {
