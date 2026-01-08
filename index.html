@@ -216,10 +216,12 @@
     resize();
 
     function startGame() {
+        // ИСПРАВЛЕНИЕ 1: Строгий сброс скорости в начале
+        speed = 3.0;
+        
         blocks = [];
         debris = [];
         score = 0;
-        speed = 3.0;
         direction = 'x';
         hue = Math.floor(Math.random() * 360);
         state = 'playing';
@@ -309,7 +311,6 @@
         let overlap, cutSize, debrisX, debrisZ;
         let isGameOver = false;
         let impulseX = 0, impulseZ = 0;
-        // Флаг, определяющий, падает ли обломок позади башни
         let debrisBehind = (diff < 0);
 
         if (direction === 'x') {
@@ -320,11 +321,11 @@
                 if (diff > 0) { 
                     currentBlock.x = prev.x + (diff / 2);
                     debrisX = currentBlock.x + (overlap/2) + (cutSize/2);
-                    impulseX = 3;
+                    impulseX = 4; // Увеличенный импульс для физики
                 } else { 
                     currentBlock.x = prev.x + (diff / 2);
                     debrisX = currentBlock.x - (overlap/2) - (cutSize/2);
-                    impulseX = -3;
+                    impulseX = -4;
                 }
                 addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, impulseX, 0, debrisBehind);
             } else isGameOver = true;
@@ -336,20 +337,19 @@
                 if (diff > 0) { 
                     currentBlock.z = prev.z + (diff / 2);
                     debrisZ = currentBlock.z + (overlap/2) + (cutSize/2);
-                    impulseZ = 3;
+                    impulseZ = 4;
                 } else { 
                     currentBlock.z = prev.z + (diff / 2);
                     debrisZ = currentBlock.z - (overlap/2) - (cutSize/2);
-                    impulseZ = -3;
+                    impulseZ = -4;
                 }
                 addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, impulseZ, debrisBehind);
             } else isGameOver = true;
         }
 
         if (isGameOver) {
-            // Если промахнулись полностью, обломок падает "по ходу движения"
             let gameOverBehind = (diff < 0); 
-            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, direction==='x'?currentBlock.moveDir*2:0, direction==='z'?currentBlock.moveDir*2:0, gameOverBehind);
+            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, direction==='x'?currentBlock.moveDir*3:0, direction==='z'?currentBlock.moveDir*3:0, gameOverBehind);
             gameOver();
         } else {
             tg.HapticFeedback.impactOccurred('light');
@@ -365,17 +365,21 @@
         spawnNextBlock();
     }
 
+    // ИСПРАВЛЕНИЕ 2: Улучшенная физика падения (Вращение и траектория)
     function addDebris(x, z, w, d, vx, vz, isBehind) {
+        // Угловая скорость зависит от размера куска (меньше кусок = быстрее крутится)
+        const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.05 + Math.random() * 0.1); 
+        
         debris.push({
             x: x, z: z, w: w, d: d,
             color: currentBlock.color,
             vy: 0, 
             vx: vx, vz: vz,
             yOffset: 0,
-            rotX: 0, rotZ: 0, 
-            vRot: (Math.random() - 0.5) * 0.1, 
+            angle: 0, // Текущий угол вращения
+            vRot: rotSpeed, // Скорость вращения
             alpha: 1,
-            isBehind: isBehind // Метка "сзади"
+            isBehind: isBehind
         });
     }
 
@@ -418,51 +422,102 @@
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 1.5; 
 
-        // 0. Сначала рисуем обломки, которые упали СЗАДИ башни
-        debris.forEach(d => {
-            if (d.isBehind) updateAndDrawDebris(d, cx, cy);
-        });
+        // Сортировка и отрисовка
+        debris.forEach(d => { if (d.isBehind) updateAndDrawDebris(d, cx, cy); });
 
-        // 1. Рисуем башню
         blocks.forEach((b, i) => {
             const stackY = i * BLOCK_HEIGHT; 
             let highlight = (i === blocks.length - 1 && perfectMatchAlpha > 0);
             drawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color, highlight);
         });
 
-        // 2. Рисуем текущий блок
         if (currentBlock && state === 'playing') {
             const stackY = blocks.length * BLOCK_HEIGHT;
             drawIsoBlock(cx, cy, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color, false);
         }
 
-        // 3. Рисуем обломки, которые падают СПЕРЕДИ
-        debris.forEach(d => {
-            if (!d.isBehind) updateAndDrawDebris(d, cx, cy);
-        });
+        debris.forEach(d => { if (!d.isBehind) updateAndDrawDebris(d, cx, cy); });
         
-        // Очистка массива обломков от исчезнувших
         debris = debris.filter(d => d.alpha > 0);
     }
     
-    // Функция обновления и рисовки обломка
+    // ИСПРАВЛЕНИЕ 3: Функция отрисовки вращающегося обломка
     function updateAndDrawDebris(d, cx, cy) {
         d.vy += 0.8; 
         d.yOffset -= d.vy;
         d.x += d.vx; d.z += d.vz;
-        d.rotX += d.vRot; d.rotZ += d.vRot;
-        d.alpha -= 0.025; 
-        
-        const rotW = d.w * Math.abs(Math.cos(d.rotX));
-        const rotD = d.d * Math.abs(Math.cos(d.rotZ));
+        d.angle += d.vRot; // Вращаем
+        d.alpha -= 0.02; 
         
         const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
 
         if (d.alpha > 0) {
             ctx.globalAlpha = d.alpha;
-            drawIsoBlock(cx, cy, d.x, d.z, rotW, rotD, stackY, d.color, false);
+            
+            // Сохраняем контекст для трансформаций
+            ctx.save();
+            
+            // 1. Вычисляем центр обломка в экранных координатах
+            const isoX = (d.x - d.z);
+            const isoY = (d.x + d.z) * 0.5;
+            const screenX = cx + isoX;
+            const screenY = cy + isoY - stackY + cameraY - (BLOCK_HEIGHT/2); // Центр по вертикали
+            
+            // 2. Перемещаем центр координат в центр обломка
+            ctx.translate(screenX, screenY);
+            
+            // 3. Вращаем контекст
+            ctx.rotate(d.angle);
+            
+            // 4. Рисуем блок в точке (0,0)
+            // Важно: drawIsoBlock рисует относительно переданного центра. 
+            // Мы передаем 0,0, но нам нужно компенсировать смещение высоты блока и камеры, 
+            // которые drawIsoBlock применяет внутри.
+            
+            // Упрощенная отрисовка для вращающегося обломка (рисуем "в локальных координатах")
+            drawRotatedIsoBlock(d.w, d.d, d.color);
+            
+            ctx.restore();
             ctx.globalAlpha = 1;
         }
+    }
+    
+    // Специальная функция для рисования вращающегося блока (в центре 0,0)
+    function drawRotatedIsoBlock(w, d, color) {
+        // Локальные координаты изометрии относительно 0,0
+        // Центр верхней грани в 0, -BH/2
+        
+        const vecX_x = 1;   const vecX_y = 0.5;
+        const vecZ_x = -1;  const vecZ_y = 0.5;
+        
+        function getLocIso(lx, lz) {
+            return {
+                x: (lx * vecX_x + lz * vecZ_x),
+                y: (lx * vecX_y + lz * vecZ_y) - (BLOCK_HEIGHT/2)
+            };
+        }
+        
+        const p_top = getLocIso(-w/2, -d/2);
+        const p_right = getLocIso(w/2, -d/2);
+        const p_bottom = getLocIso(w/2, d/2);
+        const p_left = getLocIso(-w/2, d/2);
+
+        // ВЕРХ
+        ctx.fillStyle = lighten(color, 15);
+        ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
+        
+        // ПРАВО
+        ctx.fillStyle = darken(color, 10);
+        ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+
+        // ЛЕВО
+        ctx.fillStyle = darken(color, 25);
+        ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        
+        // Обводка
+        ctx.strokeStyle = "rgba(255,255,255,0.4)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
     }
 
     function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color, highlight) {
@@ -476,17 +531,14 @@
         const p_bottom = getIsoPoint(screenX, screenY, w/2, d/2);
         const p_left = getIsoPoint(screenX, screenY, -w/2, d/2);
 
-        // Основная заливка
         ctx.fillStyle = lighten(color, 15); ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
         ctx.fillStyle = darken(color, 10); ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
         ctx.fillStyle = darken(color, 25); ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
         
-        // Обводка
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
 
-        // ИСПРАВЛЕНИЕ 4: Свечение "Идеально" на стыке (НИЖНИЙ контур)
         if(highlight) {
             ctx.save();
             ctx.globalAlpha = perfectMatchAlpha;
@@ -495,8 +547,7 @@
             ctx.shadowColor = "#ffffff";
             ctx.shadowBlur = 15;
             ctx.beginPath();
-            // Рисуем по НИЖНЕМУ контуру видимых граней
-            // p_left -> p_bottom -> p_right, но смещенные вниз на BLOCK_HEIGHT
+            // Свечение по НИЖНЕМУ контуру (исправлено)
             ctx.moveTo(p_left.x, p_left.y + BLOCK_HEIGHT);
             ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT);
             ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT);
