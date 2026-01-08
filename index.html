@@ -64,22 +64,23 @@
             z-index: 10;
         }
 
+        /* ИСПРАВЛЕНИЕ 1: Новый стиль счетчика (как в Block Blast) */
         #score {
             position: absolute;
-            top: 12%;
+            top: 10%;
             left: 0;
             width: 100%;
             text-align: center;
-            font-size: 100px;
-            font-weight: 100;
-            color: var(--text-light);
-            opacity: 0.15;
+            font-size: 80px; 
+            font-weight: 800; /* Жирный */
+            color: var(--accent); /* Синий цвет */
+            opacity: 1; /* Не прозрачный */
             font-feature-settings: "tnum";
+            text-shadow: 0 4px 15px rgba(0, 122, 255, 0.25); /* Легкое свечение/тень */
             transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
         }
-        body.dark-mode #score { color: var(--text-dark); opacity: 0.2; }
-        #score.bump { transform: scale(1.15); opacity: 0.3; }
+        #score.bump { transform: scale(1.2); }
 
         #start-msg {
             position: absolute;
@@ -87,7 +88,7 @@
             width: 100%;
             text-align: center;
             font-size: 17px;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--accent);
             opacity: 0.8;
             animation: pulse 2s infinite;
@@ -216,9 +217,7 @@
     resize();
 
     function startGame() {
-        // ИСПРАВЛЕНИЕ 1: Строгий сброс скорости в начале
         speed = 3.0;
-        
         blocks = [];
         debris = [];
         score = 0;
@@ -313,6 +312,7 @@
         let impulseX = 0, impulseZ = 0;
         let debrisBehind = (diff < 0);
 
+        // ИСПРАВЛЕНИЕ 2: Уменьшена сила импульса (было 4, стало 2.5) для плавности
         if (direction === 'x') {
             overlap = prev.w - Math.abs(diff);
             if (overlap > 0) {
@@ -321,11 +321,11 @@
                 if (diff > 0) { 
                     currentBlock.x = prev.x + (diff / 2);
                     debrisX = currentBlock.x + (overlap/2) + (cutSize/2);
-                    impulseX = 4; // Увеличенный импульс для физики
+                    impulseX = 2.5; 
                 } else { 
                     currentBlock.x = prev.x + (diff / 2);
                     debrisX = currentBlock.x - (overlap/2) - (cutSize/2);
-                    impulseX = -4;
+                    impulseX = -2.5;
                 }
                 addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, impulseX, 0, debrisBehind);
             } else isGameOver = true;
@@ -337,11 +337,11 @@
                 if (diff > 0) { 
                     currentBlock.z = prev.z + (diff / 2);
                     debrisZ = currentBlock.z + (overlap/2) + (cutSize/2);
-                    impulseZ = 4;
+                    impulseZ = 2.5;
                 } else { 
                     currentBlock.z = prev.z + (diff / 2);
                     debrisZ = currentBlock.z - (overlap/2) - (cutSize/2);
-                    impulseZ = -4;
+                    impulseZ = -2.5;
                 }
                 addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, impulseZ, debrisBehind);
             } else isGameOver = true;
@@ -349,7 +349,7 @@
 
         if (isGameOver) {
             let gameOverBehind = (diff < 0); 
-            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, direction==='x'?currentBlock.moveDir*3:0, direction==='z'?currentBlock.moveDir*3:0, gameOverBehind);
+            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, direction==='x'?currentBlock.moveDir*2:0, direction==='z'?currentBlock.moveDir*2:0, gameOverBehind);
             gameOver();
         } else {
             tg.HapticFeedback.impactOccurred('light');
@@ -365,10 +365,10 @@
         spawnNextBlock();
     }
 
-    // ИСПРАВЛЕНИЕ 2: Улучшенная физика падения (Вращение и траектория)
+    // ИСПРАВЛЕНИЕ 2: Плавная физика обломков
     function addDebris(x, z, w, d, vx, vz, isBehind) {
-        // Угловая скорость зависит от размера куска (меньше кусок = быстрее крутится)
-        const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.05 + Math.random() * 0.1); 
+        // Уменьшена скорость вращения (было 0.1, стало 0.04)
+        const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.04); 
         
         debris.push({
             x: x, z: z, w: w, d: d,
@@ -376,8 +376,8 @@
             vy: 0, 
             vx: vx, vz: vz,
             yOffset: 0,
-            angle: 0, // Текущий угол вращения
-            vRot: rotSpeed, // Скорость вращения
+            angle: 0, 
+            vRot: rotSpeed, 
             alpha: 1,
             isBehind: isBehind
         });
@@ -422,7 +422,6 @@
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 1.5; 
 
-        // Сортировка и отрисовка
         debris.forEach(d => { if (d.isBehind) updateAndDrawDebris(d, cx, cy); });
 
         blocks.forEach((b, i) => {
@@ -441,52 +440,33 @@
         debris = debris.filter(d => d.alpha > 0);
     }
     
-    // ИСПРАВЛЕНИЕ 3: Функция отрисовки вращающегося обломка
     function updateAndDrawDebris(d, cx, cy) {
-        d.vy += 0.8; 
+        // Уменьшена гравитация с 0.8 до 0.5 (для плавности)
+        d.vy += 0.5; 
         d.yOffset -= d.vy;
         d.x += d.vx; d.z += d.vz;
-        d.angle += d.vRot; // Вращаем
-        d.alpha -= 0.02; 
+        d.angle += d.vRot; 
+        // Медленное затухание (чтобы успеть увидеть падение)
+        d.alpha -= 0.015; 
         
         const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
 
         if (d.alpha > 0) {
             ctx.globalAlpha = d.alpha;
-            
-            // Сохраняем контекст для трансформаций
             ctx.save();
-            
-            // 1. Вычисляем центр обломка в экранных координатах
             const isoX = (d.x - d.z);
             const isoY = (d.x + d.z) * 0.5;
             const screenX = cx + isoX;
-            const screenY = cy + isoY - stackY + cameraY - (BLOCK_HEIGHT/2); // Центр по вертикали
-            
-            // 2. Перемещаем центр координат в центр обломка
+            const screenY = cy + isoY - stackY + cameraY - (BLOCK_HEIGHT/2);
             ctx.translate(screenX, screenY);
-            
-            // 3. Вращаем контекст
             ctx.rotate(d.angle);
-            
-            // 4. Рисуем блок в точке (0,0)
-            // Важно: drawIsoBlock рисует относительно переданного центра. 
-            // Мы передаем 0,0, но нам нужно компенсировать смещение высоты блока и камеры, 
-            // которые drawIsoBlock применяет внутри.
-            
-            // Упрощенная отрисовка для вращающегося обломка (рисуем "в локальных координатах")
             drawRotatedIsoBlock(d.w, d.d, d.color);
-            
             ctx.restore();
             ctx.globalAlpha = 1;
         }
     }
     
-    // Специальная функция для рисования вращающегося блока (в центре 0,0)
     function drawRotatedIsoBlock(w, d, color) {
-        // Локальные координаты изометрии относительно 0,0
-        // Центр верхней грани в 0, -BH/2
-        
         const vecX_x = 1;   const vecX_y = 0.5;
         const vecZ_x = -1;  const vecZ_y = 0.5;
         
@@ -502,22 +482,10 @@
         const p_bottom = getLocIso(w/2, d/2);
         const p_left = getLocIso(-w/2, d/2);
 
-        // ВЕРХ
-        ctx.fillStyle = lighten(color, 15);
-        ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
-        
-        // ПРАВО
-        ctx.fillStyle = darken(color, 10);
-        ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
-
-        // ЛЕВО
-        ctx.fillStyle = darken(color, 25);
-        ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
-        
-        // Обводка
-        ctx.strokeStyle = "rgba(255,255,255,0.4)";
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
+        ctx.fillStyle = lighten(color, 15); ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 10); ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 25); ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
     }
 
     function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color, highlight) {
@@ -534,10 +502,7 @@
         ctx.fillStyle = lighten(color, 15); ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
         ctx.fillStyle = darken(color, 10); ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
         ctx.fillStyle = darken(color, 25); ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
-        
-        ctx.strokeStyle = "rgba(255,255,255,0.4)";
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
 
         if(highlight) {
             ctx.save();
@@ -547,7 +512,6 @@
             ctx.shadowColor = "#ffffff";
             ctx.shadowBlur = 15;
             ctx.beginPath();
-            // Свечение по НИЖНЕМУ контуру (исправлено)
             ctx.moveTo(p_left.x, p_left.y + BLOCK_HEIGHT);
             ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT);
             ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT);
