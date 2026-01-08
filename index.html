@@ -12,7 +12,9 @@
             --bg-dark: #000000;
             --text-light: #000000;
             --text-dark: #ffffff;
-            --accent: #FF2D55;
+            --accent: #007aff; /* Ваш фирменный синий цвет */
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.5);
         }
 
         body {
@@ -32,9 +34,10 @@
         body.dark-mode {
             background-color: var(--bg-dark);
             color: var(--text-dark);
+            --glass-bg: rgba(30, 30, 30, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
         
-        /* Фон с легким градиентом */
         #game-background {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -51,45 +54,57 @@
             width: 100%;
             height: 100%;
             cursor: pointer;
+            z-index: 1;
         }
 
-        /* Интерфейс */
+        /* --- UI LAYER --- */
         .ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            z-index: 10;
         }
 
+        /* Эстетичный счетчик */
         #score {
-            font-size: 80px;
-            font-weight: 200;
-            margin-top: 15vh;
-            opacity: 0.8;
-            transition: transform 0.1s;
+            position: absolute;
+            top: 10%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 120px; /* Очень крупный */
+            font-weight: 100; /* Очень тонкий (iOS Style) */
+            color: var(--text-light);
+            opacity: 0.15; /* Полупрозрачный, как водяной знак */
+            font-feature-settings: "tnum"; /* Моноширинные цифры, чтобы не прыгали */
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
         }
-        #score.bump { transform: scale(1.2); }
+        body.dark-mode #score {
+            color: var(--text-dark);
+            opacity: 0.2;
+        }
+        #score.bump { transform: scale(1.1); opacity: 0.3; }
 
         #start-msg {
             position: absolute;
             bottom: 15%;
-            font-size: 18px;
-            font-weight: 600;
+            width: 100%;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 500;
             color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            animation: pulse 1.5s infinite;
+            opacity: 0.8;
+            animation: pulse 2s infinite;
         }
 
-        /* Модальное окно Game Over */
+        /* Модальное окно (Glassmorphism) */
         #game-over-modal {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -98,24 +113,21 @@
             transition: opacity 0.3s;
             z-index: 100;
         }
-        #game-over-modal.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        #game-over-modal.visible { opacity: 1; pointer-events: auto; }
         
         .card {
-            background: rgba(255,255,255,0.9);
+            background: var(--glass-bg);
             padding: 30px;
             border-radius: 24px;
             text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            width: 80%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            border: 1px solid var(--glass-border);
+            width: 85%;
             max-width: 320px;
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        body.dark-mode .card {
-            background: rgba(30,30,30,0.9);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
+        #game-over-modal.visible .card { transform: scale(1); }
 
         .btn {
             background: var(--accent);
@@ -123,19 +135,20 @@
             border: none;
             padding: 14px 24px;
             border-radius: 14px;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 600;
-            margin-top: 20px;
+            margin-top: 25px;
             cursor: pointer;
             width: 100%;
-            transition: transform 0.1s;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
         }
-        .btn:active { opacity: 0.9; transform: scale(0.96); }
+        .btn:active { opacity: 0.8; transform: scale(0.96); }
 
         @keyframes pulse {
-            0% { opacity: 0.6; transform: scale(0.98); }
+            0% { opacity: 0.5; transform: scale(0.98); }
             50% { opacity: 1; transform: scale(1.02); }
-            100% { opacity: 0.6; transform: scale(0.98); }
+            100% { opacity: 0.5; transform: scale(0.98); }
         }
     </style>
 </head>
@@ -150,8 +163,9 @@
 
     <div id="game-over-modal">
         <div class="card">
-            <h2 style="margin: 0 0 10px;">Игра окончена</h2>
-            <div id="final-score" style="font-size: 56px; font-weight: 800; color: var(--accent);">0</div>
+            <h2 style="margin: 0 0 5px; font-weight: 800;">Игра окончена</h2>
+            <div style="font-size: 14px; color: #8e8e93; margin-bottom: 10px;">Ваш результат</div>
+            <div id="final-score" style="font-size: 64px; font-weight: 200; color: var(--text-light); line-height: 1;">0</div>
             <button class="btn" onclick="restartGame()">Играть снова</button>
         </div>
     </div>
@@ -163,7 +177,6 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
     
-    // Определяем тему
     const isDark = tg.colorScheme === 'dark';
     if(isDark) document.body.classList.add('dark-mode');
 
@@ -178,23 +191,20 @@
     const finalScoreEl = document.getElementById('final-score');
 
     // --- ПЕРЕМЕННЫЕ ИГРЫ ---
-    let blocks = []; // Установленные блоки
-    let debris = []; // Обломки
+    let blocks = [];
+    let debris = []; 
     let score = 0;
-    let state = 'start'; // start, playing, gameover
-    let hue = 0; // Цвет для радуги
+    let state = 'start'; 
+    let hue = 0; 
+    let cameraY = 0; 
     
-    let cameraY = 0; // Смещение камеры
-    
-    // Текущий блок
     let currentBlock = null;
-    let direction = 'x'; // Ось движения ('x' или 'z')
-    let speed = 3.5;     // Скорость движения
+    let direction = 'x'; 
+    let speed = 3.0; // Начальная скорость (чуть медленнее, было 3.5)
     
-    const BLOCK_HEIGHT = 35; // Высота грани блока
-    const BASE_SIZE = 130;   // Начальный размер базы
+    const BLOCK_HEIGHT = 35; 
+    const BASE_SIZE = 130; 
     
-    // Обработка размера экрана (High DPI fix)
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
         canvas.height = window.innerHeight * window.devicePixelRatio;
@@ -203,13 +213,13 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // --- ЛОГИКА ИГРЫ ---
+    // --- ЛОГИКА ---
 
     function startGame() {
         blocks = [];
         debris = [];
         score = 0;
-        speed = 3.5;
+        speed = 3.0; // Сброс скорости
         direction = 'x';
         hue = Math.floor(Math.random() * 360);
         state = 'playing';
@@ -219,7 +229,6 @@
         startMsg.style.display = 'none';
         modal.classList.remove('visible');
 
-        // Создаем базу
         addBlock({
             x: 0,
             z: 0,
@@ -229,7 +238,7 @@
         });
 
         spawnNextBlock();
-        loop(); // Запускаем цикл отрисовки
+        loop();
     }
 
     function addBlock(block) {
@@ -238,10 +247,9 @@
 
     function spawnNextBlock() {
         const prev = blocks[blocks.length - 1];
-        hue += 8; // Меняем цвет для следующего блока
-        direction = direction === 'x' ? 'z' : 'x'; // Меняем направление
+        hue += 6; 
+        direction = direction === 'x' ? 'z' : 'x'; 
         
-        // Позиция появления (за экраном)
         const dist = 350;
         
         currentBlock = {
@@ -250,15 +258,14 @@
             w: prev.w,
             d: prev.d,
             color: getHSL(hue),
-            moveDir: 1 // 1 = вперед, -1 = назад
+            moveDir: 1 
         };
     }
 
     function updatePhysics() {
         if (state !== 'playing' || !currentBlock) return;
 
-        // Двигаем текущий блок
-        const limit = 350;
+        const limit = 360;
         
         if (direction === 'x') {
             currentBlock.x += speed * currentBlock.moveDir;
@@ -270,17 +277,14 @@
             if (currentBlock.z < -limit) currentBlock.moveDir = 1;
         }
 
-        // Двигаем камеру вверх плавнее
-        // Цель: держать верхушку башни чуть ниже центра
         const targetY = (blocks.length * BLOCK_HEIGHT) - 150;
         if(targetY > 0) {
             cameraY += (targetY - cameraY) * 0.05;
         }
     }
 
-    // --- ОБРАБОТКА КЛИКА ---
     function handleAction(e) {
-        if (e) e.preventDefault(); // Предотвращаем зум/скролл
+        if (e) e.preventDefault(); 
 
         if (state === 'start' || state === 'gameover') {
             if(state === 'start') startGame();
@@ -295,9 +299,9 @@
 
         const prev = blocks[blocks.length - 1];
         
-        let diff; // Разница между центрами
-        let overlap; // Размер перекрытия
-        let cutSize; // Размер отрезанной части
+        let diff;
+        let overlap; 
+        let cutSize; 
         let isGameOver = false;
 
         if (direction === 'x') {
@@ -306,28 +310,25 @@
             
             if (overlap > 0) {
                 cutSize = Math.abs(diff);
-                currentBlock.w = overlap; // Обновляем ширину
+                currentBlock.w = overlap; 
                 
-                // Смещаем центр нового блока
                 if (diff > 0) { 
                     currentBlock.x = prev.x + (diff / 2);
-                    // Создаем обломок справа
                     addDebris(currentBlock.x + (overlap/2) + (cutSize/2), currentBlock.z, cutSize, currentBlock.d);
                 } else {
                     currentBlock.x = prev.x + (diff / 2);
-                    // Создаем обломок слева
                     addDebris(currentBlock.x - (overlap/2) - (cutSize/2), currentBlock.z, cutSize, currentBlock.d);
                 }
             } else {
                 isGameOver = true;
             }
-        } else { // direction === 'z'
+        } else { 
             diff = currentBlock.z - prev.z;
             overlap = prev.d - Math.abs(diff);
             
             if (overlap > 0) {
                 cutSize = Math.abs(diff);
-                currentBlock.d = overlap; // Обновляем глубину
+                currentBlock.d = overlap; 
 
                 if (diff > 0) {
                     currentBlock.z = prev.z + (diff / 2);
@@ -342,20 +343,18 @@
         }
 
         if (isGameOver) {
-            // Блок падает целиком
             addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d);
             gameOver();
         } else {
-            // Идеальное попадание (допуск 4px)
+            // Идеальное попадание
             if (Math.abs(diff) < 4) {
-                // Примагничиваем
                 currentBlock.x = prev.x;
                 currentBlock.z = prev.z;
                 currentBlock.w = prev.w;
                 currentBlock.d = prev.d;
                 
                 scoreEl.classList.add('bump');
-                setTimeout(() => scoreEl.classList.remove('bump'), 100);
+                setTimeout(() => scoreEl.classList.remove('bump'), 150);
                 tg.HapticFeedback.notificationOccurred('success');
             } else {
                 tg.HapticFeedback.impactOccurred('light');
@@ -364,7 +363,11 @@
             addBlock(currentBlock);
             score++;
             scoreEl.innerText = score;
-            speed += 0.08; // Немного ускоряем игру
+            
+            // ВНЕСЕННЫЕ ИЗМЕНЕНИЯ: Плавное ускорение
+            // Было 0.08, стало 0.02
+            speed += 0.02; 
+            
             spawnNextBlock();
         }
     }
@@ -373,7 +376,7 @@
         debris.push({
             x: x, z: z, w: w, d: d,
             color: currentBlock.color,
-            vy: 0, // Вертикальная скорость падения
+            vy: 0,
             yOffset: 0, 
             alpha: 1
         });
@@ -383,6 +386,11 @@
         state = 'gameover';
         tg.HapticFeedback.notificationOccurred('error');
         finalScoreEl.innerText = score;
+        
+        // Цвет цифр в модалке адаптируется под тему
+        if(isDark) finalScoreEl.style.color = '#ffffff';
+        else finalScoreEl.style.color = '#000000';
+
         modal.classList.add('visible');
     }
 
@@ -393,37 +401,34 @@
     // --- ОТРИСОВКА ---
 
     function loop() {
-        if(state === 'gameover' && debris.length === 0) return; // Экономим ресурсы при остановке
+        if(state === 'gameover' && debris.length === 0) return;
         requestAnimationFrame(loop);
         
         updatePhysics();
         
-        // Очистка экрана (используем логические пиксели)
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         
-        // Центр экрана для отрисовки
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 1.5; 
 
-        // 1. Рисуем установленные блоки
+        // 1. Установленные блоки
         blocks.forEach((b, i) => {
             const stackY = i * BLOCK_HEIGHT; 
             drawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color);
         });
 
-        // 2. Рисуем текущий блок
+        // 2. Текущий блок
         if (currentBlock && state === 'playing') {
             const stackY = blocks.length * BLOCK_HEIGHT;
             drawIsoBlock(cx, cy, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color);
         }
 
-        // 3. Рисуем обломки
+        // 3. Обломки
         debris.forEach((d, i) => {
-            d.vy += 1; // Гравитация
+            d.vy += 1; 
             d.yOffset -= d.vy;
-            d.alpha -= 0.03; // Исчезновение
+            d.alpha -= 0.03; 
             
-            // Высота обломка рассчитывается относительно вершины башни
             const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
 
             if (d.alpha <= 0) {
@@ -436,30 +441,19 @@
         });
     }
 
-    // Основная функция рисования изометрического блока
     function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color) {
-        // Формулы изометрии (2:1 соотношение)
-        // x - идет вправо-вниз, z - идет влево-вниз
         const isoX = (x - z);
         const isoY = (x + z) * 0.5;
         
-        // Экранные координаты центра блока
         const screenX = cx + isoX;
         const screenY = cy + isoY - yLevel + cameraY;
 
-        // Вектора смещения для вершин
-        // Ось X изометрии (w): dx=1, dy=0.5
-        // Ось Z изометрии (d): dx=-1, dy=0.5
-        
-        // Вычисляем 4 угла верхней грани
-        // Центр (0,0) - это screenX, screenY
-        // Top: -w/2 по X, -d/2 по Z
         const p_top = getIsoPoint(screenX, screenY, -w/2, -d/2);
         const p_right = getIsoPoint(screenX, screenY, w/2, -d/2);
         const p_bottom = getIsoPoint(screenX, screenY, w/2, d/2);
         const p_left = getIsoPoint(screenX, screenY, -w/2, d/2);
 
-        // ВЕРХНЯЯ ГРАНЬ (Самая светлая)
+        // ВЕРХ
         ctx.fillStyle = lighten(color, 15);
         ctx.beginPath();
         ctx.moveTo(p_top.x, p_top.y);
@@ -469,7 +463,7 @@
         ctx.closePath();
         ctx.fill();
 
-        // ПРАВАЯ ГРАНЬ (Средняя тень)
+        // ПРАВО
         ctx.fillStyle = darken(color, 10);
         ctx.beginPath();
         ctx.moveTo(p_right.x, p_right.y);
@@ -479,7 +473,7 @@
         ctx.closePath();
         ctx.fill();
 
-        // ЛЕВАЯ ГРАНЬ (Самая темная тень)
+        // ЛЕВО
         ctx.fillStyle = darken(color, 25);
         ctx.beginPath();
         ctx.moveTo(p_left.x, p_left.y);
@@ -489,7 +483,7 @@
         ctx.closePath();
         ctx.fill();
         
-        // Тонкая обводка сверху для "стеклянного" эффекта
+        // Обводка
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -501,32 +495,22 @@
         ctx.stroke();
     }
     
-    // Вспомогательная для расчета точек
     function getIsoPoint(cx, cy, dx, dz) {
-        // dx идет по оси X (1, 0.5)
-        // dz идет по оси Z (-1, 0.5)
         return {
             x: cx + (dx * 1 + dz * -1),
             y: cy + (dx * 0.5 + dz * 0.5) - BLOCK_HEIGHT
         };
     }
 
-    // --- УТИЛИТЫ ЦВЕТА ---
     function getHSL(h) {
-        const sat = 65;
-        const lig = isDark ? 55 : 50;
+        const sat = 75; // Чуть насыщеннее для красоты
+        const lig = isDark ? 60 : 55;
         return `hsl(${Math.floor(h % 360)}, ${sat}%, ${lig}%)`;
     }
     
-    // Функции для создания теней без сторонних библиотек
-    function lighten(hsl, amt) {
-        return adjustLight(hsl, amt);
-    }
-    function darken(hsl, amt) {
-        return adjustLight(hsl, -amt);
-    }
+    function lighten(hsl, amt) { return adjustLight(hsl, amt); }
+    function darken(hsl, amt) { return adjustLight(hsl, -amt); }
     function adjustLight(hsl, amt) {
-        // Парсим строку hsl(h, s%, l%)
         const parts = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
         if(!parts) return hsl;
         let h = parts[1];
@@ -536,7 +520,6 @@
         return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
-    // Слушатели событий
     document.addEventListener('pointerdown', handleAction);
     document.addEventListener('keydown', (e) => { 
         if(e.code === 'Space') handleAction(e); 
