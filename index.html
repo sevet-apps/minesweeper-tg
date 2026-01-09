@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -17,162 +18,167 @@
             --glass-border: rgba(255, 255, 255, 0.5);
         }
 
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-light);
-            color: var(--text-light);
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
+```
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        background-color: var(--bg-light);
+        color: var(--text-light);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+    }
 
-        body.dark-mode {
-            background-color: var(--bg-dark);
-            color: var(--text-dark);
-            --glass-bg: rgba(30, 30, 30, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.1);
-        }
-        
-        #game-background {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.05) 100%);
-            pointer-events: none;
-            z-index: -1;
-        }
-        body.dark-mode #game-background {
-            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%);
-        }
+    body.dark-mode {
+        background-color: var(--bg-dark);
+        color: var(--text-dark);
+        --glass-bg: rgba(30, 30, 30, 0.85);
+        --glass-border: rgba(255, 255, 255, 0.1);
+    }
+    
+    #game-background {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.05) 100%);
+        pointer-events: none;
+        z-index: -1;
+    }
+    body.dark-mode #game-background {
+        background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%);
+    }
 
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-            z-index: 1;
-        }
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        z-index: 1;
+    }
 
-        .ui-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 10;
-        }
+    .ui-layer {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 10;
+    }
 
-        #score {
-            position: absolute;
-            top: 10%;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            font-size: 80px; 
-            font-weight: 800;
-            color: var(--accent);
-            opacity: 1;
-            font-feature-settings: "tnum";
-            text-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.5s ease;
-            pointer-events: none;
-        }
-        #score.bump { transform: scale(1.2); }
+    #score {
+        position: absolute;
+        top: 10%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 80px; 
+        font-weight: 800;
+        color: var(--accent);
+        opacity: 1;
+        font-feature-settings: "tnum";
+        text-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.5s ease;
+        pointer-events: none;
+    }
+    #score.bump { transform: scale(1.2); }
 
-        #start-msg {
-            position: absolute;
-            bottom: 15%;
-            width: 100%;
-            text-align: center;
-            font-size: 17px;
-            font-weight: 600;
-            color: var(--accent);
-            opacity: 0.8;
-            animation: pulse 2s infinite;
-        }
+    #start-msg {
+        position: absolute;
+        bottom: 15%;
+        width: 100%;
+        text-align: center;
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--accent);
+        opacity: 0.8;
+        animation: pulse 2s infinite;
+    }
 
-        #game-over-modal {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-            z-index: 100;
-        }
-        #game-over-modal.visible { opacity: 1; pointer-events: auto; }
-        
-        .card {
-            background: var(--glass-bg);
-            padding: 30px 20px;
-            border-radius: 24px;
-            text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-            border: 1px solid var(--glass-border);
-            width: 70%;
-            max-width: 280px;
-            transform: scale(0.95);
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        #game-over-modal.visible .card { transform: scale(1); }
+    #game-over-modal {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.3);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        z-index: 100;
+    }
+    #game-over-modal.visible { opacity: 1; pointer-events: auto; }
+    
+    .card {
+        background: var(--glass-bg);
+        padding: 30px 20px;
+        border-radius: 24px;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        border: 1px solid var(--glass-border);
+        width: 70%;
+        max-width: 280px;
+        transform: scale(0.95);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #game-over-modal.visible .card { transform: scale(1); }
 
-        .btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 14px;
-            font-size: 17px;
-            font-weight: 600;
-            margin-top: 20px;
-            cursor: pointer;
-            width: 100%;
-            transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-        }
-        .btn:active { opacity: 0.8; transform: scale(0.96); }
-        
-        .crown-icon {
-            width: 40px; height: 40px; 
-            fill: #ffffff; 
-            margin: 0 auto 10px auto; 
-            display: none;
-        }
+    .btn {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 14px;
+        font-size: 17px;
+        font-weight: 600;
+        margin-top: 20px;
+        cursor: pointer;
+        width: 100%;
+        transition: transform 0.1s, opacity 0.2s;
+        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    }
+    .btn:active { opacity: 0.8; transform: scale(0.96); }
+    
+    .crown-icon {
+        width: 40px; height: 40px; 
+        fill: #ffffff; 
+        margin: 0 auto 10px auto; 
+        display: none;
+    }
 
-        @keyframes pulse {
-            0% { opacity: 0.5; transform: scale(0.98); }
-            50% { opacity: 1; transform: scale(1.02); }
-            100% { opacity: 0.5; transform: scale(0.98); }
-        }
-    </style>
+    @keyframes pulse {
+        0% { opacity: 0.5; transform: scale(0.98); }
+        50% { opacity: 1; transform: scale(1.02); }
+        100% { opacity: 0.5; transform: scale(0.98); }
+    }
+</style>
+```
+
 </head>
 <body>
 
-    <div id="game-background"></div>
+```
+<div id="game-background"></div>
 
-    <div class="ui-layer">
-        <div id="score">0</div>
-        <div id="start-msg">Нажми, чтобы начать</div>
+<div class="ui-layer">
+    <div id="score">0</div>
+    <div id="start-msg">Нажми, чтобы начать</div>
+</div>
+
+<div id="game-over-modal">
+    <div class="card">
+        <svg id="crown" class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>
+        <h2 id="go-title" style="margin: 0 0 5px; font-weight: 800; font-size: 22px;">Игра окончена</h2>
+        <div id="go-subtitle" style="font-size: 14px; color: #8e8e93; margin-bottom: 10px;">Ваш результат</div>
+        <div id="final-score" style="font-size: 56px; font-weight: 200; color: var(--text-light); line-height: 1;">0</div>
+        <button class="btn" onclick="restartGame()">Играть снова</button>
     </div>
+</div>
 
-    <div id="game-over-modal">
-        <div class="card">
-            <svg id="crown" class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>
-            <h2 id="go-title" style="margin: 0 0 5px; font-weight: 800; font-size: 22px;">Игра окончена</h2>
-            <div id="go-subtitle" style="font-size: 14px; color: #8e8e93; margin-bottom: 10px;">Ваш результат</div>
-            <div id="final-score" style="font-size: 56px; font-weight: 200; color: var(--text-light); line-height: 1;">0</div>
-            <button class="btn" onclick="restartGame()">Играть снова</button>
-        </div>
-    </div>
-
-    <canvas id="canvas"></canvas>
+<canvas id="canvas"></canvas>
+```
 
 <script>
     const tg = window.Telegram.WebApp;
@@ -202,6 +208,8 @@
     let direction = 'x'; 
     let speed = 3.0;
     
+    let animationFrameId = null; // ID для отслеживания анимации
+    
     let bestScore = parseInt(localStorage.getItem('tower_best') || 0);
 
     const BLOCK_HEIGHT = 35; 
@@ -216,6 +224,12 @@
     resize();
 
     function resetGameVariables() {
+        // Отменяем предыдущий цикл анимации перед сбросом
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        
         blocks = [];
         debris = [];
         score = 0;
@@ -410,27 +424,23 @@
             crown.style.display = "block";
             finalScoreEl.style.color = "var(--accent)";
             
-            // ИСПРАВЛЕНИЕ: Конфетти с небольшой инерцией (drift)
-
-            // Левый залп (небольшой снос вправо)
             confetti({
                 particleCount: 100,
-                spread: 70,         // Вернули кучность
+                spread: 70,
                 origin: { x: 0, y: 0.6 },
                 angle: 60,
                 shapes: ['circle'],
-                drift: 1,           // Легкий снос вправо для дуги
+                drift: 1,
                 zIndex: 20000
             });
 
-            // Правый залп (небольшой снос влево)
             confetti({
                 particleCount: 100,
-                spread: 70,         // Вернули кучность
+                spread: 70,
                 origin: { x: 1, y: 0.6 },
                 angle: 120,
                 shapes: ['circle'],
-                drift: -1,          // Легкий снос влево для дуги
+                drift: -1,
                 zIndex: 20000
             });
 
@@ -445,8 +455,11 @@
     function restartGame() { startGame(); }
 
     function loop() {
-        if(state === 'gameover' && debris.length === 0 && perfectMatchAlpha <= 0) return;
-        requestAnimationFrame(loop);
+        if(state === 'gameover' && debris.length === 0 && perfectMatchAlpha <= 0) {
+            animationFrameId = null; // Сбрасываем ID при выходе из цикла
+            return;
+        }
+        animationFrameId = requestAnimationFrame(loop); // Сохраняем ID анимации
         updatePhysics();
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         const cx = window.innerWidth / 2;
@@ -566,5 +579,6 @@
     document.addEventListener('keydown', (e) => { if(e.code === 'Space') handleAction(e); });
 
 </script>
+
 </body>
 </html>
