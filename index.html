@@ -21,8 +21,7 @@
         #score { margin-top: 10vh; font-size: 80px; font-weight: 800; color: var(--accent); transition: transform .15s, color .5s; text-shadow: 0 4px 20px rgba(0,0,0,0.1); font-variant-numeric: tabular-nums; }
         #score.bump { transform: scale(1.2); }
         
-        /* ВЕРНУЛИ РАЗМЕР К ПРЕЖНЕМУ (17px) */
-        #msg { position: absolute; bottom: 15%; font-size: 17px; font-weight: 600; color: var(--accent); opacity: .8; animation: p 2s infinite; text-transform: uppercase; letter-spacing: 1px; }
+        #msg { position: absolute; bottom: 20%; font-size: 17px; font-weight: 600; color: var(--accent); opacity: .8; animation: p 2s infinite; text-transform: uppercase; letter-spacing: 1px; }
         
         #modal { background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); opacity: 0; transition: opacity .3s; z-index: 100; }
         #modal.v { opacity: 1; pointer-events: auto; }
@@ -115,17 +114,21 @@
             c[isX?'w':'d'] = overlap;
             c[dir] = prev[dir] + diff / 2;
             
-            // PHYSICS FIX:
-            const sign = diff > 0 ? 1 : -1; // 1 = Cut Right/Bottom, -1 = Cut Left/Top
+            // PHYSICS UPDATE:
+            const sign = diff > 0 ? 1 : -1; 
             const dbX = isX ? c.x + (overlap/2 + cut/2)*sign : c.x;
             const dbZ = !isX ? c.z + (overlap/2 + cut/2)*sign : c.z;
             
-            addDebris(dbX, dbZ, isX?cut:c.w, !isX?cut:c.d, isX?sign*3.5:0, !isX?sign*3.5:0);
+            // Мы сильно уменьшили импульс (с 3.5 до 1.0), чтобы блок падал "вниз", а не улетал.
+            // При этом сохранили направление (sign), чтобы он падал с правильной стороны.
+            addDebris(dbX, dbZ, isX?cut:c.w, !isX?cut:c.d, isX?sign*1.0:0, !isX?sign*1.0:0, sign);
             
             tg.HapticFeedback.impactOccurred('light');
             commit();
         } else {
-            addDebris(c.x, c.z, c.w, c.d, isX?c.m*3:0, !isX?c.m*3:0);
+            // Game Over
+            // Здесь тоже уменьшаем скорость отлета
+            addDebris(c.x, c.z, c.w, c.d, isX?c.m*1.5:0, !isX?c.m*1.5:0, diff < 0 ? -1 : 1);
             over();
         }
     }
@@ -136,12 +139,10 @@
         game.speed += 0.02; spawn();
     }
 
-    function addDebris(x, z, w, d, vx, vz) {
-        // ROTATION FIX: Вращение пропорционально скорости.
-        // Если летим вправо (vx > 0), крутимся по часовой (va > 0).
-        // Если летим влево (vx < 0), крутимся против часовой (va < 0).
-        const speed = vx || vz;
-        const va = speed * 0.03; 
+    function addDebris(x, z, w, d, vx, vz, sign) {
+        // ROTATION: Медленное, плавное вращение (twist)
+        // Знак зависит от стороны падения (sign)
+        const va = sign * 0.05; 
 
         game.debris.push({ 
             x, z, w, d, c: game.curr.c, vx, vz, vy: 0, 
@@ -212,7 +213,8 @@
     }
 
     function updDebris(d) {
-        d.vy += 0.5; d.y -= d.vy; d.x += d.vx; d.z += d.vz; d.a += d.va; d.alp -= 0.015;
+        // GRAVITY: Немного тяжелее (0.6), но скорость полета в сторону минимальна
+        d.vy += 0.6; d.y -= d.vy; d.x += d.vx; d.z += d.vz; d.a += d.va; d.alp -= 0.015;
     }
 
     function over() {
