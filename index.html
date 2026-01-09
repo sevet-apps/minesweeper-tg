@@ -677,8 +677,8 @@
     <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')">Отмена</button></div></div>
 
     <div id="tower-screen" class="game-overlay">
-        <div class="game-top-bar" style="position: absolute; width: 100%; z-index: 100;">
-            <div class="back-btn" onclick="closeGame('tower')">
+        <div class="game-top-bar" style="position: absolute; width: 100%; z-index: 100; pointer-events: auto;">
+            <div class="back-btn" onclick="closeGame('tower')" style="pointer-events: auto; cursor: pointer;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню
             </div>
             <div style="font-weight:700; font-size:18px;">Best: <span id="towerBestScore">0</span></div>
