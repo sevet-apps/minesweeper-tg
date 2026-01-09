@@ -1155,9 +1155,12 @@
         let twBestCombo = 0;
         let twCurrentCombo = 0;
         let twMaxComboThisGame = 0;
+        let twLastFrameTime = 0;
 
         const TW_BLOCK_HEIGHT = 35; 
-        const TW_BASE_SIZE = 130; 
+        const TW_BASE_SIZE = 130;
+        const TW_TARGET_FPS = 60; // Целевой FPS для нормализации
+        const TW_FRAME_TIME = 1000 / TW_TARGET_FPS; // ~16.67ms
         let twInitialized = false;
         let twLastTapTime = 0;
         
@@ -1188,7 +1191,8 @@
             }
             
             twResetGame();
-            twLoop();
+            twLastFrameTime = 0;
+            twLoop(performance.now());
         }
         
         function twResizeCanvas() {
@@ -1233,10 +1237,11 @@
                 twAnimationFrameId = null;
             }
             twState = 'playing';
+            twLastFrameTime = 0; // Сброс для корректного delta time
             document.getElementById('towerStartMsg').style.display = 'none';
             
             twSpawnNextBlock();
-            twLoop();
+            twLoop(performance.now());
         }
 
         function twSpawnNextBlock() {
@@ -1256,23 +1261,26 @@
             };
         }
 
-        function twUpdatePhysics() {
+        function twUpdatePhysics(delta) {
             if (twState !== 'playing' || !twCurrentBlock) return;
             const limit = 360;
             
+            // Нормализуем скорость по delta time
+            const speedMultiplier = delta / TW_FRAME_TIME;
+            
             if (twDirection === 'x') {
-                twCurrentBlock.x += twSpeed * twCurrentBlock.moveDir;
+                twCurrentBlock.x += twSpeed * twCurrentBlock.moveDir * speedMultiplier;
                 if (twCurrentBlock.x > limit) twCurrentBlock.moveDir = -1;
                 if (twCurrentBlock.x < -limit) twCurrentBlock.moveDir = 1;
             } else {
-                twCurrentBlock.z += twSpeed * twCurrentBlock.moveDir;
+                twCurrentBlock.z += twSpeed * twCurrentBlock.moveDir * speedMultiplier;
                 if (twCurrentBlock.z > limit) twCurrentBlock.moveDir = -1;
                 if (twCurrentBlock.z < -limit) twCurrentBlock.moveDir = 1;
             }
 
             const targetY = (twBlocks.length * TW_BLOCK_HEIGHT) - 150;
-            if(targetY > 0) twCameraY += (targetY - twCameraY) * 0.05;
-            if(twPerfectMatchAlpha > 0) twPerfectMatchAlpha -= 0.05;
+            if(targetY > 0) twCameraY += (targetY - twCameraY) * 0.05 * speedMultiplier;
+            if(twPerfectMatchAlpha > 0) twPerfectMatchAlpha -= 0.05 * speedMultiplier;
         }
 
         function twHandleAction(e) {
@@ -1445,25 +1453,36 @@
             closeGame('tower');
         }
 
-        function twLoop() {
+        function twLoop(currentTime) {
             if(!document.getElementById('tower-screen').classList.contains('visible')) {
                 twAnimationFrameId = null;
+                twLastFrameTime = 0;
                 return;
             }
             if(twState === 'gameover' && twDebris.length === 0 && twPerfectMatchAlpha <= 0) {
                 twAnimationFrameId = null;
+                twLastFrameTime = 0;
                 return;
             }
             
             twAnimationFrameId = requestAnimationFrame(twLoop);
-            twUpdatePhysics();
+            
+            // Вычисляем delta time
+            if (!twLastFrameTime) twLastFrameTime = currentTime;
+            let delta = currentTime - twLastFrameTime;
+            twLastFrameTime = currentTime;
+            
+            // Ограничиваем delta чтобы избежать скачков при паузах
+            if (delta > 100) delta = TW_FRAME_TIME;
+            
+            twUpdatePhysics(delta);
             twCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
             
             const cx = window.innerWidth / 2;
             const cy = window.innerHeight / 1.5; 
 
             // Draw debris behind blocks
-            twDebris.forEach(d => { if (d.isBehind) twUpdateAndDrawDebris(d, cx, cy); });
+            twDebris.forEach(d => { if (d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
 
             // Draw stacked blocks
             twBlocks.forEach((b, i) => {
@@ -1479,16 +1498,19 @@
             }
 
             // Draw debris in front of blocks
-            twDebris.forEach(d => { if (!d.isBehind) twUpdateAndDrawDebris(d, cx, cy); });
+            twDebris.forEach(d => { if (!d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
             twDebris = twDebris.filter(d => d.alpha > 0);
         }
         
-        function twUpdateAndDrawDebris(d, cx, cy) {
-            d.vy += 0.5; 
-            d.yOffset -= d.vy;
-            d.x += d.vx; d.z += d.vz;
-            d.angle += d.vRot; 
-            d.alpha -= 0.015; 
+        function twUpdateAndDrawDebris(d, cx, cy, delta) {
+            const speedMultiplier = delta / TW_FRAME_TIME;
+            
+            d.vy += 0.5 * speedMultiplier; 
+            d.yOffset -= d.vy * speedMultiplier;
+            d.x += d.vx * speedMultiplier; 
+            d.z += d.vz * speedMultiplier;
+            d.angle += d.vRot * speedMultiplier; 
+            d.alpha -= 0.015 * speedMultiplier; 
             
             const stackY = (twBlocks.length) * TW_BLOCK_HEIGHT + d.yOffset;
 
