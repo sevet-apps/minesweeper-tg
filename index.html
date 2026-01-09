@@ -821,7 +821,7 @@
                 onlineMyColor = null;
             }
         }
-        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); document.querySelectorAll('.game-overlay').forEach(el => el.classList.remove('visible')); }
+        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); }
         
         function loadProfile() { 
             const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
@@ -1407,7 +1407,7 @@
                 <div style="font-size:14px; color:#8e8e93; margin-bottom:10px;">Вы построили огромную башню!</div>
                 <div style="font-size:56px; font-weight:200; color:var(--accent); line-height:1;">${twScore}</div>
                 <div style="font-size:14px; color:#8e8e93; margin-top:10px;">Чистая серия: ${twMaxComboThisGame}${isComboRecord ? ' 🔥' : ''}</div>
-                <button class="btn-main" onclick="closeResult(); twResetGame(); twStartGame();">Играть снова</button>`;
+                <button class="btn-main" onclick="twRestartGame()">Играть снова</button>`;
                 
                 confetti({ particleCount: 100, spread: 70, origin: { x: 0, y: 0.6 }, angle: 60, shapes: ['circle'], drift: 1, zIndex: 23000 });
                 confetti({ particleCount: 100, spread: 70, origin: { x: 1, y: 0.6 }, angle: 120, shapes: ['circle'], drift: -1, zIndex: 23000 });
@@ -1416,12 +1416,23 @@
                 <div style="font-size:14px; color:#8e8e93; margin-bottom:10px;">Лучший: ${twBestScore}</div>
                 <div style="font-size:48px; font-weight:700; margin-bottom:5px;">${twScore}</div>
                 <div style="font-size:14px; color:#8e8e93;">Чистая серия: ${twMaxComboThisGame}${isComboRecord ? ' 🔥 Рекорд!' : ''}</div>
-                <button class="btn-main" onclick="closeResult(); twResetGame(); twStartGame();">Попробовать еще</button>`;
+                <button class="btn-main" onclick="twRestartGame()">Попробовать еще</button>`;
             }
-            html += `<button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeGame('tower'); closeResult();">Выйти</button>`;
+            html += `<button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="twExitGame()">Выйти</button>`;
             
             modal.innerHTML = html;
             setTimeout(() => overlay.classList.add('visible'), 500);
+        }
+
+        function twRestartGame() {
+            document.getElementById('modalTowerGameOver').classList.remove('visible');
+            twResetGame();
+            twStartGame();
+        }
+
+        function twExitGame() {
+            document.getElementById('modalTowerGameOver').classList.remove('visible');
+            closeGame('tower');
         }
 
         function twLoop() {
