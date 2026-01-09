@@ -21,8 +21,8 @@
         #score { margin-top: 10vh; font-size: 80px; font-weight: 800; color: var(--accent); transition: transform .15s, color .5s; text-shadow: 0 4px 20px rgba(0,0,0,0.1); font-variant-numeric: tabular-nums; }
         #score.bump { transform: scale(1.2); }
         
-        /* ИЗМЕНЕНИЕ: Текст стал больше (24px) и чуть выше */
-        #msg { position: absolute; bottom: 20%; font-size: 24px; font-weight: 700; color: var(--accent); opacity: .9; animation: p 2s infinite; text-transform: uppercase; letter-spacing: 1px; }
+        /* ВЕРНУЛИ РАЗМЕР К ПРЕЖНЕМУ (17px) */
+        #msg { position: absolute; bottom: 15%; font-size: 17px; font-weight: 600; color: var(--accent); opacity: .8; animation: p 2s infinite; text-transform: uppercase; letter-spacing: 1px; }
         
         #modal { background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); opacity: 0; transition: opacity .3s; z-index: 100; }
         #modal.v { opacity: 1; pointer-events: auto; }
@@ -98,7 +98,6 @@
         const prev = game.blocks[game.blocks.length - 1];
         const diff = c[dir] - prev[dir];
         
-        // Perfect Match
         if (Math.abs(diff) < 4) {
             c.x = prev.x; c.z = prev.z;
             game.perf = 1; commit();
@@ -116,23 +115,17 @@
             c[isX?'w':'d'] = overlap;
             c[dir] = prev[dir] + diff / 2;
             
-            // PHYSICS CORRECTION:
-            // sign = 1 (перелет, режем спереди) или -1 (недолет, режем сзади)
-            const sign = diff > 0 ? 1 : -1;
-            
-            // Позиция обломка: центр оставшегося блока + (половина остатка + половина среза) * направление
+            // PHYSICS FIX:
+            const sign = diff > 0 ? 1 : -1; // 1 = Cut Right/Bottom, -1 = Cut Left/Top
             const dbX = isX ? c.x + (overlap/2 + cut/2)*sign : c.x;
             const dbZ = !isX ? c.z + (overlap/2 + cut/2)*sign : c.z;
             
-            // Скорость: Строго по направлению среза (sign)
-            // Увеличили силу до 3.5 для четкого отлета
-            addDebris(dbX, dbZ, isX?cut:c.w, !isX?cut:c.d, isX?sign*3.5:0, !isX?sign*3.5:0, sign);
+            addDebris(dbX, dbZ, isX?cut:c.w, !isX?cut:c.d, isX?sign*3.5:0, !isX?sign*3.5:0);
             
             tg.HapticFeedback.impactOccurred('light');
             commit();
         } else {
-            // Game Over - летит по инерции движения (c.m)
-            addDebris(c.x, c.z, c.w, c.d, isX?c.m*3:0, !isX?c.m*3:0, diff < 0 ? -1 : 1);
+            addDebris(c.x, c.z, c.w, c.d, isX?c.m*3:0, !isX?c.m*3:0);
             over();
         }
     }
@@ -143,13 +136,17 @@
         game.speed += 0.02; spawn();
     }
 
-    function addDebris(x, z, w, d, vx, vz, sign) {
-        // Вращение теперь зависит от знака (скатывается с края)
-        const va = sign * (0.05 + Math.random() * 0.05);
+    function addDebris(x, z, w, d, vx, vz) {
+        // ROTATION FIX: Вращение пропорционально скорости.
+        // Если летим вправо (vx > 0), крутимся по часовой (va > 0).
+        // Если летим влево (vx < 0), крутимся против часовой (va < 0).
+        const speed = vx || vz;
+        const va = speed * 0.03; 
+
         game.debris.push({ 
             x, z, w, d, c: game.curr.c, vx, vz, vy: 0, 
             y: 0, a: 0, va: va, alp: 1, 
-            behind: (vx < 0 && vz === 0) || (vz < 0 && vx === 0) // Определяем Z-index (сзади или спереди)
+            behind: (vx < 0 && vz === 0) || (vz < 0 && vx === 0) 
         });
     }
 
@@ -157,7 +154,6 @@
         if (game.state === 'over' && !game.debris.length && game.perf <= 0) return;
         requestAnimationFrame(loop);
         
-        // Update Physics
         if (game.curr && game.state === 'play') {
             const limit = 360;
             game.curr[game.dir] += game.speed * game.curr.m;
@@ -168,7 +164,6 @@
         if (ty > 0) game.camY += (ty - game.camY) * 0.05;
         if (game.perf > 0) game.perf -= 0.05;
 
-        // Draw
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         const cx = window.innerWidth / 2, cy = window.innerHeight / 1.5;
 
@@ -209,7 +204,6 @@
             ctx.globalAlpha = 1;
         };
 
-        // Render Order (Back Debris -> Tower -> Current -> Front Debris)
         game.debris.forEach(d => { if(d.behind) updDebris(d); draw(d, (game.blocks.length*CFG.h)+d.y, true); }); 
         game.blocks.forEach((b, i) => draw(b, i*CFG.h, false, i===game.blocks.length-1 && game.perf>0)); 
         if (game.curr && game.state === 'play') draw(game.curr, game.blocks.length*CFG.h, false); 
