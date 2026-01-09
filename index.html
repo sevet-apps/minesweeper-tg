@@ -469,9 +469,17 @@
     tg.enableClosingConfirmation();
     if (tg.requestFullscreen) tg.requestFullscreen();
 
-    let isDark = tg.colorScheme === 'dark';
+    // ИСПРАВЛЕНИЕ ТЕМЫ: Читаем память телефона
+    let savedTheme = localStorage.getItem('glass_theme');
+    let isDark;
+    if (savedTheme) {
+        isDark = savedTheme === 'dark';
+    } else {
+        isDark = tg.colorScheme === 'dark';
+    }
+
     let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
-    
+        
     const API_BASE_URL = 'https://glass-api-kh3s.onrender.com';
     const socket = io(API_BASE_URL);
     
@@ -521,7 +529,12 @@
     }
 
     function applyTheme() { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
-    function toggleTheme() { isDark = !isDark; applyTheme(); tg.HapticFeedback.selectionChanged(); }
+    function toggleTheme() { 
+            isDark = !isDark; 
+            localStorage.setItem('glass_theme', isDark ? 'dark' : 'light'); // Сохраняем выбор
+            applyTheme(); 
+            tg.HapticFeedback.selectionChanged(); 
+        }
     
     function applyLiteMode() { 
         const el = document.getElementById('liteToggle');
@@ -820,6 +833,9 @@
         tScoreEl.innerText = "0";
     }
 
+// --- ПЕРЕМЕННАЯ ВРЕМЕНИ ДЛЯ ПЛАВНОСТИ ---
+    let lastTime = 0;
+
     function startTowerGame() {
         tResetGame();
         tMsgEl.style.display = 'none';
@@ -827,202 +843,40 @@
         tScoreEl.innerText = tScore;
         tScoreEl.style.color = "var(--accent)"; 
         
-        // Начальный блок
         tAddBlock({ x: 0, z: 0, w: T_BASE_SIZE, d: T_BASE_SIZE, color: tGetHSL(tHue) });
         tSpawnNextBlock();
-        tLoop();
-    }
-
-    function restartTowerGame() {
-        startTowerGame();
-    }
-
-    function tAddBlock(block) { tBlocks.push(block); }
-
-    function tSpawnNextBlock() {
-        const prev = tBlocks[tBlocks.length - 1];
-        tHue += 6; 
-        tDirection = tDirection === 'x' ? 'z' : 'x'; 
-        const dist = 350;
-        const nextColor = tGetHSL(tHue);
-        tScoreEl.style.color = nextColor;
         
-        tCurrentBlock = {
-            x: tDirection === 'x' ? -dist : prev.x,
-            z: tDirection === 'z' ? -dist : prev.z,
-            w: prev.w, d: prev.d,
-            color: nextColor,
-            moveDir: 1 
-        };
+        // ВАЖНО: Инициализируем время перед стартом
+        lastTime = performance.now();
+        tLoop(lastTime);
     }
 
-    function tUpdatePhysics() {
+    // ВАЖНО: Физика теперь зависит от dt (коэффициента времени)
+    function tUpdatePhysics(dt) {
         if (tState !== 'playing' || !tCurrentBlock) return;
         const limit = 360;
         
+        // Умножаем скорость на dt. На 120Гц dt=0.5, на 60Гц dt=1.0
+        // Итог: скорость движения одинаковая везде
+        const moveStep = tSpeed * dt;
+
         if (tDirection === 'x') {
-            tCurrentBlock.x += tSpeed * tCurrentBlock.moveDir;
+            tCurrentBlock.x += moveStep * tCurrentBlock.moveDir;
             if (tCurrentBlock.x > limit) tCurrentBlock.moveDir = -1;
             if (tCurrentBlock.x < -limit) tCurrentBlock.moveDir = 1;
         } else {
-            tCurrentBlock.z += tSpeed * tCurrentBlock.moveDir;
+            tCurrentBlock.z += moveStep * tCurrentBlock.moveDir;
             if (tCurrentBlock.z > limit) tCurrentBlock.moveDir = -1;
             if (tCurrentBlock.z < -limit) tCurrentBlock.moveDir = 1;
         }
 
         const targetY = (tBlocks.length * T_BLOCK_HEIGHT) - 150;
-        if(targetY > 0) tCameraY += (targetY - tCameraY) * 0.05;
-        if(tPerfectMatchAlpha > 0) tPerfectMatchAlpha -= 0.05;
+        if(targetY > 0) tCameraY += (targetY - tCameraY) * (0.05 * dt); // Камера тоже плавная
+        if(tPerfectMatchAlpha > 0) tPerfectMatchAlpha -= (0.05 * dt);
     }
 
-    function tHandleAction(e) {
-        if(!document.getElementById('tower-screen').classList.contains('visible')) return;
-        if (e) e.preventDefault(); 
-        if (tState === 'start') { startTowerGame(); return; }
-        if (tState === 'gameover') return;
-        tPlaceBlock();
-    }
-
-    function tPlaceBlock() {
-        if (!tCurrentBlock) return;
-        const prev = tBlocks[tBlocks.length - 1];
-        let diff = tDirection === 'x' ? tCurrentBlock.x - prev.x : tCurrentBlock.z - prev.z;
-
-        // Идеальное попадание
-        if (Math.abs(diff) < 4) {
-            tCurrentBlock.x = prev.x;
-            tCurrentBlock.z = prev.z;
-            tCurrentBlock.w = prev.w;
-            tCurrentBlock.d = prev.d;
-            
-            tStreak++;
-            if(tStreak > tMaxStreak) tMaxStreak = tStreak;
-            
-            tScoreEl.classList.add('bump');
-            setTimeout(() => tScoreEl.classList.remove('bump'), 150);
-            tg.HapticFeedback.notificationOccurred('success');
-            tPerfectMatchAlpha = 1.0;
-            tCommitBlock();
-            return;
-        }
-
-        // Промах или обрезка
-        tStreak = 0; // Сброс серии
-        let overlap, cutSize, debrisX, debrisZ;
-        let isGameOver = false;
-        let impulseX = 0, impulseZ = 0;
-        let debrisBehind = (diff < 0);
-
-        if (tDirection === 'x') {
-            overlap = prev.w - Math.abs(diff);
-            if (overlap > 0) {
-                cutSize = Math.abs(diff);
-                tCurrentBlock.w = overlap; 
-                if (diff > 0) { 
-                    tCurrentBlock.x = prev.x + (diff / 2);
-                    debrisX = tCurrentBlock.x + (overlap/2) + (cutSize/2);
-                    impulseX = 2.5; 
-                } else { 
-                    tCurrentBlock.x = prev.x + (diff / 2);
-                    debrisX = tCurrentBlock.x - (overlap/2) - (cutSize/2);
-                    impulseX = -2.5;
-                }
-                tAddDebris(debrisX, tCurrentBlock.z, cutSize, tCurrentBlock.d, impulseX, 0, debrisBehind);
-            } else isGameOver = true;
-        } else { 
-            overlap = prev.d - Math.abs(diff);
-            if (overlap > 0) {
-                cutSize = Math.abs(diff);
-                tCurrentBlock.d = overlap; 
-                if (diff > 0) { 
-                    tCurrentBlock.z = prev.z + (diff / 2);
-                    debrisZ = tCurrentBlock.z + (overlap/2) + (cutSize/2);
-                    impulseZ = 2.5;
-                } else { 
-                    tCurrentBlock.z = prev.z + (diff / 2);
-                    debrisZ = tCurrentBlock.z - (overlap/2) - (cutSize/2);
-                    impulseZ = -2.5;
-                }
-                tAddDebris(tCurrentBlock.x, debrisZ, tCurrentBlock.w, cutSize, 0, impulseZ, debrisBehind);
-            } else isGameOver = true;
-        }
-
-        if (isGameOver) {
-            let gameOverBehind = (diff < 0); 
-            tAddDebris(tCurrentBlock.x, tCurrentBlock.z, tCurrentBlock.w, tCurrentBlock.d, tDirection==='x'?tCurrentBlock.moveDir*2:0, tDirection==='z'?tCurrentBlock.moveDir*2:0, gameOverBehind);
-            tGameOver();
-        } else {
-            tg.HapticFeedback.impactOccurred('light');
-            tCommitBlock();
-        }
-    }
-
-    function tCommitBlock() {
-        tAddBlock(tCurrentBlock);
-        tScore++;
-        tScoreEl.innerText = tScore;
-        tSpeed += 0.02; 
-        tSpawnNextBlock();
-    }
-
-    function tAddDebris(x, z, w, d, vx, vz, isBehind) {
-        const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.04); 
-        tDebris.push({
-            x: x, z: z, w: w, d: d,
-            color: tCurrentBlock.color,
-            vy: 0, vx: vx, vz: vz,
-            yOffset: 0, angle: 0, vRot: rotSpeed, alpha: 1,
-            isBehind: isBehind
-        });
-    }
-
-    function tGameOver() {
-        tState = 'gameover';
-        tg.HapticFeedback.notificationOccurred('error');
-        
-        tFinalScoreEl.innerText = tScore;
-        tFinalStreakEl.innerText = tMaxStreak;
-        
-        let best = parseInt(localStorage.getItem('tower_best') || 0);
-        let bestStreak = parseInt(localStorage.getItem('tower_max_streak') || 0);
-        
-        let isRecord = false;
-        
-        if(tScore > best) {
-            best = tScore;
-            localStorage.setItem('tower_best', best);
-            sendStatToBackend('tower_best', best);
-            isRecord = true;
-        }
-        
-        if(tMaxStreak > bestStreak) {
-            localStorage.setItem('tower_max_streak', tMaxStreak);
-            sendStatToBackend('tower_max_streak', tMaxStreak);
-        }
-
-        tBestDisplay.innerText = best; // Обновляем в хедере
-
-        if(isDark) tFinalScoreEl.style.color = '#ffffff'; else tFinalScoreEl.style.color = '#000000';
-
-        if(isRecord && tScore > 0) {
-            tGoTitle.innerText = "Новый рекорд!";
-            tCrown.style.display = "block";
-            tFinalScoreEl.style.color = "var(--accent)";
-            
-            // Фирменные конфетти с боков
-            confetti({ particleCount: 100, spread: 70, origin: { x: 0, y: 0.6 }, angle: 60, shapes: ['circle'], drift: 1, zIndex: 20000 });
-            confetti({ particleCount: 100, spread: 70, origin: { x: 1, y: 0.6 }, angle: 120, shapes: ['circle'], drift: -1, zIndex: 20000 });
-
-        } else {
-            tGoTitle.innerText = "Игра окончена";
-            tCrown.style.display = "none";
-        }
-        
-        // Показываем модалку с результатом
-        tModal.classList.add('visible');
-    }
-
-    function tLoop() {
+    // ВАЖНО: Главный цикл с расчетом времени
+    function tLoop(currentTime) {
         if(tState === 'gameover' && tDebris.length === 0 && tPerfectMatchAlpha <= 0) {
             tAnimationId = null;
             return;
@@ -1030,40 +884,45 @@
         
         tAnimationId = requestAnimationFrame(tLoop);
         
-        tUpdatePhysics();
+        // Расчет dt (нормализация под 60 FPS)
+        const deltaTime = (currentTime - lastTime) / (1000 / 60);
+        lastTime = currentTime;
+
+        // Защита от скачков (если свернули браузер)
+        if (isNaN(deltaTime) || deltaTime > 5) return; 
+
+        tUpdatePhysics(deltaTime);
         tCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 1.5; 
 
-        // Рисуем задний мусор
-        tDebris.forEach(d => { if (d.isBehind) tDrawDebris(d, cx, cy); });
+        // Передаем dt в отрисовку мусора
+        tDebris.forEach(d => { if (d.isBehind) tDrawDebris(d, cx, cy, deltaTime); });
 
-        // Рисуем башню
         tBlocks.forEach((b, i) => {
             const stackY = i * T_BLOCK_HEIGHT; 
             let highlight = (i === tBlocks.length - 1 && tPerfectMatchAlpha > 0);
             tDrawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color, highlight);
         });
 
-        // Рисуем текущий блок
         if (tCurrentBlock && tState === 'playing') {
             const stackY = tBlocks.length * T_BLOCK_HEIGHT;
             tDrawIsoBlock(cx, cy, tCurrentBlock.x, tCurrentBlock.z, tCurrentBlock.w, tCurrentBlock.d, stackY, tCurrentBlock.color, false);
         }
 
-        // Рисуем передний мусор
-        tDebris.forEach(d => { if (!d.isBehind) tDrawDebris(d, cx, cy); });
+        tDebris.forEach(d => { if (!d.isBehind) tDrawDebris(d, cx, cy, deltaTime); });
         
-        // Очистка старого мусора
         tDebris = tDebris.filter(d => d.alpha > 0);
     }
     
-    function tDrawDebris(d, cx, cy) {
-        d.vy += 0.5; 
-        d.yOffset -= d.vy;
-        d.x += d.vx; d.z += d.vz;
-        d.angle += d.vRot; 
-        d.alpha -= 0.015; 
+    // ВАЖНО: Анимация мусора тоже через dt
+    function tDrawDebris(d, cx, cy, dt) {
+        d.vy += 0.5 * dt; 
+        d.yOffset -= d.vy * dt;
+        d.x += d.vx * dt; 
+        d.z += d.vz * dt;
+        d.angle += d.vRot * dt; 
+        d.alpha -= 0.015 * dt; 
         
         const stackY = (tBlocks.length) * T_BLOCK_HEIGHT + d.yOffset;
 
@@ -1146,3 +1005,4 @@
 </script>
 </body>
 </html>
+
