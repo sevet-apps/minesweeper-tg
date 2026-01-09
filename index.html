@@ -394,12 +394,19 @@
 
         /* Стили для Башни */
         #towerCanvas {
+            position: absolute;
+            top: 60px;
+            left: 0;
             display: block;
             width: 100%;
-            height: 100%;
+            height: calc(100% - 60px);
             cursor: pointer;
             pointer-events: auto !important;
             touch-action: manipulation;
+            z-index: 1;
+        }
+        #towerTopBar {
+            pointer-events: auto !important;
         }
         #towerScore {
             font-feature-settings: "tnum";
@@ -677,8 +684,8 @@
     <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2>Судоку</h2><p style="color:#8e8e93;">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')">Отмена</button></div></div>
 
     <div id="tower-screen" class="game-overlay">
-        <div class="game-top-bar" style="position: absolute; width: 100%; z-index: 100; pointer-events: auto;">
-            <div class="back-btn" onclick="closeGame('tower')" style="pointer-events: auto; cursor: pointer;">
+        <div class="game-top-bar" id="towerTopBar" style="position: absolute; width: 100%; z-index: 200;">
+            <div class="back-btn" onclick="closeGame('tower')">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Меню
             </div>
             <div style="font-weight:700; font-size:18px;">Best: <span id="towerBestScore">0</span></div>
@@ -686,7 +693,7 @@
         
         <div id="tower-game-background" style="position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(180deg, var(--bg-color) 0%, rgba(0,0,0,0.05) 100%); pointer-events:none; z-index:0;"></div>
         
-        <canvas id="towerCanvas" style="position:absolute; top:0; left:0; display:block; width:100%; height:100%; cursor:pointer; z-index:1;"></canvas>
+        <canvas id="towerCanvas"></canvas>
         
         <div id="tower-ui-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2;">
             <div id="towerScore" style="position:absolute; top:10%; left:0; width:100%; text-align:center; font-size:80px; font-weight:800; color:var(--accent); text-shadow:0 4px 20px rgba(0,0,0,0.1); transition:transform 0.15s cubic-bezier(0.175,0.885,0.32,1.275), color 0.5s ease; pointer-events:none;">0</div>
@@ -1183,8 +1190,9 @@
         
         function twResizeCanvas() {
             if(!twCanvas) return;
+            const topOffset = 60;
             twCanvas.width = window.innerWidth * window.devicePixelRatio;
-            twCanvas.height = window.innerHeight * window.devicePixelRatio;
+            twCanvas.height = (window.innerHeight - topOffset) * window.devicePixelRatio;
             twCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
         }
 
@@ -1447,10 +1455,13 @@
             
             twAnimationFrameId = requestAnimationFrame(twLoop);
             twUpdatePhysics();
-            twCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            
+            const topOffset = 60;
+            const canvasHeight = window.innerHeight - topOffset;
+            twCtx.clearRect(0, 0, window.innerWidth, canvasHeight);
             
             const cx = window.innerWidth / 2;
-            const cy = window.innerHeight / 1.5; 
+            const cy = canvasHeight / 1.5; 
 
             // Draw debris behind blocks
             twDebris.forEach(d => { if (d.isBehind) twUpdateAndDrawDebris(d, cx, cy); });
