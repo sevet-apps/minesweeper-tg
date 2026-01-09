@@ -20,7 +20,9 @@
         
         #score { margin-top: 10vh; font-size: 80px; font-weight: 800; color: var(--accent); transition: transform .15s, color .5s; text-shadow: 0 4px 20px rgba(0,0,0,0.1); font-variant-numeric: tabular-nums; }
         #score.bump { transform: scale(1.2); }
-        #msg { position: absolute; bottom: 15%; font-size: 17px; font-weight: 600; color: var(--accent); opacity: .8; animation: p 2s infinite; }
+        
+        /* ИЗМЕНЕНИЕ: Текст стал больше (24px) и чуть выше */
+        #msg { position: absolute; bottom: 20%; font-size: 24px; font-weight: 700; color: var(--accent); opacity: .9; animation: p 2s infinite; text-transform: uppercase; letter-spacing: 1px; }
         
         #modal { background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); opacity: 0; transition: opacity .3s; z-index: 100; }
         #modal.v { opacity: 1; pointer-events: auto; }
@@ -60,7 +62,6 @@
     let game = { blocks: [], debris: [], score: 0, state: 'start', hue: 0, camY: 0, perf: 0, curr: null, dir: 'x', speed: 3.0 };
     let best = parseInt(localStorage.getItem('tower_best') || 0);
 
-    // Resize
     const resize = () => {
         cvs.width = window.innerWidth * window.devicePixelRatio;
         cvs.height = window.innerHeight * window.devicePixelRatio;
@@ -106,7 +107,6 @@
             return;
         }
 
-        // Cut Logic
         const isX = dir === 'x';
         const size = isX ? prev.w : prev.d;
         const overlap = size - Math.abs(diff);
@@ -116,16 +116,23 @@
             c[isX?'w':'d'] = overlap;
             c[dir] = prev[dir] + diff / 2;
             
-            // Debris Physics
+            // PHYSICS CORRECTION:
+            // sign = 1 (перелет, режем спереди) или -1 (недолет, режем сзади)
             const sign = diff > 0 ? 1 : -1;
+            
+            // Позиция обломка: центр оставшегося блока + (половина остатка + половина среза) * направление
             const dbX = isX ? c.x + (overlap/2 + cut/2)*sign : c.x;
             const dbZ = !isX ? c.z + (overlap/2 + cut/2)*sign : c.z;
             
-            addDebris(dbX, dbZ, isX?cut:c.w, !isX?cut:c.d, isX?sign*2.5:0, !isX?sign*2.5:0, diff < 0);
+            // Скорость: Строго по направлению среза (sign)
+            // Увеличили силу до 3.5 для четкого отлета
+            addDebris(dbX, dbZ, isX?cut:c.w, !isX?cut:c.d, isX?sign*3.5:0, !isX?sign*3.5:0, sign);
+            
             tg.HapticFeedback.impactOccurred('light');
             commit();
         } else {
-            addDebris(c.x, c.z, c.w, c.d, isX?c.m*2:0, !isX?c.m*2:0, diff < 0);
+            // Game Over - летит по инерции движения (c.m)
+            addDebris(c.x, c.z, c.w, c.d, isX?c.m*3:0, !isX?c.m*3:0, diff < 0 ? -1 : 1);
             over();
         }
     }
@@ -136,10 +143,13 @@
         game.speed += 0.02; spawn();
     }
 
-    function addDebris(x, z, w, d, vx, vz, behind) {
+    function addDebris(x, z, w, d, vx, vz, sign) {
+        // Вращение теперь зависит от знака (скатывается с края)
+        const va = sign * (0.05 + Math.random() * 0.05);
         game.debris.push({ 
             x, z, w, d, c: game.curr.c, vx, vz, vy: 0, 
-            y: 0, a: 0, va: (Math.random()-.5)*0.1, alp: 1, behind 
+            y: 0, a: 0, va: va, alp: 1, 
+            behind: (vx < 0 && vz === 0) || (vz < 0 && vx === 0) // Определяем Z-index (сзади или спереди)
         });
     }
 
@@ -162,39 +172,35 @@
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         const cx = window.innerWidth / 2, cy = window.innerHeight / 1.5;
 
-        // Helper to draw
         const draw = (b, yOff, rot, isGlow) => {
             if (b.alp <= 0) return;
             ctx.globalAlpha = b.alp || 1;
             
             let sx = cx + (b.x - b.z), sy = cy + (b.x + b.z) * 0.5 - yOff + game.camY;
-            if (rot) { // Rotate Debris
+            if (rot) { 
                 ctx.save();
                 ctx.translate(sx, sy - CFG.h/2); ctx.rotate(b.a);
-                sx = 0; sy = -CFG.h/2; // Local coords
+                sx = 0; sy = -CFG.h/2; 
             }
 
-            // Vertices
             const p = (dx, dz) => ({ x: sx + (dx - dz), y: sy + (dx + dz) * 0.5 - CFG.h });
             const pts = [p(-b.w/2, -b.d/2), p(b.w/2, -b.d/2), p(b.w/2, b.d/2), p(-b.w/2, b.d/2)];
             
             const face = (idx, c) => {
                 ctx.fillStyle = c; ctx.beginPath();
-                if(idx===0) { ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); } // Top
-                else if(idx===1) { ctx.moveTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+CFG.h); ctx.lineTo(pts[1].x,pts[1].y+CFG.h); } // Right
-                else { ctx.moveTo(pts[3].x,pts[3].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+CFG.h); ctx.lineTo(pts[3].x,pts[3].y+CFG.h); } // Left
+                if(idx===0) { ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); }
+                else if(idx===1) { ctx.moveTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+CFG.h); ctx.lineTo(pts[1].x,pts[1].y+CFG.h); }
+                else { ctx.moveTo(pts[3].x,pts[3].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+CFG.h); ctx.lineTo(pts[3].x,pts[3].y+CFG.h); }
                 ctx.fill();
             };
 
-            face(0, lighten(b.c, 15)); // Top
-            face(1, darken(b.c, 10));  // Right
-            face(2, darken(b.c, 25));  // Left
+            face(0, lighten(b.c, 15)); 
+            face(1, darken(b.c, 10));  
+            face(2, darken(b.c, 25));  
             
-            // Edge
             ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.closePath(); ctx.stroke();
 
-            // Glow
             if (isGlow) {
                 ctx.save(); ctx.globalAlpha = game.perf; ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.shadowColor = "#fff"; ctx.shadowBlur = 15;
                 ctx.beginPath(); ctx.moveTo(pts[3].x, pts[3].y+CFG.h); ctx.lineTo(pts[2].x, pts[2].y+CFG.h); ctx.lineTo(pts[1].x, pts[1].y+CFG.h); ctx.stroke(); ctx.restore();
@@ -203,11 +209,11 @@
             ctx.globalAlpha = 1;
         };
 
-        // Render Order
-        game.debris.forEach(d => { if(d.behind) updDebris(d); draw(d, (game.blocks.length*CFG.h)+d.y, true); }); // Back Debris
-        game.blocks.forEach((b, i) => draw(b, i*CFG.h, false, i===game.blocks.length-1 && game.perf>0)); // Tower
-        if (game.curr && game.state === 'play') draw(game.curr, game.blocks.length*CFG.h, false); // Current
-        game.debris.forEach(d => { if(!d.behind) updDebris(d); draw(d, (game.blocks.length*CFG.h)+d.y, true); }); // Front Debris
+        // Render Order (Back Debris -> Tower -> Current -> Front Debris)
+        game.debris.forEach(d => { if(d.behind) updDebris(d); draw(d, (game.blocks.length*CFG.h)+d.y, true); }); 
+        game.blocks.forEach((b, i) => draw(b, i*CFG.h, false, i===game.blocks.length-1 && game.perf>0)); 
+        if (game.curr && game.state === 'play') draw(game.curr, game.blocks.length*CFG.h, false); 
+        game.debris.forEach(d => { if(!d.behind) updDebris(d); draw(d, (game.blocks.length*CFG.h)+d.y, true); }); 
         game.debris = game.debris.filter(d => d.alp > 0);
     }
 
@@ -231,7 +237,6 @@
         els.modal.classList.add('v');
     }
 
-    // Color Utils
     const hsl = h => `hsl(${h|0},75%,${isDark?60:55}%)`;
     const modL = (c, a) => c.replace(/(\d+)%\)/, (m, l) => Math.max(0, Math.min(100, +l+a)) + "%)");
     const lighten = (c, a) => modL(c, a);
