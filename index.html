@@ -57,7 +57,7 @@
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        img { pointer-events: none; } canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
+        img { pointer-events: none; } canvas:not(#towerCanvas) { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         
         body { 
             background-color: var(--bg-color); 
@@ -401,26 +401,13 @@
             width: 100%;
             height: 100%;
             cursor: pointer;
-            pointer-events: auto !important;
+            pointer-events: auto;
             touch-action: manipulation;
             z-index: 1;
         }
         #towerTopBar {
-            position: absolute !important;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 15px 20px !important;
-            padding-top: calc(15px + var(--safe-top)) !important;
-            pointer-events: auto !important;
-            z-index: 9999 !important;
-            background: transparent;
-        }
-        #towerTopBar .back-btn {
-            pointer-events: auto !important;
-            cursor: pointer !important;
             position: relative;
-            z-index: 9999;
+            z-index: 10;
         }
         #towerScore {
             font-feature-settings: "tnum";
