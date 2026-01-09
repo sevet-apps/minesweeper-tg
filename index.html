@@ -1149,6 +1149,7 @@
         const TW_BLOCK_HEIGHT = 35; 
         const TW_BASE_SIZE = 130; 
         let twInitialized = false;
+        let twLastTapTime = 0;
         
         function initTower() {
             twCanvas = document.getElementById('towerCanvas');
@@ -1161,13 +1162,23 @@
             
             if(!twInitialized) {
                 window.addEventListener('resize', twResizeCanvas);
-                twCanvas.addEventListener('pointerdown', twHandleAction);
-                twCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); twHandleAction(e); }, { passive: false });
+                // Используем только touchstart для тач-устройств, pointerdown для мыши
+                twCanvas.addEventListener('touchstart', (e) => { 
+                    e.preventDefault(); 
+                    twLastTapTime = Date.now();
+                    twHandleAction(); 
+                }, { passive: false });
+                twCanvas.addEventListener('mousedown', (e) => { 
+                    // Игнорируем клик мыши если только что был тач (предотвращает двойное срабатывание)
+                    if (Date.now() - twLastTapTime < 300) return;
+                    e.preventDefault();
+                    twHandleAction(); 
+                });
                 twInitialized = true;
             }
             
             twResetGame();
-            twLoop(); // Запускаем loop сразу для отрисовки начального состояния
+            twLoop();
         }
         
         function twResizeCanvas() {
