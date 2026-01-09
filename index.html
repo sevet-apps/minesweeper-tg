@@ -51,10 +51,11 @@
         }
         #score.bump { transform: scale(1.2); }
 
+        /* Размер текста вернули как было */
         #start-msg {
             position: absolute; bottom: 15%; width: 100%; text-align: center;
             font-size: 17px; font-weight: 600; color: var(--accent);
-            opacity: 0.8; animation: pulse 2s infinite;
+            opacity: 0.8; animation: pulse 2s infinite; text-transform: uppercase; letter-spacing: 1px;
         }
 
         #game-over-modal {
@@ -141,6 +142,7 @@
 
     const BLOCK_HEIGHT = 35; 
     const BASE_SIZE = 130; 
+    const SPAWN_DIST = 360; 
     
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
@@ -181,22 +183,26 @@
         const prev = blocks[blocks.length - 1];
         hue += 6; 
         direction = direction === 'x' ? 'z' : 'x'; 
-        const dist = 350;
         const nextColor = getHSL(hue);
         els.score.style.color = nextColor;
         
+        // ВЕРНУЛИ КЛАССИЧЕСКИЙ СПАВН:
+        // Всегда появляется с отрицательной координаты и летит в плюс (слева направо / сверху вниз)
+        const startPos = -SPAWN_DIST;
+        const moveDir = 1;
+
         currentBlock = {
-            x: direction === 'x' ? -dist : prev.x,
-            z: direction === 'z' ? -dist : prev.z,
+            x: direction === 'x' ? startPos : prev.x,
+            z: direction === 'z' ? startPos : prev.z,
             w: prev.w, d: prev.d,
             color: nextColor,
-            moveDir: 1 
+            moveDir: moveDir 
         };
     }
 
     function updatePhysics() {
         if (state !== 'playing' || !currentBlock) return;
-        const limit = 360;
+        const limit = SPAWN_DIST + 10;
         
         if (direction === 'x') {
             currentBlock.x += speed * currentBlock.moveDir;
@@ -222,12 +228,10 @@
         placeBlock();
     }
 
-    // --- ГЛАВНАЯ ЛОГИКА ОТРЕЗАНИЯ ---
     function placeBlock() {
         if (!currentBlock) return;
         const prev = blocks[blocks.length - 1];
         
-        // Разница позиций
         const diff = direction === 'x' ? currentBlock.x - prev.x : currentBlock.z - prev.z;
         const absDiff = Math.abs(diff);
 
@@ -247,18 +251,18 @@
 
         const size = direction === 'x' ? prev.w : prev.d;
         
+        // Знак: 1 = Перелет (кусок справа/снизу), -1 = Недолет (кусок слева/сверху)
+        const sign = diff > 0 ? 1 : -1;
+        
         // Промах (Game Over)
         if (absDiff >= size) {
-            // Весь блок становится обломком
-            // Определяем, упал он "сзади" или "спереди" (diff < 0 значит сзади)
             const isBehind = diff < 0; 
-            const sign = diff > 0 ? 1 : -1;
             
-            // Импульс по направлению движения
+            // Если промах, летит в ту же сторону, где оказался лишний кусок
             const vx = direction === 'x' ? sign * 2 : 0;
             const vz = direction === 'z' ? sign * 2 : 0;
             
-            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, vx, vz, isBehind);
+            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, vx, vz, sign, isBehind);
             gameOver();
             return;
         }
@@ -266,26 +270,22 @@
         // Отрезание
         const cutSize = absDiff;
         const overlap = size - cutSize;
-        const sign = diff > 0 ? 1 : -1; // 1 = перелет (справа/снизу), -1 = недолет (слева/сверху)
-
+        
         if (direction === 'x') {
             currentBlock.w = overlap;
-            // Сдвигаем текущий блок, чтобы он стоял ровно на предыдущем
             currentBlock.x = prev.x + (diff / 2);
             
-            // Расчет позиции обломка
-            // Если перелет (+): обломок справа. Если недолет (-): обломок слева.
             const debrisX = currentBlock.x + (overlap/2 + cutSize/2) * sign;
             
-            addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, sign * 2, 0, diff < 0);
+            // Если sign > 0 (перелет) -> летит вправо, крутится по часовой
+            // Если sign < 0 (недолет) -> летит влево, крутится против часовой
+            addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, sign * 2, 0, sign, diff < 0);
         } else {
             currentBlock.d = overlap;
             currentBlock.z = prev.z + (diff / 2);
             
-            // Расчет позиции обломка (по оси Z)
             const debrisZ = currentBlock.z + (overlap/2 + cutSize/2) * sign;
-            
-            addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, sign * 2, diff < 0);
+            addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, sign * 2, sign, diff < 0);
         }
 
         tg.HapticFeedback.impactOccurred('light');
@@ -300,9 +300,11 @@
         spawnNextBlock();
     }
 
-    function addDebris(x, z, w, d, vx, vz, isBehind) {
-        // Вращение: зависит от скорости. Если летим вправо (+), крутимся по часовой.
-        const rotSpeed = (Math.abs(vx) + Math.abs(vz)) * 0.02 * (vx < 0 || vz < 0 ? -1 : 1);
+    function addDebris(x, z, w, d, vx, vz, sign, isBehind) {
+        // Вращение зависит от sign (стороны, с которой отвалилось)
+        // sign = 1 -> вращение положительное (CW)
+        // sign = -1 -> вращение отрицательное (CCW)
+        const va = sign * 0.05;
         
         debris.push({
             x: x, z: z, w: w, d: d,
@@ -311,7 +313,7 @@
             vx: vx, vz: vz,
             yOffset: 0,
             angle: 0, 
-            vRot: rotSpeed, 
+            vRot: va, 
             alpha: 1,
             isBehind: isBehind
         });
@@ -348,7 +350,6 @@
 
     function restartGame() { startGame(); }
 
-    // --- ОТРИСОВКА ---
     function loop() {
         if(state === 'gameover' && debris.length === 0 && perfectMatchAlpha <= 0) return;
         requestAnimationFrame(loop);
@@ -357,30 +358,26 @@
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 1.5; 
 
-        // 1. Рисуем "Задние" обломки (падают за башней)
         debris.forEach(d => { if (d.isBehind) updateAndDrawDebris(d, cx, cy); });
 
-        // 2. Рисуем башню
         blocks.forEach((b, i) => {
             const stackY = i * BLOCK_HEIGHT; 
             let highlight = (i === blocks.length - 1 && perfectMatchAlpha > 0);
             drawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color, highlight);
         });
 
-        // 3. Рисуем текущий блок
         if (currentBlock && state === 'playing') {
             const stackY = blocks.length * BLOCK_HEIGHT;
             drawIsoBlock(cx, cy, currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, stackY, currentBlock.color, false);
         }
 
-        // 4. Рисуем "Передние" обломки (падают перед башней)
         debris.forEach(d => { if (!d.isBehind) updateAndDrawDebris(d, cx, cy); });
         
         debris = debris.filter(d => d.alpha > 0);
     }
     
     function updateAndDrawDebris(d, cx, cy) {
-        d.vy += 0.8; // Гравитация
+        d.vy += 0.8; 
         d.yOffset -= d.vy;
         d.x += d.vx; d.z += d.vz;
         d.angle += d.vRot; 
@@ -403,14 +400,12 @@
         }
     }
     
-    // Рисование вращающегося обломка (в локальных координатах)
     function drawRotatedIsoBlock(w, d, color) {
         const p = (dx, dz) => ({ x: (dx - dz), y: (dx + dz) * 0.5 - BLOCK_HEIGHT/2 });
         const pts = [p(-w/2, -d/2), p(w/2, -d/2), p(w/2, d/2), p(-w/2, d/2)];
         drawFace(pts, color);
     }
 
-    // Рисование обычного блока
     function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color, highlight) {
         const isoX = (x - z);
         const isoY = (x + z) * 0.5;
@@ -423,25 +418,19 @@
         drawFace(pts, color, highlight);
     }
 
-    // Общая функция отрисовки граней
     function drawFace(pts, color, highlight = false) {
-        // Top
         ctx.fillStyle = lighten(color, 15); 
         ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.fill();
         
-        // Right
         ctx.fillStyle = darken(color, 10); 
         ctx.beginPath(); ctx.moveTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+BLOCK_HEIGHT); ctx.lineTo(pts[1].x,pts[1].y+BLOCK_HEIGHT); ctx.fill();
         
-        // Left
         ctx.fillStyle = darken(color, 25); 
         ctx.beginPath(); ctx.moveTo(pts[3].x,pts[3].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+BLOCK_HEIGHT); ctx.lineTo(pts[3].x,pts[3].y+BLOCK_HEIGHT); ctx.fill();
         
-        // Edge
         ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.closePath(); ctx.stroke();
 
-        // Glow (только для обычных блоков)
         if(highlight) {
             ctx.save(); ctx.globalAlpha = perfectMatchAlpha; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.shadowColor = "#ffffff"; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.moveTo(pts[3].x, pts[3].y+BLOCK_HEIGHT); ctx.lineTo(pts[2].x, pts[2].y+BLOCK_HEIGHT); ctx.lineTo(pts[1].x, pts[1].y+BLOCK_HEIGHT); ctx.stroke(); ctx.restore();
