@@ -18,70 +18,136 @@
         }
 
         body {
-            margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%;
-            background-color: var(--bg-light); color: var(--text-light);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-light);
+            color: var(--text-light);
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-            touch-action: none; user-select: none; -webkit-user-select: none;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         body.dark-mode {
-            background-color: var(--bg-dark); color: var(--text-dark);
-            --glass-bg: rgba(30, 30, 30, 0.85); --glass-border: rgba(255, 255, 255, 0.1);
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+            --glass-bg: rgba(30, 30, 30, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
         
         #game-background {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.05) 100%);
-            pointer-events: none; z-index: -1;
+            pointer-events: none;
+            z-index: -1;
         }
         body.dark-mode #game-background {
             background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%);
         }
 
-        canvas { display: block; width: 100%; height: 100%; cursor: pointer; z-index: 1; }
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
 
         #score {
-            position: absolute; top: 10%; left: 0; width: 100%; text-align: center;
-            font-size: 80px; font-weight: 800; color: var(--accent);
-            opacity: 1; font-feature-settings: "tnum";
+            position: absolute;
+            top: 10%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 80px; 
+            font-weight: 800;
+            color: var(--accent);
+            opacity: 1;
+            font-feature-settings: "tnum";
             text-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            
+            /* ИСПРАВЛЕНИЕ: Плавный переход цвета */
             transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.5s ease;
+            
             pointer-events: none;
         }
         #score.bump { transform: scale(1.2); }
 
-        /* Размер текста вернули как было */
         #start-msg {
-            position: absolute; bottom: 15%; width: 100%; text-align: center;
-            font-size: 17px; font-weight: 600; color: var(--accent);
-            opacity: 0.8; animation: pulse 2s infinite; text-transform: uppercase; letter-spacing: 1px;
+            position: absolute;
+            bottom: 15%;
+            width: 100%;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--accent);
+            opacity: 0.8;
+            animation: pulse 2s infinite;
         }
 
         #game-over-modal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 100;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 100;
         }
         #game-over-modal.visible { opacity: 1; pointer-events: auto; }
         
         .card {
-            background: var(--glass-bg); padding: 30px 20px; border-radius: 24px;
-            text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-            border: 1px solid var(--glass-border); width: 70%; max-width: 280px;
-            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: var(--glass-bg);
+            padding: 30px 20px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            border: 1px solid var(--glass-border);
+            width: 70%;
+            max-width: 280px;
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         #game-over-modal.visible .card { transform: scale(1); }
 
         .btn {
-            background: var(--accent); color: white; border: none; padding: 12px 20px;
-            border-radius: 14px; font-size: 17px; font-weight: 600; margin-top: 20px;
-            cursor: pointer; width: 100%; transition: transform 0.1s, opacity 0.2s;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            margin-top: 20px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.1s, opacity 0.2s;
             box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
         }
         .btn:active { opacity: 0.8; transform: scale(0.96); }
-        .crown-icon { width: 40px; height: 40px; fill: #ffffff; margin: 0 auto 10px auto; display: none; }
+        
+        .crown-icon {
+            width: 40px; height: 40px; 
+            fill: #ffffff; 
+            margin: 0 auto 10px auto; 
+            display: none;
+        }
 
         @keyframes pulse {
             0% { opacity: 0.5; transform: scale(0.98); }
@@ -93,6 +159,7 @@
 <body>
 
     <div id="game-background"></div>
+
     <div class="ui-layer">
         <div id="score">0</div>
         <div id="start-msg">Нажми, чтобы начать</div>
@@ -111,21 +178,20 @@
     <canvas id="canvas"></canvas>
 
 <script>
-    const tg = window.Telegram.WebApp; tg.expand();
+    const tg = window.Telegram.WebApp;
+    tg.expand();
     const isDark = tg.colorScheme === 'dark';
     if(isDark) document.body.classList.add('dark-mode');
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const els = {
-        score: document.getElementById('score'),
-        startMsg: document.getElementById('start-msg'),
-        modal: document.getElementById('game-over-modal'),
-        finalScore: document.getElementById('final-score'),
-        goTitle: document.getElementById('go-title'),
-        goSub: document.getElementById('go-subtitle'),
-        crown: document.getElementById('crown')
-    };
+    const scoreEl = document.getElementById('score');
+    const startMsg = document.getElementById('start-msg');
+    const modal = document.getElementById('game-over-modal');
+    const finalScoreEl = document.getElementById('final-score');
+    const goTitle = document.getElementById('go-title');
+    const goSub = document.getElementById('go-subtitle');
+    const crown = document.getElementById('crown');
 
     let blocks = [];
     let debris = []; 
@@ -138,11 +204,11 @@
     let currentBlock = null;
     let direction = 'x'; 
     let speed = 3.0;
+    
     let bestScore = parseInt(localStorage.getItem('tower_best') || 0);
 
     const BLOCK_HEIGHT = 35; 
     const BASE_SIZE = 130; 
-    const SPAWN_DIST = 360; 
     
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
@@ -152,11 +218,12 @@
     window.addEventListener('resize', resize);
     resize();
 
+    // Функция жесткого сброса переменных
     function resetGameVariables() {
         blocks = [];
         debris = [];
         score = 0;
-        speed = 3.0;
+        speed = 3.0; // Гарантированный сброс скорости
         direction = 'x';
         hue = Math.floor(Math.random() * 360);
         state = 'playing';
@@ -167,12 +234,18 @@
 
     function startGame() {
         resetGameVariables();
-        els.score.innerText = score;
-        els.score.style.color = "var(--accent)"; 
-        els.startMsg.style.display = 'none';
-        els.modal.classList.remove('visible');
+        
+        scoreEl.innerText = score;
+        // Сброс цвета счетчика на дефолтный (синий) при старте
+        scoreEl.style.color = "var(--accent)"; 
+        
+        startMsg.style.display = 'none';
+        modal.classList.remove('visible');
 
-        addBlock({ x: 0, z: 0, w: BASE_SIZE, d: BASE_SIZE, color: getHSL(hue) });
+        addBlock({
+            x: 0, z: 0, w: BASE_SIZE, d: BASE_SIZE, color: getHSL(hue)
+        });
+
         spawnNextBlock();
         loop();
     }
@@ -183,26 +256,25 @@
         const prev = blocks[blocks.length - 1];
         hue += 6; 
         direction = direction === 'x' ? 'z' : 'x'; 
-        const nextColor = getHSL(hue);
-        els.score.style.color = nextColor;
+        const dist = 350;
         
-        // ВЕРНУЛИ КЛАССИЧЕСКИЙ СПАВН:
-        // Всегда появляется с отрицательной координаты и летит в плюс (слева направо / сверху вниз)
-        const startPos = -SPAWN_DIST;
-        const moveDir = 1;
+        const nextColor = getHSL(hue);
 
+        // ИСПРАВЛЕНИЕ: Меняем цвет счетчика под цвет фигуры
+        scoreEl.style.color = nextColor;
+        
         currentBlock = {
-            x: direction === 'x' ? startPos : prev.x,
-            z: direction === 'z' ? startPos : prev.z,
+            x: direction === 'x' ? -dist : prev.x,
+            z: direction === 'z' ? -dist : prev.z,
             w: prev.w, d: prev.d,
             color: nextColor,
-            moveDir: moveDir 
+            moveDir: 1 
         };
     }
 
     function updatePhysics() {
         if (state !== 'playing' || !currentBlock) return;
-        const limit = SPAWN_DIST + 10;
+        const limit = 360;
         
         if (direction === 'x') {
             currentBlock.x += speed * currentBlock.moveDir;
@@ -216,6 +288,7 @@
 
         const targetY = (blocks.length * BLOCK_HEIGHT) - 150;
         if(targetY > 0) cameraY += (targetY - cameraY) * 0.05;
+
         if(perfectMatchAlpha > 0) perfectMatchAlpha -= 0.05;
     }
 
@@ -231,17 +304,18 @@
     function placeBlock() {
         if (!currentBlock) return;
         const prev = blocks[blocks.length - 1];
-        
-        const diff = direction === 'x' ? currentBlock.x - prev.x : currentBlock.z - prev.z;
-        const absDiff = Math.abs(diff);
+        let diff;
+        if (direction === 'x') diff = currentBlock.x - prev.x;
+        else diff = currentBlock.z - prev.z;
 
-        // Идеальное попадание
-        if (absDiff < 4) {
+        if (Math.abs(diff) < 4) {
             currentBlock.x = prev.x;
             currentBlock.z = prev.z;
+            currentBlock.w = prev.w;
+            currentBlock.d = prev.d;
             
-            els.score.classList.add('bump');
-            setTimeout(() => els.score.classList.remove('bump'), 150);
+            scoreEl.classList.add('bump');
+            setTimeout(() => scoreEl.classList.remove('bump'), 150);
             tg.HapticFeedback.notificationOccurred('success');
             
             perfectMatchAlpha = 1.0;
@@ -249,63 +323,65 @@
             return;
         }
 
-        const size = direction === 'x' ? prev.w : prev.d;
-        
-        // Знак: 1 = Перелет (кусок справа/снизу), -1 = Недолет (кусок слева/сверху)
-        const sign = diff > 0 ? 1 : -1;
-        
-        // Промах (Game Over)
-        if (absDiff >= size) {
-            const isBehind = diff < 0; 
-            
-            // Если промах, летит в ту же сторону, где оказался лишний кусок
-            const vx = direction === 'x' ? sign * 2 : 0;
-            const vz = direction === 'z' ? sign * 2 : 0;
-            
-            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, vx, vz, sign, isBehind);
-            gameOver();
-            return;
-        }
+        let overlap, cutSize, debrisX, debrisZ;
+        let isGameOver = false;
+        let impulseX = 0, impulseZ = 0;
+        let debrisBehind = (diff < 0);
 
-        // Отрезание
-        const cutSize = absDiff;
-        const overlap = size - cutSize;
-        
         if (direction === 'x') {
-            currentBlock.w = overlap;
-            currentBlock.x = prev.x + (diff / 2);
-            
-            const debrisX = currentBlock.x + (overlap/2 + cutSize/2) * sign;
-            
-            // Если sign > 0 (перелет) -> летит вправо, крутится по часовой
-            // Если sign < 0 (недолет) -> летит влево, крутится против часовой
-            addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, sign * 2, 0, sign, diff < 0);
-        } else {
-            currentBlock.d = overlap;
-            currentBlock.z = prev.z + (diff / 2);
-            
-            const debrisZ = currentBlock.z + (overlap/2 + cutSize/2) * sign;
-            addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, sign * 2, sign, diff < 0);
+            overlap = prev.w - Math.abs(diff);
+            if (overlap > 0) {
+                cutSize = Math.abs(diff);
+                currentBlock.w = overlap; 
+                if (diff > 0) { 
+                    currentBlock.x = prev.x + (diff / 2);
+                    debrisX = currentBlock.x + (overlap/2) + (cutSize/2);
+                    impulseX = 2.5; 
+                } else { 
+                    currentBlock.x = prev.x + (diff / 2);
+                    debrisX = currentBlock.x - (overlap/2) - (cutSize/2);
+                    impulseX = -2.5;
+                }
+                addDebris(debrisX, currentBlock.z, cutSize, currentBlock.d, impulseX, 0, debrisBehind);
+            } else isGameOver = true;
+        } else { 
+            overlap = prev.d - Math.abs(diff);
+            if (overlap > 0) {
+                cutSize = Math.abs(diff);
+                currentBlock.d = overlap; 
+                if (diff > 0) { 
+                    currentBlock.z = prev.z + (diff / 2);
+                    debrisZ = currentBlock.z + (overlap/2) + (cutSize/2);
+                    impulseZ = 2.5;
+                } else { 
+                    currentBlock.z = prev.z + (diff / 2);
+                    debrisZ = currentBlock.z - (overlap/2) - (cutSize/2);
+                    impulseZ = -2.5;
+                }
+                addDebris(currentBlock.x, debrisZ, currentBlock.w, cutSize, 0, impulseZ, debrisBehind);
+            } else isGameOver = true;
         }
 
-        tg.HapticFeedback.impactOccurred('light');
-        commitBlock();
+        if (isGameOver) {
+            let gameOverBehind = (diff < 0); 
+            addDebris(currentBlock.x, currentBlock.z, currentBlock.w, currentBlock.d, direction==='x'?currentBlock.moveDir*2:0, direction==='z'?currentBlock.moveDir*2:0, gameOverBehind);
+            gameOver();
+        } else {
+            tg.HapticFeedback.impactOccurred('light');
+            commitBlock();
+        }
     }
 
     function commitBlock() {
         addBlock(currentBlock);
         score++;
-        els.score.innerText = score;
+        scoreEl.innerText = score;
         speed += 0.02; 
         spawnNextBlock();
     }
 
-    function addDebris(x, z, w, d, vx, vz, sign, isBehind) {
-        // Вращение зависит от sign (стороны, с которой отвалилось)
-        // sign = 1 -> вращение положительное (CW)
-        // sign = -1 -> вращение отрицательное (CCW)
-        const va = sign * 0.05;
-        
+    function addDebris(x, z, w, d, vx, vz, isBehind) {
+        const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.04); 
         debris.push({
             x: x, z: z, w: w, d: d,
             color: currentBlock.color,
@@ -313,7 +389,7 @@
             vx: vx, vz: vz,
             yOffset: 0,
             angle: 0, 
-            vRot: va, 
+            vRot: rotSpeed, 
             alpha: 1,
             isBehind: isBehind
         });
@@ -322,7 +398,7 @@
     function gameOver() {
         state = 'gameover';
         tg.HapticFeedback.notificationOccurred('error');
-        els.finalScore.innerText = score;
+        finalScoreEl.innerText = score;
         
         let isRecord = false;
         if(score > bestScore) {
@@ -331,21 +407,21 @@
             isRecord = true;
         }
 
-        if(isDark) els.finalScore.style.color = '#ffffff';
-        else els.finalScore.style.color = '#000000';
+        if(isDark) finalScoreEl.style.color = '#ffffff';
+        else finalScoreEl.style.color = '#000000';
 
         if(isRecord && score > 0) {
-            els.goTitle.innerText = "Новый рекорд!";
-            els.goSub.innerText = "Вы построили огромную башню!";
-            els.crown.style.display = "block";
-            els.finalScore.style.color = "var(--accent)";
+            goTitle.innerText = "Новый рекорд!";
+            goSub.innerText = "Вы построили огромную башню!";
+            crown.style.display = "block";
+            finalScoreEl.style.color = "var(--accent)";
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 20000 });
         } else {
-            els.goTitle.innerText = "Игра окончена";
-            els.goSub.innerText = `Лучший: ${bestScore}`;
-            els.crown.style.display = "none";
+            goTitle.innerText = "Игра окончена";
+            goSub.innerText = `Лучший: ${bestScore}`;
+            crown.style.display = "none";
         }
-        els.modal.classList.add('visible');
+        modal.classList.add('visible');
     }
 
     function restartGame() { startGame(); }
@@ -377,11 +453,11 @@
     }
     
     function updateAndDrawDebris(d, cx, cy) {
-        d.vy += 0.8; 
+        d.vy += 0.5; 
         d.yOffset -= d.vy;
         d.x += d.vx; d.z += d.vz;
         d.angle += d.vRot; 
-        d.alpha -= 0.02; 
+        d.alpha -= 0.015; 
         
         const stackY = (blocks.length) * BLOCK_HEIGHT + d.yOffset;
 
@@ -401,9 +477,25 @@
     }
     
     function drawRotatedIsoBlock(w, d, color) {
-        const p = (dx, dz) => ({ x: (dx - dz), y: (dx + dz) * 0.5 - BLOCK_HEIGHT/2 });
-        const pts = [p(-w/2, -d/2), p(w/2, -d/2), p(w/2, d/2), p(-w/2, d/2)];
-        drawFace(pts, color);
+        const vecX_x = 1;   const vecX_y = 0.5;
+        const vecZ_x = -1;  const vecZ_y = 0.5;
+        
+        function getLocIso(lx, lz) {
+            return {
+                x: (lx * vecX_x + lz * vecZ_x),
+                y: (lx * vecX_y + lz * vecZ_y) - (BLOCK_HEIGHT/2)
+            };
+        }
+        
+        const p_top = getLocIso(-w/2, -d/2);
+        const p_right = getLocIso(w/2, -d/2);
+        const p_bottom = getLocIso(w/2, d/2);
+        const p_left = getLocIso(-w/2, d/2);
+
+        ctx.fillStyle = lighten(color, 15); ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 10); ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 25); ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
     }
 
     function drawIsoBlock(cx, cy, x, z, w, d, yLevel, color, highlight) {
@@ -412,35 +504,45 @@
         const screenX = cx + isoX;
         const screenY = cy + isoY - yLevel + cameraY;
 
-        const p = (dx, dz) => ({ x: screenX + (dx - dz), y: screenY + (dx + dz) * 0.5 - BLOCK_HEIGHT });
-        const pts = [p(-w/2, -d/2), p(w/2, -d/2), p(w/2, d/2), p(-w/2, d/2)];
+        const p_top = getIsoPoint(screenX, screenY, -w/2, -d/2);
+        const p_right = getIsoPoint(screenX, screenY, w/2, -d/2);
+        const p_bottom = getIsoPoint(screenX, screenY, w/2, d/2);
+        const p_left = getIsoPoint(screenX, screenY, -w/2, d/2);
 
-        drawFace(pts, color, highlight);
-    }
-
-    function drawFace(pts, color, highlight = false) {
-        ctx.fillStyle = lighten(color, 15); 
-        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.fill();
-        
-        ctx.fillStyle = darken(color, 10); 
-        ctx.beginPath(); ctx.moveTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+BLOCK_HEIGHT); ctx.lineTo(pts[1].x,pts[1].y+BLOCK_HEIGHT); ctx.fill();
-        
-        ctx.fillStyle = darken(color, 25); 
-        ctx.beginPath(); ctx.moveTo(pts[3].x,pts[3].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[2].x,pts[2].y+BLOCK_HEIGHT); ctx.lineTo(pts[3].x,pts[3].y+BLOCK_HEIGHT); ctx.fill();
-        
-        ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.closePath(); ctx.stroke();
+        ctx.fillStyle = lighten(color, 15); ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 10); ctx.beginPath(); ctx.moveTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = darken(color, 25); ctx.beginPath(); ctx.moveTo(p_left.x, p_left.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT); ctx.lineTo(p_left.x, p_left.y + BLOCK_HEIGHT); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p_top.x, p_top.y); ctx.lineTo(p_right.x, p_right.y); ctx.lineTo(p_bottom.x, p_bottom.y); ctx.lineTo(p_left.x, p_left.y); ctx.closePath(); ctx.stroke();
 
         if(highlight) {
-            ctx.save(); ctx.globalAlpha = perfectMatchAlpha; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.shadowColor = "#ffffff"; ctx.shadowBlur = 15;
-            ctx.beginPath(); ctx.moveTo(pts[3].x, pts[3].y+BLOCK_HEIGHT); ctx.lineTo(pts[2].x, pts[2].y+BLOCK_HEIGHT); ctx.lineTo(pts[1].x, pts[1].y+BLOCK_HEIGHT); ctx.stroke(); ctx.restore();
+            ctx.save();
+            ctx.globalAlpha = perfectMatchAlpha;
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.moveTo(p_left.x, p_left.y + BLOCK_HEIGHT);
+            ctx.lineTo(p_bottom.x, p_bottom.y + BLOCK_HEIGHT);
+            ctx.lineTo(p_right.x, p_right.y + BLOCK_HEIGHT);
+            ctx.stroke();
+            ctx.restore();
         }
     }
     
+    function getIsoPoint(cx, cy, dx, dz) {
+        return { x: cx + (dx - dz), y: cy + (dx + dz) * 0.5 - BLOCK_HEIGHT };
+    }
+
     function getHSL(h) { return `hsl(${Math.floor(h % 360)}, 75%, ${isDark ? 60 : 55}%)`; }
-    function modL(c, a) { return c.replace(/(\d+)%\)/, (m, l) => Math.max(0, Math.min(100, +l+a)) + "%)"); }
-    function lighten(c, a) { return modL(c, a); }
-    function darken(c, a) { return modL(c, -a); }
+    function lighten(hsl, amt) { return adjustLight(hsl, amt); }
+    function darken(hsl, amt) { return adjustLight(hsl, -amt); }
+    function adjustLight(hsl, amt) {
+        const parts = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+        if(!parts) return hsl;
+        let l = Math.max(0, Math.min(100, parseInt(parts[3]) + amt));
+        return `hsl(${parts[1]}, ${parts[2]}%, ${l}%)`;
+    }
 
     document.addEventListener('pointerdown', handleAction);
     document.addEventListener('keydown', (e) => { if(e.code === 'Space') handleAction(e); });
