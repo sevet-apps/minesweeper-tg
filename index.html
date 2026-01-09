@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -410,25 +410,33 @@
             crown.style.display = "block";
             finalScoreEl.style.color = "var(--accent)";
             
-            // ИСПРАВЛЕНИЕ: Два залпа конфетти с боков, круглые
-            
-            // Левый залп
+            // ИСПРАВЛЕНИЕ: Конфетти по дуге (арке)
+
+            // Левый залп (летит вправо по дуге)
             confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { x: 0, y: 0.6 }, // Слева, чуть ниже середины
+                particleCount: 80,
+                spread: 50,
+                origin: { x: 0, y: 0.6 },
                 angle: 60,
                 shapes: ['circle'],
+                startVelocity: 65, // Выше скорость
+                gravity: 0.8,      // Ниже гравитация для высокой дуги
+                drift: 2,          // Снос вправо
+                ticks: 300,
                 zIndex: 20000
             });
 
-            // Правый залп
+            // Правый залп (летит влево по дуге)
             confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { x: 1, y: 0.6 }, // Справа, чуть ниже середины
+                particleCount: 80,
+                spread: 50,
+                origin: { x: 1, y: 0.6 },
                 angle: 120,
                 shapes: ['circle'],
+                startVelocity: 65,
+                gravity: 0.8,
+                drift: -2,         // Снос влево
+                ticks: 300,
                 zIndex: 20000
             });
 
