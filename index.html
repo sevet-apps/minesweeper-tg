@@ -864,6 +864,8 @@
             const sapWins = parseInt(localStorage.getItem('saper_wins') || 0); if(sapWins > 0) sendStatToBackend('saper_wins', sapWins);
             const chTotal = parseInt(localStorage.getItem('checkers_total') || 0); if(chTotal > 0) sendStatToBackend('checkers_total', chTotal);
             const chWins = parseInt(localStorage.getItem('checkers_wins_pve') || 0); if(chWins > 0) sendStatToBackend('checkers_wins_pve', chWins);
+            const twBest = parseInt(localStorage.getItem('tower_best') || 0); if(twBest > 0) sendStatToBackend('tower_best', twBest);
+            const twCombo = parseInt(localStorage.getItem('tower_combo') || 0); if(twCombo > 0) sendStatToBackend('tower_combo', twCombo);
         }
 
         // --- LEADERBOARD LOGIC ---
