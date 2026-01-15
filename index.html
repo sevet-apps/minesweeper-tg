@@ -18,10 +18,15 @@
             --tab-bg: rgba(255,255,255,0.95); 
             --toggle-bg: #e9e9ea; 
             --toggle-circle: #ffffff; 
-            --icon-color: #3a3a3c; 
+            --icon-color: #3a3a3c;
+            
+            /* Цвет узора на фоне (Светлая тема - серые иконки) */
+            --pattern-color: rgba(0, 0, 0, 0.07); 
+            
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
+        
         [data-theme="dark"] { 
             --bg-color: #000000; 
             --text-color: #ffffff; 
@@ -31,7 +36,10 @@
             --toggle-bg: #2c2c2e; 
             --toggle-circle: #636366; 
             --icon-color: #aeaeb2; 
-            --accent: #0a84ff;
+            --accent: #0a84ff; 
+            
+            /* Цвет узора на фоне (Темная тема - белые иконки с сильной прозрачностью) */
+            --pattern-color: rgba(255, 255, 255, 0.08); 
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -48,55 +56,46 @@
             transition: background-color 0.4s ease; 
         }
         
-        /* Фоновый паттерн */
-        .bg-pattern {
+        /* Стили для фонового паттерна */
+        #background-pattern {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
+            top: -10%; /* Вылезаем за края, чтобы перекрыть safe-area и границы */
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            z-index: -1; /* Помещаем позади всего */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            pointer-events: none; /* Чтобы не мешал кликам */
             overflow: hidden;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.3s ease;
+        }
+
+        .pattern-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--pattern-color);
+            transition: color 0.4s ease;
         }
         
-        .bg-pattern svg {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: auto;
-            height: 100%;
-            min-width: 100%;
+        .pattern-item svg {
+            width: 60%; /* Размер иконки относительно ячейки */
+            height: 60%;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         
-        /* Светлая тема - серый паттерн */
-        [data-theme="light"] .bg-pattern svg {
-            opacity: 0.15;
+        /* Lite Mode: скрываем фон для производительности */
+        body.lite-mode #background-pattern {
+            opacity: 0;
         }
-        
-        [data-theme="light"] .bg-pattern svg path,
-        [data-theme="light"] .bg-pattern svg circle,
-        [data-theme="light"] .bg-pattern svg rect,
-        [data-theme="light"] .bg-pattern svg line {
-            fill: #000 !important;
-            stroke: #000 !important;
-        }
-        
-        /* Тёмная тема - светлый паттерн */
-        [data-theme="dark"] .bg-pattern svg {
-            opacity: 0.08;
-        }
-        
-        [data-theme="dark"] .bg-pattern svg path,
-        [data-theme="dark"] .bg-pattern svg circle,
-        [data-theme="dark"] .bg-pattern svg rect,
-        [data-theme="dark"] .bg-pattern svg line {
-            fill: #fff !important;
-            stroke: #fff !important;
-        }
-        
+
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } 
         .icon-sm { width: 18px; height: 18px; }
         
@@ -111,14 +110,13 @@
             padding-bottom: calc(20px + var(--safe-bottom)); 
             overflow-y: auto; 
             -webkit-overflow-scrolling: touch; 
-            opacity: 1;
-            z-index: 1;
+            opacity: 1; 
         } 
         
         .header { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; margin-top: 10px; } 
         .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
 
         .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; box-shadow: var(--shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
@@ -133,233 +131,17 @@
 
         .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
         
-        /* Lite Mode styles */
-        body.lite-mode .settings-group,
-        body.lite-mode .stat-box {
+        body.lite-mode .settings-group {
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
-        }
-        
-        .stat-box {
-            background: var(--glass-bg); 
-            padding: 15px; 
-            border-radius: 15px; 
-            text-align: center;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
+            background: var(--bg-color); /* Fallback если нет блюра */
+            border: 1px solid rgba(128,128,128,0.1);
         }
     </style>
 </head>
 <body>
-    <!-- Фоновый паттерн -->
-    <div class="bg-pattern">
-        <svg width="395" height="855" viewBox="0 0 395 855" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <!-- Футбольный мяч -->
-            <g id="football">
-              <circle cx="0" cy="0" r="18" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M0 -18 L0 -10 M0 18 L0 10 M-18 0 L-10 0 M18 0 L10 0" stroke="currentColor" stroke-width="1"/>
-              <path d="M-6 -8 L6 -8 L10 0 L6 8 L-6 8 L-10 0 Z" stroke="currentColor" stroke-width="1" fill="none"/>
-            </g>
-            
-            <!-- Геймпад -->
-            <g id="gamepad">
-              <rect x="-22" y="-12" width="44" height="24" rx="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <circle cx="-12" cy="0" r="5" stroke="currentColor" stroke-width="1" fill="none"/>
-              <line x1="-12" y1="-3" x2="-12" y2="3" stroke="currentColor" stroke-width="1"/>
-              <line x1="-15" y1="0" x2="-9" y2="0" stroke="currentColor" stroke-width="1"/>
-              <circle cx="10" cy="-3" r="2" stroke="currentColor" stroke-width="1" fill="none"/>
-              <circle cx="14" cy="1" r="2" stroke="currentColor" stroke-width="1" fill="none"/>
-              <circle cx="6" cy="1" r="2" stroke="currentColor" stroke-width="1" fill="none"/>
-              <circle cx="10" cy="5" r="2" stroke="currentColor" stroke-width="1" fill="none"/>
-            </g>
-            
-            <!-- Теннисная ракетка -->
-            <g id="tennis">
-              <ellipse cx="0" cy="-10" rx="14" ry="18" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <line x1="0" y1="8" x2="0" y2="28" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="-10" y1="-18" x2="10" y2="-2" stroke="currentColor" stroke-width="0.8"/>
-              <line x1="10" y1="-18" x2="-10" y2="-2" stroke="currentColor" stroke-width="0.8"/>
-              <line x1="-12" y1="-10" x2="12" y2="-10" stroke="currentColor" stroke-width="0.8"/>
-              <line x1="0" y1="-26" x2="0" y2="6" stroke="currentColor" stroke-width="0.8"/>
-            </g>
-            
-            <!-- Баскетбольный мяч -->
-            <g id="basketball">
-              <circle cx="0" cy="0" r="16" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M-16 0 Q0 -8 16 0" stroke="currentColor" stroke-width="1" fill="none"/>
-              <path d="M-16 0 Q0 8 16 0" stroke="currentColor" stroke-width="1" fill="none"/>
-              <line x1="0" y1="-16" x2="0" y2="16" stroke="currentColor" stroke-width="1"/>
-            </g>
-            
-            <!-- Хоккейная клюшка -->
-            <g id="hockey">
-              <path d="M0 -25 L0 10 Q0 18 -8 20 L-18 22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <ellipse cx="-14" cy="21" rx="6" ry="3" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            </g>
-            
-            <!-- Шахматный конь -->
-            <g id="chess">
-              <path d="M-8 16 L8 16 L6 10 L8 4 Q10 -4 4 -10 L6 -16 Q2 -14 -2 -16 Q-6 -12 -4 -6 Q-10 -2 -8 6 L-6 10 Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <circle cx="0" cy="-8" r="2" fill="currentColor"/>
-            </g>
-            
-            <!-- Игральные кости -->
-            <g id="dice">
-              <rect x="-12" y="-12" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <circle cx="-5" cy="-5" r="2" fill="currentColor"/>
-              <circle cx="5" cy="-5" r="2" fill="currentColor"/>
-              <circle cx="0" cy="0" r="2" fill="currentColor"/>
-              <circle cx="-5" cy="5" r="2" fill="currentColor"/>
-              <circle cx="5" cy="5" r="2" fill="currentColor"/>
-            </g>
-            
-            <!-- Бильярдный шар -->
-            <g id="billiard">
-              <circle cx="0" cy="0" r="14" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <ellipse cx="0" cy="0" rx="8" ry="5" stroke="currentColor" stroke-width="1" fill="none"/>
-              <text x="0" y="2" text-anchor="middle" font-size="8" font-weight="bold" fill="currentColor">8</text>
-            </g>
-            
-            <!-- Дартс -->
-            <g id="darts">
-              <circle cx="0" cy="0" r="16" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <circle cx="0" cy="0" r="10" stroke="currentColor" stroke-width="1" fill="none"/>
-              <circle cx="0" cy="0" r="4" stroke="currentColor" stroke-width="1" fill="none"/>
-              <circle cx="0" cy="0" r="1.5" fill="currentColor"/>
-            </g>
-            
-            <!-- Боулинг кегля -->
-            <g id="bowling">
-              <path d="M-6 18 Q-8 10 -4 0 Q-6 -8 -3 -14 Q0 -18 3 -14 Q6 -8 4 0 Q8 10 6 18 Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <ellipse cx="0" cy="-12" rx="3" ry="2" stroke="currentColor" stroke-width="1" fill="none"/>
-            </g>
-            
-            <!-- Пинг-понг ракетка -->
-            <g id="pingpong">
-              <circle cx="0" cy="-6" r="14" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <line x1="0" y1="8" x2="0" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </g>
-            
-            <!-- Бейсбольная бита -->
-            <g id="baseball">
-              <path d="M-2 -24 Q-4 -20 -4 -10 Q-6 10 -3 22 Q0 26 3 22 Q6 10 4 -10 Q4 -20 2 -24 Q0 -26 -2 -24" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <line x1="-3" y1="-16" x2="3" y2="-16" stroke="currentColor" stroke-width="1"/>
-              <line x1="-3" y1="-12" x2="3" y2="-12" stroke="currentColor" stroke-width="1"/>
-            </g>
-            
-            <!-- Волейбольный мяч -->
-            <g id="volleyball">
-              <circle cx="0" cy="0" r="15" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M-15 0 Q-5 -12 5 -10 Q12 -5 15 0" stroke="currentColor" stroke-width="1" fill="none"/>
-              <path d="M-15 0 Q-5 12 5 10 Q12 5 15 0" stroke="currentColor" stroke-width="1" fill="none"/>
-              <path d="M0 -15 Q-8 -5 -8 5 Q-5 12 0 15" stroke="currentColor" stroke-width="1" fill="none"/>
-            </g>
-            
-            <!-- Джойстик -->
-            <g id="joystick">
-              <ellipse cx="0" cy="10" rx="16" ry="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <line x1="0" y1="2" x2="0" y2="-14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <circle cx="0" cy="-16" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            </g>
-            
-            <!-- Карты -->
-            <g id="cards">
-              <rect x="-14" y="-18" width="22" height="32" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <rect x="-8" y="-14" width="22" height="32" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <text x="3" y="4" text-anchor="middle" font-size="14" fill="currentColor">♠</text>
-            </g>
-            
-            <!-- Руль -->
-            <g id="wheel">
-              <circle cx="0" cy="0" r="16" stroke="currentColor" stroke-width="2" fill="none"/>
-              <circle cx="0" cy="0" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <line x1="0" y1="-4" x2="0" y2="-16" stroke="currentColor" stroke-width="2"/>
-              <line x1="3.5" y1="2" x2="14" y2="8" stroke="currentColor" stroke-width="2"/>
-              <line x1="-3.5" y1="2" x2="-14" y2="8" stroke="currentColor" stroke-width="2"/>
-            </g>
-          </defs>
-          
-          <!-- Row 1 -->
-          <use href="#gamepad" transform="translate(45, 40) rotate(-15)"/>
-          <use href="#football" transform="translate(130, 50) rotate(10)"/>
-          <use href="#tennis" transform="translate(215, 35) rotate(-25)"/>
-          <use href="#dice" transform="translate(295, 55) rotate(20)"/>
-          <use href="#basketball" transform="translate(365, 40) rotate(-5)"/>
-          
-          <!-- Row 2 -->
-          <use href="#hockey" transform="translate(35, 125) rotate(25)"/>
-          <use href="#chess" transform="translate(105, 120) rotate(-10)"/>
-          <use href="#billiard" transform="translate(180, 130) rotate(15)"/>
-          <use href="#darts" transform="translate(260, 115) rotate(-20)"/>
-          <use href="#pingpong" transform="translate(340, 125) rotate(12)"/>
-          
-          <!-- Row 3 -->
-          <use href="#bowling" transform="translate(50, 200) rotate(-18)"/>
-          <use href="#joystick" transform="translate(135, 210) rotate(8)"/>
-          <use href="#cards" transform="translate(220, 195) rotate(-12)"/>
-          <use href="#wheel" transform="translate(305, 205) rotate(22)"/>
-          <use href="#volleyball" transform="translate(375, 195) rotate(-8)"/>
-          
-          <!-- Row 4 -->
-          <use href="#tennis" transform="translate(30, 285) rotate(30)"/>
-          <use href="#gamepad" transform="translate(115, 280) rotate(-22)"/>
-          <use href="#football" transform="translate(195, 290) rotate(5)"/>
-          <use href="#baseball" transform="translate(275, 275) rotate(-30)"/>
-          <use href="#chess" transform="translate(355, 285) rotate(18)"/>
-          
-          <!-- Row 5 -->
-          <use href="#darts" transform="translate(55, 360) rotate(-12)"/>
-          <use href="#basketball" transform="translate(140, 370) rotate(25)"/>
-          <use href="#hockey" transform="translate(225, 355) rotate(-20)"/>
-          <use href="#dice" transform="translate(305, 365) rotate(8)"/>
-          <use href="#billiard" transform="translate(375, 355) rotate(-15)"/>
-          
-          <!-- Row 6 -->
-          <use href="#pingpong" transform="translate(40, 440) rotate(20)"/>
-          <use href="#wheel" transform="translate(120, 435) rotate(-28)"/>
-          <use href="#bowling" transform="translate(200, 445) rotate(12)"/>
-          <use href="#joystick" transform="translate(280, 430) rotate(-8)"/>
-          <use href="#cards" transform="translate(360, 440) rotate(25)"/>
-          
-          <!-- Row 7 -->
-          <use href="#volleyball" transform="translate(50, 515) rotate(-22)"/>
-          <use href="#chess" transform="translate(130, 525) rotate(15)"/>
-          <use href="#gamepad" transform="translate(215, 510) rotate(-5)"/>
-          <use href="#tennis" transform="translate(295, 520) rotate(28)"/>
-          <use href="#football" transform="translate(370, 510) rotate(-18)"/>
-          
-          <!-- Row 8 -->
-          <use href="#baseball" transform="translate(35, 595) rotate(22)"/>
-          <use href="#darts" transform="translate(115, 590) rotate(-15)"/>
-          <use href="#billiard" transform="translate(195, 600) rotate(10)"/>
-          <use href="#hockey" transform="translate(275, 585) rotate(-25)"/>
-          <use href="#basketball" transform="translate(355, 595) rotate(5)"/>
-          
-          <!-- Row 9 -->
-          <use href="#dice" transform="translate(55, 670) rotate(-10)"/>
-          <use href="#pingpong" transform="translate(140, 680) rotate(18)"/>
-          <use href="#wheel" transform="translate(225, 665) rotate(-22)"/>
-          <use href="#bowling" transform="translate(305, 675) rotate(12)"/>
-          <use href="#joystick" transform="translate(380, 665) rotate(-8)"/>
-          
-          <!-- Row 10 -->
-          <use href="#cards" transform="translate(40, 750) rotate(25)"/>
-          <use href="#volleyball" transform="translate(120, 755) rotate(-12)"/>
-          <use href="#gamepad" transform="translate(200, 745) rotate(8)"/>
-          <use href="#chess" transform="translate(280, 755) rotate(-20)"/>
-          <use href="#tennis" transform="translate(360, 745) rotate(15)"/>
-          
-          <!-- Row 11 -->
-          <use href="#football" transform="translate(55, 825) rotate(-8)"/>
-          <use href="#hockey" transform="translate(135, 830) rotate(22)"/>
-          <use href="#darts" transform="translate(215, 820) rotate(-15)"/>
-          <use href="#billiard" transform="translate(295, 830) rotate(10)"/>
-          <use href="#basketball" transform="translate(370, 820) rotate(-25)"/>
-        </svg>
-        
-    </div>
+
+    <div id="background-pattern"></div>
 
     <div id="view-profile" class="screen"> 
         <div class="header">
@@ -374,9 +156,7 @@
             <div class="settings-group">
                 <div class="settings-row">
                     <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         Тема
                     </div>
                     <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
@@ -390,12 +170,8 @@
                 
                 <div class="settings-row">
                     <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                        Упрощённая графика
+                        <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        Упрощенная графика
                     </div>
                     <div class="theme-switch" id="liteToggle" onclick="toggleLiteMode()"> 
                         <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
@@ -405,43 +181,43 @@
             </div>
 
             <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
-                <div class="stat-box"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
                     <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> 
                 </div> 
-                <div class="stat-box"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
                     <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> 
                     <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> 
                 </div> 
                 
-                <div class="stat-box"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
                     <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> 
                 </div> 
-                <div class="stat-box"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
                     <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> 
                 </div> 
                 
-                <div class="stat-box"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
                     <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Block Игр</div> 
                 </div> 
-                <div class="stat-box"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
                     <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> 
                 </div> 
                 
-                <div class="stat-box" style="grid-column: span 2;"> 
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center; grid-column: span 2;"> 
                     <div id="stat-sudoku-wins" style="font-size:20px; font-weight:800; color:#5856d6;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Судоку Побед</div> 
                 </div> 
 
-                <div class="stat-box">
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
                     <div id="stat-tower-best" style="font-size:20px; font-weight:800; color:#FF2D55;">0</div>
                     <div style="font-size:12px; color:#8e8e93;">Башня Рекорд</div>
                 </div>
-                <div class="stat-box">
+                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
                     <div id="stat-tower-combo" style="font-size:20px; font-weight:800; color:#FF375F;">0</div>
                     <div style="font-size:12px; color:#8e8e93;">Чистая серия</div>
                 </div>
@@ -453,7 +229,6 @@
         const tg = window.Telegram.WebApp; 
         tg.expand();
 
-        // Логика Темы
         let savedTheme = localStorage.getItem('glass_theme');
         let isDark;
         if (savedTheme) {
@@ -464,10 +239,77 @@
 
         let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
 
+        // --- НАБОР SVG ПУТЕЙ (Игровые и Спортивные элементы) ---
+        const svgs = [
+            // Мяч (Футбол)
+            '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="m12 12-3-2-2 3 1 3h8l1-3-2-3z"/><path d="M12 7V2M7 9l-4-2M17 9l4-2M7 15l-4 2M17 15l4 2"/>',
+            // Геймпад
+            '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4"/><circle cx="15" cy="12" r="1"/><circle cx="17" cy="12" r="1"/>',
+            // Кубок
+            '<path d="M8 21h8m-4-9v9m0-18h-5a4 4 0 0 0-4 4v2a5 5 0 0 0 5 5h8a5 5 0 0 0 5-5v-2a4 4 0 0 0-4-4h-5"/>',
+            // Баскетбольный мяч
+            '<circle cx="12" cy="12" r="10"/><path d="M5.65 5.65a10 10 0 0 0 12.7 0"/><path d="M12 2v20"/><path d="M2 12h20"/><path d="M5.65 18.35a10 10 0 0 1 12.7 0"/>',
+            // Теннисная ракетка / Бадминтон
+            '<path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 5-4 6l1 7h-8l1-7c-2.5-1-4-3.5-4-6a7 7 0 0 1 7-7z"/><path d="M12 15V9"/>',
+            // Шахматная фигура (Пешка)
+            '<path d="M12 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm-4 9a4 4 0 0 1 8 0v1h-8zm-2 5h12v2H6z"/>',
+            // Прицел / Мишень
+            '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+            // Гантель
+            '<path d="M6.5 6.5h11v2h-11zm0 9h11v2h-11z"/><line x1="12" y1="8.5" x2="12" y2="15.5" stroke-width="3"/>',
+            // Флаг (Финиш)
+            '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+            // Бильярдный шар (просто круг с цифрой внутри, стилизовано)
+            '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>'
+        ];
+
         function initApp() {
             applyTheme();
             applyLiteMode();
             loadProfile();
+            generateBackground(); // Генерируем фон при запуске
+        }
+
+        function generateBackground() {
+            const container = document.getElementById('background-pattern');
+            if(!container) return;
+            container.innerHTML = ''; // Очистка
+
+            // Настройки сетки
+            const cols = 5; // Количество колонок (плотность по ширине)
+            const rows = 10; // Количество строк (плотность по высоте)
+            
+            // Расчет размеров
+            const cellWidth = 100 / cols;
+            const cellHeight = 100 / rows;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'pattern-item';
+                    
+                    // Позиционируем ячейку
+                    cell.style.position = 'absolute';
+                    cell.style.left = (c * cellWidth) + '%';
+                    cell.style.top = (r * cellHeight) + '%';
+                    cell.style.width = cellWidth + '%';
+                    cell.style.height = cellHeight + '%';
+
+                    // Выбираем случайную иконку
+                    const randomSvg = svgs[Math.floor(Math.random() * svgs.length)];
+                    
+                    // Случайный поворот (+30 или -30 градусов)
+                    const angle = Math.random() > 0.5 ? 30 : -30;
+                    
+                    // Небольшой случайный сдвиг (Jitter), чтобы сбить идеальную сетку
+                    const jitterX = (Math.random() - 0.5) * 20; // +/- 10px
+                    const jitterY = (Math.random() - 0.5) * 20;
+
+                    cell.innerHTML = `<svg viewBox="0 0 24 24" style="transform: translate(${jitterX}px, ${jitterY}px) rotate(${angle}deg);">${randomSvg}</svg>`;
+                    
+                    container.appendChild(cell);
+                }
+            }
         }
 
         function applyTheme() { 
@@ -509,7 +351,6 @@
             if(user.photo_url) ava.src = user.photo_url; 
             else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
             
-            // Читаем статистику из localStorage
             document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
             document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best_8') || '--'; 
             document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
@@ -521,7 +362,6 @@
             document.getElementById('stat-tower-combo').innerText = localStorage.getItem('tower_max_streak') || 0;
         }
 
-        // Запуск
         initApp();
     </script>
 </body>
