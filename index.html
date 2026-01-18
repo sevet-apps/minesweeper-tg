@@ -20,9 +20,9 @@
             --toggle-circle: #ffffff; 
             --icon-color: #3a3a3c;
             
-            /* Цвета для паттерна (ТЕПЕРЬ СПЛОШНЫЕ, БЕЗ ПРОЗРАЧНОСТИ В ЦВЕТЕ) */
+            /* Настройки паттерна */
             --pattern-fill: #000000; 
-            --pattern-opacity: 0.06; /* Прозрачность регулируется здесь */
+            --pattern-opacity: 0.07; /* Немного увеличил для четкости */
             
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -39,9 +39,8 @@
             --icon-color: #aeaeb2; 
             --accent: #0a84ff; 
             
-            /* Цвета для паттерна темной темы */
             --pattern-fill: #ffffff; 
-            --pattern-opacity: 0.08;
+            --pattern-opacity: 0.09;
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -58,7 +57,6 @@
             transition: background-color 0.4s ease; 
         }
         
-        /* Стили для фонового паттерна */
         #background-pattern {
             position: fixed;
             top: -15%; 
@@ -80,16 +78,16 @@
             justify-content: center;
             align-items: center;
             color: var(--pattern-fill);
-            opacity: var(--pattern-opacity); /* Применяем прозрачность к контейнеру */
+            opacity: var(--pattern-opacity);
             transition: color 0.4s ease, opacity 0.4s ease;
         }
         
         .pattern-item svg {
-            width: 50%; 
-            height: 50%;
+            width: 55%; 
+            height: 55%;
             fill: none;
             stroke: currentColor;
-            stroke-width: 1.5;
+            stroke-width: 1.5; /* Единая толщина линий */
             stroke-linecap: round;
             stroke-linejoin: round;
         }
@@ -241,34 +239,24 @@
 
         let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
 
-        // --- НОВЫЙ НАБОР SVG (ПРОФЕССИОНАЛЬНЫЕ OUTLINE ИКОНКИ) ---
+        // --- НОВЫЙ НАБОР SVG (В легком стиле, как мячи) ---
         const svgs = [
-            // 1. Геймпад
-            '<path d="M21 12l-2-7H5L3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6z"/><path d="M6 12h4"/><path d="M8 10v4"/><circle cx="15" cy="12" r="1"/><circle cx="17" cy="12" r="1"/>',
-            // 2. Кубок
-            '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',
-            // 3. Футбольный мяч
-            '<circle cx="12" cy="12" r="10"/><path d="m12 16-4-2.5V8.5L12 6l4 2.5v5z"/><path d="m12 6 2-3.5"/><path d="m16 8.5 3.5 1"/><path d="m16 13.5 3.5-1"/><path d="m12 16 2 4"/><path d="m12 16-2 4"/><path d="m8 13.5-3.5-1"/><path d="m8 8.5-3.5 1"/><path d="m12 6-2-3.5"/>',
-            // 4. Баскетбольный мяч
-            '<circle cx="12" cy="12" r="10"/><path d="M5.65 5.65a10 10 0 0 0 12.7 0"/><path d="M12 2v20"/><path d="M2 12h20"/><path d="M5.65 18.35a10 10 0 0 1 12.7 0"/>',
-            // 5. Кроссовок (Четкий контур)
-            '<path d="M19 15.5c0 1.93-1.57 3.5-3.5 3.5H5.5C3.57 19 2 17.43 2 15.5V13l3.5-5.5 2.5-3.5h7c1.1 0 2 .9 2 2v1l3 3.5v5z"/><path d="M6 13h10"/><path d="M5 19v-4"/>',
-            // 6. Мишень (Дартс)
+            // 1. Геймпад (Легкий стиль)
+            '<rect x="2" y="6" width="20" height="12" rx="4" ry="4"/><path d="M6 12h4M8 10v4"/><circle cx="15" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
+            // 2. Медаль (Легкий стиль)
+            '<circle cx="12" cy="15" r="5"/><path d="M12 11 8.5 2h7L12 11z"/><path d="M12 13.5 11 16l2.5-1.5L16 16l-1-2.5 2-1.5h-2.5L12 10l-1.5 2H8l2 1.5z"/>',
+            // 3. Клюшка и шайба (Легкий стиль)
+            '<path d="M18 3 9 16c-1.5 1.5-3.5 2-5.5 2h-1v3h1c3 0 6-1 8-3L21 3h-3z"/><ellipse cx="7" cy="20" rx="2" ry="1"/>',
+            // 4. Мишень (Легкий стиль)
             '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-            // 7. Теннисная ракетка и мяч
-            '<path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 5-4 6l1 7h-8l1-7c-2.5-1-4-3.5-4-6a7 7 0 0 1 7-7z"/><path d="M12 15V9"/><path d="M12 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>',
-            // 8. Велосипед
-            '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-3l-3 9h6l2-6z"/><path d="M12 15 9 9"/><path d="M18.5 17.5 15 6"/><path d="M5.5 17.5 9 9"/><path d="M9 6H6a1 1 0 0 0-1 1v2"/>',
-            // 9. Флаг (Финиш)
-            '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
-            // 10. Медаль
-            '<circle cx="12" cy="15" r="5"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/>',
-            // 11. Джойстик (Arcade)
-            '<path d="M5 16v3c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-3"/><path d="M12 16V6"/><circle cx="12" cy="4" r="2"/>',
-            // 12. Шахматная пешка
-            '<path d="M12 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M15 22H9a1 1 0 0 1-1-1v-2a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3v2a1 1 0 0 1-1 1z"/><path d="M7 16h10"/>',
-            // 13. Пинг-понг
-            '<path d="M10 2a5 5 0 0 1 5 5v3a2 2 0 0 1-2 2h-1v5a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-5h-1a2 2 0 0 1-2-2V7a5 5 0 0 1 6-5z"/><line x1="9" y1="12" x2="11" y2="12"/>'
+            // 5. Звезда (Легкий стиль)
+            '<path d="M12 2 9 9 2 10l5 5-1 7 6-3 6 3-1-7 5-5-7-1z"/>',
+             // 6. Флажок финишный (Легкий стиль)
+            '<path d="M4 2v20"/><path d="M4 4h14l-2 4 2 4H4"/><path d="M4 8h12M10 4v8"/>',
+            // 7. Баскетбольный мяч (Оставил, т.к. понравился)
+            '<circle cx="12" cy="12" r="10"/><path d="M5.65 5.65a10 10 0 0 0 12.7 0"/><path d="M12 2v20"/><path d="M2 12h20"/><path d="M5.65 18.35a10 10 0 0 1 12.7 0"/>',
+            // 8. Футбольный мяч (Оставил, т.к. понравился)
+            '<circle cx="12" cy="12" r="10"/><path d="M12 7V2M7 9l-4-2M17 9l4-2M7 15l-4 2M17 15l4 2M12 17v5"/><path d="m12 12-3-2-2 3 1 3h8l1-3-2-3z"/>'
         ];
 
         function initApp() {
@@ -283,6 +271,7 @@
             if(!container) return;
             container.innerHTML = ''; 
 
+            // Плотность сетки (можно менять)
             const cols = 5; 
             const rows = 10; 
             
@@ -301,7 +290,9 @@
                     cell.style.height = cellHeight + '%';
 
                     const randomSvg = svgs[Math.floor(Math.random() * svgs.length)];
+                    // Поворот на 30 или -30 градусов
                     const angle = Math.random() > 0.5 ? 30 : -30;
+                    // Небольшой случайный сдвиг
                     const jitterX = (Math.random() - 0.5) * 15; 
                     const jitterY = (Math.random() - 0.5) * 15;
 
