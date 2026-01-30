@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Profile Dev Mode</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { 
+            --bg-color: #f2f2f7; 
+            --text-color: #000000; 
+            --glass-bg: rgba(255, 255, 255, 0.75); 
+            --glass-border: rgba(255, 255, 255, 0.5); 
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); 
+            --accent: #007aff; 
+            --danger: #ff3b30; 
+            --success: #34c759; 
+            --tab-bg: rgba(255,255,255,0.95); 
+            --toggle-bg: #e9e9ea; 
+            --toggle-circle: #ffffff; 
+            --icon-color: #3a3a3c; 
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --pattern-opacity: 0.08;
+        }
+        [data-theme="dark"] { 
+            --bg-color: #000000; 
+            --text-color: #ffffff; 
+            --glass-bg: rgba(30, 30, 30, 0.75); 
+            --glass-border: rgba(255, 255, 255, 0.15); 
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); 
+            --toggle-bg: #2c2c2e; 
+            --toggle-circle: #636366; 
+            --icon-color: #aeaeb2; 
+            --accent: #0a84ff;
+            --pattern-opacity: 0.12;
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            width: 100%;
+            height: 100dvh; 
+            overflow: hidden; 
+            transition: background-color 0.4s ease; 
+        }
+        
+        /* Background Pattern */
+        #bgPattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-repeat: repeat;
+            background-size: 395px 855px;
+            opacity: var(--pattern-opacity);
+            transition: opacity 0.4s ease;
+        }
+        
+        /* Светлая тема - чёрный паттерн */
+        #bgPattern {
+            background-image: url('background-light.svg');
+        }
+        
+        /* Тёмная тема - белый паттерн */
+        [data-theme="dark"] #bgPattern {
+            background-image: url('background-dark.svg');
+        }
+        
+        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } 
+        .icon-sm { width: 18px; height: 18px; }
+        
+        .screen { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            padding: 20px; 
+            padding-top: calc(20px + var(--safe-top)); 
+            padding-bottom: calc(20px + var(--safe-bottom)); 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; 
+            opacity: 1;
+            z-index: 1;
+        } 
+        
+        .header { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; margin-top: 10px; } 
+        .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+        
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+
+        .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; box-shadow: var(--shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
+        .settings-row:last-child { border-bottom: none; }
+        .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
+        
+        .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
+        .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
+        .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
+        [data-theme="dark"] #themeToggle .switch-circle { transform: translateX(30px); }
+        #liteToggle.active .switch-circle { transform: translateX(30px); }
+
+        .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
+        
+        .stat-card {
+            background: var(--glass-bg); 
+            padding: 15px; 
+            border-radius: 15px; 
+            text-align: center;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+        }
+        
+        /* Lite Mode styles */
+        body.lite-mode .settings-group,
+        body.lite-mode .stat-card {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Pattern -->
+    <div id="bgPattern"></div>
+
+    <div id="view-profile" class="screen"> 
+        <div class="header">
+            <div class="app-title">Профиль</div>
+        </div> 
+        
+        <div style="display:flex; flex-direction:column; align-items:center;"> 
+            <img id="user-avatar" src="" alt="" class="avatar"> 
+            <h2 id="user-name" style="margin:0;">Loading...</h2> 
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
+            
+            <div class="settings-group">
+                <div class="settings-row">
+                    <div class="settings-label">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                        Тема
+                    </div>
+                    <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
+                        <div class="theme-icons"> 
+                            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
+                            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
+                        </div> 
+                        <div class="switch-circle"></div> 
+                    </div>
+                </div>
+                
+                <div class="settings-row">
+                    <div class="settings-label">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Упрощенная графика
+                    </div>
+                    <div class="theme-switch" id="liteToggle" onclick="toggleLiteMode()"> 
+                        <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
+                        <div class="switch-circle"></div> 
+                    </div>
+                </div>
+            </div>
+
+            <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
+                <div class="stat-card"> 
+                    <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> 
+                </div> 
+                <div class="stat-card"> 
+                    <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> 
+                </div> 
+                
+                <div class="stat-card"> 
+                    <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> 
+                </div> 
+                <div class="stat-card"> 
+                    <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> 
+                </div> 
+                
+                <div class="stat-card"> 
+                    <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Block Игр</div> 
+                </div> 
+                <div class="stat-card"> 
+                    <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> 
+                </div> 
+                
+                <div class="stat-card" style="grid-column: span 2;"> 
+                    <div id="stat-sudoku-wins" style="font-size:20px; font-weight:800; color:#5856d6;">0</div> 
+                    <div style="font-size:12px; color:#8e8e93;">Судоку Побед</div> 
+                </div> 
+
+                <div class="stat-card">
+                    <div id="stat-tower-best" style="font-size:20px; font-weight:800; color:#FF2D55;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Башня Рекорд</div>
+                </div>
+                <div class="stat-card">
+                    <div id="stat-tower-combo" style="font-size:20px; font-weight:800; color:#FF375F;">0</div>
+                    <div style="font-size:12px; color:#8e8e93;">Чистая серия</div>
+                </div>
+            </div>
+        </div> 
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp; 
+        tg.expand();
+
+        // Логика Темы
+        let savedTheme = localStorage.getItem('glass_theme');
+        let isDark;
+        if (savedTheme) {
+            isDark = savedTheme === 'dark';
+        } else {
+            isDark = tg.colorScheme === 'dark';
+        }
+
+        let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
+
+        function initApp() {
+            applyTheme();
+            applyLiteMode();
+            loadProfile();
+        }
+
+        function applyTheme() { 
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); 
+            if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; 
+            if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; 
+        }
+
+        function toggleTheme() { 
+            isDark = !isDark; 
+            localStorage.setItem('glass_theme', isDark ? 'dark' : 'light'); 
+            applyTheme(); 
+            tg.HapticFeedback.selectionChanged(); 
+        }
+        
+        function applyLiteMode() { 
+            const el = document.getElementById('liteToggle');
+            if(isLiteMode) {
+                el.classList.add('active');
+                document.body.classList.add('lite-mode');
+            } else {
+                el.classList.remove('active');
+                document.body.classList.remove('lite-mode');
+            }
+        }
+
+        function toggleLiteMode() {
+            isLiteMode = !isLiteMode;
+            localStorage.setItem('lite_mode', isLiteMode);
+            applyLiteMode();
+            tg.HapticFeedback.selectionChanged();
+        }
+        
+        function loadProfile() { 
+            const user = tg.initDataUnsafe.user || { first_name: "Test", last_name: "User", username: "test_user" }; 
+            document.getElementById('user-name').innerText = (user.first_name + ' ' + (user.last_name || '')).trim(); 
+            document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; 
+            const ava = document.getElementById('user-avatar'); 
+            if(user.photo_url) ava.src = user.photo_url; 
+            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
+            
+            document.getElementById('stat-saper-games').innerText = localStorage.getItem('saper_total') || 0; 
+            document.getElementById('stat-saper-best').innerText = localStorage.getItem('saper_best_8') || '--'; 
+            document.getElementById('stat-checkers-games').innerText = localStorage.getItem('checkers_total') || 0; 
+            document.getElementById('stat-checkers-wins').innerText = localStorage.getItem('checkers_wins_pve') || 0; 
+            document.getElementById('stat-bb-games').innerText = localStorage.getItem('bb_total_games') || 0; 
+            document.getElementById('stat-bb-best').innerText = localStorage.getItem('bb_best_score') || 0; 
+            document.getElementById('stat-sudoku-wins').innerText = localStorage.getItem('sudoku_wins') || 0;
+            document.getElementById('stat-tower-best').innerText = localStorage.getItem('tower_best') || 0;
+            document.getElementById('stat-tower-combo').innerText = localStorage.getItem('tower_max_streak') || 0;
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
