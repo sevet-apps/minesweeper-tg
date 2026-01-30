@@ -99,7 +99,7 @@
             height: 100%; 
             padding: 20px; 
             padding-top: calc(90px + var(--safe-top)); 
-            padding-bottom: calc(110px + var(--safe-bottom)); 
+            padding-bottom: calc(120px + var(--safe-bottom)); 
             overflow-y: auto; 
             -webkit-overflow-scrolling: touch; 
             opacity: 0; 
@@ -166,27 +166,58 @@
 
         .tab-bar { 
             position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            width: 100%; 
-            height: calc(75px + var(--safe-bottom)); 
-            background: var(--tab-bg); 
+            bottom: calc(20px + var(--safe-bottom)); 
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            min-width: 280px;
+            max-width: 340px;
+            height: 64px; 
+            background: rgba(30, 30, 30, 0.85); 
             backdrop-filter: blur(30px); 
-            border-top: 0.5px solid var(--glass-border); 
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.1); 
             display: flex; 
-            justify-content: space-around; 
-            padding-top: 10px; 
-            padding-bottom: var(--safe-bottom); 
-            z-index: 50; 
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 8px;
+            z-index: 50;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        :root .tab-bar {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+        [data-theme="dark"] .tab-bar {
+            background: rgba(30, 30, 30, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .tab-item { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-size: 10px; 
+            color: #8e8e93; 
+            font-weight: 600; 
+            cursor: pointer; 
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+            background: transparent !important; 
         } 
-        .tab-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; font-weight: 500; cursor: pointer; flex: 1; background: transparent !important; } 
-        .tab-item.active { color: var(--accent); background: transparent !important; } 
-        .tab-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+        .tab-item.active { 
+            color: var(--accent); 
+            background: transparent !important; 
+        } 
+        .tab-item svg { width: 28px; height: 28px; margin-bottom: 2px; }
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
-        .lb-list { padding-bottom: 100px; }
+        .lb-list { padding-bottom: 120px; }
         
         .dropdown-menu { 
             position: absolute; 
@@ -614,15 +645,24 @@
     
     <div class="tab-bar"> 
         <div class="tab-item" onclick="switchTab('leaderboard', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8v15H8z"/><path d="M2 13h6v8H2z"/><path d="M16 13h6v8H16z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <rect x="3" y="10" width="5" height="10" rx="1.5"/>
+                <rect x="9.5" y="4" width="5" height="16" rx="1.5"/>
+                <rect x="16" y="7" width="5" height="13" rx="1.5"/>
+            </svg>
             Топы
         </div>
         <div class="tab-item active" onclick="switchTab('games', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M18 12h.01M10 12h4"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <path d="M17.5 7h-11A4.5 4.5 0 0 0 2 11.5v1A4.5 4.5 0 0 0 6.5 17h11a4.5 4.5 0 0 0 4.5-4.5v-1A4.5 4.5 0 0 0 17.5 7zM8 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
+            </svg>
             Игры
         </div> 
         <div class="tab-item" onclick="switchTab('profile', this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M12 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/>
+            </svg>
             Профиль
         </div> 
     </div>
