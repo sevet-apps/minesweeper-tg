@@ -169,19 +169,18 @@
             bottom: calc(20px + var(--safe-bottom)); 
             left: 50%;
             transform: translateX(-50%);
-            width: auto;
-            min-width: 280px;
-            max-width: 340px;
-            height: 64px; 
+            width: 280px;
+            height: 70px; 
             background: rgba(30, 30, 30, 0.85); 
             backdrop-filter: blur(30px); 
             -webkit-backdrop-filter: blur(30px);
-            border-radius: 32px;
+            border-radius: 35px;
             border: 1px solid rgba(255, 255, 255, 0.1); 
             display: flex; 
-            justify-content: space-around;
+            justify-content: center;
             align-items: center;
-            padding: 0 8px;
+            gap: 0;
+            padding: 0;
             z-index: 50;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
@@ -198,13 +197,14 @@
         .tab-item { 
             display: flex; 
             flex-direction: column; 
-            align-items: center; 
+            align-items: center;
+            justify-content: center;
             font-size: 10px; 
             color: #8e8e93; 
             font-weight: 600; 
             cursor: pointer; 
-            padding: 8px 16px;
-            border-radius: 20px;
+            width: 93px;
+            height: 100%;
             transition: all 0.2s ease;
             background: transparent !important; 
         } 
@@ -212,7 +212,7 @@
             color: var(--accent); 
             background: transparent !important; 
         } 
-        .tab-item svg { width: 28px; height: 28px; margin-bottom: 2px; }
+        .tab-item svg { width: 26px; height: 26px; margin-bottom: 3px; }
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
@@ -654,7 +654,7 @@
         </div>
         <div class="tab-item active" onclick="switchTab('games', this)">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                <path d="M17.5 7h-11A4.5 4.5 0 0 0 2 11.5v1A4.5 4.5 0 0 0 6.5 17h11a4.5 4.5 0 0 0 4.5-4.5v-1A4.5 4.5 0 0 0 17.5 7zM8 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
+                <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM6 14H4v-2h2v-2h2v2h2v2H8v2H6v-2zm9.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 10 19.5 10s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
             </svg>
             Игры
         </div> 
