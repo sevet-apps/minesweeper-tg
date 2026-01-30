@@ -18,16 +18,12 @@
             --tab-bg: rgba(255,255,255,0.95); 
             --toggle-bg: #e9e9ea; 
             --toggle-circle: #ffffff; 
-            --icon-color: #3a3a3c;
-            
-            /* Настройки паттерна */
-            --pattern-fill: #000000; 
-            --pattern-opacity: 0.07; 
-            
+            --icon-color: #3a3a3c; 
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --pattern-opacity: 0.04;
+            --pattern-color: #000000;
         }
-        
         [data-theme="dark"] { 
             --bg-color: #000000; 
             --text-color: #ffffff; 
@@ -37,10 +33,9 @@
             --toggle-bg: #2c2c2e; 
             --toggle-circle: #636366; 
             --icon-color: #aeaeb2; 
-            --accent: #0a84ff; 
-            
-            --pattern-fill: #ffffff; 
-            --pattern-opacity: 0.09;
+            --accent: #0a84ff;
+            --pattern-opacity: 0.05;
+            --pattern-color: #ffffff;
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -57,45 +52,33 @@
             transition: background-color 0.4s ease; 
         }
         
-        #background-pattern {
+        /* Background Pattern */
+        .background-pattern {
             position: fixed;
-            top: -15%; 
-            left: -15%;
-            width: 130%;
-            height: 130%;
-            z-index: -1; 
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-content: center;
-            pointer-events: none; 
-            overflow: hidden;
-            transition: opacity 0.3s ease;
-        }
-
-        .pattern-item {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--pattern-fill);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
             opacity: var(--pattern-opacity);
-            transition: color 0.4s ease, opacity 0.4s ease;
+            transition: opacity 0.4s ease;
         }
         
-        .pattern-item svg {
-            width: 55%; 
-            height: 55%;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.5; 
-            stroke-linecap: round;
-            stroke-linejoin: round;
+        .background-pattern svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
         
-        body.lite-mode #background-pattern {
-            opacity: 0;
+        .background-pattern .pattern-tile {
+            fill: var(--pattern-color);
+            stroke: var(--pattern-color);
+            transition: fill 0.4s ease, stroke 0.4s ease;
         }
-
+        
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } 
         .icon-sm { width: 18px; height: 18px; }
         
@@ -110,13 +93,14 @@
             padding-bottom: calc(20px + var(--safe-bottom)); 
             overflow-y: auto; 
             -webkit-overflow-scrolling: touch; 
-            opacity: 1; 
+            opacity: 1;
+            z-index: 1;
         } 
         
         .header { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; margin-top: 10px; } 
         .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
 
         .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; box-shadow: var(--shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
@@ -131,17 +115,27 @@
 
         .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
         
-        body.lite-mode .settings-group {
+        .stat-card {
+            background: var(--glass-bg); 
+            padding: 15px; 
+            border-radius: 15px; 
+            text-align: center;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+        }
+        
+        /* Lite Mode styles */
+        body.lite-mode .settings-group,
+        body.lite-mode .stat-card {
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
-            background: var(--bg-color); 
-            border: 1px solid rgba(128,128,128,0.1);
         }
     </style>
 </head>
 <body>
-
-    <div id="background-pattern"></div>
+    <!-- Background Pattern -->
+    <div class="background-pattern" id="bgPattern"></div>
 
     <div id="view-profile" class="screen"> 
         <div class="header">
@@ -156,7 +150,9 @@
             <div class="settings-group">
                 <div class="settings-row">
                     <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
                         Тема
                     </div>
                     <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"> 
@@ -170,7 +166,11 @@
                 
                 <div class="settings-row">
                     <div class="settings-label">
-                        <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
                         Упрощенная графика
                     </div>
                     <div class="theme-switch" id="liteToggle" onclick="toggleLiteMode()"> 
@@ -181,43 +181,43 @@
             </div>
 
             <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; margin-top: 10px;"> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
+                <div class="stat-card"> 
                     <div id="stat-saper-games" style="font-size:20px; font-weight:800; color:var(--accent);">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Сапёр Игр</div> 
                 </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
+                <div class="stat-card"> 
                     <div id="stat-saper-best" style="font-size:20px; font-weight:800; color:var(--success);">--</div> 
                     <div style="font-size:12px; color:#8e8e93;">Сапёр Рекорд</div> 
                 </div> 
                 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
+                <div class="stat-card"> 
                     <div id="stat-checkers-games" style="font-size:20px; font-weight:800; color:#ff3b30;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Шашки Игр</div> 
                 </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
+                <div class="stat-card"> 
                     <div id="stat-checkers-wins" style="font-size:20px; font-weight:800; color:#ff9500;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Побед над Ботом</div> 
                 </div> 
                 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
+                <div class="stat-card"> 
                     <div id="stat-bb-games" style="font-size:20px; font-weight:800; color:#34c759;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Block Игр</div> 
                 </div> 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;"> 
+                <div class="stat-card"> 
                     <div id="stat-bb-best" style="font-size:20px; font-weight:800; color:#30b0c7;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Block Рекорд</div> 
                 </div> 
                 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center; grid-column: span 2;"> 
+                <div class="stat-card" style="grid-column: span 2;"> 
                     <div id="stat-sudoku-wins" style="font-size:20px; font-weight:800; color:#5856d6;">0</div> 
                     <div style="font-size:12px; color:#8e8e93;">Судоку Побед</div> 
                 </div> 
 
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                <div class="stat-card">
                     <div id="stat-tower-best" style="font-size:20px; font-weight:800; color:#FF2D55;">0</div>
                     <div style="font-size:12px; color:#8e8e93;">Башня Рекорд</div>
                 </div>
-                <div style="background:var(--glass-bg); padding:15px; border-radius:15px; text-align:center;">
+                <div class="stat-card">
                     <div id="stat-tower-combo" style="font-size:20px; font-weight:800; color:#FF375F;">0</div>
                     <div style="font-size:12px; color:#8e8e93;">Чистая серия</div>
                 </div>
@@ -229,6 +229,10 @@
         const tg = window.Telegram.WebApp; 
         tg.expand();
 
+        // Background Pattern SVG (упрощённая версия для тайлинга)
+        const PATTERN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="395" height="855" viewBox="0 0 395 855"><defs><pattern id="p" patternUnits="userSpaceOnUse" width="395" height="855"><g class="pattern-tile" fill="currentColor" stroke="currentColor" stroke-width="1.158" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M53.456 15.127A22.312 22.312 0 0047.559 0h-2.281c-2.984 1.158-10.951 5.16-11.443 14.566H31.59V0h-1.158v14.566h-2.246C27.939 5.756 21.165 1.579 17.655 0h-3.194C10.846 4.001 8.6 9.301 8.6 15.127a22.269 22.269 0 005.65 14.847c.036.07.106.14.176.176a22.394 22.394 0 0016.637 7.37 22.276 22.276 0 0016.145-6.879H47.313c.281 0 .527-.21.562-.491v-.246c3.475-3.896 5.58-9.09 5.58-14.777zM15.654.457c1.93.596 11.056 4.106 11.407 14.109H9.758c.14-5.475 2.387-10.424 5.896-14.11zm-.666 28.64a21.151 21.151 0 01-5.23-13.373H27.06c-.316 10.6-10.108 13.022-12.073 13.373zm15.478 7.3c-5.686-.14-10.81-2.527-14.566-6.318 3.089-.807 12.004-3.966 12.32-14.355h2.246v20.673zM46.681.737a21.155 21.155 0 015.616 13.829H34.994C35.626 4.212 45.699 1.018 46.682.737zm-15.057 35.66V15.724h2.211c.106 10.39 8.635 13.759 12.04 14.671-3.721 3.58-8.74 5.862-14.25 6.002zm15.163-6.984c-2.457-.562-11.688-3.37-11.793-13.724h17.303a21.143 21.143 0 01-5.51 13.724z"/><circle cx="79.604" cy="721.555" r="3.089" fill="none"/><circle cx="107.647" cy="675.611" r="3.089" fill="none"/><circle cx="183.987" cy="413.706" r="3.089" fill="none"/><circle cx="249.165" cy="365.831" r="3.089" fill="none"/><circle cx="213.891" cy="218.874" r="3.089" fill="none"/><circle cx="213.891" cy="275.172" r="3.089" fill="none"/><circle cx="286.93" cy="678.665" r="3.089" fill="none"/><circle cx="244.567" cy="710.745" r="3.089" fill="none"/><circle cx="230.598" cy="719.414" r="3.089" fill="none"/><circle cx="232.141" cy="775.958" r="3.089" fill="none"/><circle cx="226.843" cy="810.214" r="3.089" fill="none"/><circle cx="326.663" cy="754.829" r="3.089" fill="none"/><circle cx="114.212" cy="757.497" r="3.089" fill="none"/><circle cx="132.216" cy="749.318" r="3.089" fill="none"/><circle cx="30.044" cy="770.307" r="3.089" fill="none"/><circle cx="366.499" cy="813.303" r="3.089" fill="none"/><circle cx="9.759" cy="717.694" r="3.089" fill="none"/><path d="M118.633 780.731l54.473 10.951-1.053 5.16-49.314-9.898a5.297 5.297 0 01-4.106-6.213zM117.312 775.137l-1.023 5.093 59.149 11.879 1.023-5.092-59.149-11.88zM164.964 704.603l-32.747 73.531M175.984 775.396c-19.479-1.684-37.941.386-37.941.386l5.405-11.863 3.826-8.388 19.374-42.575c6.002 10.81 8.389 25.622 9.266 38.082.211 2.983.316 5.826.386 8.459.211 9.336-.316 15.899-.316 15.899z" fill="none"/><path d="M176.3 759.532c-14.075-1.931-27.272 2.281-32.818 4.422l3.826-8.389c11.056-4.387 23.2-4.633 28.641-4.492.175 2.983.28 5.826.351 8.459z" fill="none"/><path d="M61.073 343.895l11.372.772s-1.3 11.442 5.896 18.497l13.829 36.783-41.697 15.97-14.601-37.485s-.772-11.898-7.827-17.269l8.108-7.721a.444.444 0 01.632 0c1.333 1.334 7.02 6.353 14.987 3.439 7.932-2.878 8.774-10.599 8.844-12.565 0-.246.21-.456.457-.421z" fill="none"/><path d="M72.408 344.667l14.496 5.932c.456.175.667.667.526 1.123l-3.65 11.793c-.14.456-.597.737-1.053.632l-4.422-.948M28.044 361.164l-6.739 14.671a.514.514 0 00.21.667l10.46 6.212c.246.14.527.07.667-.14l3.194-4.177" fill="none"/><path d="M186.268 784.241l4.107-.982 1.509-3.932a1.112 1.112 0 012-.175l2.177 3.58 4.211.246c.913.035 1.404 1.123.773 1.825l-2.738 3.194 1.088 4.071c.246.878-.667 1.685-1.509 1.299l-3.896-1.615-3.545 2.282c-.772.491-1.79-.106-1.72-1.018l.351-4.177-3.264-2.667c-.702-.562-.456-1.72.456-1.931zM82.306 830.185l4.036 1.124 3.23-2.703c.701-.597 1.79-.105 1.825.807l.21 4.212 3.58 2.211c.772.492.667 1.65-.21 2.001l-3.931 1.474-1.018 4.071c-.21.913-1.37 1.159-1.966.422l-2.632-3.3-4.177.316c-.912.07-1.51-.947-1.018-1.72l2.317-3.509-1.58-3.896c-.316-.878.457-1.755 1.334-1.51zM292.021 781.995l4.036 1.123 3.229-2.702c.702-.597 1.79-.106 1.825.807l.211 4.212 3.58 2.211c.772.491.667 1.649-.211 2l-3.931 1.475-1.017 4.071c-.211.913-1.369 1.158-1.966.421l-2.632-3.299-4.177.316c-.913.07-1.509-.948-1.018-1.72l2.317-3.51-1.58-3.896a1.117 1.117 0 011.334-1.509zM378.398 736.472l3.65-2.071.351-4.177c.07-.912 1.193-1.333 1.86-.737l3.089 2.843 4.106-.947a1.107 1.107 0 011.264 1.544l-1.755 3.826 2.176 3.615c.491.807-.175 1.79-1.088 1.685l-4.177-.492-2.773 3.159c-.596.702-1.754.386-1.93-.526l-.842-4.107-3.861-1.65c-.807-.315-.878-1.509-.07-1.965z" fill="none"/><path d="M22.849 808.916L8.037 798.632M26.044 814.707l-9.09-5.791" fill="none"/><path d="M339.228 374.536l-28.886-11.793M332.664 376.221l-11.617-4.598" fill="none"/><ellipse cx="40.362" cy="801.001" rx="11" ry="7" transform="rotate(-15 40.362 801.001)" fill="none"/></g></pattern></defs><rect width="100%" height="100%" fill="url(#p)"/></svg>`;
+
+        // Логика Темы
         let savedTheme = localStorage.getItem('glass_theme');
         let isDark;
         if (savedTheme) {
@@ -239,64 +243,16 @@
 
         let isLiteMode = localStorage.getItem('lite_mode') === 'true'; 
 
-        // --- ИТОГОВЫЙ СПИСОК (7 ЭЛЕМЕНТОВ) ---
-        const svgs = [
-            // 1. Геймпад
-            '<rect x="2" y="6" width="20" height="12" rx="4" ry="4"/><path d="M6 12h4M8 10v4"/><circle cx="15" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
-            // 2. Бумажный самолётик
-            '<path d="M22 2 11 13"/><path d="M22 2 2 10l9.5 3 4.5 8 6-19Z"/>',
-            // 3. Мишень
-            '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-            // 4. Звезда (закругленная)
-            '<path d="M12 2c.5 0 1 .4 1.2.9l2 4.6 4.9.4c.9.1 1.3 1.2.6 1.8l-3.8 3.3 1.1 5c.2.9-.7 1.6-1.5 1.1L12 16.7l-4.5 2.4c-.8.5-1.7-.2-1.5-1.1l1.1-5-3.8-3.3c-.7-.6-.3-1.7.6-1.8l4.9-.4 2-4.6c.2-.5.7-.9 1.2-.9z"/>',
-            // 5. Флажок финишный (чистый)
-            '<path d="M4 2v20"/><path d="M4 4h15l-3 5 3 5H4v-10z"/>',
-            // 6. Баскетбольный мяч
-            '<circle cx="12" cy="12" r="10"/><path d="M5.65 5.65a10 10 0 0 0 12.7 0"/><path d="M12 2v20"/><path d="M2 12h20"/><path d="M5.65 18.35a10 10 0 0 1 12.7 0"/>',
-            // 7. Огонь
-            '<path d="M12 22c-4 0-7-3-7-7 0-2 1-4 2-5.5 1-1.5 2-3 2-4.5 0 2 1.5 3 3 4 1.5 1 3 2 3 4 .5-.5 1-1.5 1-2.5 1 1.5 2 3.5 2 5.5 0 4-3 7-7 7z"/>'
-        ];
-
         function initApp() {
+            initBackgroundPattern();
             applyTheme();
             applyLiteMode();
             loadProfile();
-            generateBackground();
         }
 
-        function generateBackground() {
-            const container = document.getElementById('background-pattern');
-            if(!container) return;
-            container.innerHTML = ''; 
-
-            // Плотность сетки
-            const cols = 5; 
-            const rows = 10; 
-            
-            const cellWidth = 100 / cols;
-            const cellHeight = 100 / rows;
-
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'pattern-item';
-                    
-                    cell.style.position = 'absolute';
-                    cell.style.left = (c * cellWidth) + '%';
-                    cell.style.top = (r * cellHeight) + '%';
-                    cell.style.width = cellWidth + '%';
-                    cell.style.height = cellHeight + '%';
-
-                    const randomSvg = svgs[Math.floor(Math.random() * svgs.length)];
-                    const angle = Math.random() > 0.5 ? 30 : -30;
-                    const jitterX = (Math.random() - 0.5) * 15; 
-                    const jitterY = (Math.random() - 0.5) * 15;
-
-                    cell.innerHTML = `<svg viewBox="0 0 24 24" style="transform: translate(${jitterX}px, ${jitterY}px) rotate(${angle}deg);">${randomSvg}</svg>`;
-                    
-                    container.appendChild(cell);
-                }
-            }
+        function initBackgroundPattern() {
+            const bgEl = document.getElementById('bgPattern');
+            bgEl.innerHTML = PATTERN_SVG;
         }
 
         function applyTheme() { 
