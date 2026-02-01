@@ -427,17 +427,22 @@
             border-radius: 4px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
             position: relative;
+            overflow: hidden;
         }
         
         .sudo-board::before {
-            content: ''; position: absolute; top: 0; left: 33.33%; width: 33.33%; height: 100%;
+            content: ''; position: absolute; top: -1px; bottom: -1px;
+            left: calc(100% / 3); width: calc(100% / 3);
             border-left: 2px solid var(--sudoku-thick); border-right: 2px solid var(--sudoku-thick);
             pointer-events: none; z-index: 5;
+            box-sizing: border-box;
         }
         .sudo-board::after {
-            content: ''; position: absolute; left: 0; top: 33.33%; width: 100%; height: 33.33%;
+            content: ''; position: absolute; left: -1px; right: -1px;
+            top: calc(100% / 3); height: calc(100% / 3);
             border-top: 2px solid var(--sudoku-thick); border-bottom: 2px solid var(--sudoku-thick);
             pointer-events: none; z-index: 5;
+            box-sizing: border-box;
         }
 
         .sudo-cell { 
@@ -454,7 +459,7 @@
         }
         
         .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; color: var(--accent); }
-        .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; }
+        .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; z-index: 1; }
         .sudo-cell.given { font-weight: 800; color: var(--text-color); }
         .sudo-cell.user-val { color: var(--accent); font-weight: 600; }
         
@@ -464,7 +469,7 @@
         .num-btn.disabled { opacity: 0.3; background: #ccc; color: #666; pointer-events: none; border-color: transparent; transform: scale(0.95); }
 
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
-        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-2px); } 40%, 80% { transform: translateX(2px); } }
         
         .loader { border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 4px solid var(--accent); width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
