@@ -216,15 +216,19 @@
         .tab-item:first-child svg { width: 30px; height: 30px; }
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
-        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
+        .lb-selector-wrapper { position: relative; z-index: 205; margin-bottom: 15px; }
+        .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); position: relative; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
+        .lb-selector svg { transition: transform 0.3s ease; }
+        .lb-selector.open svg { transform: rotate(180deg); }
         .lb-list { padding-bottom: 120px; }
         
         .dropdown-menu { 
             position: absolute; 
-            top: 230px; 
-            left: 20px; 
-            right: 20px; 
+            top: 100%;
+            left: 0; 
+            right: 0; 
+            margin-top: 5px;
             background: var(--glass-bg); 
             backdrop-filter: blur(40px);
             border-radius: 16px; 
@@ -547,11 +551,13 @@
         </div>
         
         <div class="lb-title-lg" id="lbGameTitle">Title</div>
-        <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
-            <span id="lbCurrentCat">Category</span>
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="lb-selector-wrapper">
+            <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
+                <span id="lbCurrentCat">Category</span>
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="dropdown-menu" id="dropdownMenu"></div>
         </div>
-        <div class="dropdown-menu" id="dropdownMenu"></div>
         <div class="dropdown-catcher" id="dropdownCatcher" onclick="toggleDropdown()"></div>
         
         <div class="lb-list" id="lbList"></div>
@@ -986,16 +992,15 @@
             else if (game === 'tower') { document.getElementById('lbGameTitle').innerText = 'Топы Башни'; loadLeaderboardData(TOWER_CATS[0]); }
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
-        function closeLeaderboardDetail() { document.getElementById('view-leaderboard-detail').classList.remove('active'); document.getElementById('lbStickyUser').classList.remove('visible'); const menu = document.getElementById('dropdownMenu'); menu.classList.remove('active'); document.getElementById('dropdownCatcher').classList.remove('active'); }
+        function closeLeaderboardDetail() { document.getElementById('view-leaderboard-detail').classList.remove('active'); document.getElementById('lbStickyUser').classList.remove('visible'); const menu = document.getElementById('dropdownMenu'); menu.classList.remove('active'); document.getElementById('dropdownCatcher').classList.remove('active'); document.getElementById('lbSelector').classList.remove('open'); }
         function toggleDropdown() {
             const menu = document.getElementById('dropdownMenu'); const catcher = document.getElementById('dropdownCatcher'); const selector = document.getElementById('lbSelector');
-            const rect = selector.getBoundingClientRect(); menu.style.top = (rect.bottom + 5) + 'px';
             if(!menu.classList.contains('active')) {
                 menu.innerHTML = ''; let cats = [];
                 if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS;
                 cats.forEach(cat => { const el = document.createElement('div'); el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`; el.innerText = cat.name; el.onclick = () => { loadLeaderboardData(cat); toggleDropdown(); }; menu.appendChild(el); });
-                menu.classList.add('active'); catcher.classList.add('active'); tg.HapticFeedback.selectionChanged();
-            } else { menu.classList.remove('active'); catcher.classList.remove('active'); }
+                menu.classList.add('active'); catcher.classList.add('active'); selector.classList.add('open'); tg.HapticFeedback.selectionChanged();
+            } else { menu.classList.remove('active'); catcher.classList.remove('active'); selector.classList.remove('open'); }
         }
         let lbObserver = null;
         async function loadLeaderboardData(category) {
