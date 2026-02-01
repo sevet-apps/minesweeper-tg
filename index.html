@@ -11,8 +11,8 @@
         :root { 
             --bg-color: #f2f2f7; 
             --text-color: #000000; 
-            --glass-bg: rgba(255, 255, 255, 0.75); 
-            --glass-border: rgba(255, 255, 255, 0.5); 
+            --glass-bg: rgba(255, 255, 255, 0.95); 
+            --glass-border: rgba(0, 0, 0, 0.08); 
             --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); 
             --accent: #007aff; 
             --danger: #ff3b30; 
@@ -38,8 +38,8 @@
         [data-theme="dark"] { 
             --bg-color: #000000; 
             --text-color: #ffffff; 
-            --glass-bg: rgba(30, 30, 30, 0.75); 
-            --glass-border: rgba(255, 255, 255, 0.15); 
+            --glass-bg: rgba(28, 28, 30, 0.95); 
+            --glass-border: rgba(255, 255, 255, 0.1); 
             --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); 
             --tab-bg: rgba(30,30,30, 0.95); 
             --toggle-bg: #2c2c2e; 
@@ -104,11 +104,9 @@
             -webkit-overflow-scrolling: touch; 
             opacity: 0; 
             pointer-events: none; 
-            transform: scale(0.98); 
-            transition: opacity 0.3s ease, transform 0.3s ease; 
             touch-action: pan-y; 
         } 
-        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+        .screen.active { opacity: 1; pointer-events: auto; z-index: 1; }
         
         .game-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
@@ -149,7 +147,7 @@
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        .card { background: var(--glass-bg); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
+        .card { background: var(--glass-bg); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
@@ -369,22 +367,8 @@
         }
         
         /* FIXED v34.1: Lite Mode - отключаем тяжёлые эффекты для Android */
-        body.lite-mode .bb-cell {
-            transition: none !important;
-            animation: none !important;
-        }
-        body.lite-mode .bb-cell.appear-gray {
-            animation: none !important;
-        }
-        body.lite-mode .bb-cell.pre-clear {
-            transition: none !important;
-        }
-        body.lite-mode .bb-shape-preview {
-            transition: none !important;
-        }
-        body.lite-mode .combo-popup,
-        body.lite-mode .all-clear-popup {
-            animation: none !important;
+        body.lite-mode .bb-cell.clearing {
+            transition: transform 0.1s ease-out, opacity 0.1s ease-out !important;
         }
         
         .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
