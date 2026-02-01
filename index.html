@@ -459,7 +459,11 @@
         }
         
         .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; color: var(--accent); }
-        .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); animation: shake 0.3s; z-index: 1; }
+        .sudo-cell.error { background: var(--sudoku-err); color: var(--danger); }
+        .sudo-cell .shake-digit { 
+            display: inline-block;
+            animation: shake 0.3s ease-in-out; 
+        }
         .sudo-cell.given { font-weight: 800; color: var(--text-color); }
         .sudo-cell.user-val { color: var(--accent); font-weight: 600; }
         
@@ -469,7 +473,7 @@
         .num-btn.disabled { opacity: 0.3; background: #ccc; color: #666; pointer-events: none; border-color: transparent; transform: scale(0.95); }
 
         .lives-box { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; color: var(--danger); }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-2px); } 40%, 80% { transform: translateX(2px); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
         
         .loader { border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 4px solid var(--accent); width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -1249,7 +1253,7 @@
         function activateDigit(num, btn) { if (btn.classList.contains('disabled')) return; if (activeDigit === num) { activeDigit = null; btn.classList.remove('active-digit'); highlightSameNumbers(null); tg.HapticFeedback.selectionChanged(); return; } activeDigit = num; document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit')); btn.classList.add('active-digit'); highlightSameNumbers(num); tg.HapticFeedback.selectionChanged(); }
         function highlightSameNumbers(num) { const cells = document.querySelectorAll('.sudo-cell'); cells.forEach(c => c.classList.remove('same-num')); if (num === null) return; cells.forEach(cell => { if (parseInt(cell.innerText) === num) cell.classList.add('same-num'); }); }
         function checkNumberCompletion() { for(let i=1; i<=9; i++) { let count = 0; for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++; const btn = document.getElementById(`nb${i}`); if(count >= 9) { btn.classList.add('disabled'); btn.classList.remove('active-digit'); if(activeDigit === i) { activeDigit = null; highlightSameNumbers(null); } } else { btn.classList.remove('disabled'); } } }
-        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerText = activeDigit; cell.classList.add('error'); tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerText = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult('Поражение', 'Слишком много ошибок', 'Закрыть', () => { closeResult(); closeGame('sudoku'); }), 500); } } }
+        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult('Поражение', 'Слишком много ошибок', 'Закрыть', () => { closeResult(); closeGame('sudoku'); }), 500); } } }
         function checkSudokuWin() { if (sudoFilled === 81) { confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let points = currentSudoMode; let w = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', w); sendStatToBackend('sudoku_wins', w); localStorage.removeItem('sudo_state'); showResult('Победа!', `Судоку решено! (+${points})`, 'Круто', () => { closeResult(); closeGame('sudoku'); }); } }
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
