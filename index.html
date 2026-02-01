@@ -416,6 +416,7 @@
         .sudo-board { 
             display: grid; 
             grid-template-columns: repeat(9, 1fr); 
+            grid-template-rows: repeat(9, 1fr);
             width: 90vw; 
             height: 90vw; 
             max-width: 350px; 
@@ -444,7 +445,12 @@
             display: flex; justify-content: center; align-items: center; 
             font-size: 20px; font-weight: 500; 
             position: relative; cursor: pointer; 
-            transition: background 0.1s; 
+            transition: background 0.1s;
+            aspect-ratio: 1;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         
         .sudo-cell.same-num { background: var(--sudoku-same); font-weight: 800; color: var(--accent); }
