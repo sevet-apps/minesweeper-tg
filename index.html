@@ -166,7 +166,7 @@
 
         .tab-bar { 
             position: fixed; 
-            bottom: calc(20px + var(--safe-bottom)); 
+            bottom: calc(28px + var(--safe-bottom)); 
             left: 50%;
             transform: translateX(-50%);
             width: 280px;
@@ -199,7 +199,7 @@
             flex-direction: column; 
             align-items: center;
             justify-content: center;
-            font-size: 10px; 
+            font-size: 11px; 
             color: #8e8e93; 
             font-weight: 600; 
             cursor: pointer; 
@@ -212,7 +212,8 @@
             color: var(--accent); 
             background: transparent !important; 
         } 
-        .tab-item svg { width: 26px; height: 26px; margin-bottom: 3px; }
+        .tab-item svg { width: 26px; height: 26px; margin-bottom: 2px; }
+        .tab-item:first-child svg { width: 30px; height: 30px; }
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); margin-bottom: 15px; position: relative; z-index: 205; }
