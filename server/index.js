@@ -926,7 +926,7 @@ if (BOT_TOKEN) {
             results.push({
                 type: 'article',
                 id: tttId,
-                title: '❌⭕ Крестики-нолики',
+                title: 'Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
@@ -947,7 +947,7 @@ if (BOT_TOKEN) {
             results.push({
                 type: 'article',
                 id: chId,
-                title: '⚪⚫ Шашки',
+                title: 'Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
@@ -958,12 +958,12 @@ if (BOT_TOKEN) {
             
             // 3. Топы игр
             const topGames = [
-                { key: 'bb_best_score', name: 'Block Blast', emoji: '🟩' },
-                { key: 'saper_best_6', name: 'Сапёр', emoji: '💣' },
-                { key: 'tower_best', name: 'Башня', emoji: '🏗' },
-                { key: 'sudoku_wins', name: 'Судоку', emoji: '🔢' },
-                { key: 'checkers_wins_pve', name: 'Шашки', emoji: '⚫' },
-                { key: 'wordle_wins', name: 'Вордли', emoji: '📝' }
+                { key: 'bb_best_score', name: 'Блок Бласт' },
+                { key: 'saper_best_6', name: 'Сапёр' },
+                { key: 'tower_best', name: 'Башня' },
+                { key: 'sudoku_wins', name: 'Судоку' },
+                { key: 'checkers_wins_pve', name: 'Шашки' },
+                { key: 'wordle_wins', name: 'Вордли' }
             ];
             
             for (const game of topGames) {
@@ -976,7 +976,7 @@ if (BOT_TOKEN) {
                     results.push({
                         type: 'article',
                         id: resultId,
-                        title: `${game.emoji} Топ ${game.name}`,
+                        title: `Топ ${game.name}`,
                         description: `Показать топ игроков в ${game.name}`,
                         input_message_content: {
                             message_text: `⏳ Загрузка топа ${game.name}...`,
