@@ -910,27 +910,86 @@ if (BOT_TOKEN) {
         
         const results = [];
         
-        // Если запрос пустой - показываем помощь
+        // Если запрос пустой - показываем все доступные команды
         if (!queryText) {
-            const helpId = `help_${Date.now()}`;
-            inlineCache.set(helpId, { type: 'help' });
-            setTimeout(() => inlineCache.delete(helpId), 5 * 60 * 1000);
+            const userName = getUserDisplayName(user);
+            
+            // 1. Крестики-нолики
+            const tttId = `ttt_${userId}_${Date.now()}`;
+            inlineCache.set(tttId, {
+                type: 'ttt',
+                creator: user,
+                creatorName: userName
+            });
+            setTimeout(() => inlineCache.delete(tttId), 10 * 60 * 1000);
             
             results.push({
                 type: 'article',
-                id: helpId,
-                title: '🎮 Spark Games',
-                description: 'Топы игр, крестики-нолики и шашки',
+                id: tttId,
+                title: '❌⭕ Крестики-нолики',
+                description: 'Сыграйте с кем-то из чата!',
                 input_message_content: {
-                    message_text: `🎮 <b>Spark Games</b>\n\n<b>Топы:</b>\n• Block Blast\n• Сапёр\n• Башня\n• Судоку\n• Шашки\n• Вордли\n\n<b>Игры:</b>\n• крестики-нолики\n• шашки\n\n📊 Напишите: @spark_beta_bot [команда]`,
+                    message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
                 },
-                reply_markup: {
-                    inline_keyboard: [[
-                        { text: '🎮 Играть', url: 'https://t.me/spark_beta_bot/SparkBETA' }
-                    ]]
-                }
+                reply_markup: getTTTKeyboard(createTTTBoard(), tttId)
             });
+            
+            // 2. Шашки
+            const chId = `ch_${userId}_${Date.now() + 1}`;
+            inlineCache.set(chId, {
+                type: 'checkers',
+                creator: user,
+                creatorName: userName
+            });
+            setTimeout(() => inlineCache.delete(chId), 10 * 60 * 1000);
+            
+            results.push({
+                type: 'article',
+                id: chId,
+                title: '⚪⚫ Шашки',
+                description: 'Сыграйте в шашки с кем-то из чата!',
+                input_message_content: {
+                    message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
+                    parse_mode: 'HTML'
+                },
+                reply_markup: getCheckersKeyboard(createCheckersBoard(), chId)
+            });
+            
+            // 3. Топы игр
+            const topGames = [
+                { key: 'bb_best_score', name: 'Block Blast', emoji: '🟩' },
+                { key: 'saper_best_6', name: 'Сапёр', emoji: '💣' },
+                { key: 'tower_best', name: 'Башня', emoji: '🏗' },
+                { key: 'sudoku_wins', name: 'Судоку', emoji: '🔢' },
+                { key: 'checkers_wins_pve', name: 'Шашки', emoji: '⚫' },
+                { key: 'wordle_wins', name: 'Вордли', emoji: '📝' }
+            ];
+            
+            for (const game of topGames) {
+                const config = Object.values(GAME_CONFIG).find(c => c.column === game.key);
+                if (config) {
+                    const resultId = `top_${game.key}_${Date.now()}`;
+                    inlineCache.set(resultId, { gameConfig: config, userId });
+                    setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
+                    
+                    results.push({
+                        type: 'article',
+                        id: resultId,
+                        title: `${game.emoji} Топ ${game.name}`,
+                        description: `Показать топ игроков в ${game.name}`,
+                        input_message_content: {
+                            message_text: `⏳ Загрузка топа ${game.name}...`,
+                            parse_mode: 'HTML'
+                        },
+                        reply_markup: {
+                            inline_keyboard: [[
+                                { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
+                            ]]
+                        }
+                    });
+                }
+            }
         } 
         // Крестики-нолики
         else if (queryText.includes('крестики') || queryText.includes('нолики') || queryText.includes('ttt') || queryText.includes('xo')) {
@@ -1013,7 +1072,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: 'https://t.me/spark_beta_bot/SparkBETA' }
+                                { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
                             ]]
                         }
                     });
@@ -1041,7 +1100,7 @@ if (BOT_TOKEN) {
                             },
                             reply_markup: {
                                 inline_keyboard: [[
-                                    { text: '🎮 Играть', url: 'https://t.me/spark_beta_bot/SparkBETA' }
+                                    { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
                                 ]]
                             }
                         });
@@ -1144,7 +1203,7 @@ if (BOT_TOKEN) {
                         parse_mode: 'HTML',
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: 'https://t.me/spark_beta_bot/SparkBETA' }
+                                { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
                             ]]
                         }
                     }
@@ -1176,7 +1235,7 @@ if (BOT_TOKEN) {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [[
-                            { text: '🎮 Играть', url: 'https://t.me/spark_beta_bot/SparkBETA' }
+                            { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
                         ]]
                     }
                 });
