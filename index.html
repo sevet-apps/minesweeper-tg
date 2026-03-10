@@ -285,6 +285,7 @@
             justify-content: center;
             align-items: center;
             pointer-events: none;
+            will-change: left;
         }
         .tab-slider-icon {
             display: flex;
@@ -2578,11 +2579,38 @@
             const slider = document.getElementById('tabSlider');
             const sliderIcons = document.getElementById('tabSliderIcons');
             
-            // Move slider to position with spring animation
-            slider.style.left = TAB_POSITIONS[index] + 'px';
+            const targetLeft = TAB_POSITIONS[index];
+            const startLeft = parseFloat(slider.style.left) || TAB_POSITIONS[currentTabIndex];
+            const startTime = performance.now();
+            const duration = 500; // ms - same as CSS transition
             
-            // Sync blue icons position (they stay fixed relative to tab-bar)
-            sliderIcons.style.left = -TAB_POSITIONS[index] + 'px';
+            // Custom spring-like easing
+            function springEase(t) {
+                return 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 0.5);
+            }
+            
+            function animateSlider(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easedProgress = springEase(progress);
+                
+                const currentLeft = startLeft + (targetLeft - startLeft) * easedProgress;
+                slider.style.left = currentLeft + 'px';
+                sliderIcons.style.left = -currentLeft + 'px';
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateSlider);
+                }
+            }
+            
+            // Remove CSS transition and animate via JS
+            slider.style.transition = 'none';
+            requestAnimationFrame(animateSlider);
+            
+            // Restore transition after animation
+            setTimeout(() => {
+                slider.style.transition = '';
+            }, duration + 10);
             
             currentTabIndex = index;
             
