@@ -208,9 +208,6 @@
             padding: 0;
             z-index: 50;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            will-change: transform;
-            contain: layout style;
-            overflow: hidden;
         }
         :root .tab-bar {
             background: rgba(255, 255, 255, 0.9);
@@ -221,189 +218,6 @@
             background: rgba(30, 30, 30, 0.9);
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-        }
-        
-        /* Glass Slider (thumb) - Telegram iOS style */
-        .tab-slider {
-            position: absolute;
-            width: 85px;
-            height: 58px;
-            border-radius: 29px;
-            z-index: 2;
-            left: 6px;
-            top: 6px;
-            overflow: visible;
-            transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            will-change: left;
-            pointer-events: auto;
-            cursor: grab;
-            
-            /* Glass base */
-            background: transparent;
-            border: none;
-        }
-        
-        /* Main glass body with blur */
-        .tab-slider-glass {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 29px;
-            overflow: hidden;
-            
-            background: rgba(120, 120, 120, 0.15);
-            backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
-            -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
-            
-            /* Inner depth shadows */
-            box-shadow: 
-                inset 0 1.5px 1px rgba(255, 255, 255, 0.35),
-                inset 0 -1px 1px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Outer edge glow - subtle rainbow refraction */
-        .tab-slider::before {
-            content: '';
-            position: absolute;
-            top: -1.5px;
-            left: -1.5px;
-            right: -1.5px;
-            bottom: -1.5px;
-            border-radius: 30px;
-            background: linear-gradient(
-                135deg,
-                rgba(255, 150, 150, 0.5) 0%,
-                rgba(255, 200, 150, 0.3) 15%,
-                rgba(200, 255, 200, 0.4) 30%,
-                rgba(150, 220, 255, 0.5) 50%,
-                rgba(180, 150, 255, 0.4) 70%,
-                rgba(255, 150, 200, 0.3) 85%,
-                rgba(255, 150, 150, 0.5) 100%
-            );
-            filter: blur(2px);
-            opacity: 0.6;
-            z-index: -1;
-        }
-        
-        /* Crisp border with highlight */
-        .tab-slider::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 29px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            pointer-events: none;
-            
-            /* Top edge highlight */
-            background: linear-gradient(
-                180deg,
-                rgba(255, 255, 255, 0.25) 0%,
-                rgba(255, 255, 255, 0) 50%
-            );
-        }
-        
-        .tab-slider:active {
-            cursor: grabbing;
-        }
-        
-        /* Light theme - more opaque glass */
-        :root .tab-slider-glass {
-            background: rgba(255, 255, 255, 0.65);
-            backdrop-filter: blur(30px) saturate(150%);
-            -webkit-backdrop-filter: blur(30px) saturate(150%);
-            box-shadow: 
-                inset 0 1.5px 1px rgba(255, 255, 255, 0.9),
-                inset 0 -1px 1px rgba(0, 0, 0, 0.05),
-                0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-        :root .tab-slider::before {
-            opacity: 0.4;
-            background: linear-gradient(
-                135deg,
-                rgba(200, 220, 255, 0.6) 0%,
-                rgba(255, 230, 200, 0.4) 50%,
-                rgba(200, 255, 220, 0.5) 100%
-            );
-        }
-        :root .tab-slider::after {
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            background: linear-gradient(
-                180deg,
-                rgba(255, 255, 255, 0.6) 0%,
-                rgba(255, 255, 255, 0) 40%
-            );
-        }
-        
-        /* Dark theme - visible refraction */
-        [data-theme="dark"] .tab-slider-glass {
-            background: rgba(100, 100, 100, 0.2);
-            backdrop-filter: blur(40px) saturate(200%) brightness(1.05);
-            -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.05);
-            box-shadow: 
-                inset 0 1.5px 1px rgba(255, 255, 255, 0.25),
-                inset 0 -1px 1px rgba(0, 0, 0, 0.2);
-        }
-        [data-theme="dark"] .tab-slider::before {
-            opacity: 0.7;
-        }
-        [data-theme="dark"] .tab-slider::after {
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            background: linear-gradient(
-                180deg,
-                rgba(255, 255, 255, 0.15) 0%,
-                rgba(255, 255, 255, 0) 50%
-            );
-        }
-        
-        .tab-slider.dragging {
-            transition: none;
-        }
-        .tab-slider.dragging::before {
-            opacity: 0.8;
-        }
-        
-        /* Blue icons container inside glass */
-        .tab-slider-icons {
-            position: absolute;
-            top: -6px;
-            left: 0;
-            width: 280px;
-            height: 70px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-            will-change: left;
-        }
-        .tab-slider-icon {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 93px;
-            height: 100%;
-            color: var(--accent);
-        }
-        .tab-slider-icon svg { width: 26px; height: 26px; margin-bottom: 2px; }
-        .tab-slider-icon:first-child svg { width: 30px; height: 30px; margin-bottom: 2px; }
-        .tab-slider-icon span { font-size: 11px; font-weight: 600; }
-        
-        /* Gray icons layer (base) */
-        .tab-icons-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1;
         }
         
         .tab-item { 
@@ -417,13 +231,24 @@
             cursor: pointer; 
             width: 93px;
             height: 100%;
-            transition: color 0.15s ease;
-            background: transparent !important;
-            z-index: 3;
-            position: relative;
-        } 
-        .tab-item svg { width: 26px; height: 26px; margin-bottom: 2px; }
-        .tab-item:first-child svg { width: 30px; height: 30px; margin-bottom: 2px; }
+            transition: color 0.2s ease, transform 0.1s ease;
+        }
+        .tab-item:active {
+            transform: scale(0.95);
+        }
+        .tab-item.active { 
+            color: var(--accent); 
+        }
+        .tab-item svg { 
+            width: 26px; 
+            height: 26px; 
+            margin-bottom: 2px; 
+        }
+        .tab-item:first-child svg { 
+            width: 30px; 
+            height: 30px; 
+            margin-bottom: 2px; 
+        }
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector-wrapper { position: relative; z-index: 23001; margin-bottom: 15px; }
@@ -1591,58 +1416,26 @@
     </div>
     
     <div class="tab-bar" id="tabBar"> 
-        <!-- Glass slider with blue icons inside -->
-        <div class="tab-slider" id="tabSlider">
-            <div class="tab-slider-glass">
-                <div class="tab-slider-icons" id="tabSliderIcons">
-                    <div class="tab-slider-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                            <rect x="3" y="10" width="5" height="10" rx="1.5"/>
-                            <rect x="9.5" y="4" width="5" height="16" rx="1.5"/>
-                            <rect x="16" y="7" width="5" height="13" rx="1.5"/>
-                        </svg>
-                        <span data-i18n="tops">Топы</span>
-                    </div>
-                    <div class="tab-slider-icon">
-                        <svg viewBox="0 0 22 17" fill="currentColor" stroke="none">
-                            <path opacity="0.5" d="M9.38934 1.2285L8.8455 0.843917C8.06944 0.294707 7.14208 -0.000156492 6.19134 6.2308e-08H5.52834C5.08959 6.2308e-08 4.64759 0.0270832 4.23484 0.173333C1.65325 1.08983 -0.122329 4.43625 0.00658806 12.0283C0.0325881 13.5579 0.390088 15.2479 1.77025 15.9077C2.24106 16.134 2.75694 16.2511 3.27934 16.25C3.8665 16.2596 4.44333 16.0949 4.93684 15.7766C5.381 15.4863 5.771 15.1093 6.161 14.7323C6.642 14.2664 7.123 13.8006 7.70367 13.4994C8.33622 13.1711 9.03849 12.9998 9.75117 13H11.9168C12.6296 13 13.3316 13.1712 13.9643 13.4983C14.5449 13.8006 15.0259 14.2664 15.508 14.7323C15.898 15.1093 16.288 15.4863 16.73 15.7766C17.1525 16.0539 17.6996 16.25 18.3886 16.25C18.911 16.2511 19.4269 16.134 19.8977 15.9077C21.2778 15.2479 21.6353 13.5568 21.6613 12.0283C21.7903 4.43625 20.0147 1.08983 17.4331 0.174416C17.0193 0.0270831 16.5751 6.2308e-08 16.1385 6.2308e-08H15.4755C14.5246 0.000160243 13.5973 0.295406 12.8213 0.845L12.2775 1.2285C11.8551 1.52695 11.3506 1.6872 10.8334 1.6872C10.3162 1.6872 9.81173 1.52695 9.38934 1.2285Z"/>
-                            <path d="M15.9798 4.3335C16.1953 4.3335 16.402 4.4191 16.5543 4.57147C16.7067 4.72385 16.7923 4.93051 16.7923 5.146C16.7923 5.36148 16.7067 5.56815 16.5543 5.72052C16.402 5.87289 16.1953 5.9585 15.9798 5.9585C15.7643 5.9585 15.5577 5.87289 15.4053 5.72052C15.2529 5.56815 15.1673 5.36148 15.1673 5.146C15.1673 4.93051 15.2529 4.72385 15.4053 4.57147C15.5577 4.4191 15.7643 4.3335 15.9798 4.3335ZM5.95898 4.60433C6.17447 4.60433 6.38113 4.68993 6.53351 4.84231C6.68588 4.99468 6.77148 5.20134 6.77148 5.41683V6.22933H7.58398C7.79947 6.22933 8.00613 6.31493 8.15851 6.46731C8.31088 6.61968 8.39648 6.82634 8.39648 7.04183C8.39648 7.25732 8.31088 7.46398 8.15851 7.61635C8.00613 7.76873 7.79947 7.85433 7.58398 7.85433H6.77148V8.66683C6.77148 8.88232 6.68588 9.08898 6.53351 9.24135C6.38113 9.39373 6.17447 9.47933 5.95898 9.47933C5.7435 9.47933 5.53683 9.39373 5.38446 9.24135C5.23209 9.08898 5.14648 8.88232 5.14648 8.66683V7.85433H4.33398C4.1185 7.85433 3.91183 7.76873 3.75946 7.61635C3.60709 7.46398 3.52148 7.25732 3.52148 7.04183C3.52148 6.82634 3.60709 6.61968 3.75946 6.46731C3.91183 6.31493 4.1185 6.22933 4.33398 6.22933H5.14648V5.41683C5.14648 5.20134 5.23209 4.99468 5.38446 4.84231C5.53683 4.68993 5.7435 4.60433 5.95898 4.60433ZM18.4173 6.771C18.4173 6.98648 18.3317 7.19315 18.1793 7.34552C18.027 7.49789 17.8203 7.5835 17.6048 7.5835C17.3893 7.5835 17.1827 7.49789 17.0303 7.34552C16.8779 7.19315 16.7923 6.98648 16.7923 6.771C16.7923 6.55551 16.8779 6.34885 17.0303 6.19647C17.1827 6.0441 17.3893 5.9585 17.6048 5.9585C17.8203 5.9585 18.027 6.0441 18.1793 6.19647C18.3317 6.34885 18.4173 6.55551 18.4173 6.771ZM14.3548 7.5835C14.5703 7.5835 14.777 7.49789 14.9293 7.34552C15.0817 7.19315 15.1673 6.98648 15.1673 6.771C15.1673 6.55551 15.0817 6.34885 14.9293 6.19647C14.777 6.0441 14.5703 5.9585 14.3548 5.9585C14.1393 5.9585 13.9327 6.0441 13.7803 6.19647C13.6279 6.34885 13.5423 6.55551 13.5423 6.771C13.5423 6.98648 13.6279 7.19315 13.7803 7.34552C13.9327 7.49789 14.1393 7.5835 14.3548 7.5835ZM16.7923 8.396C16.7923 8.18051 16.7067 7.97385 16.5543 7.82147C16.402 7.6691 16.1953 7.5835 15.9798 7.5835C15.7643 7.5835 15.5577 7.6691 15.4053 7.82147C15.2529 7.97385 15.1673 8.18051 15.1673 8.396C15.1673 8.61148 15.2529 8.81815 15.4053 8.97052C15.5577 9.12289 15.7643 9.2085 15.9798 9.2085C16.1953 9.2085 16.402 9.12289 16.5543 8.97052C16.7067 8.81815 16.7923 8.61148 16.7923 8.396Z"/>
-                        </svg>
-                        <span data-i18n="games">Игры</span>
-                    </div>
-                    <div class="tab-slider-icon">
-                        <svg viewBox="0 0 18 24" fill="currentColor" stroke="none">
-                            <path d="M14.5363 13.9197C15.4862 14.0154 16.3661 14.4535 17.0059 15.1494C17.6457 15.8454 18 16.7496 18 17.6872C18 19.6341 16.7914 21.2451 15.1663 22.3082C13.5334 23.3788 11.3477 24 9 24C6.65229 24 4.46657 23.3788 2.83371 22.3082C1.206 21.2476 0 19.6341 0 17.6872C0 16.6827 0.406389 15.7191 1.12973 15.0088C1.85307 14.2985 2.83418 13.8995 3.85714 13.8995H14.1429L14.5363 13.9197ZM9.00514 0.00120841C9.77606 -0.0143968 10.5423 0.121278 11.2593 0.400254C11.9759 0.679254 12.6291 1.09595 13.1796 1.62592C13.7304 2.15592 14.1678 2.78851 14.4663 3.48666C14.7649 4.18481 14.9184 4.93444 14.9181 5.69162C14.9176 6.44888 14.7633 7.19834 14.4643 7.89628C14.1652 8.59397 13.7271 9.22627 13.176 9.75578C12.6247 10.2853 11.9715 10.7014 11.2544 10.9797C10.5375 11.2582 9.77091 11.3931 9 11.3769C7.48497 11.3456 6.04273 10.7325 4.98255 9.66917C3.92235 8.6061 3.32861 7.17713 3.32861 5.68905C3.32861 4.20097 3.92235 2.77213 4.98255 1.70885C6.04273 0.645594 7.48497 0.0325704 9 0.00120841"/>
-                        </svg>
-                        <span data-i18n="profile">Профиль</span>
-                    </div>
-                </div>
-            </div>
+        <div class="tab-item" data-tab="leaderboard" onclick="switchTab('leaderboard', this)">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <rect x="3" y="10" width="5" height="10" rx="1.5"/>
+                <rect x="9.5" y="4" width="5" height="16" rx="1.5"/>
+                <rect x="16" y="7" width="5" height="13" rx="1.5"/>
+            </svg>
+            <span data-i18n="tops">Топы</span>
         </div>
-        
-        <!-- Gray icons layer (clickable) -->
-        <div class="tab-icons-layer">
-            <div class="tab-item" data-tab="leaderboard" onclick="switchTabWithSlider('leaderboard', 0)">
-                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <rect x="3" y="10" width="5" height="10" rx="1.5"/>
-                    <rect x="9.5" y="4" width="5" height="16" rx="1.5"/>
-                    <rect x="16" y="7" width="5" height="13" rx="1.5"/>
-                </svg>
-                <span data-i18n="tops">Топы</span>
-            </div>
-            <div class="tab-item" data-tab="games" onclick="switchTabWithSlider('games', 1)">
-                <svg viewBox="0 0 22 17" fill="currentColor" stroke="none">
-                    <path opacity="0.5" d="M9.38934 1.2285L8.8455 0.843917C8.06944 0.294707 7.14208 -0.000156492 6.19134 6.2308e-08H5.52834C5.08959 6.2308e-08 4.64759 0.0270832 4.23484 0.173333C1.65325 1.08983 -0.122329 4.43625 0.00658806 12.0283C0.0325881 13.5579 0.390088 15.2479 1.77025 15.9077C2.24106 16.134 2.75694 16.2511 3.27934 16.25C3.8665 16.2596 4.44333 16.0949 4.93684 15.7766C5.381 15.4863 5.771 15.1093 6.161 14.7323C6.642 14.2664 7.123 13.8006 7.70367 13.4994C8.33622 13.1711 9.03849 12.9998 9.75117 13H11.9168C12.6296 13 13.3316 13.1712 13.9643 13.4983C14.5449 13.8006 15.0259 14.2664 15.508 14.7323C15.898 15.1093 16.288 15.4863 16.73 15.7766C17.1525 16.0539 17.6996 16.25 18.3886 16.25C18.911 16.2511 19.4269 16.134 19.8977 15.9077C21.2778 15.2479 21.6353 13.5568 21.6613 12.0283C21.7903 4.43625 20.0147 1.08983 17.4331 0.174416C17.0193 0.0270831 16.5751 6.2308e-08 16.1385 6.2308e-08H15.4755C14.5246 0.000160243 13.5973 0.295406 12.8213 0.845L12.2775 1.2285C11.8551 1.52695 11.3506 1.6872 10.8334 1.6872C10.3162 1.6872 9.81173 1.52695 9.38934 1.2285Z"/>
-                    <path d="M15.9798 4.3335C16.1953 4.3335 16.402 4.4191 16.5543 4.57147C16.7067 4.72385 16.7923 4.93051 16.7923 5.146C16.7923 5.36148 16.7067 5.56815 16.5543 5.72052C16.402 5.87289 16.1953 5.9585 15.9798 5.9585C15.7643 5.9585 15.5577 5.87289 15.4053 5.72052C15.2529 5.56815 15.1673 5.36148 15.1673 5.146C15.1673 4.93051 15.2529 4.72385 15.4053 4.57147C15.5577 4.4191 15.7643 4.3335 15.9798 4.3335ZM5.95898 4.60433C6.17447 4.60433 6.38113 4.68993 6.53351 4.84231C6.68588 4.99468 6.77148 5.20134 6.77148 5.41683V6.22933H7.58398C7.79947 6.22933 8.00613 6.31493 8.15851 6.46731C8.31088 6.61968 8.39648 6.82634 8.39648 7.04183C8.39648 7.25732 8.31088 7.46398 8.15851 7.61635C8.00613 7.76873 7.79947 7.85433 7.58398 7.85433H6.77148V8.66683C6.77148 8.88232 6.68588 9.08898 6.53351 9.24135C6.38113 9.39373 6.17447 9.47933 5.95898 9.47933C5.7435 9.47933 5.53683 9.39373 5.38446 9.24135C5.23209 9.08898 5.14648 8.88232 5.14648 8.66683V7.85433H4.33398C4.1185 7.85433 3.91183 7.76873 3.75946 7.61635C3.60709 7.46398 3.52148 7.25732 3.52148 7.04183C3.52148 6.82634 3.60709 6.61968 3.75946 6.46731C3.91183 6.31493 4.1185 6.22933 4.33398 6.22933H5.14648V5.41683C5.14648 5.20134 5.23209 4.99468 5.38446 4.84231C5.53683 4.68993 5.7435 4.60433 5.95898 4.60433ZM18.4173 6.771C18.4173 6.98648 18.3317 7.19315 18.1793 7.34552C18.027 7.49789 17.8203 7.5835 17.6048 7.5835C17.3893 7.5835 17.1827 7.49789 17.0303 7.34552C16.8779 7.19315 16.7923 6.98648 16.7923 6.771C16.7923 6.55551 16.8779 6.34885 17.0303 6.19647C17.1827 6.0441 17.3893 5.9585 17.6048 5.9585C17.8203 5.9585 18.027 6.0441 18.1793 6.19647C18.3317 6.34885 18.4173 6.55551 18.4173 6.771ZM14.3548 7.5835C14.5703 7.5835 14.777 7.49789 14.9293 7.34552C15.0817 7.19315 15.1673 6.98648 15.1673 6.771C15.1673 6.55551 15.0817 6.34885 14.9293 6.19647C14.777 6.0441 14.5703 5.9585 14.3548 5.9585C14.1393 5.9585 13.9327 6.0441 13.7803 6.19647C13.6279 6.34885 13.5423 6.55551 13.5423 6.771C13.5423 6.98648 13.6279 7.19315 13.7803 7.34552C13.9327 7.49789 14.1393 7.5835 14.3548 7.5835ZM16.7923 8.396C16.7923 8.18051 16.7067 7.97385 16.5543 7.82147C16.402 7.6691 16.1953 7.5835 15.9798 7.5835C15.7643 7.5835 15.5577 7.6691 15.4053 7.82147C15.2529 7.97385 15.1673 8.18051 15.1673 8.396C15.1673 8.61148 15.2529 8.81815 15.4053 8.97052C15.5577 9.12289 15.7643 9.2085 15.9798 9.2085C16.1953 9.2085 16.402 9.12289 16.5543 8.97052C16.7067 8.81815 16.7923 8.61148 16.7923 8.396Z"/>
-                </svg>
-                <span data-i18n="games">Игры</span>
-            </div>
-            <div class="tab-item" data-tab="profile" onclick="switchTabWithSlider('profile', 2)">
-                <svg viewBox="0 0 18 24" fill="currentColor" stroke="none">
-                    <path d="M14.5363 13.9197C15.4862 14.0154 16.3661 14.4535 17.0059 15.1494C17.6457 15.8454 18 16.7496 18 17.6872C18 19.6341 16.7914 21.2451 15.1663 22.3082C13.5334 23.3788 11.3477 24 9 24C6.65229 24 4.46657 23.3788 2.83371 22.3082C1.206 21.2476 0 19.6341 0 17.6872C0 16.6827 0.406389 15.7191 1.12973 15.0088C1.85307 14.2985 2.83418 13.8995 3.85714 13.8995H14.1429L14.5363 13.9197ZM9.00514 0.00120841C9.77606 -0.0143968 10.5423 0.121278 11.2593 0.400254C11.9759 0.679254 12.6291 1.09595 13.1796 1.62592C13.7304 2.15592 14.1678 2.78851 14.4663 3.48666C14.7649 4.18481 14.9184 4.93444 14.9181 5.69162C14.9176 6.44888 14.7633 7.19834 14.4643 7.89628C14.1652 8.59397 13.7271 9.22627 13.176 9.75578C12.6247 10.2853 11.9715 10.7014 11.2544 10.9797C10.5375 11.2582 9.77091 11.3931 9 11.3769C7.48497 11.3456 6.04273 10.7325 4.98255 9.66917C3.92235 8.6061 3.32861 7.17713 3.32861 5.68905C3.32861 4.20097 3.92235 2.77213 4.98255 1.70885C6.04273 0.645594 7.48497 0.0325704 9 0.00120841"/>
-                </svg>
-                <span data-i18n="profile">Профиль</span>
-            </div>
+        <div class="tab-item active" data-tab="games" onclick="switchTab('games', this)">
+            <svg viewBox="0 0 22 17" fill="currentColor" stroke="none">
+                <path opacity="0.5" d="M9.38934 1.2285L8.8455 0.843917C8.06944 0.294707 7.14208 -0.000156492 6.19134 6.2308e-08H5.52834C5.08959 6.2308e-08 4.64759 0.0270832 4.23484 0.173333C1.65325 1.08983 -0.122329 4.43625 0.00658806 12.0283C0.0325881 13.5579 0.390088 15.2479 1.77025 15.9077C2.24106 16.134 2.75694 16.2511 3.27934 16.25C3.8665 16.2596 4.44333 16.0949 4.93684 15.7766C5.381 15.4863 5.771 15.1093 6.161 14.7323C6.642 14.2664 7.123 13.8006 7.70367 13.4994C8.33622 13.1711 9.03849 12.9998 9.75117 13H11.9168C12.6296 13 13.3316 13.1712 13.9643 13.4983C14.5449 13.8006 15.0259 14.2664 15.508 14.7323C15.898 15.1093 16.288 15.4863 16.73 15.7766C17.1525 16.0539 17.6996 16.25 18.3886 16.25C18.911 16.2511 19.4269 16.134 19.8977 15.9077C21.2778 15.2479 21.6353 13.5568 21.6613 12.0283C21.7903 4.43625 20.0147 1.08983 17.4331 0.174416C17.0193 0.0270831 16.5751 6.2308e-08 16.1385 6.2308e-08H15.4755C14.5246 0.000160243 13.5973 0.295406 12.8213 0.845L12.2775 1.2285C11.8551 1.52695 11.3506 1.6872 10.8334 1.6872C10.3162 1.6872 9.81173 1.52695 9.38934 1.2285Z"/>
+                <path d="M15.9798 4.3335C16.1953 4.3335 16.402 4.4191 16.5543 4.57147C16.7067 4.72385 16.7923 4.93051 16.7923 5.146C16.7923 5.36148 16.7067 5.56815 16.5543 5.72052C16.402 5.87289 16.1953 5.9585 15.9798 5.9585C15.7643 5.9585 15.5577 5.87289 15.4053 5.72052C15.2529 5.56815 15.1673 5.36148 15.1673 5.146C15.1673 4.93051 15.2529 4.72385 15.4053 4.57147C15.5577 4.4191 15.7643 4.3335 15.9798 4.3335ZM5.95898 4.60433C6.17447 4.60433 6.38113 4.68993 6.53351 4.84231C6.68588 4.99468 6.77148 5.20134 6.77148 5.41683V6.22933H7.58398C7.79947 6.22933 8.00613 6.31493 8.15851 6.46731C8.31088 6.61968 8.39648 6.82634 8.39648 7.04183C8.39648 7.25732 8.31088 7.46398 8.15851 7.61635C8.00613 7.76873 7.79947 7.85433 7.58398 7.85433H6.77148V8.66683C6.77148 8.88232 6.68588 9.08898 6.53351 9.24135C6.38113 9.39373 6.17447 9.47933 5.95898 9.47933C5.7435 9.47933 5.53683 9.39373 5.38446 9.24135C5.23209 9.08898 5.14648 8.88232 5.14648 8.66683V7.85433H4.33398C4.1185 7.85433 3.91183 7.76873 3.75946 7.61635C3.60709 7.46398 3.52148 7.25732 3.52148 7.04183C3.52148 6.82634 3.60709 6.61968 3.75946 6.46731C3.91183 6.31493 4.1185 6.22933 4.33398 6.22933H5.14648V5.41683C5.14648 5.20134 5.23209 4.99468 5.38446 4.84231C5.53683 4.68993 5.7435 4.60433 5.95898 4.60433ZM18.4173 6.771C18.4173 6.98648 18.3317 7.19315 18.1793 7.34552C18.027 7.49789 17.8203 7.5835 17.6048 7.5835C17.3893 7.5835 17.1827 7.49789 17.0303 7.34552C16.8779 7.19315 16.7923 6.98648 16.7923 6.771C16.7923 6.55551 16.8779 6.34885 17.0303 6.19647C17.1827 6.0441 17.3893 5.9585 17.6048 5.9585C17.8203 5.9585 18.027 6.0441 18.1793 6.19647C18.3317 6.34885 18.4173 6.55551 18.4173 6.771ZM14.3548 7.5835C14.5703 7.5835 14.777 7.49789 14.9293 7.34552C15.0817 7.19315 15.1673 6.98648 15.1673 6.771C15.1673 6.55551 15.0817 6.34885 14.9293 6.19647C14.777 6.0441 14.5703 5.9585 14.3548 5.9585C14.1393 5.9585 13.9327 6.0441 13.7803 6.19647C13.6279 6.34885 13.5423 6.55551 13.5423 6.771C13.5423 6.98648 13.6279 7.19315 13.7803 7.34552C13.9327 7.49789 14.1393 7.5835 14.3548 7.5835ZM16.7923 8.396C16.7923 8.18051 16.7067 7.97385 16.5543 7.82147C16.402 7.6691 16.1953 7.5835 15.9798 7.5835C15.7643 7.5835 15.5577 7.6691 15.4053 7.82147C15.2529 7.97385 15.1673 8.18051 15.1673 8.396C15.1673 8.61148 15.2529 8.81815 15.4053 8.97052C15.5577 9.12289 15.7643 9.2085 15.9798 9.2085C16.1953 9.2085 16.402 9.12289 16.5543 8.97052C16.7067 8.81815 16.7923 8.61148 16.7923 8.396Z"/>
+            </svg>
+            <span data-i18n="games">Игры</span>
+        </div>
+        <div class="tab-item" data-tab="profile" onclick="switchTab('profile', this)">
+            <svg viewBox="0 0 18 24" fill="currentColor" stroke="none">
+                <path d="M14.5363 13.9197C15.4862 14.0154 16.3661 14.4535 17.0059 15.1494C17.6457 15.8454 18 16.7496 18 17.6872C18 19.6341 16.7914 21.2451 15.1663 22.3082C13.5334 23.3788 11.3477 24 9 24C6.65229 24 4.46657 23.3788 2.83371 22.3082C1.206 21.2476 0 19.6341 0 17.6872C0 16.6827 0.406389 15.7191 1.12973 15.0088C1.85307 14.2985 2.83418 13.8995 3.85714 13.8995H14.1429L14.5363 13.9197ZM9.00514 0.00120841C9.77606 -0.0143968 10.5423 0.121278 11.2593 0.400254C11.9759 0.679254 12.6291 1.09595 13.1796 1.62592C13.7304 2.15592 14.1678 2.78851 14.4663 3.48666C14.7649 4.18481 14.9184 4.93444 14.9181 5.69162C14.9176 6.44888 14.7633 7.19834 14.4643 7.89628C14.1652 8.59397 13.7271 9.22627 13.176 9.75578C12.6247 10.2853 11.9715 10.7014 11.2544 10.9797C10.5375 11.2582 9.77091 11.3931 9 11.3769C7.48497 11.3456 6.04273 10.7325 4.98255 9.66917C3.92235 8.6061 3.32861 7.17713 3.32861 5.68905C3.32861 4.20097 3.92235 2.77213 4.98255 1.70885C6.04273 0.645594 7.48497 0.0325704 9 0.00120841"/>
+            </svg>
+            <span data-i18n="profile">Профиль</span>
         </div>
     </div>
 
@@ -2663,51 +2456,10 @@
         }
 
         // Tab slider state
-        let currentTabIndex = 1; // games is default (center)
-        const TAB_POSITIONS = [6, 97.5, 189]; // left positions for slider
-        const TAB_WIDTH = 85;
-        let isDragging = false;
-        let dragStartX = 0;
-        let sliderStartX = 0;
-        
-        function switchTabWithSlider(t, index) {
-            const slider = document.getElementById('tabSlider');
-            const sliderIcons = document.getElementById('tabSliderIcons');
-            
-            const targetLeft = TAB_POSITIONS[index];
-            const startLeft = parseFloat(slider.style.left) || TAB_POSITIONS[currentTabIndex];
-            const startTime = performance.now();
-            const duration = 500; // ms - same as CSS transition
-            
-            // Custom spring-like easing
-            function springEase(t) {
-                return 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 0.5);
-            }
-            
-            function animateSlider(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const easedProgress = springEase(progress);
-                
-                const currentLeft = startLeft + (targetLeft - startLeft) * easedProgress;
-                slider.style.left = currentLeft + 'px';
-                sliderIcons.style.left = -currentLeft + 'px';
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animateSlider);
-                }
-            }
-            
-            // Remove CSS transition and animate via JS
-            slider.style.transition = 'none';
-            requestAnimationFrame(animateSlider);
-            
-            // Restore transition after animation
-            setTimeout(() => {
-                slider.style.transition = '';
-            }, duration + 10);
-            
-            currentTabIndex = index;
+        function switchTab(t, el) { 
+            // Update active state
+            document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
+            if(el) el.classList.add('active');
             
             // Switch screen
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
@@ -2717,106 +2469,6 @@
             
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
-        
-        // Legacy function for compatibility
-        function switchTab(t, el) { 
-            const index = t === 'leaderboard' ? 0 : (t === 'games' ? 1 : 2);
-            switchTabWithSlider(t, index);
-        }
-        
-        // Initialize slider position on load
-        function initTabSlider() {
-            const slider = document.getElementById('tabSlider');
-            const sliderIcons = document.getElementById('tabSliderIcons');
-            const tabBar = document.getElementById('tabBar');
-            
-            // Set initial position (games = center)
-            slider.style.left = TAB_POSITIONS[1] + 'px';
-            sliderIcons.style.left = -TAB_POSITIONS[1] + 'px';
-            
-            // Add drag support only on slider itself
-            slider.style.pointerEvents = 'auto';
-            slider.addEventListener('mousedown', startSliderDrag);
-            slider.addEventListener('touchstart', startSliderDrag, { passive: false });
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('touchmove', onDrag, { passive: false });
-            document.addEventListener('mouseup', endDrag);
-            document.addEventListener('touchend', endDrag);
-        }
-        
-        function startSliderDrag(e) {
-            const slider = document.getElementById('tabSlider');
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            
-            isDragging = true;
-            dragStartX = clientX;
-            sliderStartX = parseFloat(slider.style.left) || TAB_POSITIONS[currentTabIndex];
-            slider.classList.add('dragging');
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        function onDrag(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-            
-            const slider = document.getElementById('tabSlider');
-            const sliderIcons = document.getElementById('tabSliderIcons');
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const deltaX = clientX - dragStartX;
-            let newLeft = sliderStartX + deltaX;
-            
-            // Clamp to bounds with slight rubber-band effect
-            const minLeft = 6;
-            const maxLeft = 189;
-            
-            if (newLeft < minLeft) {
-                newLeft = minLeft - (minLeft - newLeft) * 0.3;
-            } else if (newLeft > maxLeft) {
-                newLeft = maxLeft + (newLeft - maxLeft) * 0.3;
-            }
-            
-            slider.style.left = newLeft + 'px';
-            sliderIcons.style.left = -newLeft + 'px';
-            
-            // Light haptic on crossing tab boundaries
-            const newIndex = newLeft < 52 ? 0 : (newLeft < 143 ? 1 : 2);
-            if (newIndex !== lastHapticIndex) {
-                lastHapticIndex = newIndex;
-                if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
-            }
-        }
-        
-        let lastHapticIndex = 1;
-        
-        function endDrag(e) {
-            if (!isDragging) return;
-            isDragging = false;
-            
-            const slider = document.getElementById('tabSlider');
-            slider.classList.remove('dragging');
-            
-            const currentLeft = parseFloat(slider.style.left);
-            
-            // Snap to nearest tab with spring animation
-            let nearestIndex = 0;
-            let minDist = Infinity;
-            TAB_POSITIONS.forEach((pos, i) => {
-                const dist = Math.abs(currentLeft - pos);
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearestIndex = i;
-                }
-            });
-            
-            // Animate to snap position
-            const tabs = ['leaderboard', 'games', 'profile'];
-            switchTabWithSlider(tabs[nearestIndex], nearestIndex);
-            lastHapticIndex = nearestIndex;
-        }
-        
-        // Call init on page load
-        document.addEventListener('DOMContentLoaded', initTabSlider);
 
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
