@@ -59,7 +59,17 @@
             --sheet-bg: #2c2c2e;
         }
         
+        /* Global performance optimizations */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        
+        /* GPU acceleration for animated elements */
+        .card, .tab-bar, .modal, .bottom-sheet, .game-overlay, .dropdown-menu {
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+        
         img { pointer-events: none; } canvas:not(#towerCanvas) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         
         html, body {
@@ -76,10 +86,12 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             overscroll-behavior: none; 
             touch-action: none; 
-            transition: background-color 0.4s ease;
+            transition: background-color 0.3s ease;
             display: flex;
             flex-direction: column;
             min-height: 100%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         /* Background Pattern */
@@ -113,22 +125,25 @@
             -webkit-overflow-scrolling: touch; 
             opacity: 0; 
             pointer-events: none; 
-            transform: scale(0.98); 
-            transition: opacity 0.3s ease, transform 0.3s ease; 
-            touch-action: pan-y; 
+            transform: scale(0.98) translateZ(0); 
+            transition: opacity 0.25s ease, transform 0.25s ease; 
+            touch-action: pan-y;
+            will-change: transform, opacity;
         } 
-        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1) translateZ(0); z-index: 1; }
         
         .game-overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             background: var(--bg-color); z-index: 9999; 
             display: flex; flex-direction: column; 
-            transform: translateY(100%); 
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(100%) translateZ(0); 
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
             overflow: hidden;
-            touch-action: none; 
+            touch-action: none;
+            will-change: transform;
+            contain: layout style;
         } 
-        .game-overlay.visible { transform: translateY(0); }
+        .game-overlay.visible { transform: translateY(0) translateZ(0); }
         .game-overlay-bg {
             position: absolute;
             top: 0;
@@ -158,9 +173,9 @@
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
-        .card { background: var(--glass-bg); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; } .card:active { transform: scale(0.97); }
-        img.tournament-banner { width: 100%; height: auto; display: block; border-radius: 20px; margin-bottom: 15px; cursor: pointer; transition: transform 0.2s; object-fit: cover; object-position: center; } img.tournament-banner:active { transform: scale(0.98); }
-        .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
+        .card { background: var(--glass-bg); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.15s ease-out; cursor: pointer; transform: translateZ(0); will-change: transform; } .card:active { transform: scale(0.97) translateZ(0); }
+        img.tournament-banner { width: 100%; height: auto; display: block; border-radius: 20px; margin-bottom: 15px; cursor: pointer; transition: transform 0.15s ease-out; object-fit: cover; object-position: center; transform: translateZ(0); } img.tournament-banner:active { transform: scale(0.98) translateZ(0); }
+        .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: translateZ(0); }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
         
         .game-top-bar { 
@@ -178,12 +193,12 @@
             position: absolute; 
             bottom: calc(28px + var(--safe-bottom)); 
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateZ(0);
             width: 280px;
             height: 70px; 
-            background: rgba(30, 30, 30, 0.85); 
-            backdrop-filter: blur(30px); 
-            -webkit-backdrop-filter: blur(30px);
+            background: rgba(30, 30, 30, 0.9); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
             border-radius: 35px;
             border: 1px solid rgba(255, 255, 255, 0.1); 
             display: flex; 
@@ -193,14 +208,16 @@
             padding: 0;
             z-index: 50;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            will-change: transform;
+            contain: layout style;
         }
         :root .tab-bar {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(0, 0, 0, 0.08);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
         }
         [data-theme="dark"] .tab-bar {
-            background: rgba(30, 30, 30, 0.85);
+            background: rgba(30, 30, 30, 0.9);
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
@@ -240,19 +257,22 @@
             right: 0; 
             margin-top: 5px;
             background: var(--glass-bg); 
-            backdrop-filter: blur(40px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-radius: 16px; 
             padding: 10px; 
             z-index: 23000; 
             border: 1px solid var(--glass-border);
             box-shadow: 0 15px 50px rgba(0,0,0,0.25);
             transform-origin: top center;
-            transform: scaleY(0);
+            transform: scaleY(0) translateZ(0);
             opacity: 0;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s;
             pointer-events: none;
+            will-change: transform, opacity;
+            contain: layout style;
         }
-        .dropdown-menu.active { transform: scaleY(1); opacity: 1; pointer-events: auto; }
+        .dropdown-menu.active { transform: scaleY(1) translateZ(0); opacity: 1; pointer-events: auto; }
         .dropdown-catcher { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 22999; display: none; }
         .dropdown-catcher.active { display: block; }
 
@@ -261,8 +281,8 @@
         .dd-item:active { background: rgba(0,0,0,0.05); }
         .dd-item.selected { color: var(--accent); font-weight: 700; background: rgba(0,122,255,0.1); }
 
-        .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s; }
-        .lb-item:active { transform: scale(0.98); }
+        .lb-item { display: flex; align-items: center; padding: 12px; background: var(--glass-bg); margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--glass-border); transition: transform 0.1s ease-out; transform: translateZ(0); contain: layout style; }
+        .lb-item:active { transform: scale(0.98) translateZ(0); }
         .lb-rank { font-size: 16px; font-weight: 700; width: 30px; text-align: center; margin-right: 5px; color: #8e8e93; }
         .lb-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 12px; background: #ddd; }
         .lb-info { flex: 1; }
@@ -271,8 +291,8 @@
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
-        .lb-sticky-user { position: absolute; bottom: calc(30px + var(--safe-bottom)); left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
-        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
+        .lb-sticky-user { position: absolute; bottom: calc(30px + var(--safe-bottom)); left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%) translateZ(0); transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; will-change: transform; }
+        .lb-sticky-user.visible { transform: translateY(0) translateZ(0); pointer-events: auto; }
         .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
         .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
         .lb-sticky-user .lb-name { color: white; }
@@ -517,13 +537,14 @@
         .bottom-sheet-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             z-index: 23000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 0.25s;
+            will-change: opacity;
         }
         .bottom-sheet-overlay.visible {
             opacity: 1;
@@ -534,16 +555,17 @@
         .subscription-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 30000;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 0.25s;
+            will-change: opacity;
         }
         .subscription-overlay.visible {
             opacity: 1;
@@ -604,14 +626,16 @@
             background: var(--sheet-bg);
             border-radius: 20px 20px 0 0;
             padding: 10px 20px calc(20px + var(--safe-bottom));
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
+            transform: translateY(100%) translateZ(0);
+            transition: transform 0.28s ease-out;
             z-index: 23001;
             max-height: 85vh;
             overflow-y: auto;
+            will-change: transform;
+            contain: layout style;
         }
         .bottom-sheet-overlay.visible .bottom-sheet {
-            transform: translateY(0);
+            transform: translateY(0) translateZ(0);
         }
         .bottom-sheet-handle {
             width: 40px;
@@ -707,7 +731,7 @@
             color: white;
         }
 
-        .modal-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.3s; touch-action: none; } 
+        .modal-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.25s; touch-action: none; will-change: opacity; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
         
         .modal { 
@@ -790,7 +814,7 @@
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
         .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } 
-        .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.2s, opacity 0.2s, background-color 0.15s; } 
+        .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.15s ease-out, opacity 0.15s ease-out, background-color 0.1s ease-out; transform: translateZ(0); will-change: transform, opacity; contain: layout style; } 
         .bb-cell.filled { 
             box-shadow: 
                 inset 0 2px 0 rgba(255,255,255,0.3),
@@ -802,12 +826,12 @@
         .bb-cell.no-transition { transition: none !important; }
         
         @keyframes popInGray {
-            0% { transform: scale(0); opacity: 0; }
-            60% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0) translateZ(0); opacity: 0; }
+            60% { transform: scale(1.1) translateZ(0); opacity: 1; }
+            100% { transform: scale(1) translateZ(0); opacity: 1; }
         }
         .bb-cell.appear-gray {
-            animation: popInGray 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: popInGray 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         
         /* FIXED v34.1: Lite Mode - отключаем тяжёлые эффекты для Android */
@@ -815,12 +839,12 @@
             transition: transform 0.1s ease-out, opacity 0.1s ease-out !important;
         }
         
-        .shake-screen { animation: shakeGame 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-screen { animation: shakeGame 0.25s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shakeGame { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-2px, 0, 0); } 40%, 60% { transform: translate3d(2px, 0, 0); } }
 
         .bb-cell.pre-clear { 
             opacity: 1; 
-            transform: scale(0.95); 
+            transform: scale(0.95) translateZ(0); 
             transition: background-color 0.1s, transform 0.1s; 
             box-shadow: 
                 inset 0 2px 0 rgba(255,255,255,0.5),
@@ -1034,36 +1058,39 @@
             border-color: #3a3a3c;
         }
         .wordle-tile.reveal {
-            animation: flip 0.5s ease forwards;
+            animation: flip 0.4s ease forwards;
         }
         @keyframes flip {
-            0% { transform: rotateX(0); }
-            50% { transform: rotateX(90deg); }
-            100% { transform: rotateX(0); }
+            0% { transform: rotateX(0) translateZ(0); }
+            50% { transform: rotateX(90deg) translateZ(0); }
+            100% { transform: rotateX(0) translateZ(0); }
         }
         @keyframes pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
+            0% { transform: scale(1) translateZ(0); }
+            50% { transform: scale(1.1) translateZ(0); }
+            100% { transform: scale(1) translateZ(0); }
         }
         @keyframes shake-row {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-5px); }
-            40%, 80% { transform: translateX(5px); }
+            0%, 100% { transform: translateX(0) translateZ(0); }
+            20%, 60% { transform: translateX(-5px) translateZ(0); }
+            40%, 80% { transform: translateX(5px) translateZ(0); }
         }
         .wordle-row.shake {
-            animation: shake-row 0.4s ease;
+            animation: shake-row 0.35s ease;
         }
         @keyframes bounce {
-            0%, 20% { transform: translateY(0); }
-            40% { transform: translateY(-20px); }
-            50% { transform: translateY(5px); }
-            60% { transform: translateY(-10px); }
-            80% { transform: translateY(2px); }
-            100% { transform: translateY(0); }
+            0%, 20% { transform: translateY(0) translateZ(0); }
+            40% { transform: translateY(-15px) translateZ(0); }
+            50% { transform: translateY(3px) translateZ(0); }
+            60% { transform: translateY(-8px) translateZ(0); }
+            80% { transform: translateY(2px) translateZ(0); }
+            100% { transform: translateY(0) translateZ(0); }
         }
         .wordle-tile.bounce {
-            animation: bounce 0.6s ease;
+            animation: bounce 0.5s ease;
+        }
+        .wordle-tile {
+            will-change: transform;
         }
         .wordle-message {
             min-height: 30px;
