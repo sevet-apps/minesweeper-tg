@@ -239,10 +239,14 @@
             overflow: hidden;
             transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
             will-change: left;
-            pointer-events: none;
+            pointer-events: auto;
+            cursor: grab;
             box-shadow: 
                 0 0 0 0.5px rgba(255, 255, 255, 0.2),
                 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .tab-slider:active {
+            cursor: grabbing;
         }
         :root .tab-slider {
             background: rgba(255, 255, 255, 0.85);
@@ -2611,47 +2615,26 @@
             slider.style.left = TAB_POSITIONS[1] + 'px';
             sliderIcons.style.left = -TAB_POSITIONS[1] + 'px';
             
-            // Add drag support - start from anywhere on tab bar
-            tabBar.addEventListener('mousedown', startDrag);
-            tabBar.addEventListener('touchstart', startDrag, { passive: false });
+            // Add drag support only on slider itself
+            slider.style.pointerEvents = 'auto';
+            slider.addEventListener('mousedown', startSliderDrag);
+            slider.addEventListener('touchstart', startSliderDrag, { passive: false });
             document.addEventListener('mousemove', onDrag);
             document.addEventListener('touchmove', onDrag, { passive: false });
             document.addEventListener('mouseup', endDrag);
             document.addEventListener('touchend', endDrag);
         }
         
-        function startDrag(e) {
-            const tabBar = document.getElementById('tabBar');
+        function startSliderDrag(e) {
             const slider = document.getElementById('tabSlider');
-            const rect = tabBar.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             
-            // Calculate relative X position within tab bar
-            const relativeX = clientX - rect.left;
-            
-            // Determine which tab was clicked
-            const tabWidth = rect.width / 3;
-            const clickedIndex = Math.floor(relativeX / tabWidth);
-            const clampedIndex = Math.max(0, Math.min(2, clickedIndex));
-            
-            // Check if clicked on current slider position (for drag)
-            const sliderRect = slider.getBoundingClientRect();
-            const isOnSlider = clientX >= sliderRect.left && clientX <= sliderRect.right;
-            
-            if (isOnSlider) {
-                // Start dragging
-                isDragging = true;
-                dragStartX = clientX;
-                sliderStartX = parseFloat(slider.style.left) || TAB_POSITIONS[currentTabIndex];
-                slider.classList.add('dragging');
-                e.preventDefault();
-            } else {
-                // Click on different tab - animate slider there
-                const tabs = ['leaderboard', 'games', 'profile'];
-                if (clampedIndex !== currentTabIndex) {
-                    switchTabWithSlider(tabs[clampedIndex], clampedIndex);
-                }
-            }
+            isDragging = true;
+            dragStartX = clientX;
+            sliderStartX = parseFloat(slider.style.left) || TAB_POSITIONS[currentTabIndex];
+            slider.classList.add('dragging');
+            e.preventDefault();
+            e.stopPropagation();
         }
         
         function onDrag(e) {
