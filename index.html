@@ -277,18 +277,14 @@
         /* Blue icons layer inside slider */
         .tab-slider-icons {
             position: absolute;
-            top: 0;
+            top: -6px;
             left: 0;
             width: 280px;
-            height: 58px;
+            height: 70px;
             display: flex;
             justify-content: center;
             align-items: center;
             pointer-events: none;
-            transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .tab-slider.dragging .tab-slider-icons {
-            transition: none;
         }
         .tab-slider-icon {
             display: flex;
@@ -300,7 +296,7 @@
             color: var(--accent);
         }
         .tab-slider-icon svg { width: 26px; height: 26px; margin-bottom: 2px; }
-        .tab-slider-icon:first-child svg { width: 30px; height: 30px; }
+        .tab-slider-icon:first-child svg { width: 30px; height: 30px; margin-bottom: 2px; }
         .tab-slider-icon span { font-size: 11px; font-weight: 600; }
         
         /* Gray icons layer (base) */
@@ -333,7 +329,7 @@
             position: relative;
         } 
         .tab-item svg { width: 26px; height: 26px; margin-bottom: 2px; }
-        .tab-item:first-child svg { width: 30px; height: 30px; }
+        .tab-item:first-child svg { width: 30px; height: 30px; margin-bottom: 2px; }
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector-wrapper { position: relative; z-index: 23001; margin-bottom: 15px; }
