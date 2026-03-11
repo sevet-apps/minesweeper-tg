@@ -2895,7 +2895,7 @@
                 const response = await fetch(url); const data = await response.json();
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id); let userVal = parseInt(userValRaw); let hasStats = true;
-                if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal === 999999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
+                if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal >= 9999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
                 const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, isMe: item.user_id.toString() === user.id.toString() }));
                 let myRankRow = displayList.find(u => u.isMe);
                 if (hasStats && !myRankRow) { displayList.push({ user_id: user.id.toString(), username: (user.first_name + ' ' + (user.last_name || '')).trim(), photo_url: user.photo_url, score: userVal, isMe: true }); if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } 
@@ -2903,11 +2903,11 @@
                 listEl.innerHTML = ''; const finalDisplayList = displayList.slice(0, 100); const meInList = finalDisplayList.find(u => u.isMe); const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 document.getElementById('stickyName').innerText = (user.first_name + ' ' + (user.last_name || '')).trim() + " " + t('you');
                 if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url; else document.getElementById('stickyAvatar').style.background = '#ddd';
-                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? (userVal === 999999 ? '--' : userVal + t('seconds')) : userVal; } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
+                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? (userVal >= 9999 ? '--' : userVal + t('seconds')) : userVal; } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
                 if(hasStats && myRank > 0) { lbObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) stickyEl.classList.remove('visible'); else if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }); }, { threshold: 0.1 }); } else { if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }
                 finalDisplayList.forEach((u, index) => {
                     const rank = index + 1; let medal = ''; if(rank === 1) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-gold); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`; if(rank === 2) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-silver); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`; if(rank === 3) medal = `<svg class="lb-medal" viewBox="0 0 24 24" style="fill:var(--rank-bronze); stroke:none;"><circle cx="12" cy="12" r="10"/></svg>`;
-                    let displayVal = u.score; if(category.isTime) displayVal = (u.score === 999999) ? '--' : u.score + t('seconds');
+                    let displayVal = u.score; if(category.isTime) displayVal = (u.score >= 9999) ? '--' : u.score + t('seconds');
                     const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
                     let avatarHtml = u.photo_url && u.photo_url.startsWith('http') ? `<img src="${u.photo_url}" class="lb-avatar">` : `<div class="lb-avatar" style="background:#ddd"></div>`;
                     item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${displayVal}</div>`;
@@ -3715,7 +3715,7 @@
             if(isScoreRecord && twScore > 0) {
                 html = `<div id="towerRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 5px 0;">${t('newRecord')}</h2>
                 <div style="font-size:14px; color:#8e8e93; margin-bottom:10px;">${t('hugeTower')}</div>
-                <div style="font-size:56px; font-weight:200; color:var(--accent); line-height:1;">${twScore}</div>
+                <div style="font-size:56px; font-weight:700; color:var(--accent); line-height:1;">${twScore}</div>
                 <div style="font-size:14px; color:#8e8e93; margin-top:10px;">${t('cleanSeries')}: ${twMaxComboThisGame}${isComboRecord ? ' 🔥' : ''}</div>
                 <button class="btn-main" onclick="twRestartGame()">${t('playAgain')}</button>`;
                 
