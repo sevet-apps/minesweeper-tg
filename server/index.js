@@ -114,6 +114,7 @@ app.get('/user-ranks', async (req, res) => {
     const categories = [
         { key: 'bb_best_score', asc: false },
         { key: 'saper_best_8', asc: true },
+        { key: 'saper_wins', asc: false },
         { key: 'tower_best', asc: false },
         { key: 'sudoku_wins', asc: false },
         { key: 'checkers_wins_pve', asc: false },

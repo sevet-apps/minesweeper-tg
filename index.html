@@ -853,13 +853,7 @@
         .bb-cell.pre-clear { 
             opacity: 1; 
             transform: scale(0.95) translateZ(0); 
-            transition: background-color 0.1s, transform 0.1s; 
-            box-shadow: 
-                inset 0 2px 0 rgba(255,255,255,0.5),
-                inset 0 -2px 0 rgba(0,0,0,0.3),
-                inset 2px 0 0 rgba(255,255,255,0.3),
-                inset -2px 0 0 rgba(0,0,0,0.2),
-                0 0 8px currentColor !important;
+            transition: background-color 0.1s, transform 0.1s, box-shadow 0.1s; 
         }
         .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
         .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
@@ -1616,7 +1610,7 @@
             
             <div class="condition-item">
                 <div class="condition-number">3</div>
-                <div class="condition-text" data-i18n="refCondition3">В будущем возможна переработка системы с добавлением вознаграждений.</div>
+                <div class="condition-text" data-i18n="refCondition3">Реферал засчитывается только когда он наберёт 1000 и более очков в Блок Бласт.</div>
             </div>
             
             <button class="btn-main" style="width:100%; margin-top:10px;" onclick="hideReferralConditions()" data-i18n="gotIt">Понятно</button>
@@ -2165,7 +2159,7 @@
                 // Extra
                 tapToStart: 'Нажми, чтобы начать',
                 refCondition2: 'Реферал закрепляется за вами навсегда при первом входе по ссылке.',
-                refCondition3: 'В будущем возможна переработка системы с добавлением вознаграждений.',
+                refCondition3: 'Реферал засчитывается только когда он наберёт 1000 и более очков в Блок Бласт.',
                 gotIt: 'Понятно',
                 easy: 'Легко',
                 medium: 'Средне',
@@ -2343,7 +2337,7 @@
                 // Extra
                 tapToStart: 'Tap to start',
                 refCondition2: 'Referral is assigned to you forever on first entry via link.',
-                refCondition3: 'In the future, the system may be reworked with rewards added.',
+                refCondition3: 'Referral counts only when they score 1000+ points in Block Blast.',
                 gotIt: 'Got it',
                 easy: 'Easy',
                 medium: 'Medium',
@@ -2523,14 +2517,14 @@
             
             // Load local scores
             const bbScore = localStorage.getItem('bb_best_score') || 0;
-            const saperScore = localStorage.getItem('saper_best_8');
+            const saperWins = localStorage.getItem('saper_wins') || 0;
             const towerScore = localStorage.getItem('tower_best') || 0;
             const sudokuScore = localStorage.getItem('sudoku_wins') || 0;
             const checkersScore = localStorage.getItem('checkers_wins_pve') || 0;
             const wordleScore = localStorage.getItem('wordle_wins') || 0;
             
             document.getElementById('rec-bb').innerText = bbScore > 0 ? bbScore.toLocaleString() : '--';
-            document.getElementById('rec-saper').innerText = saperScore ? saperScore + ' ' + t('sec') : '--';
+            document.getElementById('rec-saper').innerText = saperWins > 0 ? saperWins + ' ' + t('winsShort') : '--';
             document.getElementById('rec-tower').innerText = towerScore > 0 ? towerScore : '--';
             document.getElementById('rec-sudoku').innerText = sudokuScore > 0 ? sudokuScore + ' ' + t('winsShort') : '--';
             document.getElementById('rec-checkers').innerText = checkersScore > 0 ? checkersScore + ' ' + t('winsShort') : '--';
@@ -2551,7 +2545,7 @@
                 const ranks = await res.json();
                 
                 updateRankDisplay('rank-bb', ranks.bb_best_score);
-                updateRankDisplay('rank-saper', ranks.saper_best_8);
+                updateRankDisplay('rank-saper', ranks.saper_wins);
                 updateRankDisplay('rank-tower', ranks.tower_best);
                 updateRankDisplay('rank-sudoku', ranks.sudoku_wins);
                 updateRankDisplay('rank-checkers', ranks.checkers_wins_pve);
