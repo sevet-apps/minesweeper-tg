@@ -834,10 +834,11 @@ function getUserDisplayName(user) {
 
 // Конфигурация игр для inline режима
 const GAME_CONFIG = {
-    'block blast': { column: 'bb_best_score', name: 'Block Blast', isHigherBetter: true },
-    'bb': { column: 'bb_best_score', name: 'Block Blast', isHigherBetter: true },
-    'блок бласт': { column: 'bb_best_score', name: 'Block Blast', isHigherBetter: true },
-    'blockblast': { column: 'bb_best_score', name: 'Block Blast', isHigherBetter: true },
+    'block blast': { column: 'bb_best_score', name: 'Блок Бласт', isHigherBetter: true },
+    'bb': { column: 'bb_best_score', name: 'Блок Бласт', isHigherBetter: true },
+    'блок бласт': { column: 'bb_best_score', name: 'Блок Бласт', isHigherBetter: true },
+    'blockblast': { column: 'bb_best_score', name: 'Блок Бласт', isHigherBetter: true },
+    'сапёр': { column: 'saper_wins', name: 'Сапёр', isHigherBetter: true },
     'сапер': { column: 'saper_wins', name: 'Сапёр', isHigherBetter: true },
     'saper': { column: 'saper_wins', name: 'Сапёр', isHigherBetter: true },
     'minesweeper': { column: 'saper_wins', name: 'Сапёр', isHigherBetter: true },
@@ -1014,7 +1015,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                             ]]
                         }
                     });
@@ -1102,7 +1103,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                             ]]
                         }
                     });
@@ -1130,7 +1131,7 @@ if (BOT_TOKEN) {
                             },
                             reply_markup: {
                                 inline_keyboard: [[
-                                    { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
+                                    { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                                 ]]
                             }
                         });
@@ -1243,7 +1244,7 @@ if (BOT_TOKEN) {
                         parse_mode: 'HTML',
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                             ]]
                         }
                     }
@@ -1275,7 +1276,7 @@ if (BOT_TOKEN) {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [[
-                            { text: '🎮 Играть', url: 'https://t.me/spark_game_bot/sparkapp' }
+                            { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                         ]]
                     }
                 });
@@ -1777,8 +1778,8 @@ if (BOT_TOKEN) {
         if (!gameName) {
             bot.sendMessage(chatId,
                 `${EMOJI.chart} <b>Доступные топы:</b>\n\n` +
-                `• /top block blast\n` +
-                `• /top сапер\n` +
+                `• /top блок бласт\n` +
+                `• /top сапёр\n` +
                 `• /top башня\n` +
                 `• /top судоку\n` +
                 `• /top шашки\n` +
