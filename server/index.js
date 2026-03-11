@@ -1015,7 +1015,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: '5841551282321497604' }
+                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                             ]]
                         }
                     });
@@ -1103,7 +1103,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: '5841551282321497604' }
+                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                             ]]
                         }
                     });
@@ -1131,7 +1131,7 @@ if (BOT_TOKEN) {
                             },
                             reply_markup: {
                                 inline_keyboard: [[
-                                    { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: '5841551282321497604' }
+                                    { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                                 ]]
                             }
                         });
@@ -1244,7 +1244,7 @@ if (BOT_TOKEN) {
                         parse_mode: 'HTML',
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: '5841551282321497604' }
+                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                             ]]
                         }
                     }
@@ -1276,7 +1276,7 @@ if (BOT_TOKEN) {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [[
-                            { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: '5841551282321497604' }
+                            { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                         ]]
                     }
                 });
