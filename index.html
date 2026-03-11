@@ -3316,7 +3316,7 @@
         
         function checkPlacement(r, c) { 
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.background = ''; });
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.background = ''; c.style.boxShadow = ''; });
             if(canPlace(dragData.matrix, r, c)) { 
                 drawShadow(dragData.matrix, r, c, dragData.color); 
                 dragData.validPos = { r: r, c: c }; 
@@ -3332,8 +3332,11 @@
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(cell) { 
                 cell.classList.add('pre-clear'); 
-                const hex = COLOR_MAP[colorClass] || '#007aff'; 
-                cell.style.background = hexToRgba(hex, 0.5); 
+                const hex = COLOR_MAP[colorClass] || '#007aff';
+                // Set both background and glow color from dragged shape
+                cell.style.setProperty('--pre-clear-color', hex);
+                cell.style.background = hexToRgba(hex, 0.5);
+                cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
             } 
         }
         function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
@@ -3342,7 +3345,7 @@
         function onTouchEnd(e) { 
             document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
             if(dragGhost) dragGhost.remove(); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.background = ''; });
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.background = ''; c.style.boxShadow = ''; });
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
             if(dragData.validPos) { 
