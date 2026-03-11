@@ -1756,35 +1756,6 @@
         const REQUIRED_CHANNEL = '@spark_games_news'; // Замени на свой канал
         const CHANNEL_LINK = 'https://t.me/spark_games_news'; // Ссылка на канал
         
-        // --- ACTIVITY TRACKING ---
-        function trackVisit() {
-            const user = tg.initDataUnsafe.user;
-            if (!user) return;
-            
-            fetch(`${API_BASE_URL}/track-visit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.id })
-            }).catch(() => {});
-        }
-        
-        function sendHeartbeat() {
-            const user = tg.initDataUnsafe.user;
-            if (!user) return;
-            
-            fetch(`${API_BASE_URL}/heartbeat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.id })
-            }).catch(() => {});
-        }
-        
-        // Track visit on app open
-        trackVisit();
-        
-        // Send heartbeat every 30 seconds
-        setInterval(sendHeartbeat, 30000);
-        
         // --- SOCKET.IO INIT ---
         const socket = io(API_BASE_URL);
         

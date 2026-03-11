@@ -18,7 +18,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Telegram Bot Token for subscription check
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_games_news'; // Замени на свой канал
+const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_games_news';
+const OWNER_ID = '1482228376'; // Твой Telegram ID
 
 // --- API РОУТЫ ---
 app.get('/', (req, res) => res.send('Glass API v38.0'));
@@ -1655,16 +1656,13 @@ if (BOT_TOKEN) {
         }
     });
     
-    // ID владельца для команды /stats
-    const OWNER_ID = 805387662; // Твой Telegram ID
-    
     // Команда /stats - только для владельца
     bot.onText(/\/stats/, async (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
         
         // Проверка что это владелец
-        if (userId !== OWNER_ID) {
+        if (String(userId) !== String(OWNER_ID)) {
             return; // Молча игнорируем для других
         }
         
