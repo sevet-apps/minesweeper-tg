@@ -21,7 +21,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_games_news'; // Замени на свой канал
 
 // --- API РОУТЫ ---
-app.get('/', (req, res) => res.send('Glass API v37.0'));
+app.get('/', (req, res) => res.send('Glass API v38.0'));
 
 // Check if user is subscribed to the required channel
 app.get('/check-subscription', async (req, res) => {
@@ -293,8 +293,29 @@ app.get('/referral-leaderboard', async (req, res) => {
 const rooms = new Map();
 const TURN_TIME_LIMIT = 60000; // 60 секунд на ход
 
+// Track online users (users with app open)
+const onlineUsers = new Map(); // socket.id -> { oderId, odername, connectedAt }
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
+    
+    // User registers when app opens
+    socket.on('register_online', async ({ oderId, odername }) => {
+        if (oderId) {
+            onlineUsers.set(socket.id, { oderId, odername, connectedAt: Date.now() });
+            console.log(`User ${oderId} online. Total online: ${onlineUsers.size}`);
+            
+            // Log activity to database
+            try {
+                await supabase.from('user_activity').insert({
+                    telegram_id: oderId,
+                    activity_type: 'app_open'
+                });
+            } catch (e) {
+                console.error('Failed to log activity:', e);
+            }
+        }
+    });
 
     // Синхронизация времени - клиент отправляет ping, сервер отвечает с серверным временем
     socket.on('time_sync', (clientTime, callback) => {
@@ -451,6 +472,13 @@ io.on('connection', (socket) => {
 
     // Отключение
     socket.on('disconnect', () => {
+        // Remove from online users
+        if (onlineUsers.has(socket.id)) {
+            const user = onlineUsers.get(socket.id);
+            console.log(`User ${user.oderId} offline. Total online: ${onlineUsers.size - 1}`);
+            onlineUsers.delete(socket.id);
+        }
+        
         rooms.forEach((room, code) => {
             const index = room.players.findIndex(p => p.id === socket.id);
             if (index !== -1) {
@@ -1128,6 +1156,16 @@ if (BOT_TOKEN) {
         
         console.log('Chosen inline result:', resultId);
         
+        // Log inline command usage
+        try {
+            await supabase.from('user_activity').insert({
+                telegram_id: userId,
+                activity_type: 'inline_command'
+            });
+        } catch (e) {
+            console.error('Failed to log inline usage:', e);
+        }
+        
         if (!inlineMessageId) return;
         
         const cached = inlineCache.get(resultId);
@@ -1617,6 +1655,98 @@ if (BOT_TOKEN) {
         }
     });
     
+    // ID владельца для команды /stats
+    const OWNER_ID = 805387662; // Твой Telegram ID
+    
+    // Команда /stats - только для владельца
+    bot.onText(/\/stats/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = msg.from.id;
+        
+        // Проверка что это владелец
+        if (userId !== OWNER_ID) {
+            return; // Молча игнорируем для других
+        }
+        
+        try {
+            const now = new Date();
+            const oneHourAgo = new Date(now - 60 * 60 * 1000);
+            const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+            const oneWeekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+            const oneMonthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+            
+            // Общее количество пользователей
+            const { count: totalUsers } = await supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true });
+            
+            // Уникальные пользователи за 1 час
+            const { data: hourData } = await supabase
+                .from('user_activity')
+                .select('telegram_id')
+                .gte('created_at', oneHourAgo.toISOString())
+                .eq('activity_type', 'app_open');
+            const uniqueHour = new Set(hourData?.map(r => r.telegram_id) || []).size;
+            
+            // Уникальные пользователи за 1 день
+            const { data: dayData } = await supabase
+                .from('user_activity')
+                .select('telegram_id')
+                .gte('created_at', oneDayAgo.toISOString())
+                .eq('activity_type', 'app_open');
+            const uniqueDay = new Set(dayData?.map(r => r.telegram_id) || []).size;
+            
+            // Уникальные пользователи за 1 неделю
+            const { data: weekData } = await supabase
+                .from('user_activity')
+                .select('telegram_id')
+                .gte('created_at', oneWeekAgo.toISOString())
+                .eq('activity_type', 'app_open');
+            const uniqueWeek = new Set(weekData?.map(r => r.telegram_id) || []).size;
+            
+            // Уникальные пользователи за 1 месяц
+            const { data: monthData } = await supabase
+                .from('user_activity')
+                .select('telegram_id')
+                .gte('created_at', oneMonthAgo.toISOString())
+                .eq('activity_type', 'app_open');
+            const uniqueMonth = new Set(monthData?.map(r => r.telegram_id) || []).size;
+            
+            // Новые пользователи за день (зарегистрированные в users)
+            const { count: newUsersDay } = await supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', oneDayAgo.toISOString());
+            
+            // Инлайн команды за день
+            const { count: inlineDay } = await supabase
+                .from('user_activity')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', oneDayAgo.toISOString())
+                .eq('activity_type', 'inline_command');
+            
+            // Онлайн сейчас
+            const onlineNow = onlineUsers.size;
+            
+            const statsMessage = 
+                `<tg-emoji emoji-id="5258513401784573443">📊</tg-emoji> Общее количество пользователей: <b>${totalUsers || 0}</b>\n\n` +
+                `Количество уникальных пользователей за:\n` +
+                `<tg-emoji emoji-id="5260280853841321805">⏰</tg-emoji> 1 час: <b>${uniqueHour}</b>\n` +
+                `<tg-emoji emoji-id="5258226313285607065">📅</tg-emoji> 1 день: <b>${uniqueDay}</b>\n` +
+                `<tg-emoji emoji-id="5258123337149717894">📆</tg-emoji> 1 неделю: <b>${uniqueWeek}</b>\n` +
+                `<tg-emoji emoji-id="5258071638628377037">🗓</tg-emoji> 1 месяц: <b>${uniqueMonth}</b>\n\n` +
+                `<tg-emoji emoji-id="5258362837411045098">👤</tg-emoji> Новых пользователей за день: <b>${newUsersDay || 0}</b>\n` +
+                `<tg-emoji emoji-id="5258093637450866522">🎮</tg-emoji> Инлайн команд за день: <b>${inlineDay || 0}</b>\n\n` +
+                `<tg-emoji emoji-id="5323761960829862762">🟢</tg-emoji> Онлайн сейчас: <b>${onlineNow}</b>`;
+            
+            bot.sendMessage(chatId, statsMessage, { parse_mode: 'HTML' });
+            
+        } catch (e) {
+            console.error('Stats error:', e);
+            bot.sendMessage(chatId, 'Ошибка получения статистики: ' + e.message);
+        }
+    });
+    
     // Команда /start
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
@@ -1686,5 +1816,29 @@ if (BOT_TOKEN) {
     console.log('BOT_TOKEN not set, Telegram Bot disabled');
 }
 
+// Cleanup old activity records (older than 35 days) - runs every 24 hours
+async function cleanupOldActivity() {
+    try {
+        const cutoff = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString();
+        const { error } = await supabase
+            .from('user_activity')
+            .delete()
+            .lt('created_at', cutoff);
+        
+        if (error) {
+            console.error('Cleanup error:', error);
+        } else {
+            console.log('Old activity records cleaned up');
+        }
+    } catch (e) {
+        console.error('Cleanup failed:', e);
+    }
+}
+
+// Run cleanup every 24 hours
+setInterval(cleanupOldActivity, 24 * 60 * 60 * 1000);
+// Also run once on startup (after 1 minute delay)
+setTimeout(cleanupOldActivity, 60 * 1000);
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Glass API v37.0 running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Glass API v38.0 running on port ${PORT}`));
