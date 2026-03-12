@@ -845,7 +845,7 @@ async function editInlineMessageWithCustomEmoji(inlineMessageId, text, userId) {
             reply_markup: {
                 inline_keyboard: [[
                     { 
-                        text: '🎮 Играть', 
+                        text: 'Играть', 
                         url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`,
                         icon_custom_emoji_id: "5841551282321497604"
                     }
@@ -854,6 +854,7 @@ async function editInlineMessageWithCustomEmoji(inlineMessageId, text, userId) {
         })
     });
     const result = await response.json();
+    console.log('Edit API response:', JSON.stringify(result));
     if (!result.ok) {
         console.error('Edit message API error:', result.description);
     }
@@ -1043,7 +1044,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
+                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                             ]]
                         }
                     });
@@ -1131,7 +1132,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
+                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                             ]]
                         }
                     });
@@ -1159,7 +1160,7 @@ if (BOT_TOKEN) {
                             },
                             reply_markup: {
                                 inline_keyboard: [[
-                                    { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
+                                    { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
                                 ]]
                             }
                         });
