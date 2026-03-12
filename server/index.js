@@ -832,6 +832,34 @@ function getUserDisplayName(user) {
     return user.first_name || 'Игрок';
 }
 
+// Helper function to edit inline message with custom emoji button (direct API call)
+async function editInlineMessageWithCustomEmoji(inlineMessageId, text, userId) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            inline_message_id: inlineMessageId,
+            text: text,
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[
+                    { 
+                        text: 'Играть', 
+                        url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`,
+                        icon_custom_emoji_id: "5841551282321497604"
+                    }
+                ]]
+            }
+        })
+    });
+    const result = await response.json();
+    if (!result.ok) {
+        console.error('Edit message API error:', result.description);
+    }
+    return result;
+}
+
 // Конфигурация игр для inline режима
 const GAME_CONFIG = {
     'block blast': { column: 'bb_best_score', name: 'Блок Бласт', isHigherBetter: true },
@@ -1237,18 +1265,8 @@ if (BOT_TOKEN) {
         // Если это help - редактируем с Premium эмодзи
         if (cached?.type === 'help') {
             try {
-                await bot.editMessageText(
-                    `${EMOJI.game} <b>Spark Games</b>\n\n<b>Топы:</b>\n• Block Blast\n• Сапёр\n• Башня\n• Судоку\n• Шашки\n• Вордли\n\n<b>Игры:</b>\n• крестики-нолики\n• шашки\n\n${EMOJI.chart} Напишите: @spark_beta_bot [команда]`,
-                    {
-                        inline_message_id: inlineMessageId,
-                        parse_mode: 'HTML',
-                        reply_markup: {
-                            inline_keyboard: [[
-                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
-                            ]]
-                        }
-                    }
-                );
+                const helpText = `${EMOJI.game} <b>Spark Games</b>\n\n<b>Топы:</b>\n• Блок Бласт\n• Сапёр\n• Башня\n• Судоку\n• Шашки\n• Вордли\n\n<b>Игры:</b>\n• крестики-нолики\n• шашки\n\n${EMOJI.chart} Напишите: @spark_game_bot [команда]`;
+                await editInlineMessageWithCustomEmoji(inlineMessageId, helpText, userId);
             } catch (e) {
                 console.error('Help edit error:', e.message);
             }
@@ -1271,15 +1289,7 @@ if (BOT_TOKEN) {
         if (gameConfig) {
             try {
                 const { text } = await getTopForGame(gameConfig, userId, true);
-                await bot.editMessageText(text, {
-                    inline_message_id: inlineMessageId,
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [[
-                            { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
-                        ]]
-                    }
-                });
+                await editInlineMessageWithCustomEmoji(inlineMessageId, text, userId);
                 console.log('Message edited with premium emoji!');
             } catch (e) {
                 console.error('Edit message error:', e.message);
