@@ -832,8 +832,8 @@ function getUserDisplayName(user) {
     return user.first_name || 'Игрок';
 }
 
-// Helper function to edit inline message with custom emoji button (direct API call)
-async function editInlineMessageWithCustomEmoji(inlineMessageId, text, userId) {
+// Helper function to edit inline message with play button
+async function editInlineMessageWithPlayButton(inlineMessageId, text, userId) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
     const response = await fetch(url, {
         method: 'POST',
@@ -845,16 +845,14 @@ async function editInlineMessageWithCustomEmoji(inlineMessageId, text, userId) {
             reply_markup: {
                 inline_keyboard: [[
                     { 
-                        text: 'Играть', 
-                        url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`,
-                        icon_custom_emoji_id: "5841551282321497604"
+                        text: '🎮 Играть', 
+                        url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`
                     }
                 ]]
             }
         })
     });
     const result = await response.json();
-    console.log('Edit API response:', JSON.stringify(result));
     if (!result.ok) {
         console.error('Edit message API error:', result.description);
     }
@@ -1044,7 +1042,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                             ]]
                         }
                     });
@@ -1132,7 +1130,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                             ]]
                         }
                     });
@@ -1160,7 +1158,7 @@ if (BOT_TOKEN) {
                             },
                             reply_markup: {
                                 inline_keyboard: [[
-                                    { text: 'Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`, icon_custom_emoji_id: "5841551282321497604" }
+                                    { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
                                 ]]
                             }
                         });
@@ -1267,7 +1265,7 @@ if (BOT_TOKEN) {
         if (cached?.type === 'help') {
             try {
                 const helpText = `${EMOJI.game} <b>Spark Games</b>\n\n<b>Топы:</b>\n• Блок Бласт\n• Сапёр\n• Башня\n• Судоку\n• Шашки\n• Вордли\n\n<b>Игры:</b>\n• крестики-нолики\n• шашки\n\n${EMOJI.chart} Напишите: @spark_game_bot [команда]`;
-                await editInlineMessageWithCustomEmoji(inlineMessageId, helpText, userId);
+                await editInlineMessageWithPlayButton(inlineMessageId, helpText, userId);
             } catch (e) {
                 console.error('Help edit error:', e.message);
             }
@@ -1290,7 +1288,7 @@ if (BOT_TOKEN) {
         if (gameConfig) {
             try {
                 const { text } = await getTopForGame(gameConfig, userId, true);
-                await editInlineMessageWithCustomEmoji(inlineMessageId, text, userId);
+                await editInlineMessageWithPlayButton(inlineMessageId, text, userId);
                 console.log('Message edited with premium emoji!');
             } catch (e) {
                 console.error('Edit message error:', e.message);
