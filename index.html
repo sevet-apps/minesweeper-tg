@@ -822,7 +822,7 @@
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
         .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } 
-        .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.15s ease-out, opacity 0.15s ease-out, background-color 0.1s ease-out; transform: translateZ(0); will-change: transform, opacity; contain: layout style; } 
+        .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.15s ease-out, opacity 0.15s ease-out, background 0.15s ease-out, box-shadow 0.15s ease-out; transform: translateZ(0); will-change: transform, opacity; contain: layout style; } 
         .bb-cell.filled { 
             box-shadow: 
                 inset 0 2px 0 rgba(255,255,255,0.3),
@@ -853,7 +853,10 @@
         .bb-cell.pre-clear { 
             opacity: 1; 
             transform: scale(0.95) translateZ(0); 
-            transition: background-color 0.1s, transform 0.1s, box-shadow 0.1s; 
+            transition: background 0.15s ease, transform 0.1s, box-shadow 0.15s ease; 
+        }
+        .bb-cell.filled {
+            transition: background 0.15s ease, box-shadow 0.15s ease;
         }
         .bb-footer { position: absolute; bottom: calc(30px + var(--safe-bottom)); width: 100%; height: 120px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; } 
         .bb-shape-container { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; } 
