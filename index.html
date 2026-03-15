@@ -3333,6 +3333,9 @@
         function checkPlacement(r, c) { 
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
             
+            // Get current drag color
+            const hex = COLOR_MAP[dragData.color] || '#007aff';
+            
             // Collect cells that will be highlighted
             let cellsToHighlight = new Set();
             
@@ -3347,21 +3350,32 @@
                 // Collect all cells that need highlighting
                 rowsToClear.forEach(rr => { for(let cc=0; cc<BB_COLS; cc++) cellsToHighlight.add(`${rr}-${cc}`); });
                 colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) cellsToHighlight.add(`${rr}-${cc}`); });
-                
-                // Apply highlights immediately
-                cellsToHighlight.forEach(key => {
-                    const [rr, cc] = key.split('-').map(Number);
-                    highlightPreClear(rr, cc, dragData.color);
-                });
             } else { dragData.validPos = null; }
             
-            // Clear only cells that are no longer highlighted
+            // Process ALL pre-clear cells in one pass - either update color or clear
             document.querySelectorAll('.bb-cell.pre-clear').forEach(cell => {
                 const key = `${cell.dataset.r}-${cell.dataset.c}`;
-                if (!cellsToHighlight.has(key)) {
+                if (cellsToHighlight.has(key)) {
+                    // Update to current color immediately
+                    cell.style.background = hexToRgba(hex, 0.5);
+                    cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
+                    cellsToHighlight.delete(key); // Already processed
+                } else {
+                    // Clear this cell
                     cell.classList.remove('pre-clear');
                     cell.style.background = '';
                     cell.style.boxShadow = '';
+                }
+            });
+            
+            // Add NEW cells that weren't already pre-clear
+            cellsToHighlight.forEach(key => {
+                const [rr, cc] = key.split('-').map(Number);
+                const cell = document.querySelector(`.bb-cell[data-r="${rr}"][data-c="${cc}"]`);
+                if(cell) {
+                    cell.classList.add('pre-clear');
+                    cell.style.background = hexToRgba(hex, 0.5);
+                    cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
                 }
             });
         }
@@ -3370,8 +3384,6 @@
             if(cell) { 
                 cell.classList.add('pre-clear'); 
                 const hex = COLOR_MAP[colorClass] || '#007aff';
-                // Set both background and glow color from dragged shape
-                cell.style.setProperty('--pre-clear-color', hex);
                 cell.style.background = hexToRgba(hex, 0.5);
                 cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
             } 
