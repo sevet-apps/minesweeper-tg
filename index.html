@@ -2079,6 +2079,7 @@
                 conditionsText: 'Приглашайте друзей по вашей уникальной ссылке и соревнуйтесь в топе рефералов.',
                 invite: 'Пригласить',
                 invited: 'Приглашено',
+                activated: 'В топе',
                 rankInTop: 'Место в топе',
                 // Games
                 blockBlast: 'Блок Бласт',
@@ -2167,7 +2168,7 @@
                 // Extra
                 tapToStart: 'Нажми, чтобы начать',
                 refCondition2: 'Реферал закрепляется за вами навсегда при первом входе по ссылке.',
-                refCondition3: 'Реферал засчитывается только когда он наберёт 1000 и более очков в Блок Бласт.',
+                refCondition3: 'Реферал попадает в топ только когда наберёт 1000+ очков в Блок Бласт. До этого он отображается только в профиле.',
                 gotIt: 'Понятно',
                 easy: 'Легко',
                 medium: 'Средне',
@@ -2257,6 +2258,7 @@
                 conditionsText: 'Invite friends using your unique link and compete in the referral top.',
                 invite: 'Invite',
                 invited: 'Invited',
+                activated: 'In top',
                 rankInTop: 'Rank in top',
                 // Games
                 blockBlast: 'Block Blast',
@@ -2345,7 +2347,7 @@
                 // Extra
                 tapToStart: 'Tap to start',
                 refCondition2: 'Referral is assigned to you forever on first entry via link.',
-                refCondition3: 'Referral counts only when they score 1000+ points in Block Blast.',
+                refCondition3: 'Referral appears in the top only after scoring 1000+ points in Block Blast. Until then, it is shown only in your profile.',
                 gotIt: 'Got it',
                 easy: 'Easy',
                 medium: 'Medium',
@@ -2601,8 +2603,8 @@
         }
 
         // --- REFERRAL SYSTEM ---
-        const BOT_USERNAME = 'spark_beta_bot';
-        const APP_NAME = 'SparkBETA';
+        const BOT_USERNAME = 'spark_game_bot';
+        const APP_NAME = 'sparkapp';
         
         function getReferralLink() {
             const user = tg.initDataUnsafe.user;
