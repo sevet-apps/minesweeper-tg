@@ -3334,8 +3334,6 @@
         function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } }
         
         function checkPlacement(r, c) { 
-            document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
-            
             // Get current drag color
             const hex = COLOR_MAP[dragData.color] || '#007aff';
             
@@ -3343,7 +3341,6 @@
             let cellsToHighlight = new Set();
             
             if(canPlace(dragData.matrix, r, c)) { 
-                drawShadow(dragData.matrix, r, c, dragData.color); 
                 dragData.validPos = { r: r, c: c }; 
                 let tempGrid = bbGrid.map(row => [...row]); let rowsToClear = [], colsToClear = [];
                 for(let i=0; i<dragData.matrix.length; i++) { for(let j=0; j<dragData.matrix[0].length; j++) { if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1; } }
@@ -3355,30 +3352,39 @@
                 colsToClear.forEach(cc => { for(let rr=0; rr<BB_ROWS; rr++) cellsToHighlight.add(`${rr}-${cc}`); });
             } else { dragData.validPos = null; }
             
-            // Process ALL pre-clear cells in one pass - either update color or clear
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(cell => {
+            // Build set of cells that need shadow (piece placement preview)
+            let shadowCells = new Set();
+            if(dragData.validPos) {
+                for(let i=0; i<dragData.matrix.length; i++) { for(let j=0; j<dragData.matrix[0].length; j++) { if(dragData.matrix[i][j] === 1) shadowCells.add(`${r+i}-${c+j}`); } }
+            }
+            
+            // Single pass: update all bb-cell states atomically
+            const bgStyle = hexToRgba(hex, 0.5);
+            const bsStyle = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
+            
+            document.querySelectorAll('.bb-cell').forEach(cell => {
                 const key = `${cell.dataset.r}-${cell.dataset.c}`;
-                if (cellsToHighlight.has(key)) {
-                    // Update to current color immediately
-                    cell.style.background = hexToRgba(hex, 0.5);
-                    cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
-                    cellsToHighlight.delete(key); // Already processed
-                } else {
-                    // Clear this cell
+                const needsShadow = shadowCells.has(key);
+                const needsHighlight = cellsToHighlight.has(key);
+                const hasShadow = cell.classList.contains('bb-shadow');
+                const hasPreClear = cell.classList.contains('pre-clear');
+                
+                // Handle shadow
+                if(needsShadow && !hasShadow) {
+                    cell.classList.add('bb-shadow', dragData.color);
+                } else if(!needsShadow && hasShadow) {
+                    cell.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7');
+                }
+                
+                // Handle pre-clear highlight
+                if(needsHighlight) {
+                    if(!hasPreClear) cell.classList.add('pre-clear');
+                    cell.style.background = bgStyle;
+                    cell.style.boxShadow = bsStyle;
+                } else if(hasPreClear) {
                     cell.classList.remove('pre-clear');
                     cell.style.background = '';
                     cell.style.boxShadow = '';
-                }
-            });
-            
-            // Add NEW cells that weren't already pre-clear
-            cellsToHighlight.forEach(key => {
-                const [rr, cc] = key.split('-').map(Number);
-                const cell = document.querySelector(`.bb-cell[data-r="${rr}"][data-c="${cc}"]`);
-                if(cell) {
-                    cell.classList.add('pre-clear');
-                    cell.style.background = hexToRgba(hex, 0.5);
-                    cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
                 }
             });
         }
