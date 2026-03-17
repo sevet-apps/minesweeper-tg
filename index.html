@@ -852,8 +852,8 @@
 
         .bb-cell.pre-clear { 
             opacity: 1; 
-            transform: scale(0.95) translateZ(0); 
-            transition: transform 0.1s ease-out; 
+            transform: translateZ(0); 
+            transition: none; 
         }
         .bb-cell.filled {
             transition: background 0.15s ease, box-shadow 0.15s ease;
@@ -1777,6 +1777,7 @@
         const ICON_FLAG = `<svg class="saper-flag" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
         const ICON_CROWN = `<svg class="crown-icon" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
         const COLOR_MAP = { 'bb-c-1':'#ff3b30', 'bb-c-2':'#ff9500', 'bb-c-3':'#ffcc00', 'bb-c-4':'#34c759', 'bb-c-5':'#007aff', 'bb-c-6':'#5856d6', 'bb-c-7':'#af52de' };
+        const GRADIENT_MAP = { 'bb-c-1':'linear-gradient(135deg, #ff5c52 0%, #ff3b30 50%, #d62d24 100%)', 'bb-c-2':'linear-gradient(135deg, #ffab30 0%, #ff9500 50%, #d67e00 100%)', 'bb-c-3':'linear-gradient(135deg, #ffe033 0%, #ffcc00 50%, #d6ab00 100%)', 'bb-c-4':'linear-gradient(135deg, #4cd964 0%, #34c759 50%, #28a745 100%)', 'bb-c-5':'linear-gradient(135deg, #339aff 0%, #007aff 50%, #0062cc 100%)', 'bb-c-6':'linear-gradient(135deg, #7472e8 0%, #5856d6 50%, #4745ab 100%)', 'bb-c-7':'linear-gradient(135deg, #c76ef0 0%, #af52de 50%, #8c42b2 100%)' };
 
         // --- SUBSCRIPTION CHECK ---
         let subscriptionLottie = null;
@@ -3363,8 +3364,8 @@
             }
             
             // Single pass: update all bb-cell states atomically
-            const bgStyle = hexToRgba(hex, 0.5);
-            const bsStyle = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
+            const bgStyle = GRADIENT_MAP[dragData.color] || hexToRgba(hex, 1);
+            const bsStyle = `inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.2), inset 2px 0 0 rgba(255,255,255,0.15), inset -2px 0 0 rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.2)`;
             
             document.querySelectorAll('.bb-cell').forEach(cell => {
                 const key = `${cell.dataset.r}-${cell.dataset.c}`;
@@ -3398,9 +3399,9 @@
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(cell) { 
                 cell.classList.add('pre-clear'); 
-                const hex = COLOR_MAP[colorClass] || '#007aff';
-                cell.style.background = hexToRgba(hex, 0.5);
-                cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.3), inset 2px 0 0 rgba(255,255,255,0.3), inset -2px 0 0 rgba(0,0,0,0.2), 0 0 12px ${hex}`;
+                cell.style.transition = 'none';
+                cell.style.background = GRADIENT_MAP[colorClass] || COLOR_MAP[colorClass] || '#007aff';
+                cell.style.boxShadow = `inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.2), inset 2px 0 0 rgba(255,255,255,0.15), inset -2px 0 0 rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.2)`;
             } 
         }
         function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
