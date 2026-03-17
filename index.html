@@ -585,7 +585,13 @@
             width: 100px;
             height: 100px;
             margin: 0 auto 15px;
+            overflow: hidden;
         }
+        .subscription-icon canvas { width: 100% !important; height: 100% !important; }
+        
+        /* Lottie canvas renderer containment */
+        #bbRecordLottie, #towerRecordLottie { overflow: hidden; }
+        #bbRecordLottie canvas, #towerRecordLottie canvas { width: 100% !important; height: 100% !important; }
         .subscription-title {
             font-size: 22px;
             font-weight: 700;
@@ -712,7 +718,9 @@
             width: 28px;
             height: 28px;
             flex-shrink: 0;
+            overflow: hidden;
         }
+        .toast-lottie canvas { width: 100% !important; height: 100% !important; }
         .toast-icon {
             width: 24px;
             height: 24px;
