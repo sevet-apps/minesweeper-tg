@@ -597,7 +597,7 @@ const EMOJI = {
     game: '<tg-emoji emoji-id="5361741454685256344">🎮</tg-emoji>',
     play: '<tg-emoji emoji-id="5427168083074628963">▶️</tg-emoji>',
     chart: '<tg-emoji emoji-id="5231200819986047254">📊</tg-emoji>',
-    joystick: '<tg-emoji emoji-id="5841551282321497604">🕹</tg-emoji>',
+    joystick: '<tg-emoji emoji-id="5317048952716039773">🕹</tg-emoji>',
     trophy: '<tg-emoji emoji-id="5280769763398671636">🏆</tg-emoji>',
     handshake: '<tg-emoji emoji-id="5357080225463149588">🤝</tg-emoji>',
 };
