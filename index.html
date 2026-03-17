@@ -872,7 +872,7 @@
                 inset -2px 0 0 rgba(0,0,0,0.15),
                 0 2px 3px rgba(0,0,0,0.2);
         }
-        .drag-ghost { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; } 
+        .drag-ghost { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 10000; opacity: 0.95; width: max-content; height: max-content; will-change: transform; } 
         .drag-ghost .bb-block { 
             width: 100%; 
             height: 100%; 
@@ -3307,6 +3307,7 @@
         // Множитель движения - фигура двигается в 1.3 раза быстрее пальца
         const DRAG_MULTIPLIER = 1.3;
         
+        let lastPlacementRow = -1, lastPlacementCol = -1;
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
         function handleMove(x, y) { 
@@ -3319,8 +3320,7 @@
             const ghostY = dragData.startY + deltaY - touchOffsetY - DRAG_LIFT_Y; 
             
             if(dragGhost) { 
-                dragGhost.style.left = ghostX + 'px'; 
-                dragGhost.style.top = ghostY + 'px'; 
+                dragGhost.style.transform = `translate3d(${ghostX}px, ${ghostY}px, 0)`; 
             } 
             
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
@@ -3329,9 +3329,13 @@
             const relY = ghostY - gridRect.top; 
             const col = Math.round(relX / cellFullSize); 
             const row = Math.round(relY / cellFullSize); 
-            checkPlacement(row, col); 
+            if(row !== lastPlacementRow || col !== lastPlacementCol) {
+                lastPlacementRow = row;
+                lastPlacementCol = col;
+                checkPlacement(row, col);
+            }
         }
-        function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.left = ghostX + 'px'; dragGhost.style.top = ghostY + 'px'; } }
+        function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.transform = `translate3d(${ghostX}px, ${ghostY}px, 0)`; } }
         
         function checkPlacement(r, c) { 
             // Get current drag color
@@ -3379,10 +3383,12 @@
                 // Handle pre-clear highlight
                 if(needsHighlight) {
                     if(!hasPreClear) cell.classList.add('pre-clear');
+                    cell.style.transition = 'none';
                     cell.style.background = bgStyle;
                     cell.style.boxShadow = bsStyle;
                 } else if(hasPreClear) {
                     cell.classList.remove('pre-clear');
+                    cell.style.transition = '';
                     cell.style.background = '';
                     cell.style.boxShadow = '';
                 }
@@ -3401,9 +3407,10 @@
         function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); if(cell) cell.classList.add('bb-shadow', color); } } } }
         
         function onTouchEnd(e) { 
+            lastPlacementRow = -1; lastPlacementCol = -1;
             document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
             if(dragGhost) dragGhost.remove(); 
-            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.background = ''; c.style.boxShadow = ''; });
+            document.querySelectorAll('.bb-cell.pre-clear').forEach(c => { c.classList.remove('pre-clear'); c.style.transition = ''; c.style.background = ''; c.style.boxShadow = ''; });
             document.querySelectorAll('.bb-cell.bb-shadow').forEach(c => c.classList.remove('bb-shadow', 'bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')); 
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
             if(dragData.validPos) { 
