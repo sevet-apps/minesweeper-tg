@@ -1063,7 +1063,7 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
 }
 
 // URL Mini App
-const WEBAPP_URL = 'https://sevet-apps.github.io/glass-test-server/';
+const WEBAPP_URL = 'https://sevet-apps.github.io/minesweeper-tg/';
 
 // Кэш для хранения данных inline запросов
 const inlineCache = new Map();
@@ -1890,21 +1890,29 @@ if (BOT_TOKEN) {
     });
     
     // Команда /start
-    bot.onText(/\/start/, (msg) => {
+    bot.onText(/\/start(.*)/, (msg, match) => {
         const chatId = msg.chat.id;
+        const param = match[1].trim();
+        
+        // Build web_app URL with ref param if present
+        let webAppUrl = WEBAPP_URL;
+        if (param && param.startsWith('ref_')) {
+            webAppUrl += `?tgWebAppStartParam=${param}`;
+        }
+        
         bot.sendMessage(chatId, 
             `${EMOJI.game} <b>Добро пожаловать в Spark Games!</b>\n\n` +
             `Играйте в крутые игры и соревнуйтесь с друзьями!\n\n` +
             `${EMOJI.play} <b>Открыть игры:</b> нажмите кнопку ниже\n` +
-            `${EMOJI.chart} <b>Топы:</b> @spark_beta_bot [игра]\n` +
+            `${EMOJI.chart} <b>Топы:</b> @spark_game_bot [игра]\n` +
             `${EMOJI.joystick} <b>Игры в чате:</b>\n` +
-            `• @spark_beta_bot крестики\n` +
-            `• @spark_beta_bot шашки`,
+            `• @spark_game_bot крестики\n` +
+            `• @spark_game_bot шашки`,
             { 
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [[
-                        { text: '🎮 Играть', web_app: { url: WEBAPP_URL } }
+                        { text: '🎮 Играть', web_app: { url: webAppUrl } }
                     ]]
                 }
             }
