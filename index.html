@@ -1403,6 +1403,10 @@
                             <div class="referral-stat-label" data-i18n="invited">Приглашено</div>
                         </div>
                         <div class="referral-stat-box">
+                            <div class="referral-stat-value" id="referral-active">0</div>
+                            <div class="referral-stat-label" data-i18n="activated">В топе</div>
+                        </div>
+                        <div class="referral-stat-box">
                             <div class="referral-stat-value" id="referral-rank">--</div>
                             <div class="referral-stat-label" data-i18n="rankInTop">Место в топе</div>
                         </div>
@@ -1613,7 +1617,7 @@
             
             <div class="condition-item">
                 <div class="condition-number">3</div>
-                <div class="condition-text" data-i18n="refCondition3">Реферал засчитывается только когда он наберёт 1000 и более очков в Блок Бласт.</div>
+                <div class="condition-text" data-i18n="refCondition3">Реферал попадает в топ только когда наберёт 1000+ очков в Блок Бласт. До этого он отображается только в профиле.</div>
             </div>
             
             <button class="btn-main" style="width:100%; margin-top:10px;" onclick="hideReferralConditions()" data-i18n="gotIt">Понятно</button>
@@ -2841,6 +2845,7 @@
                 const data = await resp.json();
                 
                 document.getElementById('referral-count').innerText = data.referral_count || 0;
+                document.getElementById('referral-active').innerText = data.active_count || 0;
                 
                 if (data.rank) {
                     const rankEl = document.getElementById('referral-rank');

@@ -84,6 +84,18 @@ app.post('/save-stat', async (req, res) => {
             if (isRecord) await supabase.from('users').update(updateData).eq('telegram_id', user_id);
             else await supabase.from('users').update({ username: username, photo_url: photo_url }).eq('telegram_id', user_id);
         }
+        
+        // Referral activation: when user scores 1000+ in Block Blast, activate their referral
+        if (game_type === 'bb_best_score' && score >= 1000) {
+            // Re-fetch user to get latest state
+            const { data: freshUser } = await supabase.from('users').select('referred_by, referral_activated').eq('telegram_id', user_id).single();
+            if (freshUser && freshUser.referred_by && !freshUser.referral_activated) {
+                // Mark this referral as activated
+                await supabase.from('users').update({ referral_activated: true }).eq('telegram_id', user_id);
+                console.log(`Referral activated: user ${user_id} scored ${score} in BB, referrer ${freshUser.referred_by}`);
+            }
+        }
+        
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -177,27 +189,26 @@ app.post('/register-referral', async (req, res) => {
         }
         
         // Update or create the referred user with referrer info
+        // referral_activated defaults to false — will be set to true when they score 1000+ in Block Blast
         if (existingUser) {
-            // User exists but no referrer yet - update
             await supabase
                 .from('users')
-                .update({ referred_by: referrer_id })
+                .update({ referred_by: referrer_id, referral_activated: false })
                 .eq('telegram_id', user_id);
             console.log('Updated existing user with referrer');
         } else {
-            // New user - create with referrer
             await supabase.from('users').insert({
                 telegram_id: user_id,
                 username: username,
                 photo_url: photo_url,
                 referred_by: referrer_id,
+                referral_activated: false,
                 referral_count: 0
             });
             console.log('Created new user with referrer');
         }
         
-        // Now increment the referrer's count
-        // First check if referrer exists
+        // Increment the referrer's total referral_count (shown in profile)
         const { data: referrer } = await supabase
             .from('users')
             .select('telegram_id, referral_count')
@@ -205,15 +216,13 @@ app.post('/register-referral', async (req, res) => {
             .single();
         
         if (referrer) {
-            // Increment referral_count directly
             const newCount = (referrer.referral_count || 0) + 1;
             await supabase
                 .from('users')
                 .update({ referral_count: newCount })
                 .eq('telegram_id', referrer_id);
-            console.log('Incremented referrer count to', newCount);
+            console.log('Incremented referrer total count to', newCount);
         } else {
-            // Create referrer user with count 1
             await supabase.from('users').insert({ 
                 telegram_id: referrer_id,
                 referral_count: 1
@@ -233,11 +242,11 @@ app.get('/referral-stats', async (req, res) => {
     const { user_id } = req.query;
     
     if (!user_id) {
-        return res.json({ referral_count: 0, rank: null });
+        return res.json({ referral_count: 0, active_count: 0, rank: null });
     }
     
     try {
-        // Get user's referral count
+        // Get user's total referral count (for profile display)
         const { data: user } = await supabase
             .from('users')
             .select('referral_count')
@@ -246,44 +255,84 @@ app.get('/referral-stats', async (req, res) => {
         
         const referralCount = user?.referral_count || 0;
         
-        // Get rank (position among all users by referral_count)
-        const { data: allUsers } = await supabase
+        // Count activated referrals for this user (for leaderboard ranking)
+        const { data: activatedReferrals, count: activeCount } = await supabase
             .from('users')
-            .select('telegram_id, referral_count')
-            .gt('referral_count', 0)
-            .order('referral_count', { ascending: false });
+            .select('telegram_id', { count: 'exact' })
+            .eq('referred_by', user_id)
+            .eq('referral_activated', true);
+        
+        const activated = activeCount || 0;
+        
+        // Get rank based on activated referrals (compare with all other users)
+        // Fetch all users who have at least 1 activated referral
+        const { data: allReferrers } = await supabase
+            .from('users')
+            .select('telegram_id, referred_by')
+            .eq('referral_activated', true);
+        
+        // Count activated referrals per referrer
+        const referrerCounts = {};
+        if (allReferrers) {
+            allReferrers.forEach(u => {
+                const ref = String(u.referred_by);
+                referrerCounts[ref] = (referrerCounts[ref] || 0) + 1;
+            });
+        }
+        
+        // Sort by count descending
+        const sorted = Object.entries(referrerCounts).sort((a, b) => b[1] - a[1]);
         
         let rank = null;
-        if (allUsers && referralCount > 0) {
-            const idx = allUsers.findIndex(u => String(u.telegram_id) === String(user_id));
+        if (activated > 0) {
+            const idx = sorted.findIndex(([id]) => id === String(user_id));
             if (idx >= 0) rank = idx + 1;
         }
         
-        res.json({ referral_count: referralCount, rank: rank });
+        res.json({ referral_count: referralCount, active_count: activated, rank: rank });
     } catch (e) {
         console.error('Referral stats error:', e);
-        res.json({ referral_count: 0, rank: null });
+        res.json({ referral_count: 0, active_count: 0, rank: null });
     }
 });
 
-// Get referral leaderboard
+// Get referral leaderboard (based on activated referrals only)
 app.get('/referral-leaderboard', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        // Get all activated referrals
+        const { data: activatedReferrals } = await supabase
             .from('users')
-            .select('telegram_id, username, photo_url, referral_count')
-            .gt('referral_count', 0)
-            .order('referral_count', { ascending: false })
-            .limit(50);
+            .select('referred_by')
+            .eq('referral_activated', true);
         
-        if (error) return res.json([]);
+        if (!activatedReferrals || activatedReferrals.length === 0) return res.json([]);
         
-        const result = data.map(u => ({
+        // Count activated referrals per referrer
+        const referrerCounts = {};
+        activatedReferrals.forEach(u => {
+            const ref = String(u.referred_by);
+            referrerCounts[ref] = (referrerCounts[ref] || 0) + 1;
+        });
+        
+        // Get referrer user info
+        const referrerIds = Object.keys(referrerCounts);
+        const { data: referrerUsers } = await supabase
+            .from('users')
+            .select('telegram_id, username, photo_url')
+            .in('telegram_id', referrerIds);
+        
+        if (!referrerUsers) return res.json([]);
+        
+        // Build leaderboard
+        const result = referrerUsers.map(u => ({
             user_id: u.telegram_id,
             username: u.username,
             photo_url: u.photo_url,
-            score: u.referral_count
-        }));
+            score: referrerCounts[String(u.telegram_id)] || 0
+        }))
+        .filter(u => u.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 50);
         
         res.json(result);
     } catch (e) {
@@ -877,8 +926,8 @@ const GAME_CONFIG = {
     'checkers': { column: 'checkers_wins_pve', name: 'Шашки', isHigherBetter: true },
     'вордли': { column: 'wordle_wins', name: 'Вордли', isHigherBetter: true },
     'wordle': { column: 'wordle_wins', name: 'Вордли', isHigherBetter: true },
-    'рефералы': { column: 'referral_count', name: 'Рефералы', isHigherBetter: true },
-    'referrals': { column: 'referral_count', name: 'Рефералы', isHigherBetter: true },
+    'рефералы': { column: 'referral', name: 'Рефералы', isHigherBetter: true, isReferral: true },
+    'referrals': { column: 'referral', name: 'Рефералы', isHigherBetter: true, isReferral: true },
 };
 
 // Получить топ-3 + пользователя (с Premium эмодзи для бота)
@@ -933,6 +982,79 @@ async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
     if (userRank && userRank > 3 && userData) {
         text += `\n━━━━━━━━━━━━━━━\n`;
         text += `📍 Вы: #${userRank} — <b>${userData[column]}</b>`;
+    } else if (userRank && userRank <= 3) {
+        text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
+    }
+    
+    return { text, userRank };
+}
+
+// Получить топ рефералов (только активированные)
+async function getTopForReferrals(userId, usePremiumEmoji = true) {
+    const emojis = usePremiumEmoji ? EMOJI : EMOJI_INLINE;
+    const name = 'Рефералы';
+    
+    // Get all activated referrals
+    const { data: activatedReferrals } = await supabase
+        .from('users')
+        .select('referred_by')
+        .eq('referral_activated', true);
+    
+    if (!activatedReferrals || activatedReferrals.length === 0) {
+        return { text: `<b>${name}</b>\n\nПока нет результатов`, userRank: null };
+    }
+    
+    // Count per referrer
+    const referrerCounts = {};
+    activatedReferrals.forEach(u => {
+        const ref = String(u.referred_by);
+        referrerCounts[ref] = (referrerCounts[ref] || 0) + 1;
+    });
+    
+    // Get referrer info
+    const referrerIds = Object.keys(referrerCounts);
+    const { data: referrerUsers } = await supabase
+        .from('users')
+        .select('telegram_id, username')
+        .in('telegram_id', referrerIds);
+    
+    if (!referrerUsers) {
+        return { text: `<b>${name}</b>\n\nПока нет результатов`, userRank: null };
+    }
+    
+    // Build sorted list
+    const sorted = referrerUsers.map(u => ({
+        telegram_id: u.telegram_id,
+        username: u.username,
+        score: referrerCounts[String(u.telegram_id)] || 0
+    }))
+    .filter(u => u.score > 0)
+    .sort((a, b) => b.score - a.score);
+    
+    const top3 = sorted.slice(0, 3);
+    
+    let userRank = null;
+    let userData = null;
+    if (userId) {
+        const idx = sorted.findIndex(u => String(u.telegram_id) === String(userId));
+        if (idx >= 0) {
+            userRank = idx + 1;
+            userData = sorted[idx];
+        }
+    }
+    
+    const medals = [emojis.first, emojis.second, emojis.third];
+    let text = `<b>${name} — Топ игроков</b>\n\n`;
+    
+    top3.forEach((user, index) => {
+        const medal = medals[index];
+        const username = user.username || 'Игрок';
+        text += `${medal} ${username} — <b>${user.score}</b>\n`;
+    });
+    
+    if (userRank && userRank > 3 && userData) {
+        text += `\n━━━━━━━━━━━━━━━\n`;
+        text += `📍 Вы: #${userRank} — <b>${userData.score}</b>`;
     } else if (userRank && userRank <= 3) {
         text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
     }
@@ -1111,7 +1233,13 @@ if (BOT_TOKEN) {
             if (matchedGame) {
                 try {
                     // Отправляем временное сообщение с обычными эмодзи
-                    const { text } = await getTopForGame(matchedGame, userId, false);
+                    let result;
+                    if (matchedGame.isReferral) {
+                        result = await getTopForReferrals(userId, false);
+                    } else {
+                        result = await getTopForGame(matchedGame, userId, false);
+                    }
+                    const { text } = result;
                     
                     const resultId = `top_${matchedGame.column}_${Date.now()}`;
                     
@@ -1287,8 +1415,13 @@ if (BOT_TOKEN) {
         
         if (gameConfig) {
             try {
-                const { text } = await getTopForGame(gameConfig, userId, true);
-                await editInlineMessageWithPlayButton(inlineMessageId, text, userId);
+                let result;
+                if (gameConfig.isReferral) {
+                    result = await getTopForReferrals(userId, true);
+                } else {
+                    result = await getTopForGame(gameConfig, userId, true);
+                }
+                await editInlineMessageWithPlayButton(inlineMessageId, result.text, userId);
                 console.log('Message edited with premium emoji!');
             } catch (e) {
                 console.error('Edit message error:', e.message);
@@ -1809,8 +1942,13 @@ if (BOT_TOKEN) {
         
         if (matchedGame) {
             try {
-                const { text } = await getTopForGame(matchedGame, userId, true);
-                bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+                let result;
+                if (matchedGame.isReferral) {
+                    result = await getTopForReferrals(userId, true);
+                } else {
+                    result = await getTopForGame(matchedGame, userId, true);
+                }
+                bot.sendMessage(chatId, result.text, { parse_mode: 'HTML' });
             } catch (e) {
                 console.error('Top command error:', e);
                 bot.sendMessage(chatId, 'Ошибка загрузки топа');
