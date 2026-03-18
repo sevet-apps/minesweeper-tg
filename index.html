@@ -257,11 +257,29 @@
         /* Tournament Card in Leaderboard */
         .tournament-card {
             background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
             border-radius: 20px;
             padding: 24px 20px 20px;
             margin-bottom: 16px;
             text-align: center;
+            position: relative;
+        }
+        .tournament-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            padding: 1.5px;
+            background: linear-gradient(270deg, #FFD700, #FFA500, #FFEC8B, #DAA520, #FFD700);
+            background-size: 400% 400%;
+            animation: tournamentBorder 4s ease infinite;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        @keyframes tournamentBorder {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
         .tournament-lottie {
             width: 72px;
