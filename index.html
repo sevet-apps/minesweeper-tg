@@ -262,21 +262,6 @@
             padding: 24px 20px 20px;
             margin-bottom: 16px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .tournament-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent), #5ac8fa, var(--accent));
-            background-size: 200% 100%;
-            animation: tournamentShine 3s ease infinite;
-        }
-        @keyframes tournamentShine {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
         }
         .tournament-lottie {
             width: 72px;
