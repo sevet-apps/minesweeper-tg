@@ -254,6 +254,49 @@
         .lb-selector.open svg { transform: rotate(180deg); }
         .lb-list { padding-bottom: 120px; }
         
+        /* Tournament Card in Leaderboard */
+        .tournament-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 24px 20px 20px;
+            margin-bottom: 16px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .tournament-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), #5ac8fa, var(--accent));
+            background-size: 200% 100%;
+            animation: tournamentShine 3s ease infinite;
+        }
+        @keyframes tournamentShine {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .tournament-lottie {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 12px;
+        }
+        .tournament-card-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+        .tournament-card-text {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #8e8e93;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
         .dropdown-menu { 
             position: absolute; 
             top: 100%;
@@ -303,7 +346,7 @@
         /* Settings Button in Profile Header */
         .settings-btn {
             position: absolute;
-            right: 16px;
+            right: 0;
             top: 50%;
             transform: translateY(-50%);
             width: 44px;
@@ -1305,6 +1348,13 @@
             <div class="dropdown-menu" id="dropdownMenu"></div>
         </div>
         <div class="dropdown-catcher" id="dropdownCatcher" onclick="toggleDropdown()"></div>
+        
+        <!-- Tournament Banner (visible only for BB best score) -->
+        <div class="tournament-card" id="tournamentCard" style="display:none;">
+            <div class="tournament-lottie" id="tournamentCupLottie"></div>
+            <div class="tournament-card-title">Начало скоро..</div>
+            <div class="tournament-card-text">Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!</div>
+        </div>
         
         <div class="lb-list" id="lbList"></div>
     </div>
@@ -2930,8 +2980,22 @@
             } else { menu.classList.remove('active'); catcher.classList.remove('active'); selector.classList.remove('open'); }
         }
         let lbObserver = null;
+        let tournamentCupAnim = null;
         async function loadLeaderboardData(category) {
             currentLbCat = category; document.getElementById('lbCurrentCat').innerText = t(category.nameKey); const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>'; stickyEl.classList.remove('visible');
+            // Tournament card — only for BB best score
+            const tCard = document.getElementById('tournamentCard');
+            if (tCard) {
+                if (currentLbGame === 'bb' && category.id === 'bb_best_score') {
+                    tCard.style.display = '';
+                    const cupEl = document.getElementById('tournamentCupLottie');
+                    cupEl.innerHTML = '';
+                    if (tournamentCupAnim) { tournamentCupAnim.destroy(); tournamentCupAnim = null; }
+                    tournamentCupAnim = lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                } else {
+                    tCard.style.display = 'none';
+                }
+            }
             try {
                 const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
                 const response = await fetch(url); const data = await response.json();
@@ -2962,6 +3026,10 @@
             const listEl = document.getElementById('lbList');
             const stickyEl = document.getElementById('lbStickyUser');
             const selectorWrapper = document.querySelector('.lb-selector-wrapper');
+            
+            // Hide tournament card for referrals
+            const tCard = document.getElementById('tournamentCard');
+            if (tCard) tCard.style.display = 'none';
             
             // Hide category selector for referrals
             if (selectorWrapper) selectorWrapper.style.display = 'none';
