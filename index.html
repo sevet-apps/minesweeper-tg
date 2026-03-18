@@ -281,6 +281,19 @@
             0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
         }
+        .tournament-nail {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #FFEC8B, #DAA520 60%, #8B6914);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.4);
+            z-index: 2;
+        }
+        .tournament-nail.tl { top: 10px; left: 10px; }
+        .tournament-nail.tr { top: 10px; right: 10px; }
+        .tournament-nail.bl { bottom: 10px; left: 10px; }
+        .tournament-nail.br { bottom: 10px; right: 10px; }
         .tournament-lottie {
             width: 72px;
             height: 72px;
@@ -1354,9 +1367,13 @@
         
         <!-- Tournament Banner (visible only for BB best score) -->
         <div class="tournament-card" id="tournamentCard" style="display:none;">
+            <div class="tournament-nail tl"></div>
+            <div class="tournament-nail tr"></div>
+            <div class="tournament-nail bl"></div>
+            <div class="tournament-nail br"></div>
             <div class="tournament-lottie" id="tournamentCupLottie"></div>
-            <div class="tournament-card-title">Начало скоро..</div>
-            <div class="tournament-card-text">Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!</div>
+            <div class="tournament-card-title" data-i18n="tournamentSoon">Начало скоро..</div>
+            <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!</div>
         </div>
         
         <div class="lb-list" id="lbList"></div>
@@ -2320,7 +2337,9 @@
                 copyFailed: 'Не удалось скопировать',
                 noData: 'Нет данных',
                 networkError: 'Ошибка сети.',
-                comingSoon: 'Скоро: Поиск случайного соперника'
+                comingSoon: 'Скоро: Поиск случайного соперника',
+                tournamentSoon: 'Начало скоро..',
+                tournamentDesc: 'Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!'
             },
             en: {
                 settings: 'Settings',
@@ -2499,7 +2518,9 @@
                 networkError: 'Network error.',
                 attempt1: 'attempt',
                 attempt234: 'attempts',
-                attempts: 'attempts'
+                attempts: 'attempts',
+                tournamentSoon: 'Coming soon..',
+                tournamentDesc: 'Block Blast Tournament! Start scoring now — when the tournament begins, your record will already be on the board. First place takes the entire prize!'
             }
         };
         
