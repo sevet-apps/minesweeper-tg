@@ -3348,8 +3348,6 @@
             [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             [[1, 1], [1, 1], [1, 1]],
             [[1, 1, 1], [1, 1, 1]],
-            // === КРЕСТИК ===
-            [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
             // === СРЕДНИЕ L- И J-ОБРАЗНЫЕ (4 блока) ===
             [[1, 0], [1, 0], [1, 1]],
             [[1, 1], [0, 1], [0, 1]],
@@ -3379,16 +3377,29 @@
             [[0, 1], [1, 1], [1, 0]],
             [[0, 1, 1], [1, 1, 0]],
             [[1, 0], [1, 1], [0, 1]],
-            // === U-ОБРАЗНЫЕ ФИГУРЫ (5 блоков) ===
-            [[1, 0, 1], [1, 1, 1]],
-            [[1, 1, 1], [1, 0, 1]],
-            [[1, 1], [1, 0], [1, 1]],
-            [[1, 1], [0, 1], [1, 1]],
             // === ДИАГОНАЛИ ===
             [[0, 1], [1, 0]],
             [[1, 0], [0, 1]],
             [[0, 0, 1], [0, 1, 0], [1, 0, 0]],
             [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        ];
+        // Hard shapes — unlocked at >= 10000 score
+        const HARD_SHAPES = [
+            [[1, 0, 1], [1, 1, 1]],
+            [[1, 1], [1, 0], [1, 1]],
+            [[1, 1, 1], [1, 0, 1]],
+            [[1, 1], [0, 1], [1, 1]],
+            [[0, 1], [0, 1], [1, 0], [1, 0]],
+            [[1, 0], [1, 0], [0, 1], [0, 1]],
+            [[0, 1, 0], [0, 1, 0], [1, 1, 1]],
+            [[1, 0, 0], [1, 1, 1], [1, 0, 0]],
+            [[1, 1, 1], [0, 1, 0], [0, 1, 0]],
+            [[0, 0, 1], [1, 1, 1], [0, 0, 1]],
+            [[1, 1, 0], [0, 1, 1], [0, 1, 0]],
+            [[0, 1], [0, 1], [1, 0]],
+            [[1, 0], [1, 0], [0, 1]],
+            [[0, 1], [1, 0], [1, 0]],
+            [[1, 0], [0, 1], [0, 1]]
         ];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
         const DRAG_LIFT_Y = 150; 
@@ -3398,7 +3409,140 @@
         function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
         function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
         function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
-        function spawnShapes() { bbShapes = []; const freeCells = countFreeCells(); let availableIndices = []; for(let i=0; i<SHAPES.length; i++) { const matrix = SHAPES[i]; const size = matrix.reduce((acc, row) => acc + row.reduce((a,b)=>a+b, 0), 0); if (freeCells < 25) { if (size <= 4) availableIndices.push(i); } else { availableIndices.push(i); } } for(let i=0; i<3; i++) { const rand = Math.floor(Math.random() * availableIndices.length); const shapeIdx = availableIndices[rand]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; bbShapes.push({ matrix: SHAPES[shapeIdx], color: color, id: i }); renderShapePreview(i, SHAPES[shapeIdx], color); } }
+        
+        function shapeSize(m) { return m.reduce((a, row) => a + row.reduce((s, v) => s + v, 0), 0); }
+        function shapeDims(m) { return [m.length, m[0].length]; }
+        function isRectShape(m) {
+            const [rows, cols] = shapeDims(m);
+            const dims = [[3,3],[3,2],[2,3],[2,2]];
+            if (!dims.some(d => d[0] === rows && d[1] === cols)) return false;
+            return m.every(row => row.every(v => v === 1));
+        }
+
+        function spawnShapes() {
+            bbShapes = [];
+            const freeCells = countFreeCells();
+            const score = bbScore;
+            
+            // Build weighted pool
+            const pool = [];
+            
+            // Categorize base shapes
+            const smallShapes = []; // <= 4 cells
+            const rectShapes = []; // 3x3, 3x2, 2x3, 2x2 (full rectangles)
+            const bigOther = [];   // > 4 cells, not rectangles
+            
+            for (let i = 0; i < SHAPES.length; i++) {
+                const m = SHAPES[i];
+                const sz = shapeSize(m);
+                if (sz <= 4) smallShapes.push(m);
+                else if (isRectShape(m)) rectShapes.push(m);
+                else bigOther.push(m);
+            }
+            
+            // Add hard shapes if score >= 10000
+            const hardPool = [];
+            if (score >= 10000) {
+                for (const m of HARD_SHAPES) {
+                    const sz = shapeSize(m);
+                    if (sz <= 4) smallShapes.push(m);
+                    else bigOther.push(m);
+                }
+            }
+            
+            // Score-based weighting
+            let smallWeight, rectWeight, bigOtherWeight;
+            if (score < 1000) {
+                // Early game — favor small + rectangles
+                smallWeight = 5;
+                rectWeight = 4;
+                bigOtherWeight = 1;
+            } else if (score < 10000) {
+                // Standard
+                smallWeight = 3;
+                rectWeight = 2;
+                bigOtherWeight = 2;
+            } else {
+                // Hard mode
+                smallWeight = 2;
+                rectWeight = 2;
+                bigOtherWeight = 3;
+            }
+            
+            // Build weighted pool arrays
+            const weightedSmall = [];
+            for (let w = 0; w < smallWeight; w++) weightedSmall.push(...smallShapes);
+            const weightedRect = [];
+            for (let w = 0; w < rectWeight; w++) weightedRect.push(...rectShapes);
+            const weightedBig = [];
+            for (let w = 0; w < bigOtherWeight; w++) weightedBig.push(...bigOther);
+            
+            // Free cells adjustment for rect frequency
+            let rectFreqMult = 1;
+            if (freeCells >= 50) rectFreqMult = 1.5;
+            else if (freeCells >= 33) rectFreqMult = Math.max(0.3, (freeCells - 33) / 17);
+            else rectFreqMult = 0;
+            
+            // Apply rect frequency multiplier
+            const adjustedRect = [];
+            const rectCopies = Math.round(weightedRect.length * rectFreqMult);
+            for (let i = 0; i < rectCopies && weightedRect.length > 0; i++) {
+                adjustedRect.push(weightedRect[i % weightedRect.length]);
+            }
+            
+            // Generate 3 shapes
+            const result = [];
+            let bigCount = 0; // shapes > 4 cells in this batch
+            
+            for (let i = 0; i < 3; i++) {
+                let chosen = null;
+                let attempts = 0;
+                
+                while (!chosen && attempts < 50) {
+                    attempts++;
+                    
+                    // Pick from combined pool
+                    let candidates = [...weightedSmall];
+                    if (freeCells >= 33) candidates.push(...adjustedRect, ...weightedBig);
+                    
+                    if (candidates.length === 0) candidates = [...smallShapes];
+                    
+                    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+                    const sz = shapeSize(pick);
+                    
+                    // Rule: freeCells < 33 → all shapes must be <= 4
+                    if (freeCells < 33 && sz > 4) continue;
+                    
+                    // Rule: freeCells 33-49 → max 1 shape > 4 cells
+                    if (freeCells >= 33 && freeCells < 50 && sz > 4) {
+                        if (bigCount >= 1) continue;
+                    }
+                    
+                    // Rule: freeCells >= 50 → multiple big allowed, but if >1 big then all big must be rects
+                    if (freeCells >= 50 && sz > 4 && bigCount >= 1) {
+                        if (!isRectShape(pick)) continue;
+                        // Also verify all previous big shapes are rects
+                        const prevBigOk = result.every(r => shapeSize(r) <= 4 || isRectShape(r));
+                        if (!prevBigOk) continue;
+                    }
+                    
+                    chosen = pick;
+                    if (sz > 4) bigCount++;
+                }
+                
+                // Fallback — pick any small shape
+                if (!chosen) chosen = smallShapes[Math.floor(Math.random() * smallShapes.length)];
+                
+                result.push(chosen);
+            }
+            
+            // Assign colors and render
+            for (let i = 0; i < 3; i++) {
+                const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                bbShapes.push({ matrix: result[i], color: color, id: i });
+                renderShapePreview(i, result[i], color);
+            }
+        }
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
         function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
