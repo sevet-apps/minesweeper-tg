@@ -183,10 +183,8 @@
         .banner-track {
             display: flex;
             transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            width: 200%;
         }
         .banner-slide-wrap {
-            width: 50%;
             flex-shrink: 0;
             border-radius: 20px;
             overflow: hidden;
@@ -2606,13 +2604,28 @@
         // Banner carousel
         let bannerIndex = 0;
         let bannerInterval = null;
-        let bannerSlideCount = 0;
+        let bannerRealCount = 0;
+        let bannerTotalCount = 0;
+        
+        function setBannerPos(idx, animate) {
+            const track = document.getElementById('bannerTrack');
+            if (!track) return;
+            if (!animate) track.style.transition = 'none';
+            else track.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            track.style.transform = `translateX(-${idx * (100 / bannerTotalCount)}%)`;
+        }
         
         function slideBannerTo(idx) {
-            const track = document.getElementById('bannerTrack');
-            if (!track || bannerSlideCount <= 1) return;
-            bannerIndex = ((idx % bannerSlideCount) + bannerSlideCount) % bannerSlideCount;
-            track.style.transform = `translateX(-${bannerIndex * (100 / bannerSlideCount)}%)`;
+            bannerIndex = idx;
+            setBannerPos(bannerIndex, true);
+            
+            // After animation, silently jump if we hit the clone
+            setTimeout(() => {
+                if (bannerIndex >= bannerRealCount) {
+                    bannerIndex = 0;
+                    setBannerPos(0, false);
+                }
+            }, 650);
         }
         
         function resetBannerInterval() {
@@ -2625,10 +2638,21 @@
         function startBannerCarousel() {
             const track = document.getElementById('bannerTrack');
             if (!track) return;
-            const slides = track.querySelectorAll('.banner-slide');
-            bannerSlideCount = slides.length;
-            if (bannerSlideCount <= 1) return;
+            const wraps = track.querySelectorAll('.banner-slide-wrap');
+            bannerRealCount = wraps.length;
+            if (bannerRealCount <= 1) return;
             
+            // Clone first slide to end for seamless loop
+            const clone = wraps[0].cloneNode(true);
+            track.appendChild(clone);
+            
+            bannerTotalCount = bannerRealCount + 1;
+            track.style.width = (bannerTotalCount * 100) + '%';
+            track.querySelectorAll('.banner-slide-wrap').forEach(w => {
+                w.style.width = (100 / bannerTotalCount) + '%';
+            });
+            
+            // Touch swipe
             const carousel = document.getElementById('bannerCarousel');
             let touchStartX = 0;
             let touchDeltaX = 0;
@@ -2643,17 +2667,13 @@
             
             carousel.addEventListener('touchmove', (e) => {
                 const dx = e.touches[0].clientX - touchStartX;
-                
-                if (!isSwiping && Math.abs(dx) > 8) {
-                    isSwiping = true;
-                }
-                
+                if (!isSwiping && Math.abs(dx) > 8) isSwiping = true;
                 if (!isSwiping) return;
                 e.preventDefault();
                 
                 touchDeltaX = dx;
-                const baseOffset = bannerIndex * (100 / bannerSlideCount);
-                const pxToPercent = (dx / carousel.offsetWidth) * (100 / bannerSlideCount);
+                const baseOffset = bannerIndex * (100 / bannerTotalCount);
+                const pxToPercent = (dx / carousel.offsetWidth) * (100 / bannerTotalCount);
                 track.style.transform = `translateX(-${baseOffset - pxToPercent}%)`;
             }, { passive: false });
             
@@ -2662,12 +2682,12 @@
                 
                 if (isSwiping) {
                     const threshold = carousel.offsetWidth * 0.15;
-                    if (touchDeltaX < -threshold) {
+                    if (touchDeltaX < -threshold && bannerIndex < bannerRealCount) {
                         slideBannerTo(bannerIndex + 1);
-                    } else if (touchDeltaX > threshold) {
+                    } else if (touchDeltaX > threshold && bannerIndex > 0) {
                         slideBannerTo(bannerIndex - 1);
                     } else {
-                        slideBannerTo(bannerIndex);
+                        setBannerPos(bannerIndex, true);
                     }
                     resetBannerInterval();
                 }
