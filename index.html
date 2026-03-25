@@ -178,6 +178,7 @@
             margin-bottom: 15px;
             position: relative;
             background: transparent;
+            touch-action: pan-y;
         }
         .banner-track {
             display: flex;
@@ -1422,7 +1423,7 @@
                     <img class="banner-slide" src="tournament-banner.png" alt="Tournament" onclick="openTournamentInfo()">
                 </div>
                 <div class="banner-slide-wrap">
-                    <img class="banner-slide" src="referral-banner.png" alt="Referral" onclick="openTournamentInfo()">
+                    <img class="banner-slide" src="referral-banner.png" alt="Referral" onclick="openTournamentInfo()" style="margin-top: -3px;">
                 </div>
             </div>
         </div>
@@ -2605,15 +2606,77 @@
         // Banner carousel
         let bannerIndex = 0;
         let bannerInterval = null;
+        let bannerSlideCount = 0;
+        
+        function slideBannerTo(idx) {
+            const track = document.getElementById('bannerTrack');
+            if (!track || bannerSlideCount <= 1) return;
+            bannerIndex = ((idx % bannerSlideCount) + bannerSlideCount) % bannerSlideCount;
+            track.style.transform = `translateX(-${bannerIndex * (100 / bannerSlideCount)}%)`;
+        }
+        
+        function resetBannerInterval() {
+            if (bannerInterval) clearInterval(bannerInterval);
+            bannerInterval = setInterval(() => {
+                slideBannerTo(bannerIndex + 1);
+            }, 5000);
+        }
+        
         function startBannerCarousel() {
             const track = document.getElementById('bannerTrack');
             if (!track) return;
             const slides = track.querySelectorAll('.banner-slide');
-            if (slides.length <= 1) return;
-            bannerInterval = setInterval(() => {
-                bannerIndex = (bannerIndex + 1) % slides.length;
-                track.style.transform = `translateX(-${bannerIndex * (100 / slides.length)}%)`;
-            }, 5000);
+            bannerSlideCount = slides.length;
+            if (bannerSlideCount <= 1) return;
+            
+            const carousel = document.getElementById('bannerCarousel');
+            let touchStartX = 0;
+            let touchDeltaX = 0;
+            let isSwiping = false;
+            
+            carousel.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchDeltaX = 0;
+                isSwiping = false;
+                track.style.transition = 'none';
+            }, { passive: true });
+            
+            carousel.addEventListener('touchmove', (e) => {
+                const dx = e.touches[0].clientX - touchStartX;
+                
+                if (!isSwiping && Math.abs(dx) > 8) {
+                    isSwiping = true;
+                }
+                
+                if (!isSwiping) return;
+                e.preventDefault();
+                
+                touchDeltaX = dx;
+                const baseOffset = bannerIndex * (100 / bannerSlideCount);
+                const pxToPercent = (dx / carousel.offsetWidth) * (100 / bannerSlideCount);
+                track.style.transform = `translateX(-${baseOffset - pxToPercent}%)`;
+            }, { passive: false });
+            
+            carousel.addEventListener('touchend', () => {
+                track.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                
+                if (isSwiping) {
+                    const threshold = carousel.offsetWidth * 0.15;
+                    if (touchDeltaX < -threshold) {
+                        slideBannerTo(bannerIndex + 1);
+                    } else if (touchDeltaX > threshold) {
+                        slideBannerTo(bannerIndex - 1);
+                    } else {
+                        slideBannerTo(bannerIndex);
+                    }
+                    resetBannerInterval();
+                }
+                
+                isSwiping = false;
+                touchDeltaX = 0;
+            }, { passive: true });
+            
+            resetBannerInterval();
         }
         startBannerCarousel();
         
