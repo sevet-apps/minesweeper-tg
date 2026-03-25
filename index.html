@@ -1370,7 +1370,7 @@
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
             </div>
-            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsReferrals">Топ Рефералы</h3></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsReferrals">Топ Рефоводы</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
     </div>
@@ -1399,6 +1399,17 @@
             <div class="tournament-lottie" id="tournamentCupLottie"></div>
             <div class="tournament-card-title" data-i18n="tournamentSoon">Начало скоро..</div>
             <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!</div>
+        </div>
+        
+        <!-- Tournament Banner for Referrers -->
+        <div class="tournament-card" id="referralTournamentCard" style="display:none;">
+            <div class="tournament-nail tl"></div>
+            <div class="tournament-nail tr"></div>
+            <div class="tournament-nail bl"></div>
+            <div class="tournament-nail br"></div>
+            <div class="tournament-lottie" id="referralCupLottie"></div>
+            <div class="tournament-card-title" data-i18n="refTournamentSoon">Начало скоро..</div>
+            <div class="tournament-card-text" data-i18n="refTournamentDesc">Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — когда турнир начнётся, ваши рефералы уже будут учтены. Первое место заберёт главный приз!</div>
         </div>
         
         <div class="lb-list" id="lbList"></div>
@@ -1738,7 +1749,7 @@
             
             <div class="condition-item">
                 <div class="condition-number">1</div>
-                <div class="condition-text" data-i18n="conditionsText">Приглашайте друзей по вашей уникальной ссылке и соревнуйтесь в топе рефералов.</div>
+                <div class="condition-text" data-i18n="conditionsText">Приглашайте друзей по вашей уникальной ссылке и соревнуйтесь в топе рефоводов.</div>
             </div>
             
             <div class="condition-item">
@@ -1889,8 +1900,8 @@
  
         
         const API_BASE_URL = 'https://spark-game-backend.onrender.com';
-        const REQUIRED_CHANNEL = '@spark_games_news'; // Замени на свой канал
-        const CHANNEL_LINK = 'https://t.me/spark_games_news'; // Ссылка на канал
+        const REQUIRED_CHANNEL = '@spark_game_bot'; // Замени на свой канал
+        const CHANNEL_LINK = 'https://t.me/spark_game_bot'; // Ссылка на канал
         
         // --- SOCKET.IO INIT ---
         const socket = io(API_BASE_URL);
@@ -2211,7 +2222,7 @@
                 inviteFriends: 'Приглашайте друзей и поднимайтесь выше в топе',
                 conditions: 'Условия',
                 conditionsTitle: 'Условия реф. программы',
-                conditionsText: 'Приглашайте друзей по вашей уникальной ссылке и соревнуйтесь в топе рефералов.',
+                conditionsText: 'Приглашайте друзей по вашей уникальной ссылке и соревнуйтесь в топе рефоводов.',
                 invite: 'Пригласить',
                 invited: 'Приглашено',
                 activated: 'В топе',
@@ -2223,7 +2234,7 @@
                 sudoku: 'Судоку',
                 checkers: 'Шашки',
                 wordle: 'Вордли',
-                referrals: 'Рефералы',
+                referrals: 'Рефоводы',
                 // Game UI
                 menu: 'Меню',
                 back: 'Назад',
@@ -2299,7 +2310,7 @@
                 topsSudoku: 'Топ Судоку',
                 topsCheckers: 'Топ Шашки',
                 topsWordle: 'Топ Вордли',
-                topsReferrals: 'Топ Рефералы',
+                topsReferrals: 'Топ Рефоводы',
                 // Extra
                 tapToStart: 'Нажми, чтобы начать',
                 refCondition2: 'Реферал закрепляется за вами навсегда при первом входе по ссылке.',
@@ -2373,7 +2384,9 @@
                 networkError: 'Ошибка сети.',
                 comingSoon: 'Скоро: Поиск случайного соперника',
                 tournamentSoon: 'Начало скоро..',
-                tournamentDesc: 'Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!'
+                tournamentDesc: 'Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!',
+                refTournamentSoon: 'Начало скоро..',
+                refTournamentDesc: 'Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — когда турнир начнётся, ваши рефералы уже будут учтены. Первое место заберёт главный приз!'
             },
             en: {
                 settings: 'Settings',
@@ -2392,7 +2405,7 @@
                 inviteFriends: 'Invite friends and climb the top',
                 conditions: 'Terms',
                 conditionsTitle: 'Referral Terms',
-                conditionsText: 'Invite friends using your unique link and compete in the referral top.',
+                conditionsText: 'Invite friends using your unique link and compete in the referrers top.',
                 invite: 'Invite',
                 invited: 'Invited',
                 activated: 'In top',
@@ -2404,7 +2417,7 @@
                 sudoku: 'Sudoku',
                 checkers: 'Checkers',
                 wordle: 'Wordle',
-                referrals: 'Referrals',
+                referrals: 'Referrers',
                 // Game UI
                 menu: 'Menu',
                 back: 'Back',
@@ -2480,7 +2493,7 @@
                 topsSudoku: 'Sudoku Top',
                 topsCheckers: 'Checkers Top',
                 topsWordle: 'Wordle Top',
-                topsReferrals: 'Referrals Top',
+                topsReferrals: 'Referrers Top',
                 // Extra
                 tapToStart: 'Tap to start',
                 refCondition2: 'Referral is assigned to you forever on first entry via link.',
@@ -2554,7 +2567,9 @@
                 attempt234: 'attempts',
                 attempts: 'attempts',
                 tournamentSoon: 'Coming soon..',
-                tournamentDesc: 'Block Blast Tournament! Start scoring now — when the tournament begins, your record will already be on the board. First place takes the entire prize!'
+                tournamentDesc: 'Block Blast Tournament! Start scoring now — when the tournament begins, your record will already be on the board. First place takes the entire prize!',
+                refTournamentSoon: 'Coming soon..',
+                refTournamentDesc: 'Referrers Tournament for $150! Start inviting friends now — when the tournament begins, your referrals will already count. First place takes the grand prize!'
             }
         };
         
@@ -2619,7 +2634,6 @@
             bannerIndex = idx;
             setBannerPos(bannerIndex, true);
             
-            // After animation, silently jump if we hit the clone
             setTimeout(() => {
                 if (bannerIndex >= bannerRealCount) {
                     bannerIndex = 0;
@@ -2642,7 +2656,6 @@
             bannerRealCount = wraps.length;
             if (bannerRealCount <= 1) return;
             
-            // Clone first slide to end for seamless loop
             const clone = wraps[0].cloneNode(true);
             track.appendChild(clone);
             
@@ -2652,7 +2665,6 @@
                 w.style.width = (100 / bannerTotalCount) + '%';
             });
             
-            // Touch swipe
             const carousel = document.getElementById('bannerCarousel');
             let touchStartX = 0;
             let touchDeltaX = 0;
@@ -3153,6 +3165,9 @@
                     tCard.style.display = 'none';
                 }
             }
+            // Hide referral tournament card
+            const refTCard = document.getElementById('referralTournamentCard');
+            if (refTCard) refTCard.style.display = 'none';
             try {
                 const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
                 const response = await fetch(url); const data = await response.json();
@@ -3184,9 +3199,20 @@
             const stickyEl = document.getElementById('lbStickyUser');
             const selectorWrapper = document.querySelector('.lb-selector-wrapper');
             
-            // Hide tournament card for referrals
+            // Hide BB tournament card for referrals
             const tCard = document.getElementById('tournamentCard');
             if (tCard) tCard.style.display = 'none';
+            
+            // Show referral tournament card
+            const refTCard = document.getElementById('referralTournamentCard');
+            if (refTCard) {
+                refTCard.style.display = '';
+                const cupEl = document.getElementById('referralCupLottie');
+                cupEl.innerHTML = '';
+                if (typeof lottie !== 'undefined') {
+                    lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                }
+            }
             
             // Hide category selector for referrals
             if (selectorWrapper) selectorWrapper.style.display = 'none';

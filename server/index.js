@@ -18,11 +18,11 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Telegram Bot Token for subscription check
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_games_news';
+const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_bot';
 const OWNER_ID = '1482228376'; // Твой Telegram ID
 
 // --- API РОУТЫ ---
-app.get('/', (req, res) => res.send('Glass API v38.0'));
+app.get('/', (req, res) => res.send('Glass API v39.0'));
 
 // Check if user is subscribed to the required channel
 app.get('/check-subscription', async (req, res) => {
@@ -926,8 +926,9 @@ const GAME_CONFIG = {
     'checkers': { column: 'checkers_wins_pve', name: 'Шашки', isHigherBetter: true },
     'вордли': { column: 'wordle_wins', name: 'Вордли', isHigherBetter: true },
     'wordle': { column: 'wordle_wins', name: 'Вордли', isHigherBetter: true },
-    'рефералы': { column: 'referral', name: 'Рефералы', isHigherBetter: true, isReferral: true },
-    'referrals': { column: 'referral', name: 'Рефералы', isHigherBetter: true, isReferral: true },
+    'рефоводы': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
+    'рефералы': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
+    'referrals': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
 };
 
 // Получить топ-3 + пользователя (с Premium эмодзи для бота)
@@ -1934,7 +1935,7 @@ if (BOT_TOKEN) {
                 `• /top судоку\n` +
                 `• /top шашки\n` +
                 `• /top вордли\n` +
-                `• /top рефералы`,
+                `• /top рефоводы`,
                 { parse_mode: 'HTML' }
             );
             return;
@@ -1996,4 +1997,4 @@ setInterval(cleanupOldActivity, 24 * 60 * 60 * 1000);
 setTimeout(cleanupOldActivity, 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Glass API v38.0 running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Glass API v39.0 running on port ${PORT}`));
