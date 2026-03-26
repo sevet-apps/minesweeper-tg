@@ -170,6 +170,40 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px; } .app-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
         
         .card { background: var(--glass-bg); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 15px; transition: transform 0.15s ease-out; cursor: pointer; } .card:active { transform: scale(0.97); }
+        
+        /* Block Blast Event Card */
+        .card-event {
+            position: relative;
+            overflow: hidden;
+        }
+        .card-event::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            padding: 1.5px;
+            background: linear-gradient(270deg, #FFD700, #FFA500, #FFEC8B, #DAA520, #FFD700);
+            background-size: 400% 400%;
+            animation: tournamentBorder 4s ease infinite;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .card-event-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 0 18px 0 10px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            z-index: 2;
+        }
         /* Banner Carousel */
         .banner-carousel {
             width: 100%;
@@ -1474,7 +1508,7 @@
         
         <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="minesweeper">Сапёр</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="checkers">Шашки</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="startBlockBlastCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="blockBlast">Блок Бласт</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
+        <div class="card card-event" onclick="startBlockBlastCheck()"> <div class="card-event-badge" data-i18n="tournamentBadge">ТУРНИР</div> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="blockBlast">Блок Бласт</h3> <div style="font-size:12px; color:#FFA500; font-weight:600; margin-top:2px;" data-i18n="tournamentActive">Турнир на 150$</div> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="startSudokuCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="sudoku">Судоку</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
         <div class="card" onclick="openGameModal('tower')">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #FF2D55, #FF375F);">
@@ -1489,7 +1523,8 @@
             </div>
             <div style="color:var(--accent); font-weight:600;">Play</div>
         </div>
-        <div class="card" onclick="startWordle()">
+        <div class="card" onclick="startWordle()" style="position:relative; overflow:hidden;">
+            <div style="position:absolute; top:8px; right:-24px; background:linear-gradient(135deg, #ff9500, #ff6b00); color:#fff; font-size:9px; font-weight:800; padding:2px 28px; transform:rotate(35deg); letter-spacing:1px; z-index:2; text-transform:uppercase;" data-i18n="beta">БЕТА</div>
             <div class="game-icon-box" style="background: linear-gradient(135deg, #6AAA64, #C9B458);">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="4" width="5" height="5" rx="1"></rect>
@@ -2421,7 +2456,10 @@
                 tournamentSoon: 'Начало скоро..',
                 tournamentDesc: 'Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!',
                 refTournamentSoon: 'Начало скоро..',
-                refTournamentDesc: 'Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — когда турнир начнётся, ваши рефералы уже будут учтены. Первое место заберёт главный приз!'
+                refTournamentDesc: 'Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — когда турнир начнётся, ваши рефералы уже будут учтены. Первое место заберёт главный приз!',
+                tournamentBadge: 'ТУРНИР',
+                tournamentActive: 'Турнир на 150$',
+                beta: 'БЕТА'
             },
             en: {
                 settings: 'Settings',
@@ -2604,7 +2642,10 @@
                 tournamentSoon: 'Coming soon..',
                 tournamentDesc: 'Block Blast Tournament! Start scoring now — when the tournament begins, your record will already be on the board. First place takes the entire prize!',
                 refTournamentSoon: 'Coming soon..',
-                refTournamentDesc: 'Referrers Tournament for $150! Start inviting friends now — when the tournament begins, your referrals will already count. First place takes the grand prize!'
+                refTournamentDesc: 'Referrers Tournament for $150! Start inviting friends now — when the tournament begins, your referrals will already count. First place takes the grand prize!',
+                tournamentBadge: 'EVENT',
+                tournamentActive: '$150 Tournament',
+                beta: 'BETA'
             }
         };
         
@@ -2798,6 +2839,7 @@
                 const submitBtn = document.querySelector('.wordle-submit-btn');
                 if(submitBtn) submitBtn.remove();
                 saveWordleGame(); // Save game state on exit
+                document.removeEventListener('keydown', wordleKeyHandler);
             }
         }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalWordleGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); }
@@ -4566,12 +4608,48 @@
             document.getElementById('wordleWins').innerText = wordleWins;
             loadWordleDict();
             
+            // Physical keyboard support
+            document.addEventListener('keydown', wordleKeyHandler);
+            
             // Check for saved game
             const savedGame = localStorage.getItem('wordle_saved_game');
             if (savedGame) {
                 showWordleContinueModal();
             } else {
                 initWordle();
+            }
+        }
+        
+        function wordleKeyHandler(e) {
+            if (wordleGameOver || wordleRevealing) return;
+            // Don't handle if a modal is open
+            if (document.getElementById('modalWordleGameOver').classList.contains('visible')) return;
+            
+            const key = e.key;
+            
+            if (key === 'Enter') {
+                e.preventDefault();
+                handleWordleKey('ВВОД');
+            } else if (key === 'Backspace') {
+                e.preventDefault();
+                handleWordleKey('⌫');
+            } else {
+                // Map physical keyboard to Russian letters
+                const enToRu = {
+                    'q':'Й','w':'Ц','e':'У','r':'К','t':'Е','y':'Н','u':'Г','i':'Ш','o':'Щ','p':'З','[':'Х',
+                    'a':'Ф','s':'Ы','d':'В','f':'А','g':'П','h':'Р','j':'О','k':'Л','l':'Д',';':'Ж',"'":"Э",
+                    'z':'Я','x':'Ч','c':'С','v':'М','b':'И','n':'Т','m':'Ь',',':'Б','.':'Ю',']':'Ъ'
+                };
+                const lower = key.toLowerCase();
+                // Check if it's a Russian letter typed directly
+                const ruLetters = 'ЙЦУКЕНГШЩЗХФЫВАПРОЛДЖЭЯЧСМИТЬБЮЪ';
+                const upper = key.toUpperCase();
+                
+                if (ruLetters.includes(upper)) {
+                    handleWordleKey(upper);
+                } else if (enToRu[lower]) {
+                    handleWordleKey(enToRu[lower]);
+                }
             }
         }
         
