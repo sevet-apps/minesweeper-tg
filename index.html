@@ -886,6 +886,77 @@
 
         .modal-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 22500; opacity: 0; pointer-events: none; transition: opacity 0.25s; touch-action: none; } 
         .modal-overlay.visible { opacity: 1; pointer-events: auto; } 
+
+        /* Privacy Policy Screen */
+        .privacy-screen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-color);
+            z-index: 31000;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .privacy-screen.visible { transform: translateY(0); }
+        .privacy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            padding-top: calc(16px + var(--safe-top));
+            border-bottom: 0.5px solid var(--glass-border);
+            flex-shrink: 0;
+        }
+        .privacy-header-title {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .privacy-close-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+        .privacy-close-btn:active { opacity: 0.7; }
+        .privacy-body {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+            padding-bottom: calc(40px + var(--safe-bottom));
+            touch-action: pan-y;
+        }
+        .privacy-body h2 {
+            font-size: 22px;
+            font-weight: 800;
+            margin: 0 0 16px;
+        }
+        .privacy-body h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 20px 0 8px;
+        }
+        .privacy-body p, .privacy-body li {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #8e8e93;
+            margin: 0 0 8px;
+        }
+        .privacy-body ul {
+            padding-left: 20px;
+            margin: 0 0 8px;
+        }
+        .privacy-body a {
+            color: var(--accent);
+            text-decoration: none;
+        }
         
         .modal { 
             background: var(--bg-color); 
@@ -2283,6 +2354,7 @@
                 simplifiedGraphics: 'Упрощённая графика',
                 vibration: 'Вибрация',
                 privacy: 'Политика',
+                privacyTitle: 'Политика конфиденциальности',
                 support: 'Поддержка',
                 profile: 'Профиль',
                 tops: 'Топ',
@@ -2469,6 +2541,7 @@
                 simplifiedGraphics: 'Simplified graphics',
                 vibration: 'Vibration',
                 privacy: 'Privacy',
+                privacyTitle: 'Privacy Policy',
                 support: 'Support',
                 profile: 'Profile',
                 tops: 'Top',
@@ -2789,11 +2862,14 @@
         startBannerCarousel();
         
         function openPrivacyPolicy() {
-            tg.openLink('https://telegra.ph/Politika-konfidencialnosti-03-01-19');
+            document.getElementById('privacyScreen').classList.add('visible');
+        }
+        function closePrivacyPolicy() {
+            document.getElementById('privacyScreen').classList.remove('visible');
         }
         
         function openSupport() {
-            tg.openTelegramLink('https://t.me/lagaet');
+            tg.openTelegramLink('https://t.me/spark_game_support');
         }
 
         // Tab slider state
@@ -5018,5 +5094,70 @@
         // Start App
         initApp();
     </script>
+
+    <!-- Privacy Policy Screen -->
+    <div class="privacy-screen" id="privacyScreen">
+        <div class="privacy-header">
+            <div class="privacy-header-title" data-i18n="privacyTitle">Политика конфиденциальности</div>
+            <div class="privacy-close-btn" onclick="closePrivacyPolicy()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+        </div>
+        <div class="privacy-body">
+            <h2>Политика конфиденциальности Telegram-бота @spark_game_bot</h2>
+            
+            <h3>1. Общие положения</h3>
+            <p>1.1. Настоящая Политика конфиденциальности описывает порядок сбора, использования, хранения и защиты персональных данных пользователей Telegram-бота @spark_game_bot.</p>
+            <p>1.2. Использование Бота означает безоговорочное согласие пользователя с настоящей Политикой и условиями обработки его данных. В случае несогласия с этими условиями пользователь должен прекратить использование Бота.</p>
+            <p>1.3. Официальным источником новостей и обновлений является Telegram-канал <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a>.</p>
+            
+            <h3>2. Какие данные мы собираем</h3>
+            <p>Для обеспечения полноценного функционала Бот автоматически собирает и обрабатывает следующие данные:</p>
+            <ul>
+                <li><b>Базовые данные Telegram:</b> уникальный идентификатор пользователя (Telegram ID), имя и публичное имя пользователя (Username).</li>
+                <li><b>Игровая статистика:</b> результаты и прогресс в играх, история матчей, количество набранных очков.</li>
+                <li><b>Данные для турниров:</b> реквизиты, предоставляемые пользователем по его личной инициативе для получения призов.</li>
+                <li><b>Технические данные:</b> метаданные сообщений (дата и время запросов, нажатия кнопок).</li>
+            </ul>
+            
+            <h3>3. Цели сбора и использования данных</h3>
+            <ul>
+                <li><b>Создание профиля:</b> отображение имени и Username пользователя в личном кабинете.</li>
+                <li><b>Формирование рейтингов:</b> публичное отображение Username и игровых результатов в таблицах лидеров.</li>
+                <li><b>Проведение турниров:</b> учёт результатов в соревнованиях и организация выплаты призов.</li>
+                <li><b>Обратная связь:</b> отправка уведомлений о новых играх, турнирах и обновлениях.</li>
+            </ul>
+            
+            <h3>4. Передача данных третьим лицам</h3>
+            <p>4.1. Данные пользователей не продаются и не передаются третьим лицам в маркетинговых целях.</p>
+            <p>4.2. Раскрытие данных возможно только:</p>
+            <ul>
+                <li>В публичных таблицах лидеров (Username и игровые очки).</li>
+                <li>По запросу государственных или правоохранительных органов.</li>
+                <li>Передача минимальных данных платёжным агрегаторам для выплаты призовых.</li>
+            </ul>
+            
+            <h3>5. Хранение и защита данных</h3>
+            <p>5.1. Мы принимаем все необходимые технические и организационные меры для защиты пользовательских данных.</p>
+            <p>5.2. Доступ к базе данных имеет только ограниченный круг разработчиков и администраторов.</p>
+            <p>5.3. Платёжные реквизиты не хранятся на постоянной основе и удаляются после проведения транзакции.</p>
+            
+            <h3>6. Права пользователей</h3>
+            <p>Пользователь имеет право:</p>
+            <ul>
+                <li>Запросить информацию о хранимых данных.</li>
+                <li>Потребовать удаления своих данных (что приведёт к удалению профиля и статистики).</li>
+                <li>В любой момент прекратить использование Бота.</li>
+            </ul>
+            
+            <h3>7. Изменение Политики</h3>
+            <p>7.1. Администрация оставляет за собой право вносить изменения в Политику без предварительного уведомления.</p>
+            <p>7.2. Анонсы существенных изменений публикуются в канале <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a>.</p>
+            
+            <h3>8. Контактная информация</h3>
+            <p>По всем вопросам обращайтесь: <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a></p>
+        </div>
+    </div>
+
 </body>
 </html>
