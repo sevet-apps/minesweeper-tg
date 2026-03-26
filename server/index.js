@@ -18,7 +18,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Telegram Bot Token for subscription check
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_bot';
+const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_news';
 const OWNER_ID = '1482228376'; // Твой Telegram ID
 
 // --- API РОУТЫ ---
