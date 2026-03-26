@@ -1902,13 +1902,13 @@ if (BOT_TOKEN) {
         }
         
         bot.sendMessage(chatId, 
-            `${EMOJI.game} <b>Добро пожаловать в Spark Games!</b>\n\n` +
+            `${EMOJI.game} <b>Добро пожаловать в Spark Games!</b>\n` +
             `Играйте в крутые игры и соревнуйтесь с друзьями!\n\n` +
-            `${EMOJI.play} <b>Открыть игры:</b> нажмите кнопку ниже\n\n` +
             `${EMOJI.chart} <b>Топы:</b> @spark_game_bot [игра]\n\n` +
             `${EMOJI.joystick} <b>Игры в чате:</b>\n` +
             `• @spark_game_bot крестики\n` +
-            `• @spark_game_bot шашки`,
+            `• @spark_game_bot шашки\n\n` +
+            `<blockquote>${EMOJI.play} <b>Открыть игры:</b> нажмите кнопку ниже</blockquote>`,
             { 
                 parse_mode: 'HTML',
                 reply_markup: {
