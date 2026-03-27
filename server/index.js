@@ -66,16 +66,74 @@ app.get('/api/profile/:id', async (req, res) => {
     res.json(data);
 });
 
+// Game type display names for notifications
+const GAME_NAMES = {
+    'bb_best_score': { ru: 'Блок Бласт', category: 'Лучший счёт' },
+    'saper_wins': { ru: 'Сапёр', category: 'Победы' },
+    'saper_best_6': { ru: 'Сапёр 6×6', category: 'Лучшее время' },
+    'saper_best_8': { ru: 'Сапёр 8×8', category: 'Лучшее время' },
+    'saper_best_10': { ru: 'Сапёр 10×10', category: 'Лучшее время' },
+    'saper_best_15': { ru: 'Сапёр 15×15', category: 'Лучшее время' },
+    'checkers_wins_pve': { ru: 'Шашки', category: 'Победы PvE' },
+    'sudoku_wins': { ru: 'Судоку', category: 'Победы' },
+    'tower_best': { ru: 'Башня', category: 'Лучший результат' },
+    'tower_combo': { ru: 'Башня', category: 'Лучшее комбо' },
+    'wordle_wins': { ru: 'Вордли', category: 'Победы' },
+};
+
+// Send notification when someone gets displaced from their position
+async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUsername, gameType, oldRank, newRank) {
+    if (!bot || !displacedUserId) return;
+    
+    const gameInfo = GAME_NAMES[gameType];
+    if (!gameInfo) return;
+    
+    try {
+        const alertEmoji = '<tg-emoji emoji-id="5406745015365943482">⚡</tg-emoji>';
+        const message = oldRank === 1
+            ? `${alertEmoji} <b>${newLeaderUsername}</b> обошёл вас в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!\n\nВы были на 1 месте, теперь вы на 2 месте. Попробуйте вернуть лидерство!`
+            : `${alertEmoji} <b>${newLeaderUsername}</b> сместил вас с <b>${oldRank}</b> на <b>${newRank}</b> место в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!`;
+        
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: displacedUserId,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+        console.log(`Notified user ${displacedUserId} about displacement in ${gameType}`);
+    } catch (e) {
+        console.log(`Failed to notify displaced user ${displacedUserId}:`, e.message);
+    }
+}
+
 app.post('/save-stat', async (req, res) => {
     const { user_id, username, photo_url, game_type, score } = req.body;
     try {
         let { data: user } = await supabase.from('users').select('*').eq('telegram_id', user_id).single();
         const updateData = { username: username, photo_url: photo_url };
         updateData[game_type] = score;
+        
+        const isTime = game_type.includes('best') && game_type.includes('saper');
+        
+        // Before saving, get current top players for this category to detect displacement
+        let topBefore = [];
+        if (GAME_NAMES[game_type]) {
+            const { data: topData } = await supabase
+                .from('users')
+                .select(`telegram_id, username, ${game_type}`)
+                .not(game_type, 'is', null)
+                .gt(game_type, 0)
+                .order(game_type, { ascending: isTime })
+                .limit(10);
+            topBefore = topData || [];
+        }
+        
         if (!user) {
             await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
         } else {
-            const isTime = game_type.includes('best') && game_type.includes('saper');
             const currentScore = user[game_type];
             let isRecord = false;
             if (currentScore === null || currentScore === undefined) isRecord = true;
@@ -83,6 +141,39 @@ app.post('/save-stat', async (req, res) => {
             else { if (score > currentScore) isRecord = true; }
             if (isRecord) await supabase.from('users').update(updateData).eq('telegram_id', user_id);
             else await supabase.from('users').update({ username: username, photo_url: photo_url }).eq('telegram_id', user_id);
+        }
+        
+        // After saving, get new top and detect who got displaced
+        if (GAME_NAMES[game_type]) {
+            const { data: topAfter } = await supabase
+                .from('users')
+                .select(`telegram_id, username, ${game_type}`)
+                .not(game_type, 'is', null)
+                .gt(game_type, 0)
+                .order(game_type, { ascending: isTime })
+                .limit(10);
+            
+            if (topAfter && topBefore.length > 0) {
+                // Find users who dropped in rank
+                for (const beforeUser of topBefore) {
+                    if (String(beforeUser.telegram_id) === String(user_id)) continue; // skip self
+                    
+                    const oldRank = topBefore.findIndex(u => String(u.telegram_id) === String(beforeUser.telegram_id)) + 1;
+                    const newRank = topAfter.findIndex(u => String(u.telegram_id) === String(beforeUser.telegram_id)) + 1;
+                    
+                    if (oldRank > 0 && newRank > oldRank) {
+                        // This user got displaced
+                        notifyDisplaced(
+                            beforeUser.telegram_id,
+                            beforeUser.username,
+                            username,
+                            game_type,
+                            oldRank,
+                            newRank
+                        );
+                    }
+                }
+            }
         }
         
         // Referral activation: when user scores 1000+ in Block Blast, activate their referral
@@ -1070,8 +1161,10 @@ const WEBAPP_URL = 'https://sevet-apps.github.io/minesweeper-tg/';
 const inlineCache = new Map();
 
 // Инициализация бота
+let bot = null;
+
 if (BOT_TOKEN) {
-    const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+    bot = new TelegramBot(BOT_TOKEN, { polling: true });
     
     // Обработчик ошибок polling - чтобы бот не падал
     bot.on('polling_error', (error) => {
