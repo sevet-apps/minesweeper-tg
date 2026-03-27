@@ -438,6 +438,10 @@ const TURN_TIME_LIMIT = 60000; // 60 секунд на ход
 // Track online users (users with app open)
 const onlineUsers = new Map(); // socket.id -> { oderId, odername, connectedAt }
 
+// BB Live streaming
+const bbLiveStreamers = new Map(); // oderId -> { socketId, username, grid, score, combo }
+const bbLiveWatchers = new Map(); // oderId (streamer) -> Set of watcher socket.ids
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
@@ -457,6 +461,103 @@ io.on('connection', (socket) => {
                 console.error('Failed to log activity:', e);
             }
         }
+    });
+
+    // --- BB LIVE STREAMING ---
+    
+    // Streamer starts broadcasting
+    socket.on('bb_live_start', ({ userId, username }) => {
+        if (!userId) return;
+        bbLiveStreamers.set(String(userId), {
+            socketId: socket.id,
+            username: username,
+            grid: [],
+            score: 0,
+            combo: 0
+        });
+        bbLiveWatchers.set(String(userId), new Set());
+        console.log(`BB LIVE: ${username} (${userId}) started streaming`);
+    });
+    
+    // Streamer sends board update
+    socket.on('bb_live_update', ({ userId, grid, score, combo, shapes }) => {
+        const uid = String(userId);
+        const streamer = bbLiveStreamers.get(uid);
+        if (!streamer || streamer.socketId !== socket.id) return;
+        
+        streamer.grid = grid;
+        streamer.score = score;
+        streamer.combo = combo;
+        streamer.shapes = shapes;
+        
+        // Broadcast to all watchers
+        const watchers = bbLiveWatchers.get(uid);
+        if (watchers && watchers.size > 0) {
+            watchers.forEach(watcherSocketId => {
+                io.to(watcherSocketId).emit('bb_live_frame', {
+                    userId: uid,
+                    grid, score, combo, shapes
+                });
+            });
+        }
+    });
+    
+    // Streamer stops (game over or exit)
+    socket.on('bb_live_stop', ({ userId }) => {
+        const uid = String(userId);
+        const streamer = bbLiveStreamers.get(uid);
+        if (!streamer || streamer.socketId !== socket.id) return;
+        
+        // Notify all watchers
+        const watchers = bbLiveWatchers.get(uid);
+        if (watchers) {
+            watchers.forEach(watcherSocketId => {
+                io.to(watcherSocketId).emit('bb_live_ended', { userId: uid });
+            });
+        }
+        
+        bbLiveStreamers.delete(uid);
+        bbLiveWatchers.delete(uid);
+        console.log(`BB LIVE: ${uid} stopped streaming`);
+    });
+    
+    // Watcher starts watching a streamer
+    socket.on('bb_watch', ({ streamerId }) => {
+        const uid = String(streamerId);
+        const watchers = bbLiveWatchers.get(uid);
+        const streamer = bbLiveStreamers.get(uid);
+        if (!watchers || !streamer) {
+            socket.emit('bb_live_ended', { userId: uid });
+            return;
+        }
+        
+        watchers.add(socket.id);
+        
+        // Send current state immediately
+        socket.emit('bb_live_frame', {
+            userId: uid,
+            grid: streamer.grid,
+            score: streamer.score,
+            combo: streamer.combo,
+            shapes: streamer.shapes,
+            username: streamer.username
+        });
+    });
+    
+    // Watcher stops watching
+    socket.on('bb_unwatch', ({ streamerId }) => {
+        const uid = String(streamerId);
+        const watchers = bbLiveWatchers.get(uid);
+        if (watchers) watchers.delete(socket.id);
+    });
+    
+    // Get list of active live streamers
+    socket.on('bb_live_list', (callback) => {
+        const list = [];
+        bbLiveStreamers.forEach((data, oderId) => {
+            list.push({ userId: oderId, username: data.username, score: data.score });
+        });
+        if (typeof callback === 'function') callback(list);
     });
 
     // Синхронизация времени - клиент отправляет ping, сервер отвечает с серверным временем
@@ -618,6 +719,25 @@ io.on('connection', (socket) => {
         if (onlineUsers.has(socket.id)) {
             const user = onlineUsers.get(socket.id);
             console.log(`User ${user.oderId} offline. Total online: ${onlineUsers.size - 1}`);
+            
+            // Clean up BB live stream if this user was streaming
+            const uid = String(user.oderId);
+            if (bbLiveStreamers.has(uid) && bbLiveStreamers.get(uid).socketId === socket.id) {
+                const watchers = bbLiveWatchers.get(uid);
+                if (watchers) {
+                    watchers.forEach(watcherSocketId => {
+                        io.to(watcherSocketId).emit('bb_live_ended', { userId: uid });
+                    });
+                }
+                bbLiveStreamers.delete(uid);
+                bbLiveWatchers.delete(uid);
+            }
+            
+            // Clean up if this user was watching someone
+            bbLiveWatchers.forEach((watchers) => {
+                watchers.delete(socket.id);
+            });
+            
             onlineUsers.delete(socket.id);
         }
         

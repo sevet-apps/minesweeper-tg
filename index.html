@@ -442,6 +442,122 @@
         .lb-info { flex: 1; }
         .lb-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
         .lb-val { font-size: 13px; color: #8e8e93; font-weight: 500; }
+        
+        /* BB LIVE Badge */
+        .lb-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #ff3b30;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            margin-left: 6px;
+            animation: livePulse 1.5s ease infinite;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .lb-live-badge::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #fff;
+            animation: liveDot 1.5s ease infinite;
+        }
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        @keyframes liveDot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        /* BB Spectator Overlay */
+        .bb-spectator-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-color);
+            z-index: 28000;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bb-spectator-overlay.visible { transform: translateY(0); }
+        .bb-spectator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            padding-top: calc(105px + var(--safe-top));
+        }
+        .bb-spectator-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .bb-spectator-live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff3b30;
+            animation: liveDot 1.5s ease infinite;
+        }
+        .bb-spectator-name {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .bb-spectator-score-box {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 800;
+            padding: 10px 0;
+            color: var(--accent);
+        }
+        .bb-spectator-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 3px;
+            padding: 10px;
+            max-width: 400px;
+            margin: 0 auto;
+            width: 100%;
+            aspect-ratio: 1;
+        }
+        .bb-spectator-cell {
+            border-radius: 4px;
+            background: var(--bb-cell);
+            aspect-ratio: 1;
+            transition: background-color 0.15s ease;
+        }
+        .bb-spectator-cell.filled { background-color: var(--accent); }
+        .bb-spectator-cell.bb-c-1 { background-color: #ff3b30; }
+        .bb-spectator-cell.bb-c-2 { background-color: #ff9500; }
+        .bb-spectator-cell.bb-c-3 { background-color: #ffcc00; }
+        .bb-spectator-cell.bb-c-4 { background-color: #34c759; }
+        .bb-spectator-cell.bb-c-5 { background-color: #007aff; }
+        .bb-spectator-cell.bb-c-6 { background-color: #5856d6; }
+        .bb-spectator-cell.bb-c-7 { background-color: #af52de; }
+        .bb-spectator-shapes {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 15px;
+        }
+        .bb-spectator-shape {
+            display: grid;
+            gap: 2px;
+        }
+        .bb-spectator-shape-cell {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
@@ -2530,6 +2646,7 @@
                 refTournamentSoon: 'Начало скоро..',
                 refTournamentDesc: 'Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — когда турнир начнётся, ваши рефералы уже будут учтены. Первое место заберёт главный приз!',
                 tournamentBadge: 'ТУРНИР',
+                liveEnded: 'Трансляция завершена',
                 tournamentActive: 'Турнир на 150$',
                 beta: 'БЕТА'
             },
@@ -2717,6 +2834,7 @@
                 refTournamentSoon: 'Coming soon..',
                 refTournamentDesc: 'Referrers Tournament for $150! Start inviting friends now — when the tournament begins, your referrals will already count. First place takes the grand prize!',
                 tournamentBadge: 'EVENT',
+                liveEnded: 'Stream ended',
                 tournamentActive: '$150 Tournament',
                 beta: 'BETA'
             }
@@ -3327,7 +3445,21 @@
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id); let userVal = parseInt(userValRaw); let hasStats = true;
                 if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal >= 9999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
-                const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, isMe: item.user_id.toString() === user.id.toString() }));
+                const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, isMe: item.user_id.toString() === user.id.toString(), isLive: false }));
+                
+                // Check for live BB streamers
+                if (currentLbGame === 'bb') {
+                    try {
+                        const liveList = await new Promise(resolve => {
+                            socket.emit('bb_live_list', (list) => resolve(list || []));
+                            setTimeout(() => resolve([]), 2000);
+                        });
+                        const liveIds = new Set(liveList.map(l => String(l.userId)));
+                        displayList.forEach(u => {
+                            if (liveIds.has(String(u.user_id)) && !u.isMe) u.isLive = true;
+                        });
+                    } catch(e) {}
+                }
                 let myRankRow = displayList.find(u => u.isMe);
                 if (hasStats && !myRankRow) { displayList.push({ user_id: user.id.toString(), username: (user.first_name + ' ' + (user.last_name || '')).trim(), photo_url: user.photo_url, score: userVal, isMe: true }); if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } 
                 else if (hasStats && myRankRow) { if ((category.isTime && userVal < myRankRow.score) || (!category.isTime && userVal > myRankRow.score)) { myRankRow.score = userVal; if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } }
@@ -3341,7 +3473,7 @@
                     let displayVal = u.score; if(category.isTime) displayVal = (u.score >= 9999) ? '--' : u.score + t('seconds');
                     const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
                     let avatarHtml = u.photo_url && u.photo_url.startsWith('http') ? `<img src="${u.photo_url}" class="lb-avatar">` : `<div class="lb-avatar" style="background:#ddd"></div>`;
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${displayVal}</div>`;
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}${u.isLive ? `<span class="lb-live-badge" onclick="event.stopPropagation(); openBBSpectator('${u.user_id}', '${u.username.replace(/'/g, "\\'")}')">LIVE</span>` : ''}</div></div><div class="lb-val">${displayVal}</div>`;
                     listEl.appendChild(item);
                 });
             } catch (error) { listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">${t('networkError')}</div>`; }
@@ -4055,11 +4187,142 @@
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
-        async function checkGameOver() { if(bbIsAnimating) return; const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
+        async function checkGameOver() { if(bbIsAnimating) return; const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { bbLiveStop(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `<div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 10px 0; font-size:24px;">${t('newRecord')}</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('playAgain')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' }); let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2><p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">${t('best')}: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('newGame')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; } overlay.classList.add('visible'); }
-        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } }
+        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); bbLiveBroadcast(); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
+        
+        // --- BB LIVE STREAMING ---
+        let bbIsLive = false;
+        let bbWatchingId = null;
+        
+        function bbLiveStart() {
+            const user = tg.initDataUnsafe.user;
+            if (!user) return;
+            bbIsLive = true;
+            socket.emit('bb_live_start', {
+                userId: user.id,
+                username: (user.first_name + ' ' + (user.last_name || '')).trim()
+            });
+        }
+        
+        function bbLiveStop() {
+            if (!bbIsLive) return;
+            const user = tg.initDataUnsafe.user;
+            if (!user) return;
+            bbIsLive = false;
+            socket.emit('bb_live_stop', { userId: user.id });
+        }
+        
+        function bbLiveBroadcast() {
+            if (!bbIsLive) return;
+            const user = tg.initDataUnsafe.user;
+            if (!user) return;
+            const shapesData = bbShapes.map(s => s ? { matrix: s.matrix, color: s.color } : null);
+            socket.emit('bb_live_update', {
+                userId: user.id,
+                grid: bbGrid,
+                score: bbScore,
+                combo: bbCombo,
+                shapes: shapesData
+            });
+        }
+        
+        // Start live when BB opens
+        const origNewGameBB = newGameBB;
+        newGameBB = function() { origNewGameBB(); bbLiveStart(); };
+        const origResumeBB = resumeBB;
+        resumeBB = function() { origResumeBB(); bbLiveStart(); };
+        
+        // Stop live when BB closes
+        const origCloseGame = closeGame;
+        closeGame = function(game) {
+            if (game === 'bb') bbLiveStop();
+            origCloseGame(game);
+        };
+        
+        // --- BB SPECTATOR ---
+        function openBBSpectator(streamerId, streamerName) {
+            bbWatchingId = String(streamerId);
+            document.getElementById('bbSpectatorName').innerText = streamerName;
+            document.getElementById('bbSpectatorScore').innerText = '0';
+            
+            // Init empty grid
+            const gridEl = document.getElementById('bbSpectatorGrid');
+            gridEl.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'bb-spectator-cell';
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    gridEl.appendChild(cell);
+                }
+            }
+            document.getElementById('bbSpectatorShapes').innerHTML = '';
+            
+            document.getElementById('bbSpectatorOverlay').classList.add('visible');
+            socket.emit('bb_watch', { streamerId: bbWatchingId });
+        }
+        
+        function closeBBSpectator() {
+            document.getElementById('bbSpectatorOverlay').classList.remove('visible');
+            if (bbWatchingId) {
+                socket.emit('bb_unwatch', { streamerId: bbWatchingId });
+                bbWatchingId = null;
+            }
+        }
+        
+        function renderSpectatorGrid(grid) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.querySelector(`#bbSpectatorGrid .bb-spectator-cell[data-r="${r}"][data-c="${c}"]`);
+                    if (!cell) continue;
+                    cell.className = 'bb-spectator-cell';
+                    if (grid[r] && grid[r][c] !== 0) {
+                        cell.classList.add('filled', grid[r][c]);
+                    }
+                }
+            }
+        }
+        
+        function renderSpectatorShapes(shapes) {
+            const container = document.getElementById('bbSpectatorShapes');
+            container.innerHTML = '';
+            if (!shapes) return;
+            shapes.forEach(s => {
+                if (!s) return;
+                const shapeEl = document.createElement('div');
+                shapeEl.className = 'bb-spectator-shape';
+                shapeEl.style.gridTemplateColumns = `repeat(${s.matrix[0].length}, 12px)`;
+                s.matrix.forEach(row => {
+                    row.forEach(val => {
+                        const c = document.createElement('div');
+                        c.className = 'bb-spectator-shape-cell';
+                        c.style.backgroundColor = val === 1 ? (COLOR_MAP[s.color] || '#888') : 'transparent';
+                        shapeEl.appendChild(c);
+                    });
+                });
+                container.appendChild(shapeEl);
+            });
+        }
+        
+        // Listen for live frames
+        socket.on('bb_live_frame', (data) => {
+            if (String(data.userId) !== String(bbWatchingId)) return;
+            if (data.username) document.getElementById('bbSpectatorName').innerText = data.username;
+            document.getElementById('bbSpectatorScore').innerText = data.score || 0;
+            if (data.grid) renderSpectatorGrid(data.grid);
+            if (data.shapes) renderSpectatorShapes(data.shapes);
+        });
+        
+        socket.on('bb_live_ended', (data) => {
+            if (String(data.userId) === String(bbWatchingId)) {
+                showToast(t('liveEnded') || 'Трансляция завершена', 'error');
+                closeBBSpectator();
+            }
+        });
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
         /* --- SUDOKU LOGIC --- */
@@ -5094,6 +5357,22 @@
         // Start App
         initApp();
     </script>
+
+    <!-- BB Spectator Overlay -->
+    <div class="bb-spectator-overlay" id="bbSpectatorOverlay">
+        <div class="bb-spectator-header">
+            <div class="bb-spectator-info">
+                <div class="bb-spectator-live-dot"></div>
+                <div class="bb-spectator-name" id="bbSpectatorName">LIVE</div>
+            </div>
+            <div class="back-btn" onclick="closeBBSpectator()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+        </div>
+        <div class="bb-spectator-score-box" id="bbSpectatorScore">0</div>
+        <div class="bb-spectator-grid" id="bbSpectatorGrid"></div>
+        <div class="bb-spectator-shapes" id="bbSpectatorShapes"></div>
+    </div>
 
     <!-- Privacy Policy Screen -->
     <div class="privacy-screen" id="privacyScreen">
