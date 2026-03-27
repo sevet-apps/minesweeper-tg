@@ -91,8 +91,8 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
     try {
         const alertEmoji = '<tg-emoji emoji-id="5406745015365943482">⚡</tg-emoji>';
         const message = oldRank === 1
-            ? `${alertEmoji} <b>${newLeaderUsername}</b> обошёл вас в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!\n\nВы были на 1 месте, теперь вы на 2 месте. Попробуйте вернуть лидерство!`
-            : `${alertEmoji} <b>${newLeaderUsername}</b> сместил вас с <b>${oldRank}</b> на <b>${newRank}</b> место в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!`;
+            ? `${alertEmoji} <b>Кто-то</b> обошёл вас в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!\n\nВы были на 1 месте, теперь вы на 2 месте. Попробуйте вернуть лидерство!`
+            : `${alertEmoji} <b>Кто-то</b> сместил вас с <b>${oldRank}</b> на <b>${newRank}</b> место в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!`;
         
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
