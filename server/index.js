@@ -4,6 +4,7 @@ const cors = require('cors');
 const http = require('http'); 
 const { Server } = require("socket.io"); 
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -21,8 +22,131 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_news';
 const OWNER_ID = '1482228376'; // Твой Telegram ID
 
+// ============================
+// SECURITY: Telegram initData validation
+// ============================
+function validateInitData(initDataString) {
+    if (!initDataString || !BOT_TOKEN) return null;
+    
+    try {
+        const params = new URLSearchParams(initDataString);
+        const hash = params.get('hash');
+        if (!hash) return null;
+        
+        params.delete('hash');
+        
+        // Sort params alphabetically and build check string
+        const dataCheckString = Array.from(params.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, value]) => `${key}=${value}`)
+            .join('\n');
+        
+        // HMAC-SHA256 with secret key derived from bot token
+        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+        const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+        
+        if (computedHash !== hash) return null;
+        
+        // Check auth_date is not too old (allow 24h window)
+        const authDate = parseInt(params.get('auth_date'));
+        if (!authDate || (Date.now() / 1000 - authDate) > 86400) return null;
+        
+        // Extract user
+        const userStr = params.get('user');
+        if (!userStr) return null;
+        
+        return JSON.parse(userStr);
+    } catch (e) {
+        console.error('initData validation error:', e.message);
+        return null;
+    }
+}
+
+// Middleware: extract and validate user from initData header
+function authMiddleware(req, res, next) {
+    const initData = req.headers['x-init-data'];
+    
+    if (!initData) {
+        return res.status(401).json({ error: 'Missing authentication' });
+    }
+    
+    const user = validateInitData(initData);
+    if (!user) {
+        return res.status(403).json({ error: 'Invalid authentication' });
+    }
+    
+    req.telegramUser = user;
+    next();
+}
+
+// ============================
+// SECURITY: Rate limiting (in-memory)
+// ============================
+const rateLimitMap = new Map(); // key -> { count, resetTime }
+const RATE_LIMITS = {
+    'save-stat': { max: 30, windowMs: 60000 },      // 30 saves per minute
+    'register-referral': { max: 5, windowMs: 60000 }, // 5 per minute
+    'profile': { max: 60, windowMs: 60000 },           // 60 per minute
+    'leaderboard': { max: 30, windowMs: 60000 },       // 30 per minute
+};
+
+function checkRateLimit(userId, action) {
+    const config = RATE_LIMITS[action];
+    if (!config) return true;
+    
+    const key = `${action}:${userId}`;
+    const now = Date.now();
+    const entry = rateLimitMap.get(key);
+    
+    if (!entry || now > entry.resetTime) {
+        rateLimitMap.set(key, { count: 1, resetTime: now + config.windowMs });
+        return true;
+    }
+    
+    if (entry.count >= config.max) return false;
+    entry.count++;
+    return true;
+}
+
+// Cleanup rate limit map every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimitMap) {
+        if (now > entry.resetTime) rateLimitMap.delete(key);
+    }
+}, 300000);
+
+// ============================
+// SECURITY: Score validation limits
+// ============================
+const SCORE_LIMITS = {
+    'bb_best_score':      { min: 1, max: 10000000 },
+    'bb_total_games':     { min: 1, max: 10000000 },
+    'saper_wins':         { min: 1, max: 10000000 },
+    'saper_best_6':       { min: 1, max: 86400 },   // seconds, max 24h
+    'saper_best_8':       { min: 1, max: 86400 },
+    'saper_best_10':      { min: 1, max: 86400 },
+    'saper_best_15':      { min: 1, max: 86400 },
+    'checkers_total':     { min: 1, max: 10000000 },
+    'checkers_wins_pve':  { min: 1, max: 10000000 },
+    'sudoku_wins':        { min: 1, max: 10000000 },
+    'tower_best':         { min: 1, max: 10000000 },
+    'tower_combo':        { min: 1, max: 10000000 },
+    'wordle_wins':        { min: 1, max: 10000000 },
+};
+
+function validateScore(gameType, score) {
+    const limits = SCORE_LIMITS[gameType];
+    if (!limits) return false;
+    
+    if (!Number.isInteger(score)) return false;
+    if (score < limits.min || score > limits.max) return false;
+    
+    return true;
+}
+
 // --- API РОУТЫ ---
-app.get('/', (req, res) => res.send('Glass API v39.0'));
+app.get('/', (req, res) => res.send('Glass API v39.1 (secured)'));
 
 // Check if user is subscribed to the required channel
 app.get('/check-subscription', async (req, res) => {
@@ -109,10 +233,32 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
     }
 }
 
-app.post('/save-stat', async (req, res) => {
-    const { user_id, username, photo_url, game_type, score } = req.body;
+app.post('/save-stat', authMiddleware, async (req, res) => {
+    const user = req.telegramUser;
+    const user_id = String(user.id);
+    const username = (user.first_name + ' ' + (user.last_name || '')).trim();
+    const photo_url = user.photo_url || '';
+    const { game_type, score } = req.body;
+    
+    // Rate limit
+    if (!checkRateLimit(user_id, 'save-stat')) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+    
+    // Validate game_type is allowed
+    const allowedTypes = Object.keys(SCORE_LIMITS);
+    if (!allowedTypes.includes(game_type)) {
+        return res.status(400).json({ error: 'Invalid game type' });
+    }
+    
+    // Validate score
+    if (!validateScore(game_type, score)) {
+        return res.status(400).json({ error: 'Invalid score' });
+    }
+    
     try {
-        let { data: user } = await supabase.from('users').select('*').eq('telegram_id', user_id).single();
+        let { data: existingUser } = await supabase.from('users').select('*').eq('telegram_id', user_id).single();
+        
         const updateData = { username: username, photo_url: photo_url };
         updateData[game_type] = score;
         
@@ -131,10 +277,10 @@ app.post('/save-stat', async (req, res) => {
             topBefore = topData || [];
         }
         
-        if (!user) {
+        if (!existingUser) {
             await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
         } else {
-            const currentScore = user[game_type];
+            const currentScore = existingUser[game_type];
             let isRecord = false;
             if (currentScore === null || currentScore === undefined) isRecord = true;
             else if (isTime) { if (score < currentScore) isRecord = true; }
@@ -154,15 +300,13 @@ app.post('/save-stat', async (req, res) => {
                 .limit(10);
             
             if (topAfter && topBefore.length > 0) {
-                // Find users who dropped in rank
                 for (const beforeUser of topBefore) {
-                    if (String(beforeUser.telegram_id) === String(user_id)) continue; // skip self
+                    if (String(beforeUser.telegram_id) === String(user_id)) continue;
                     
                     const oldRank = topBefore.findIndex(u => String(u.telegram_id) === String(beforeUser.telegram_id)) + 1;
                     const newRank = topAfter.findIndex(u => String(u.telegram_id) === String(beforeUser.telegram_id)) + 1;
                     
                     if (oldRank > 0 && newRank > oldRank) {
-                        // This user got displaced
                         notifyDisplaced(
                             beforeUser.telegram_id,
                             beforeUser.username,
@@ -176,12 +320,10 @@ app.post('/save-stat', async (req, res) => {
             }
         }
         
-        // Referral activation: when user scores 1000+ in Block Blast, activate their referral
+        // Referral activation: when user scores 1000+ in Block Blast
         if (game_type === 'bb_best_score' && score >= 1000) {
-            // Re-fetch user to get latest state
             const { data: freshUser } = await supabase.from('users').select('referred_by, referral_activated').eq('telegram_id', user_id).single();
             if (freshUser && freshUser.referred_by && !freshUser.referral_activated) {
-                // Mark this referral as activated
                 await supabase.from('users').update({ referral_activated: true }).eq('telegram_id', user_id);
                 console.log(`Referral activated: user ${user_id} scored ${score} in BB, referrer ${freshUser.referred_by}`);
             }
@@ -251,17 +393,26 @@ app.get('/user-ranks', async (req, res) => {
 // --- REFERRAL SYSTEM ---
 
 // Register a new referral
-app.post('/register-referral', async (req, res) => {
-    const { user_id, referrer_id, username, photo_url } = req.body;
+app.post('/register-referral', authMiddleware, async (req, res) => {
+    const user = req.telegramUser;
+    const user_id = String(user.id);
+    const username = (user.first_name + ' ' + (user.last_name || '')).trim();
+    const photo_url = user.photo_url || '';
+    const { referrer_id } = req.body;
     
     console.log('Register referral request:', { user_id, referrer_id, username });
     
-    if (!user_id || !referrer_id) {
-        return res.status(400).json({ error: 'Missing user_id or referrer_id' });
+    // Rate limit
+    if (!checkRateLimit(user_id, 'register-referral')) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+    
+    if (!referrer_id) {
+        return res.status(400).json({ error: 'Missing referrer_id' });
     }
     
     // Don't allow self-referral
-    if (user_id === referrer_id) {
+    if (user_id === String(referrer_id)) {
         return res.status(400).json({ error: 'Cannot refer yourself' });
     }
     
@@ -2210,4 +2361,4 @@ setInterval(cleanupOldActivity, 24 * 60 * 60 * 1000);
 setTimeout(cleanupOldActivity, 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Glass API v39.0 running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Glass API v39.1 (secured) running on port ${PORT}`));

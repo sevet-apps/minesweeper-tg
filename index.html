@@ -3116,8 +3116,8 @@
         async function sendStatToBackend(game_type, score) {
             const user = tg.initDataUnsafe.user; if (!user) return;
             const url = `${API_BASE_URL}/save-stat`;
-            const payload = { user_id: user.id.toString(), username: (user.first_name + ' ' + (user.last_name||'')).trim(), photo_url: user.photo_url || "", game_type: game_type, score: score };
-            try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch (error) { console.error(error); }
+            const payload = { game_type: game_type, score: score };
+            try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) }); } catch (error) { console.error(error); }
         }
         function syncLocalStatsToServer() {
             const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
@@ -3351,12 +3351,9 @@
                 try {
                     const resp = await fetch(`${API_BASE_URL}/register-referral`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
                         body: JSON.stringify({
-                            user_id: user.id.toString(),
-                            referrer_id: referrerId,
-                            username: (user.first_name + ' ' + (user.last_name || '')).trim(),
-                            photo_url: user.photo_url || ''
+                            referrer_id: referrerId
                         })
                     });
                     const result = await resp.json();
