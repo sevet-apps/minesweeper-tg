@@ -346,13 +346,20 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
             ? `${alertEmoji} <b>Кто-то</b> обошёл вас в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!\n\nВы были на 1 месте, теперь вы на 2 месте. Попробуйте вернуть лидерство!`
             : `${alertEmoji} <b>Кто-то</b> сместил вас с <b>${oldRank}</b> на <b>${newRank}</b> место в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!`;
         
+        const APP_SHORT_NAME = process.env.APP_SHORT_NAME || 'sparkapp';
+        
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 chat_id: displacedUserId,
                 text: message,
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: '🏆 Посмотреть топ', url: `https://t.me/spark_game_bot/sparkapp?startapp=top_${gameType}` }
+                    ]]
+                }
             })
         });
         console.log(`Notified user ${displacedUserId} about displacement in ${gameType}`);

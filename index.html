@@ -3412,6 +3412,35 @@
                     console.log('Failed to register referral:', e);
                 }
             }
+            
+            // Deep link to specific leaderboard: top_<game_type>
+            if (startParam && startParam.startsWith('top_')) {
+                const gameType = startParam.replace('top_', '');
+                const GAME_TYPE_TO_LB = {
+                    'bb_best_score': 'bb', 'bb_total_games': 'bb',
+                    'saper_wins': 'saper', 'saper_best_6': 'saper', 'saper_best_8': 'saper', 'saper_best_10': 'saper', 'saper_best_15': 'saper',
+                    'checkers_total': 'checkers', 'checkers_wins_pve': 'checkers',
+                    'sudoku_wins': 'sudoku',
+                    'tower_best': 'tower', 'tower_combo': 'tower',
+                    'wordle_wins': 'wordle'
+                };
+                const lbGame = GAME_TYPE_TO_LB[gameType];
+                if (lbGame) {
+                    // Переключаем на вкладку лидерборда
+                    switchTab('leaderboard', document.querySelector('.tab-item[data-tab="leaderboard"]'));
+                    // Открываем нужную игру с нужной категорией
+                    setTimeout(() => {
+                        openLeaderboardDetail(lbGame);
+                        // Находим и выбираем конкретную категорию
+                        const allCats = { saper: SAPER_CATS, checkers: CHECKERS_CATS, bb: BB_CATS, sudoku: SUDOKU_CATS, tower: TOWER_CATS, wordle: WORDLE_CATS };
+                        const cats = allCats[lbGame];
+                        if (cats) {
+                            const targetCat = cats.find(c => c.id === gameType);
+                            if (targetCat) loadLeaderboardData(targetCat);
+                        }
+                    }, 300);
+                }
+            }
         }
         
         async function loadReferralStats() {
