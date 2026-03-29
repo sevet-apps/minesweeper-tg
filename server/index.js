@@ -135,11 +135,19 @@ const SCORE_LIMITS = {
     'wordle_wins':        { min: 1, max: 10000000 },
 };
 
+// Time-based game types that allow float scores (seconds with ms precision)
+const TIME_BASED_TYPES = ['saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15'];
+
 function validateScore(gameType, score) {
     const limits = SCORE_LIMITS[gameType];
     if (!limits) return false;
     
-    if (!Number.isInteger(score)) return false;
+    if (TIME_BASED_TYPES.includes(gameType)) {
+        // Allow float scores for time-based types, must be a finite number
+        if (typeof score !== 'number' || !Number.isFinite(score)) return false;
+    } else {
+        if (!Number.isInteger(score)) return false;
+    }
     if (score < limits.min || score > limits.max) return false;
     
     return true;
@@ -209,7 +217,7 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
 app.post('/game-session/move', authMiddleware, (req, res) => {
     const user = req.telegramUser;
     const userId = String(user.id);
-    const { game_type, session_token } = req.body;
+    const { game_type, session_token, move_data } = req.body;
     
     const key = `${userId}:${game_type}`;
     const session = gameSessions.get(key);
@@ -218,8 +226,31 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         return res.json({ ok: false });
     }
     
+    // Anti-spam: minimum 300ms between moves (no human plays faster)
+    const now = Date.now();
+    if (now - session.lastMoveTime < 300) {
+        session.suspiciousCount = (session.suspiciousCount || 0) + 1;
+        // Allow some fast moves (double-tap etc) but flag if consistent
+        if (session.suspiciousCount > 5) {
+            return res.json({ ok: false });
+        }
+    }
+    
+    // move_data must be present and reasonable (client sends small hash of game state)
+    if (!move_data || typeof move_data !== 'string' || move_data.length < 4 || move_data.length > 64) {
+        return res.json({ ok: false });
+    }
+    
+    // Store move hashes to detect duplicate/replayed moves
+    if (!session.moveHashes) session.moveHashes = new Set();
+    if (session.moveHashes.has(move_data)) {
+        session.suspiciousCount = (session.suspiciousCount || 0) + 1;
+        return res.json({ ok: false });
+    }
+    session.moveHashes.add(move_data);
+    
     session.moveCount++;
-    session.lastMoveTime = Date.now();
+    session.lastMoveTime = now;
     
     res.json({ ok: true });
 });
@@ -384,6 +415,23 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             logSuspiciousActivity(user_id, username, game_type, score, `TOO_FEW_MOVES (${session.moveCount})`);
             gameSessions.delete(key);
             return res.status(400).json({ error: 'Insufficient gameplay' });
+        }
+        
+        // Score-to-moves ratio check: score can't wildly exceed what's possible per move
+        // BB: max ~500 points per move (combo line clears), realistically ~100-200
+        // Tower: score = number of blocks placed = moveCount
+        const SCORE_PER_MOVE_MAX = {
+            'bb_best_score': 500,
+            'tower_best': 1.5,   // score ≈ moves (1 block = 1 point, allow some margin)
+        };
+        const maxPerMove = SCORE_PER_MOVE_MAX[game_type];
+        if (maxPerMove && session.moveCount > 0) {
+            const maxPossibleScore = Math.ceil(session.moveCount * maxPerMove);
+            if (score > maxPossibleScore) {
+                logSuspiciousActivity(user_id, username, game_type, score, `SCORE_VS_MOVES (score=${score}, moves=${session.moveCount}, max=${maxPossibleScore})`);
+                gameSessions.delete(key);
+                return res.status(400).json({ error: 'Score inconsistent with gameplay' });
+            }
         }
         
         // Session used — delete it (but keep for tower_combo if tower_best was just saved)
