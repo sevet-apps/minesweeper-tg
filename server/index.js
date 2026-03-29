@@ -75,6 +75,11 @@ function authMiddleware(req, res, next) {
         return res.status(403).json({ error: 'Invalid authentication' });
     }
     
+    // Check if user is banned
+    if (bannedUsers.has(String(user.id))) {
+        return res.status(403).json({ error: 'Account suspended' });
+    }
+    
     req.telegramUser = user;
     next();
 }
@@ -201,7 +206,14 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
         startTime, 
         token, 
         moveCount: 0,
-        lastMoveTime: startTime
+        lastMoveTime: startTime,
+        // BB server-side validation state
+        ...(game_type === 'bb_best_score' ? {
+            bbGrid: Array(8).fill(null).map(() => Array(8).fill(0)),
+            bbScore: 0,
+            bbCombo: 0,
+            bbComboBuffer: 0
+        } : {})
     });
     
     // Cleanup old sessions (older than 2h)
@@ -213,7 +225,88 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
     res.json({ session_token: token });
 });
 
-// Record game move (lightweight telemetry)
+// ============================
+// BB Server-Side Game Simulation
+// ============================
+const BB_ROWS = 8, BB_COLS = 8;
+
+function bbCanPlace(grid, matrix, r, c) {
+    for (let i = 0; i < matrix.length; i++) {
+        for (let j = 0; j < matrix[0].length; j++) {
+            if (matrix[i][j] === 1) {
+                const nr = r + i, nc = c + j;
+                if (nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || grid[nr][nc] !== 0) return false;
+            }
+        }
+    }
+    return true;
+}
+
+function bbPlaceAndScore(session, matrix, r, c) {
+    const grid = session.bbGrid;
+    
+    // Place shape, count cells
+    let placedCount = 0;
+    for (let i = 0; i < matrix.length; i++) {
+        for (let j = 0; j < matrix[0].length; j++) {
+            if (matrix[i][j] === 1) {
+                grid[r + i][c + j] = 1; // 1 = filled (server doesn't need color)
+                placedCount++;
+            }
+        }
+    }
+    session.bbScore += placedCount;
+    
+    // Check lines
+    const rowsToClear = [];
+    const colsToClear = [];
+    for (let row = 0; row < BB_ROWS; row++) {
+        if (grid[row].every(v => v !== 0)) rowsToClear.push(row);
+    }
+    for (let col = 0; col < BB_COLS; col++) {
+        let full = true;
+        for (let row = 0; row < BB_ROWS; row++) { if (grid[row][col] === 0) { full = false; break; } }
+        if (full) colsToClear.push(col);
+    }
+    
+    const totalCleared = rowsToClear.length + colsToClear.length;
+    
+    if (totalCleared > 0) {
+        session.bbCombo++;
+        session.bbComboBuffer = 3;
+        
+        // Clear lines
+        rowsToClear.forEach(row => { for (let c2 = 0; c2 < BB_COLS; c2++) grid[row][c2] = 0; });
+        colsToClear.forEach(col => { for (let r2 = 0; r2 < BB_ROWS; r2++) grid[r2][col] = 0; });
+        
+        // Score: base 10 per line, multi-line multiplier, combo multiplier
+        let points = totalCleared * 10;
+        if (totalCleared >= 2) points = points * totalCleared;
+        if (session.bbCombo > 1) points = points * session.bbCombo;
+        session.bbScore += points;
+        
+        // Check all-clear bonus
+        let allClear = true;
+        for (let row = 0; row < BB_ROWS && allClear; row++) {
+            for (let col = 0; col < BB_COLS; col++) {
+                if (grid[row][col] !== 0) { allClear = false; break; }
+            }
+        }
+        if (allClear) {
+            const bonus = 500 * (session.bbCombo > 0 ? session.bbCombo : 1);
+            session.bbScore += bonus;
+        }
+    } else {
+        if (session.bbCombo > 0) {
+            session.bbComboBuffer--;
+            if (session.bbComboBuffer <= 0) session.bbCombo = 0;
+        }
+    }
+    
+    return { placedCount, linesCleared: totalCleared };
+}
+
+// Record game move (lightweight telemetry + BB server validation)
 app.post('/game-session/move', authMiddleware, (req, res) => {
     const user = req.telegramUser;
     const userId = String(user.id);
@@ -230,13 +323,45 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     const now = Date.now();
     if (now - session.lastMoveTime < 300) {
         session.suspiciousCount = (session.suspiciousCount || 0) + 1;
-        // Allow some fast moves (double-tap etc) but flag if consistent
         if (session.suspiciousCount > 5) {
             return res.json({ ok: false });
         }
     }
     
-    // move_data must be present and reasonable (client sends small hash of game state)
+    // === BB Server-side validation ===
+    if (game_type === 'bb_best_score' && move_data && typeof move_data === 'object' && move_data.matrix) {
+        const { matrix, r, c } = move_data;
+        
+        // Validate matrix format
+        if (!Array.isArray(matrix) || matrix.length === 0 || matrix.length > 5) {
+            return res.json({ ok: false, reason: 'invalid_matrix' });
+        }
+        const colLen = matrix[0].length;
+        if (!matrix.every(row => Array.isArray(row) && row.length === colLen && row.length <= 5 && row.every(v => v === 0 || v === 1))) {
+            return res.json({ ok: false, reason: 'invalid_matrix' });
+        }
+        
+        // Validate position
+        if (typeof r !== 'number' || typeof c !== 'number' || r < 0 || c < 0 || r >= BB_ROWS || c >= BB_COLS) {
+            return res.json({ ok: false, reason: 'invalid_position' });
+        }
+        
+        // Check placement validity on server grid
+        if (!bbCanPlace(session.bbGrid, matrix, r, c)) {
+            logSuspiciousActivity(userId, user.first_name, game_type, session.bbScore, `BB_INVALID_PLACEMENT (r=${r}, c=${c})`);
+            return res.json({ ok: false, reason: 'cannot_place' });
+        }
+        
+        // Simulate placement and scoring
+        bbPlaceAndScore(session, matrix, r, c);
+        
+        session.moveCount++;
+        session.lastMoveTime = now;
+        
+        return res.json({ ok: true, server_score: session.bbScore });
+    }
+    
+    // === Default: lightweight hash-based telemetry for other games ===
     if (!move_data || typeof move_data !== 'string' || move_data.length < 4 || move_data.length > 64) {
         return res.json({ ok: false });
     }
@@ -255,12 +380,91 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     res.json({ ok: true });
 });
 
+// Sync BB game state on resume (client sends current grid + score)
+app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
+    const user = req.telegramUser;
+    const userId = String(user.id);
+    const { session_token, grid, score, combo, comboBuffer } = req.body;
+    
+    const key = `${userId}:bb_best_score`;
+    const session = gameSessions.get(key);
+    
+    if (!session || session.token !== session_token) {
+        return res.json({ ok: false });
+    }
+    
+    // Validate grid format
+    if (!Array.isArray(grid) || grid.length !== BB_ROWS) {
+        return res.json({ ok: false, reason: 'invalid_grid' });
+    }
+    for (const row of grid) {
+        if (!Array.isArray(row) || row.length !== BB_COLS) {
+            return res.json({ ok: false, reason: 'invalid_grid' });
+        }
+    }
+    
+    // Sync server state to match client's saved state
+    // Server grid uses 0/1 (doesn't need colors)
+    session.bbGrid = grid.map(row => row.map(cell => cell === 0 ? 0 : 1));
+    session.bbScore = typeof score === 'number' ? score : 0;
+    session.bbCombo = typeof combo === 'number' ? combo : 0;
+    session.bbComboBuffer = typeof comboBuffer === 'number' ? comboBuffer : 0;
+    
+    console.log(`BB session synced for user ${userId}: score=${session.bbScore}, combo=${session.bbCombo}`);
+    res.json({ ok: true, server_score: session.bbScore });
+});
+
 // ============================  
 // SECURITY: Score anomaly detection log
 // ============================
+
+// In-memory cheat strike tracker: userId -> { count, username, reasons[] }
+const cheatStrikes = new Map();
+const CHEAT_BAN_THRESHOLD = 5;
+
+// Banned users set (in-memory + synced to DB)
+const bannedUsers = new Set();
+
+// Load bans from DB on startup
+async function loadBannedUsers() {
+    try {
+        const { data } = await supabase.from('banned_users').select('telegram_id');
+        if (data) data.forEach(row => bannedUsers.add(String(row.telegram_id)));
+        console.log(`Loaded ${bannedUsers.size} banned users`);
+    } catch(e) { console.log('No banned_users table yet'); }
+}
+loadBannedUsers();
+
+async function notifyOwner(message) {
+    if (!BOT_TOKEN) return;
+    try {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: OWNER_ID,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+    } catch(e) { console.error('Failed to notify owner:', e.message); }
+}
+
+async function banUser(userId, username) {
+    bannedUsers.add(String(userId));
+    try {
+        await supabase.from('banned_users').upsert({
+            telegram_id: String(userId),
+            username: username,
+            banned_at: new Date().toISOString()
+        }, { onConflict: 'telegram_id' }).catch(() => {});
+    } catch(e) {}
+}
+
 async function logSuspiciousActivity(userId, username, gameType, score, reason) {
     console.log(`⚠️ SUSPICIOUS [${reason}]: user=${userId} (${username}), game=${gameType}, score=${score}`);
-    // Could save to DB for admin review:
+    
+    // Save to DB
     try {
         await supabase.from('suspicious_scores').insert({
             telegram_id: userId,
@@ -269,8 +473,46 @@ async function logSuspiciousActivity(userId, username, gameType, score, reason) 
             score: score,
             reason: reason,
             created_at: new Date().toISOString()
-        }).catch(() => {}); // Table may not exist yet, that's ok
+        }).catch(() => {});
     } catch(e) {}
+    
+    // Don't track owner
+    if (String(userId) === OWNER_ID) return;
+    
+    // Increment strike counter
+    const strikes = cheatStrikes.get(String(userId)) || { count: 0, username, reasons: [] };
+    strikes.count++;
+    strikes.username = username;
+    strikes.reasons.push(`${gameType}: ${reason} (score=${score})`);
+    cheatStrikes.set(String(userId), strikes);
+    
+    // Notify owner about every violation
+    const strikeEmoji = strikes.count >= CHEAT_BAN_THRESHOLD ? '🚫' : '⚠️';
+    
+    if (strikes.count >= CHEAT_BAN_THRESHOLD && !bannedUsers.has(String(userId))) {
+        // Auto-ban
+        await banUser(userId, username);
+        
+        await notifyOwner(
+            `🚫 <b>АВТО-БАН</b>\n\n` +
+            `Игрок: <b>${username}</b>\n` +
+            `ID: <code>${userId}</code>\n` +
+            `Нарушений: <b>${strikes.count}/${CHEAT_BAN_THRESHOLD}</b>\n\n` +
+            `Последнее: ${reason}\n` +
+            `Игра: ${gameType}, счёт: ${score}\n\n` +
+            `<i>История нарушений:</i>\n` +
+            strikes.reasons.slice(-5).map((r, i) => `${i+1}. ${r}`).join('\n')
+        );
+    } else {
+        await notifyOwner(
+            `${strikeEmoji} <b>Подозрительная активность</b>\n\n` +
+            `Игрок: <b>${username}</b>\n` +
+            `ID: <code>${userId}</code>\n` +
+            `Нарушение: ${reason}\n` +
+            `Игра: ${gameType}, счёт: ${score}\n` +
+            `Страйков: <b>${strikes.count}/${CHEAT_BAN_THRESHOLD}</b>`
+        );
+    }
 }
 
 // --- API РОУТЫ ---
@@ -425,7 +667,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
         
         // Score-to-moves ratio check: score can't wildly exceed what's possible per move
-        // BB: max ~500 points per move (combo line clears), realistically ~100-200
+        // BB: now validated server-side, but keep ratio as backup
         // Tower: score = number of blocks placed = moveCount
         const SCORE_PER_MOVE_MAX = {
             'bb_best_score': 500,
@@ -439,6 +681,18 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
                 gameSessions.delete(key);
                 return res.status(400).json({ error: 'Score inconsistent with gameplay' });
             }
+        }
+        
+        // BB server-side score validation: compare client score with server-computed score
+        if (game_type === 'bb_best_score' && session.bbScore !== undefined) {
+            // Allow small tolerance (rounding, timing edge cases)
+            const tolerance = Math.max(10, session.bbScore * 0.02); // 2% or at least 10 points
+            if (score > session.bbScore + tolerance) {
+                logSuspiciousActivity(user_id, username, game_type, score, `BB_SCORE_MISMATCH (client=${score}, server=${session.bbScore}, diff=${score - session.bbScore})`);
+                gameSessions.delete(key);
+                return res.status(400).json({ error: 'Score verification failed' });
+            }
+            console.log(`BB score verified: client=${score}, server=${session.bbScore}, diff=${score - session.bbScore}`);
         }
         
         // Session used — delete it (but keep for tower_combo if tower_best was just saved)
@@ -2457,6 +2711,42 @@ if (BOT_TOKEN) {
             console.error('Stats error:', e);
             bot.sendMessage(chatId, 'Ошибка получения статистики: ' + e.message);
         }
+    });
+    
+    // Команда /unban <id> - только для владельца
+    bot.onText(/\/unban\s+(\d+)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        if (String(msg.from.id) !== String(OWNER_ID)) return;
+        
+        const targetId = match[1];
+        bannedUsers.delete(targetId);
+        cheatStrikes.delete(targetId);
+        
+        try {
+            await supabase.from('banned_users').delete().eq('telegram_id', targetId);
+        } catch(e) {}
+        
+        bot.sendMessage(chatId, `✅ Пользователь <code>${targetId}</code> разбанен, страйки сброшены.`, { parse_mode: 'HTML' });
+    });
+    
+    // Команда /bans - список забаненных
+    bot.onText(/\/bans/, async (msg) => {
+        const chatId = msg.chat.id;
+        if (String(msg.from.id) !== String(OWNER_ID)) return;
+        
+        if (bannedUsers.size === 0) {
+            return bot.sendMessage(chatId, 'Забаненных нет.');
+        }
+        
+        let text = `🚫 <b>Забаненные пользователи (${bannedUsers.size}):</b>\n\n`;
+        for (const id of bannedUsers) {
+            const strikes = cheatStrikes.get(id);
+            text += `• <code>${id}</code>`;
+            if (strikes) text += ` — ${strikes.username} (${strikes.count} страйков)`;
+            text += '\n';
+        }
+        text += '\nРазбанить: /unban <id>';
+        bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
     });
     
     // Команда /start
