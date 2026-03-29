@@ -145,8 +145,105 @@ function validateScore(gameType, score) {
     return true;
 }
 
+// ============================
+// SECURITY: Game Session Tracking
+// ============================
+const gameSessions = new Map(); // `${userId}:${gameType}` -> { startTime, token, moves }
+
+// Minimum game durations in ms (impossible to play faster)
+const MIN_GAME_DURATION = {
+    'bb_best_score': 5000,       // BB game takes at least 5 sec
+    'tower_best': 3000,          // Tower takes at least 3 sec
+    'tower_combo': 3000,
+    'saper_best_6': 2000,        // Minesweeper 6x6 at least 2 sec
+    'saper_best_8': 3000,
+    'saper_best_10': 5000,
+    'saper_best_15': 10000,
+    'sudoku_wins': 10000,        // Sudoku takes at least 10 sec
+    'wordle_wins': 3000,         // Wordle at least 3 sec
+    'checkers_wins_pve': 15000,  // Checkers game at least 15 sec
+};
+
+// Generate session token (HMAC-signed, can't be forged by client)
+function createSessionToken(userId, gameType, startTime) {
+    const data = `${userId}:${gameType}:${startTime}`;
+    return crypto.createHmac('sha256', BOT_TOKEN || 'fallback-secret').update(data).digest('hex').substring(0, 32);
+}
+
+// Start game session
+app.post('/game-session/start', authMiddleware, (req, res) => {
+    const user = req.telegramUser;
+    const userId = String(user.id);
+    const { game_type } = req.body;
+    
+    if (!checkRateLimit(userId, 'save-stat')) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+    
+    const allowedTypes = Object.keys(SCORE_LIMITS);
+    if (!allowedTypes.includes(game_type)) {
+        return res.status(400).json({ error: 'Invalid game type' });
+    }
+    
+    const startTime = Date.now();
+    const token = createSessionToken(userId, game_type, startTime);
+    const key = `${userId}:${game_type}`;
+    
+    gameSessions.set(key, { 
+        startTime, 
+        token, 
+        moveCount: 0,
+        lastMoveTime: startTime
+    });
+    
+    // Cleanup old sessions (older than 2h)
+    const now = Date.now();
+    for (const [k, v] of gameSessions) {
+        if (now - v.startTime > 7200000) gameSessions.delete(k);
+    }
+    
+    res.json({ session_token: token });
+});
+
+// Record game move (lightweight telemetry)
+app.post('/game-session/move', authMiddleware, (req, res) => {
+    const user = req.telegramUser;
+    const userId = String(user.id);
+    const { game_type, session_token } = req.body;
+    
+    const key = `${userId}:${game_type}`;
+    const session = gameSessions.get(key);
+    
+    if (!session || session.token !== session_token) {
+        return res.json({ ok: false });
+    }
+    
+    session.moveCount++;
+    session.lastMoveTime = Date.now();
+    
+    res.json({ ok: true });
+});
+
+// ============================  
+// SECURITY: Score anomaly detection log
+// ============================
+async function logSuspiciousActivity(userId, username, gameType, score, reason) {
+    console.log(`⚠️ SUSPICIOUS [${reason}]: user=${userId} (${username}), game=${gameType}, score=${score}`);
+    // Could save to DB for admin review:
+    try {
+        await supabase.from('suspicious_scores').insert({
+            telegram_id: userId,
+            username: username,
+            game_type: gameType,
+            score: score,
+            reason: reason,
+            created_at: new Date().toISOString()
+        }).catch(() => {}); // Table may not exist yet, that's ok
+    } catch(e) {}
+}
+
 // --- API РОУТЫ ---
-app.get('/', (req, res) => res.send('Glass API v39.1 (secured)'));
+app.get('/', (req, res) => res.send('Glass API v39.2 (secured)'));
 
 // Check if user is subscribed to the required channel
 app.get('/check-subscription', async (req, res) => {
@@ -238,7 +335,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     const user_id = String(user.id);
     const username = (user.first_name + ' ' + (user.last_name || '')).trim();
     const photo_url = user.photo_url || '';
-    const { game_type, score } = req.body;
+    const { game_type, score, session_token } = req.body;
     
     // Rate limit
     if (!checkRateLimit(user_id, 'save-stat')) {
@@ -254,6 +351,59 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     // Validate score
     if (!validateScore(game_type, score)) {
         return res.status(400).json({ error: 'Invalid score' });
+    }
+    
+    // ---- SESSION VALIDATION ----
+    // Counter games (wins, total) don't need sessions — they increment by 1
+    const isCounter = ['saper_wins', 'bb_total_games', 'checkers_total', 'checkers_wins_pve', 'sudoku_wins', 'wordle_wins'].includes(game_type);
+    
+    // tower_combo shares session with tower_best (same game, submitted together)
+    const sessionGameType = (game_type === 'tower_combo') ? 'tower_best' : game_type;
+    const needsSession = !isCounter;
+    
+    if (needsSession) {
+        const key = `${user_id}:${sessionGameType}`;
+        const session = gameSessions.get(key);
+        
+        if (!session || session.token !== session_token) {
+            logSuspiciousActivity(user_id, username, game_type, score, 'NO_SESSION');
+            return res.status(400).json({ error: 'Invalid session' });
+        }
+        
+        const duration = Date.now() - session.startTime;
+        const minDuration = MIN_GAME_DURATION[game_type] || 2000;
+        
+        if (duration < minDuration) {
+            logSuspiciousActivity(user_id, username, game_type, score, `TOO_FAST (${duration}ms < ${minDuration}ms)`);
+            gameSessions.delete(key);
+            return res.status(400).json({ error: 'Game completed too quickly' });
+        }
+        
+        // Check minimum moves for action games
+        if (game_type === 'bb_best_score' && session.moveCount < 3) {
+            logSuspiciousActivity(user_id, username, game_type, score, `TOO_FEW_MOVES (${session.moveCount})`);
+            gameSessions.delete(key);
+            return res.status(400).json({ error: 'Insufficient gameplay' });
+        }
+        
+        // Session used — delete it (but keep for tower_combo if tower_best was just saved)
+        if (game_type !== 'tower_best') {
+            gameSessions.delete(key);
+        } else {
+            // Mark session as used for tower_best, but keep alive briefly for tower_combo
+            session.bestSubmitted = true;
+            setTimeout(() => gameSessions.delete(key), 5000);
+        }
+    }
+    
+    // ---- COUNTER VALIDATION: can only increment by 1 ----
+    if (isCounter) {
+        let { data: checkUser } = await supabase.from('users').select(game_type).eq('telegram_id', user_id).single();
+        const currentVal = checkUser ? (checkUser[game_type] || 0) : 0;
+        if (score !== currentVal + 1) {
+            logSuspiciousActivity(user_id, username, game_type, score, `COUNTER_JUMP (${currentVal} -> ${score})`);
+            return res.status(400).json({ error: 'Invalid counter value' });
+        }
     }
     
     try {

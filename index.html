@@ -3113,11 +3113,43 @@
         }
         
         function saveStatToCloud(key, value) { localStorage.setItem(key, value); loadProfile(); }
+        // --- ANTI-CHEAT: Game Session Tracking ---
+        let activeSessionTokens = {}; // game_type -> token
+        
+        async function startGameSession(game_type) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/game-session/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                    body: JSON.stringify({ game_type })
+                });
+                const data = await resp.json();
+                if (data.session_token) activeSessionTokens[game_type] = data.session_token;
+            } catch(e) { console.error('Session start error:', e); }
+        }
+        
+        async function reportGameMove(game_type) {
+            const token = activeSessionTokens[game_type];
+            if (!token) return;
+            try {
+                fetch(`${API_BASE_URL}/game-session/move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                    body: JSON.stringify({ game_type, session_token: token })
+                });
+            } catch(e) {}
+        }
+        
         async function sendStatToBackend(game_type, score) {
             const user = tg.initDataUnsafe.user; if (!user) return;
             const url = `${API_BASE_URL}/save-stat`;
-            const payload = { game_type: game_type, score: score };
-            try { await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) }); } catch (error) { console.error(error); }
+            const sessionKey = (game_type === 'tower_combo') ? 'tower_best' : game_type;
+            const token = activeSessionTokens[sessionKey] || '';
+            const payload = { game_type, score, session_token: token };
+            try { 
+                await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) }); 
+                if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
+            } catch (error) { console.error(error); }
         }
         function syncLocalStatsToServer() {
             const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
@@ -3569,8 +3601,8 @@
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
-        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} startGameSession('saper_best_' + sCols); }
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}reportGameMove('saper_best_' + sCols);if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
@@ -3616,6 +3648,7 @@
             for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}
             saveBoardState();
             if(isOnlineGame) startCheckersTimer();
+            if(isPvE) startGameSession('checkers_wins_pve');
         }
         function updateCheckersStatus(){
             const statusEl=document.getElementById('checkersStatus');
@@ -3755,6 +3788,7 @@
             if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
             board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);updateHistoryButtons();if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,500);return;}}}else{if(vibrationEnabled) tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
             checkWin(); 
+            if(isPvE && isLocal) reportGameMove('checkers_wins_pve');
             // Для онлайн игры turn придёт от сервера через move_confirmed/opponent_move
             if(!isOnlineGame) { 
                 turn=turn==='white'?'black':'white'; 
@@ -3851,9 +3885,9 @@
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
         const DRAG_LIFT_Y = 150; 
         function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
-        function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); }
+        function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); startGameSession('bb_best_score'); }
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
-        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); }
+        function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); startGameSession('bb_best_score'); }
         function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
         function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
         
@@ -4195,7 +4229,7 @@
         async function checkGameOver() { if(bbIsAnimating) return; const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { bbLiveStop(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { saveStatToCloud('bb_best_score', bbScore); sendStatToBackend('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord, bbScore, currentBest); } }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `<div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 10px 0; font-size:24px;">${t('newRecord')}</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('playAgain')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' }); let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2><p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">${t('best')}: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('newGame')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; } overlay.classList.add('visible'); }
-        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); bbLiveBroadcast(); }
+        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); bbLiveBroadcast(); reportGameMove('bb_best_score'); }
         function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
@@ -4333,9 +4367,9 @@
         /* --- SUDOKU LOGIC --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1;
         function startSudokuCheck() { if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); else document.getElementById('modalSudoku').classList.add('visible'); }
-        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); restoreSudokuState(); }
+        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); restoreSudokuState(); startGameSession('sudoku_wins'); }
         function selectSudokuDiff(diff, btn, index) { selectedSudoDiff = diff; const glider = document.getElementById('sudokuGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); generateSudoku(selectedSudoDiff); }
+        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); generateSudoku(selectedSudoDiff); startGameSession('sudoku_wins'); }
         function generateSudoku(holes) {
             if (holes === 30) currentSudoMode = 1; else if (holes === 40) currentSudoMode = 2; else currentSudoMode = 3;
             sudoBoard = Array(81).fill(0); sudoSolution = Array(81).fill(0); sudoLives = 3; sudoFilled = 0; activeDigit = null; document.querySelectorAll('.num-btn').forEach(b => { b.classList.remove('active-digit', 'disabled'); });
@@ -4349,7 +4383,7 @@
         function activateDigit(num, btn) { if (btn.classList.contains('disabled')) return; if (activeDigit === num) { activeDigit = null; btn.classList.remove('active-digit'); highlightSameNumbers(null); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); return; } activeDigit = num; document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit')); btn.classList.add('active-digit'); highlightSameNumbers(num); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function highlightSameNumbers(num) { const cells = document.querySelectorAll('.sudo-cell'); cells.forEach(c => c.classList.remove('same-num')); if (num === null) return; cells.forEach(cell => { if (parseInt(cell.innerText) === num) cell.classList.add('same-num'); }); }
         function checkNumberCompletion() { for(let i=1; i<=9; i++) { let count = 0; for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++; const btn = document.getElementById(`nb${i}`); if(count >= 9) { btn.classList.add('disabled'); btn.classList.remove('active-digit'); if(activeDigit === i) { activeDigit = null; highlightSameNumbers(null); } } else { btn.classList.remove('disabled'); } } }
-        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('close'), () => { closeResult(); closeGame('sudoku'); }), 500); } } }
+        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; reportGameMove('sudoku_wins'); const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('close'), () => { closeResult(); closeGame('sudoku'); }), 500); } } }
         function checkSudokuWin() { if (sudoFilled === 81) { confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let points = currentSudoMode; let w = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', w); sendStatToBackend('sudoku_wins', w); localStorage.removeItem('sudo_state'); showResult(t('victory'), `${t('sudokuSolved')} (+${points})`, t('cool'), () => { closeResult(); closeGame('sudoku'); }); } }
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
@@ -4455,6 +4489,7 @@
             twState = 'playing';
             twLastFrameTime = 0; // Сброс для корректного delta time
             document.getElementById('towerStartMsg').style.display = 'none';
+            startGameSession('tower_best');
             
             twSpawnNextBlock();
             twLoop(performance.now());
@@ -4593,6 +4628,7 @@
             twScore++;
             document.getElementById('towerScore').innerText = twScore;
             twSpeed += 0.02; 
+            reportGameMove('tower_best');
             twSpawnNextBlock();
         }
 
@@ -5075,6 +5111,7 @@
             wordleCurrentGuess = '';
             wordleGameOver = false;
             wordleRevealing = false;
+            startGameSession('wordle_wins');
             
             renderWordleBoard();
             renderWordleKeyboard();
@@ -5183,6 +5220,7 @@
             }
             
             // Block input during reveal
+            reportGameMove('wordle_wins');
             wordleRevealing = true;
             
             const rowIndex = wordleGuesses.length;
