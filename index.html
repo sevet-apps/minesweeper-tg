@@ -2271,7 +2271,7 @@
             applyVibration();
             applyLanguage();
             loadProfile();
-            setTimeout(syncLocalStatsToServer, 2000);
+            setTimeout(syncStatsFromServer, 1000);
             
             // Check subscription first
             checkSubscriptionOnStart();
@@ -3157,7 +3157,9 @@
             } catch(e) {}
         }
         
+        let userBanned = false;
         async function sendStatToBackend(game_type, score) {
+            if (userBanned) return false;
             const user = tg.initDataUnsafe.user; if (!user) return false;
             const url = `${API_BASE_URL}/save-stat`;
             const sessionKey = (game_type === 'tower_combo') ? 'tower_best' : game_type;
@@ -3166,19 +3168,37 @@
             try { 
                 const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) }); 
                 if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
+                if (resp.status === 403) {
+                    const data = await resp.json().catch(() => ({}));
+                    if (data.error === 'Account suspended') {
+                        userBanned = true;
+                        showResult('⛔️', t('accountSuspended') || 'Ваш аккаунт заблокирован за нарушения. Обратитесь к администратору.', 'OK', () => { closeResult(); });
+                    }
+                    return false;
+                }
                 return resp.ok;
             } catch (error) { console.error(error); return false; }
         }
-        function syncLocalStatsToServer() {
-            const bbBest = parseInt(localStorage.getItem('bb_best_score') || 0); if(bbBest > 0) sendStatToBackend('bb_best_score', bbBest);
-            const bbGames = parseInt(localStorage.getItem('bb_total_games') || 0); if(bbGames > 0) sendStatToBackend('bb_total_games', bbGames);
-            const sapWins = parseInt(localStorage.getItem('saper_wins') || 0); if(sapWins > 0) sendStatToBackend('saper_wins', sapWins);
-            const sudokuWins = parseInt(localStorage.getItem('sudoku_wins') || 0); if(sudokuWins > 0) sendStatToBackend('sudoku_wins', sudokuWins);
-            const chTotal = parseInt(localStorage.getItem('checkers_total') || 0); if(chTotal > 0) sendStatToBackend('checkers_total', chTotal);
-            const chWins = parseInt(localStorage.getItem('checkers_wins_pve') || 0); if(chWins > 0) sendStatToBackend('checkers_wins_pve', chWins);
-            const twBest = parseInt(localStorage.getItem('tower_best') || 0); if(twBest > 0) sendStatToBackend('tower_best', twBest);
-            const twCombo = parseInt(localStorage.getItem('tower_combo') || 0); if(twCombo > 0) sendStatToBackend('tower_combo', twCombo);
-            const wordleWins = parseInt(localStorage.getItem('wordle_wins') || 0); if(wordleWins > 0) sendStatToBackend('wordle_wins', wordleWins);
+        async function syncStatsFromServer() {
+            const user = tg.initDataUnsafe.user;
+            if (!user) return;
+            try {
+                const resp = await fetch(`${API_BASE_URL}/api/profile/${user.id}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (!data || !data.telegram_id) return;
+                
+                // Server → localStorage (server is source of truth)
+                const fields = ['bb_best_score','bb_total_games','saper_wins','saper_best_6','saper_best_8','saper_best_10','saper_best_15','checkers_total','checkers_wins_pve','sudoku_wins','tower_best','tower_combo','wordle_wins'];
+                fields.forEach(f => {
+                    if (data[f] !== null && data[f] !== undefined) {
+                        localStorage.setItem(f, data[f]);
+                    }
+                });
+                
+                // Refresh profile UI with server data
+                loadProfile();
+            } catch(e) { console.log('Stats sync error:', e); }
         }
 
         // --- REFERRAL SYSTEM ---
