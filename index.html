@@ -1151,8 +1151,61 @@
         .checkers-wrapper { width:100%; height:100%; display:flex; justify-content:center; align-items:center; padding-bottom: 25vh; }
 
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
-        .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 20px; transition: color 0.3s, transform 0.2s; } 
+        .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 10px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
+
+        /* BB Photo Feature */
+        .bb-photo-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .bb-photo-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .bb-photo-btn:active { transform: scale(0.95); }
+        .bb-photo-btn.has-photo {
+            background: var(--accent);
+            color: white;
+            border-color: transparent;
+        }
+        .bb-photo-clear {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .bb-photo-clear:active { opacity: 0.7; }
+        
+        /* Photo mode cell styling */
+        .bb-cell.filled.bb-photo-cell {
+            background: none !important;
+            background-size: cover !important;
+            background-position: center !important;
+            box-shadow: 
+                inset 0 1px 0 rgba(255,255,255,0.15),
+                inset 0 -1px 0 rgba(0,0,0,0.15),
+                0 1px 3px rgba(0,0,0,0.2);
+            border: 0.5px solid rgba(255,255,255,0.1);
+        }
         .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } 
         .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.15s ease-out, opacity 0.15s ease-out, background 0.15s ease-out, box-shadow 0.15s ease-out; contain: layout style; } 
         .bb-cell.filled { 
@@ -1974,7 +2027,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div class="bb-photo-bar"> <button class="bb-photo-btn" id="bbPhotoBtn" onclick="document.getElementById('bbPhotoInput').click()"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> <span data-i18n="addPhoto">Добавить фото</span> </button> <button class="bb-photo-clear" id="bbPhotoClear" onclick="clearBBPhoto()" style="display:none"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button> </div> <input type="file" id="bbPhotoInput" accept="image/*" style="display:none" onchange="handleBBPhoto(this)"> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -4083,7 +4136,8 @@
             [[1, 0], [0, 1], [0, 1]]
         ];
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
-        const DRAG_LIFT_Y = 150; 
+        const DRAG_LIFT_Y = 150;
+        const isDesktop = () => document.body.classList.contains('desktop');
         function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
         async function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); await startGameSession('bb_best_score'); syncBBSession(); }
         async function syncBBSession() {
@@ -4099,7 +4153,73 @@
         }
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
         function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); startGameSession('bb_best_score'); }
-        function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
+        // === BB PHOTO SYSTEM ===
+        let bbPhotoTiles = null; // Array of 64 data URLs (8x8 grid), or null
+        
+        function handleBBPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Crop to square (center crop)
+                    const size = Math.min(img.width, img.height);
+                    const ox = (img.width - size) / 2;
+                    const oy = (img.height - size) / 2;
+                    
+                    const tileSize = 64; // Resolution per tile
+                    const canvas = document.createElement('canvas');
+                    canvas.width = tileSize;
+                    canvas.height = tileSize;
+                    const ctx = canvas.getContext('2d');
+                    
+                    bbPhotoTiles = [];
+                    const srcTile = size / 8;
+                    
+                    for (let r = 0; r < 8; r++) {
+                        for (let c = 0; c < 8; c++) {
+                            ctx.clearRect(0, 0, tileSize, tileSize);
+                            ctx.drawImage(img, 
+                                ox + c * srcTile, oy + r * srcTile, srcTile, srcTile,
+                                0, 0, tileSize, tileSize
+                            );
+                            bbPhotoTiles.push(canvas.toDataURL('image/jpeg', 0.85));
+                        }
+                    }
+                    
+                    // Update UI
+                    document.getElementById('bbPhotoBtn').classList.add('has-photo');
+                    document.getElementById('bbPhotoClear').style.display = 'flex';
+                    
+                    // Re-render grid with photo
+                    renderBBGrid();
+                    if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+        }
+        
+        function clearBBPhoto() {
+            bbPhotoTiles = null;
+            document.getElementById('bbPhotoBtn').classList.remove('has-photo');
+            document.getElementById('bbPhotoClear').style.display = 'none';
+            renderBBGrid();
+            if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+        }
+        
+        function applyPhotoToCell(cell, r, c) {
+            if (bbPhotoTiles && cell.classList.contains('filled')) {
+                const tileIdx = r * 8 + c;
+                cell.classList.add('bb-photo-cell');
+                cell.style.backgroundImage = `url(${bbPhotoTiles[tileIdx]})`;
+            }
+        }
+
+        function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); applyPhotoToCell(cell, r, c); } el.appendChild(cell); } } }
         function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
         
         function shapeSize(m) { return m.reduce((a, row) => a + row.reduce((s, v) => s + v, 0), 0); }
@@ -4378,20 +4498,22 @@
             document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
         }
 
-        // Множитель движения - фигура двигается в 1.3 раза быстрее пальца
+        // Множитель движения - фигура двигается быстрее пальца (только мобилки)
         const DRAG_MULTIPLIER = 1.3;
         
         let lastPlacementRow = -1, lastPlacementCol = -1;
         function onTouchMove(e) { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); handleMove(e.clientX, e.clientY); }
         function handleMove(x, y) { 
-            // Вычисляем смещение от начальной точки с множителем
-            const deltaX = (x - dragData.startX) * DRAG_MULTIPLIER;
-            const deltaY = (y - dragData.startY) * DRAG_MULTIPLIER;
+            const desktop = isDesktop();
+            const mult = desktop ? 1 : DRAG_MULTIPLIER;
+            const lift = desktop ? 0 : DRAG_LIFT_Y;
             
-            // Позиция ghost = начальная позиция + усиленное смещение
+            const deltaX = (x - dragData.startX) * mult;
+            const deltaY = (y - dragData.startY) * mult;
+            
             const ghostX = dragData.startX + deltaX - touchOffsetX; 
-            const ghostY = dragData.startY + deltaY - touchOffsetY - DRAG_LIFT_Y; 
+            const ghostY = dragData.startY + deltaY - touchOffsetY - lift; 
             
             if(dragGhost) { 
                 dragGhost.style.transform = `translate3d(${ghostX}px, ${ghostY}px, 0)`; 
@@ -4409,7 +4531,7 @@
                 checkPlacement(row, col);
             }
         }
-        function moveGhost(x, y) { const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - DRAG_LIFT_Y; if(dragGhost) { dragGhost.style.transform = `translate3d(${ghostX}px, ${ghostY}px, 0)`; } }
+        function moveGhost(x, y) { const lift = isDesktop() ? 0 : DRAG_LIFT_Y; const ghostX = x - touchOffsetX; const ghostY = y - touchOffsetY - lift; if(dragGhost) { dragGhost.style.transform = `translate3d(${ghostX}px, ${ghostY}px, 0)`; } }
         
         function checkPlacement(r, c) { 
             // Get current drag color
@@ -4500,7 +4622,7 @@
 
         function placeShape(matrix, r, c, color) { 
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; 
-            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); 
+            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; applyPhotoToCell(cell, r+i, c+j); setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); 
         }
         function checkLines(triggerColor) { 
             let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
@@ -4541,7 +4663,7 @@
             confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true });
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; if(!isLiteMode) { cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } } }
+        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; cell.style.backgroundImage = ''; if(!isLiteMode) { cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } } }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
