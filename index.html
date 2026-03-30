@@ -1281,11 +1281,10 @@
         /* Collapsing Profile Header */
         .profile-sticky-bar {
             position: fixed;
-            top: 0;
+            top: calc(50px + var(--safe-top));
             left: 0;
             right: 0;
-            height: calc(54px + var(--safe-top));
-            padding-top: var(--safe-top);
+            height: 48px;
             background: var(--bg-color);
             border-bottom: 0.5px solid var(--glass-border);
             display: flex;
@@ -1294,9 +1293,12 @@
             padding-right: 20px;
             z-index: 100;
             opacity: 0;
-            transform: translateY(-100%);
+            transform: translateY(-20px);
             transition: opacity 0.25s ease, transform 0.25s ease;
             pointer-events: none;
+        }
+        body.desktop .profile-sticky-bar {
+            top: 0;
         }
         .profile-sticky-bar.visible {
             opacity: 1;
