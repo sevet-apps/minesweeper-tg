@@ -1281,11 +1281,11 @@
         /* Collapsing Profile Header */
         .profile-sticky-bar {
             position: fixed;
-            top: calc(50px + var(--safe-top));
+            top: calc(55px + var(--safe-top));
             left: 0;
             right: 0;
             height: 48px;
-            background: var(--bg-color);
+            background: var(--glass-bg);
             border-bottom: 0.5px solid var(--glass-border);
             display: flex;
             align-items: center;
@@ -1297,8 +1297,21 @@
             transition: opacity 0.25s ease, transform 0.25s ease;
             pointer-events: none;
         }
+        /* Cover everything above the bar with same color */
+        .profile-sticky-bar::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            height: calc(60px + var(--safe-top));
+            background: var(--glass-bg);
+        }
         body.desktop .profile-sticky-bar {
-            top: 0;
+            top: 10px;
+        }
+        body.desktop .profile-sticky-bar::before {
+            height: 15px;
         }
         .profile-sticky-bar.visible {
             opacity: 1;
@@ -3169,17 +3182,19 @@
         (function() {
             const profileScreen = document.getElementById('view-profile');
             const stickyBar = document.getElementById('profileStickyBar');
-            const bigHeader = document.getElementById('profileBigHeader');
             const bigHeaderBar = document.getElementById('profileBigHeaderBar');
+            const userName = document.getElementById('user-name');
             let ticking = false;
             
             profileScreen.addEventListener('scroll', () => {
                 if (!ticking) {
                     requestAnimationFrame(() => {
                         const scrollY = profileScreen.scrollTop;
-                        const threshold = 80;
+                        // Show sticky when user-name scrolls out of view
+                        const nameRect = userName.getBoundingClientRect();
+                        const show = nameRect.bottom < (stickyBar.offsetTop + stickyBar.offsetHeight + 10);
                         
-                        if (scrollY > threshold) {
+                        if (show) {
                             stickyBar.classList.add('visible');
                             bigHeaderBar.style.opacity = '0';
                         } else {
