@@ -1800,18 +1800,19 @@
         </div>
     </div>
 
+    <!-- Profile sticky compact bar (outside scroll container) -->
+    <div class="profile-sticky-bar" id="profileStickyBar">
+        <img id="profile-sticky-ava" src="" alt="" class="profile-sticky-avatar">
+        <div class="profile-sticky-name" id="profile-sticky-name">Loading...</div>
+        <button class="profile-sticky-settings" onclick="openSettingsSheet()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="4" y1="8" x2="20" y2="8"></line>
+                <line x1="4" y1="16" x2="20" y2="16"></line>
+            </svg>
+        </button>
+    </div>
+
     <div id="view-profile" class="screen"> 
-        <!-- Sticky compact bar (appears on scroll) -->
-        <div class="profile-sticky-bar" id="profileStickyBar">
-            <img id="profile-sticky-ava" src="" alt="" class="profile-sticky-avatar">
-            <div class="profile-sticky-name" id="profile-sticky-name">Loading...</div>
-            <button class="profile-sticky-settings" onclick="openSettingsSheet()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <line x1="4" y1="8" x2="20" y2="8"></line>
-                    <line x1="4" y1="16" x2="20" y2="16"></line>
-                </svg>
-            </button>
-        </div>
 
         <div class="header" id="profileBigHeaderBar">
             <div class="app-title" data-i18n="profile">Профиль</div>
