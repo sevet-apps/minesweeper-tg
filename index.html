@@ -4110,19 +4110,84 @@
             if (!dims.some(d => d[0] === rows && d[1] === cols)) return false;
             return m.every(row => row.every(v => v === 1));
         }
+        
+        // === SMART SHAPE SYSTEM ===
+        
+        // Find nearly complete lines (rows/cols missing 1-3 cells)
+        function analyzeBoard() {
+            const opportunities = []; // { type: 'row'|'col', index, gaps: [{r,c}], missing: N }
+            
+            // Check rows
+            for (let r = 0; r < BB_ROWS; r++) {
+                const gaps = [];
+                for (let c = 0; c < BB_COLS; c++) {
+                    if (bbGrid[r][c] === 0) gaps.push({ r, c });
+                }
+                if (gaps.length >= 1 && gaps.length <= 3) {
+                    opportunities.push({ type: 'row', index: r, gaps, missing: gaps.length });
+                }
+            }
+            
+            // Check columns
+            for (let c = 0; c < BB_COLS; c++) {
+                const gaps = [];
+                for (let r = 0; r < BB_ROWS; r++) {
+                    if (bbGrid[r][c] === 0) gaps.push({ r, c });
+                }
+                if (gaps.length >= 1 && gaps.length <= 3) {
+                    opportunities.push({ type: 'col', index: c, gaps, missing: gaps.length });
+                }
+            }
+            
+            // Sort by fewest missing (easiest to complete first)
+            opportunities.sort((a, b) => a.missing - b.missing);
+            return opportunities;
+        }
+        
+        // Check if placing a shape at any position would fill at least one gap from an opportunity
+        function shapeHelpsComplete(matrix, opportunities) {
+            for (let r = 0; r <= BB_ROWS - matrix.length; r++) {
+                for (let c = 0; c <= BB_COLS - (matrix[0]?.length || 0); c++) {
+                    if (!canPlace(matrix, r, c)) continue;
+                    
+                    // Get cells this shape would fill
+                    const fills = new Set();
+                    for (let i = 0; i < matrix.length; i++) {
+                        for (let j = 0; j < matrix[0].length; j++) {
+                            if (matrix[i][j] === 1) fills.add(`${r+i},${c+j}`);
+                        }
+                    }
+                    
+                    // Check if it completes any near-full line
+                    for (const opp of opportunities) {
+                        const gapsFilled = opp.gaps.filter(g => fills.has(`${g.r},${g.c}`)).length;
+                        if (gapsFilled === opp.missing) return 2; // Completes entire line!
+                        if (gapsFilled > 0) return 1; // Helps partially
+                    }
+                }
+            }
+            return 0; // Doesn't help
+        }
+        
+        // Check if a shape can be placed anywhere on the board
+        function canPlaceAnywhere(matrix) {
+            for (let r = 0; r <= BB_ROWS - matrix.length; r++) {
+                for (let c = 0; c <= BB_COLS - (matrix[0]?.length || 0); c++) {
+                    if (canPlace(matrix, r, c)) return true;
+                }
+            }
+            return false;
+        }
 
         function spawnShapes() {
             bbShapes = [];
             const freeCells = countFreeCells();
             const score = bbScore;
             
-            // Build weighted pool
-            const pool = [];
-            
-            // Categorize base shapes
-            const smallShapes = []; // <= 4 cells
-            const rectShapes = []; // 3x3, 3x2, 2x3, 2x2 (full rectangles)
-            const bigOther = [];   // > 4 cells, not rectangles
+            // Build full shape pool (same categorization as before)
+            const smallShapes = [];
+            const rectShapes = [];
+            const bigOther = [];
             
             for (let i = 0; i < SHAPES.length; i++) {
                 const m = SHAPES[i];
@@ -4132,8 +4197,6 @@
                 else bigOther.push(m);
             }
             
-            // Add hard shapes if score >= 10000
-            const hardPool = [];
             if (score >= 10000) {
                 for (const m of HARD_SHAPES) {
                     const sz = shapeSize(m);
@@ -4142,90 +4205,124 @@
                 }
             }
             
-            // Score-based weighting
-            let smallWeight, rectWeight, bigOtherWeight;
-            if (score < 1000) {
-                // Early game — favor small + rectangles
-                smallWeight = 5;
-                rectWeight = 4;
-                bigOtherWeight = 1;
-            } else if (score < 10000) {
-                // Standard
-                smallWeight = 3;
-                rectWeight = 2;
-                bigOtherWeight = 2;
-            } else {
-                // Hard mode
-                smallWeight = 2;
-                rectWeight = 2;
-                bigOtherWeight = 3;
+            // All available shapes for smart selection
+            const allShapes = [...smallShapes, ...rectShapes, ...bigOther];
+            
+            // === SMART ANALYSIS ===
+            const opportunities = analyzeBoard();
+            
+            // Find shapes that help complete lines
+            let completers = []; // Shapes that complete an entire line
+            let helpers = [];    // Shapes that partially help
+            
+            if (opportunities.length > 0) {
+                for (const shape of allShapes) {
+                    // Skip shapes that are too big for current board state
+                    if (freeCells < 33 && shapeSize(shape) > 4) continue;
+                    if (!canPlaceAnywhere(shape)) continue;
+                    
+                    const helpLevel = shapeHelpsComplete(shape, opportunities);
+                    if (helpLevel === 2) completers.push(shape);
+                    else if (helpLevel === 1) helpers.push(shape);
+                }
             }
             
-            // Build weighted pool arrays
-            const weightedSmall = [];
-            for (let w = 0; w < smallWeight; w++) weightedSmall.push(...smallShapes);
-            const weightedRect = [];
-            for (let w = 0; w < rectWeight; w++) weightedRect.push(...rectShapes);
-            const weightedBig = [];
-            for (let w = 0; w < bigOtherWeight; w++) weightedBig.push(...bigOther);
-            
-            // Free cells adjustment for rect frequency
-            let rectFreqMult = 1;
-            if (freeCells >= 50) rectFreqMult = 1.5;
-            else if (freeCells >= 33) rectFreqMult = Math.max(0.3, (freeCells - 33) / 17);
-            else rectFreqMult = 0;
-            
-            // Apply rect frequency multiplier
-            const adjustedRect = [];
-            const rectCopies = Math.round(weightedRect.length * rectFreqMult);
-            for (let i = 0; i < rectCopies && weightedRect.length > 0; i++) {
-                adjustedRect.push(weightedRect[i % weightedRect.length]);
-            }
-            
-            // Generate 3 shapes
+            // === GENERATE 3 SHAPES ===
             const result = [];
-            let bigCount = 0; // shapes > 4 cells in this batch
+            let bigCount = 0;
+            
+            // Decide how many "smart" shapes to include
+            // Higher chance of help when player has near-complete lines
+            const helpChance = opportunities.length > 0 ? 
+                Math.min(0.5, 0.2 + opportunities.filter(o => o.missing === 1).length * 0.1) : 0;
             
             for (let i = 0; i < 3; i++) {
                 let chosen = null;
-                let attempts = 0;
                 
-                while (!chosen && attempts < 50) {
-                    attempts++;
-                    
-                    // Pick from combined pool
-                    let candidates = [...weightedSmall];
-                    if (freeCells >= 33) candidates.push(...adjustedRect, ...weightedBig);
-                    
-                    if (candidates.length === 0) candidates = [...smallShapes];
-                    
-                    const pick = candidates[Math.floor(Math.random() * candidates.length)];
-                    const sz = shapeSize(pick);
-                    
-                    // Rule: freeCells < 33 → all shapes must be <= 4
-                    if (freeCells < 33 && sz > 4) continue;
-                    
-                    // Rule: freeCells 33-49 → max 1 shape > 4 cells
-                    if (freeCells >= 33 && freeCells < 50 && sz > 4) {
-                        if (bigCount >= 1) continue;
+                // Smart pick: first shape slot has highest chance of being helpful
+                if (i === 0 && Math.random() < helpChance) {
+                    // Try completers first, then helpers
+                    const smartPool = completers.length > 0 ? completers : helpers;
+                    if (smartPool.length > 0) {
+                        // Filter by size rules
+                        const valid = smartPool.filter(s => {
+                            const sz = shapeSize(s);
+                            if (freeCells < 33 && sz > 4) return false;
+                            return true;
+                        });
+                        if (valid.length > 0) {
+                            chosen = valid[Math.floor(Math.random() * valid.length)];
+                        }
                     }
-                    
-                    // Rule: freeCells >= 50 → multiple big allowed, but if >1 big then all big must be rects
-                    if (freeCells >= 50 && sz > 4 && bigCount >= 1) {
-                        if (!isRectShape(pick)) continue;
-                        // Also verify all previous big shapes are rects
-                        const prevBigOk = result.every(r => shapeSize(r) <= 4 || isRectShape(r));
-                        if (!prevBigOk) continue;
-                    }
-                    
-                    chosen = pick;
-                    if (sz > 4) bigCount++;
                 }
                 
-                // Fallback — pick any small shape
-                if (!chosen) chosen = smallShapes[Math.floor(Math.random() * smallShapes.length)];
+                // Regular pick (with existing weight system)
+                if (!chosen) {
+                    let attempts = 0;
+                    
+                    // Score-based weighting
+                    let smallWeight, rectWeight, bigOtherWeight;
+                    if (score < 1000) { smallWeight = 5; rectWeight = 4; bigOtherWeight = 1; }
+                    else if (score < 10000) { smallWeight = 3; rectWeight = 2; bigOtherWeight = 2; }
+                    else { smallWeight = 2; rectWeight = 2; bigOtherWeight = 3; }
+                    
+                    const weightedSmall = [];
+                    for (let w = 0; w < smallWeight; w++) weightedSmall.push(...smallShapes);
+                    const weightedRect = [];
+                    for (let w = 0; w < rectWeight; w++) weightedRect.push(...rectShapes);
+                    const weightedBig = [];
+                    for (let w = 0; w < bigOtherWeight; w++) weightedBig.push(...bigOther);
+                    
+                    let rectFreqMult = 1;
+                    if (freeCells >= 50) rectFreqMult = 1.5;
+                    else if (freeCells >= 33) rectFreqMult = Math.max(0.3, (freeCells - 33) / 17);
+                    else rectFreqMult = 0;
+                    
+                    const adjustedRect = [];
+                    const rectCopies = Math.round(weightedRect.length * rectFreqMult);
+                    for (let j = 0; j < rectCopies && weightedRect.length > 0; j++) {
+                        adjustedRect.push(weightedRect[j % weightedRect.length]);
+                    }
+                    
+                    while (!chosen && attempts < 50) {
+                        attempts++;
+                        let candidates = [...weightedSmall];
+                        if (freeCells >= 33) candidates.push(...adjustedRect, ...weightedBig);
+                        if (candidates.length === 0) candidates = [...smallShapes];
+                        
+                        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+                        const sz = shapeSize(pick);
+                        
+                        if (freeCells < 33 && sz > 4) continue;
+                        if (freeCells >= 33 && freeCells < 50 && sz > 4 && bigCount >= 1) continue;
+                        if (freeCells >= 50 && sz > 4 && bigCount >= 1) {
+                            if (!isRectShape(pick)) continue;
+                            if (!result.every(r => shapeSize(r) <= 4 || isRectShape(r))) continue;
+                        }
+                        
+                        chosen = pick;
+                        if (sz > 4) bigCount++;
+                    }
+                    
+                    if (!chosen) chosen = smallShapes[Math.floor(Math.random() * smallShapes.length)];
+                }
                 
                 result.push(chosen);
+            }
+            
+            // === SURVIVAL CHECK ===
+            // Make sure at least one shape can be placed
+            const anyPlaceable = result.some(m => canPlaceAnywhere(m));
+            if (!anyPlaceable) {
+                // Replace the largest shape with the smallest possible one
+                const singleBlock = [[1]];
+                const twoBlock = [[1, 1]];
+                if (canPlaceAnywhere(singleBlock)) {
+                    result[result.length - 1] = singleBlock;
+                } else if (canPlaceAnywhere(twoBlock)) {
+                    result[result.length - 1] = twoBlock;
+                }
+                // If even single block doesn't fit, game is truly over — let checkGameOver handle it
             }
             
             // Assign colors and render
