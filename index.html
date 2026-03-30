@@ -4231,20 +4231,30 @@
             const result = [];
             let bigCount = 0;
             
-            // Decide how many "smart" shapes to include
-            // Higher chance of help when player has near-complete lines
-            const helpChance = opportunities.length > 0 ? 
-                Math.min(0.5, 0.2 + opportunities.filter(o => o.missing === 1).length * 0.1) : 0;
+            // Decide help probability per slot
+            // Slot 0: high chance, Slot 1: medium chance, Slot 2: random
+            const nearComplete = opportunities.filter(o => o.missing === 1).length;
+            const almostComplete = opportunities.filter(o => o.missing <= 2).length;
+            const helpChances = [
+                Math.min(0.85, 0.5 + nearComplete * 0.15 + almostComplete * 0.05), // Slot 0: 50-85%
+                Math.min(0.6, 0.3 + nearComplete * 0.1 + almostComplete * 0.05),   // Slot 1: 30-60%
+                0 // Slot 2: always random
+            ];
+            // If no opportunities, no boost
+            if (opportunities.length === 0) { helpChances[0] = 0; helpChances[1] = 0; }
             
             for (let i = 0; i < 3; i++) {
                 let chosen = null;
                 
-                // Smart pick: first shape slot has highest chance of being helpful
-                if (i === 0 && Math.random() < helpChance) {
-                    // Try completers first, then helpers
-                    const smartPool = completers.length > 0 ? completers : helpers;
+                // Smart pick
+                if (Math.random() < helpChances[i]) {
+                    // Prefer completers, fallback to helpers
+                    let smartPool = completers.length > 0 ? completers : helpers;
+                    // For slot 1, mix in helpers even if completers exist (variety)
+                    if (i === 1 && completers.length > 0 && helpers.length > 0) {
+                        smartPool = Math.random() < 0.5 ? completers : helpers;
+                    }
                     if (smartPool.length > 0) {
-                        // Filter by size rules
                         const valid = smartPool.filter(s => {
                             const sz = shapeSize(s);
                             if (freeCells < 33 && sz > 4) return false;
