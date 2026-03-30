@@ -685,7 +685,7 @@
         }
 
         /* Fix header position for settings button */
-        .header { position: relative; }
+        .header { position: relative; transition: opacity 0.25s ease; }
 
         .settings-group { background: var(--glass-bg); border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid var(--glass-border); width: 100%; }
         .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
@@ -1276,7 +1276,70 @@
         .ac-score { font-size: 24px; font-weight: 700; color: var(--text-color); margin-top: 10px; background: var(--glass-bg); padding: 5px 15px; border-radius: 12px; }
         @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
         
-        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; }
+        .avatar { width: 100px; height: 100px; border-radius: 50%; background: #e1e1e1; margin-bottom: 15px; object-fit: cover; transition: all 0.3s ease; }
+
+        /* Collapsing Profile Header */
+        .profile-sticky-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: calc(54px + var(--safe-top));
+            padding-top: var(--safe-top);
+            background: var(--bg-color);
+            border-bottom: 0.5px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            padding-right: 20px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(-100%);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            pointer-events: none;
+        }
+        .profile-sticky-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .profile-sticky-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .profile-sticky-name {
+            font-size: 17px;
+            font-weight: 700;
+            margin-left: 12px;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .profile-sticky-settings {
+            width: 44px;
+            height: 32px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-color);
+            flex-shrink: 0;
+        }
+        .profile-sticky-settings:active { opacity: 0.7; }
+
+        .profile-big-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: opacity 0.25s ease;
+        }
 
         .sudo-board { 
             display: grid; 
@@ -1736,7 +1799,19 @@
     </div>
 
     <div id="view-profile" class="screen"> 
-        <div class="header">
+        <!-- Sticky compact bar (appears on scroll) -->
+        <div class="profile-sticky-bar" id="profileStickyBar">
+            <img id="profile-sticky-ava" src="" alt="" class="profile-sticky-avatar">
+            <div class="profile-sticky-name" id="profile-sticky-name">Loading...</div>
+            <button class="profile-sticky-settings" onclick="openSettingsSheet()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="4" y1="8" x2="20" y2="8"></line>
+                    <line x1="4" y1="16" x2="20" y2="16"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="header" id="profileBigHeaderBar">
             <div class="app-title" data-i18n="profile">Профиль</div>
             <button class="settings-btn" onclick="openSettingsSheet()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -1745,10 +1820,11 @@
                 </svg>
             </button>
         </div> 
-        <div style="display:flex; flex-direction:column; align-items:center;"> 
+        <div class="profile-big-header" id="profileBigHeader"> 
             <img id="user-avatar" src="" alt="" class="avatar"> 
             <h2 id="user-name" style="margin:0;">Loading...</h2> 
             <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
+        </div>
 
             <div class="records-section">
                 <div class="records-title" data-i18n="myRecords">Мои рекорды</div>
@@ -1819,7 +1895,7 @@
                     </div>
                 </div>
             </div>
-        </div> 
+        </div>
     </div>
     
     <div class="tab-bar" id="tabBar"> 
@@ -3004,6 +3080,10 @@
             document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
             if(el) el.classList.add('active');
             
+            // Hide profile sticky bar when leaving profile
+            document.getElementById('profileStickyBar').classList.remove('visible');
+            document.getElementById('profileBigHeaderBar').style.opacity = '1';
+            
             // Switch screen
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
             if(t==='games') document.getElementById('view-games').classList.add('active'); 
@@ -3048,11 +3128,18 @@
         
         function loadProfile() { 
             const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
-            document.getElementById('user-name').innerText = (user.first_name + ' ' + (user.last_name || '')).trim(); 
+            const fullName = (user.first_name + ' ' + (user.last_name || '')).trim();
+            document.getElementById('user-name').innerText = fullName; 
             document.getElementById('user-id').innerText = user.username ? '@'+user.username : ''; 
             const ava = document.getElementById('user-avatar'); 
+            const fallbackAva = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E";
             if(user.photo_url) ava.src = user.photo_url; 
-            else ava.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007aff'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white'%3E" + (user.first_name[0]||'U') + "%3C/text%3E%3C/svg%3E"; 
+            else ava.src = fallbackAva; 
+            
+            // Sync sticky bar
+            document.getElementById('profile-sticky-name').innerText = fullName;
+            const stickyAva = document.getElementById('profile-sticky-ava');
+            stickyAva.src = user.photo_url || fallbackAva;
             
             // Load local scores
             const bbScore = localStorage.getItem('bb_best_score') || 0;
@@ -3074,6 +3161,34 @@
             // Load ranks from server
             loadUserRanks();
         }
+        
+        // Profile collapsing header scroll handler
+        (function() {
+            const profileScreen = document.getElementById('view-profile');
+            const stickyBar = document.getElementById('profileStickyBar');
+            const bigHeader = document.getElementById('profileBigHeader');
+            const bigHeaderBar = document.getElementById('profileBigHeaderBar');
+            let ticking = false;
+            
+            profileScreen.addEventListener('scroll', () => {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        const scrollY = profileScreen.scrollTop;
+                        const threshold = 80;
+                        
+                        if (scrollY > threshold) {
+                            stickyBar.classList.add('visible');
+                            bigHeaderBar.style.opacity = '0';
+                        } else {
+                            stickyBar.classList.remove('visible');
+                            bigHeaderBar.style.opacity = '1';
+                        }
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+        })();
         
         async function loadUserRanks() {
             const user = tg.initDataUnsafe.user;
