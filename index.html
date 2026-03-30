@@ -1155,36 +1155,30 @@
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
 
         /* BB Photo Feature */
-        .bb-photo-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
         .bb-photo-btn {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
+            border-radius: 12px;
             color: var(--text-color);
-            font-size: 13px;
-            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            padding: 0;
         }
-        .bb-photo-btn:active { transform: scale(0.95); }
+        .bb-photo-btn:active { transform: scale(0.9); }
         .bb-photo-btn.has-photo {
             background: var(--accent);
             color: white;
             border-color: transparent;
         }
         .bb-photo-clear {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
             color: var(--text-color);
@@ -1192,8 +1186,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            padding: 0;
         }
-        .bb-photo-clear:active { opacity: 0.7; }
+        .bb-photo-clear:active { transform: scale(0.9); }
         
         /* Photo mode cell styling */
         .bb-cell.filled.bb-photo-cell {
@@ -2027,7 +2022,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div class="bb-photo-bar"> <button class="bb-photo-btn" id="bbPhotoBtn" onclick="document.getElementById('bbPhotoInput').click()"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> <span data-i18n="addPhoto">Добавить фото</span> </button> <button class="bb-photo-clear" id="bbPhotoClear" onclick="clearBBPhoto()" style="display:none"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button> </div> <input type="file" id="bbPhotoInput" accept="image/*" style="display:none" onchange="handleBBPhoto(this)"> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; align-items:center; gap:10px;"> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> <button class="bb-photo-btn" id="bbPhotoBtn" onclick="triggerBBPhoto()"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> </button> <button class="bb-photo-clear" id="bbPhotoClear" onclick="clearBBPhoto()" style="display:none"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button> </div> </div> <input type="file" id="bbPhotoInput" accept="image/*" capture="environment" style="position:absolute;top:-9999px;left:-9999px;opacity:0;" onchange="handleBBPhoto(this)"> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -4154,7 +4149,13 @@
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
         function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); startGameSession('bb_best_score'); }
         // === BB PHOTO SYSTEM ===
-        let bbPhotoTiles = null; // Array of 64 data URLs (8x8 grid), or null
+        let bbPhotoTiles = null;
+        
+        function triggerBBPhoto() {
+            setTimeout(() => {
+                document.getElementById('bbPhotoInput').click();
+            }, 100);
+        }
         
         function handleBBPhoto(input) {
             const file = input.files[0];
@@ -4164,38 +4165,42 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // Crop to square (center crop)
-                    const size = Math.min(img.width, img.height);
-                    const ox = (img.width - size) / 2;
-                    const oy = (img.height - size) / 2;
-                    
-                    const tileSize = 64; // Resolution per tile
-                    const canvas = document.createElement('canvas');
-                    canvas.width = tileSize;
-                    canvas.height = tileSize;
-                    const ctx = canvas.getContext('2d');
-                    
-                    bbPhotoTiles = [];
-                    const srcTile = size / 8;
-                    
-                    for (let r = 0; r < 8; r++) {
-                        for (let c = 0; c < 8; c++) {
-                            ctx.clearRect(0, 0, tileSize, tileSize);
-                            ctx.drawImage(img, 
-                                ox + c * srcTile, oy + r * srcTile, srcTile, srcTile,
-                                0, 0, tileSize, tileSize
-                            );
-                            bbPhotoTiles.push(canvas.toDataURL('image/jpeg', 0.85));
+                    const processImage = () => {
+                        const size = Math.min(img.width, img.height);
+                        const ox = (img.width - size) / 2;
+                        const oy = (img.height - size) / 2;
+                        
+                        const tileSize = 64;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = tileSize;
+                        canvas.height = tileSize;
+                        const ctx = canvas.getContext('2d');
+                        
+                        bbPhotoTiles = [];
+                        const srcTile = size / 8;
+                        
+                        for (let r = 0; r < 8; r++) {
+                            for (let c = 0; c < 8; c++) {
+                                ctx.clearRect(0, 0, tileSize, tileSize);
+                                ctx.drawImage(img, 
+                                    ox + c * srcTile, oy + r * srcTile, srcTile, srcTile,
+                                    0, 0, tileSize, tileSize
+                                );
+                                bbPhotoTiles.push(canvas.toDataURL('image/jpeg', 0.85));
+                            }
                         }
+                        
+                        document.getElementById('bbPhotoBtn').classList.add('has-photo');
+                        document.getElementById('bbPhotoClear').style.display = 'flex';
+                        renderBBGrid();
+                        if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+                    };
+                    
+                    if (img.decode) {
+                        img.decode().then(processImage).catch(processImage);
+                    } else {
+                        processImage();
                     }
-                    
-                    // Update UI
-                    document.getElementById('bbPhotoBtn').classList.add('has-photo');
-                    document.getElementById('bbPhotoClear').style.display = 'flex';
-                    
-                    // Re-render grid with photo
-                    renderBBGrid();
-                    if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
                 };
                 img.src = e.target.result;
             };
