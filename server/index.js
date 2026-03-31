@@ -741,14 +741,23 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
     }
     
-    // ---- COUNTER VALIDATION: can only increment by 1 ----
+    // ---- COUNTER HANDLING: server-side increment ----
     if (isCounter) {
         let { data: checkUser } = await supabase.from('users').select(game_type).eq('telegram_id', user_id).single();
         const currentVal = checkUser ? (checkUser[game_type] || 0) : 0;
-        if (score !== currentVal + 1) {
-            logSuspiciousActivity(user_id, username, tgUsername, game_type, score, `COUNTER_JUMP (${currentVal} -> ${score})`);
-            return res.status(400).json({ error: 'Invalid counter value' });
+        // Server increments by 1 regardless of what client sends
+        // This prevents both COUNTER_JUMP false positives and cheating
+        const updateData = { username: username, photo_url: photo_url };
+        updateData[game_type] = currentVal + 1;
+        
+        if (!checkUser) {
+            const { error } = await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
+            if (error) return res.status(500).json({ error: 'DB error' });
+        } else {
+            const { error } = await supabase.from('users').update(updateData).eq('telegram_id', user_id);
+            if (error) return res.status(500).json({ error: 'DB error' });
         }
+        return res.json({ ok: true, value: currentVal + 1 });
     }
     
     try {
