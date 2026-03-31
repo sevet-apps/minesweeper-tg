@@ -1155,6 +1155,9 @@
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
 
         /* BB Photo Feature */
+        .bb-photo-wrap {
+            position: relative;
+        }
         .bb-photo-btn {
             display: flex;
             align-items: center;
@@ -1176,19 +1179,22 @@
             border-color: transparent;
         }
         .bb-photo-clear {
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-color);
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--danger);
+            border: 2px solid var(--bg-color);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             padding: 0;
         }
-        .bb-photo-clear:active { transform: scale(0.9); }
+        .bb-photo-clear:active { transform: scale(0.85); }
         
         /* Photo mode cell styling */
         .bb-cell.filled.bb-photo-cell {
@@ -2022,7 +2028,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; align-items:center; gap:10px;"> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> <button class="bb-photo-btn" id="bbPhotoBtn" onclick="triggerBBPhoto()"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> </button> <button class="bb-photo-clear" id="bbPhotoClear" onclick="clearBBPhoto()" style="display:none"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button> </div> </div> <input type="file" id="bbPhotoInput" accept="image/*" capture="environment" style="position:absolute;top:-9999px;left:-9999px;opacity:0;" onchange="handleBBPhoto(this)"> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; align-items:center; gap:10px;"> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> <div class="bb-photo-wrap"> <button class="bb-photo-btn" id="bbPhotoBtn" onclick="triggerBBPhoto()"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> </button> <button class="bb-photo-clear" id="bbPhotoClear" onclick="clearBBPhoto()" style="display:none"> <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button> </div> </div> </div> <input type="file" id="bbPhotoInput" accept="image/*" style="position:absolute;top:-9999px;left:-9999px;opacity:0;" onchange="handleBBPhoto(this)"> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -4161,50 +4167,50 @@
             const file = input.files[0];
             if (!file) return;
             
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const processImage = () => {
-                        const size = Math.min(img.width, img.height);
-                        const ox = (img.width - size) / 2;
-                        const oy = (img.height - size) / 2;
-                        
-                        const tileSize = 64;
-                        const canvas = document.createElement('canvas');
-                        canvas.width = tileSize;
-                        canvas.height = tileSize;
-                        const ctx = canvas.getContext('2d');
-                        
-                        bbPhotoTiles = [];
-                        const srcTile = size / 8;
-                        
-                        for (let r = 0; r < 8; r++) {
-                            for (let c = 0; c < 8; c++) {
-                                ctx.clearRect(0, 0, tileSize, tileSize);
-                                ctx.drawImage(img, 
-                                    ox + c * srcTile, oy + r * srcTile, srcTile, srcTile,
-                                    0, 0, tileSize, tileSize
-                                );
-                                bbPhotoTiles.push(canvas.toDataURL('image/jpeg', 0.85));
-                            }
-                        }
-                        
-                        document.getElementById('bbPhotoBtn').classList.add('has-photo');
-                        document.getElementById('bbPhotoClear').style.display = 'flex';
-                        renderBBGrid();
-                        if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
-                    };
-                    
-                    if (img.decode) {
-                        img.decode().then(processImage).catch(processImage);
-                    } else {
-                        processImage();
+            // Use createImageBitmap for reliable decoding on all platforms
+            createImageBitmap(file).then(bitmap => {
+                // Draw full image onto intermediate canvas (fixes EXIF rotation + large image issues)
+                const fullSize = 512; // 8 tiles * 64px each
+                const fullCanvas = document.createElement('canvas');
+                fullCanvas.width = fullSize;
+                fullCanvas.height = fullSize;
+                const fullCtx = fullCanvas.getContext('2d');
+                
+                // Center crop to square
+                const size = Math.min(bitmap.width, bitmap.height);
+                const ox = (bitmap.width - size) / 2;
+                const oy = (bitmap.height - size) / 2;
+                
+                fullCtx.drawImage(bitmap, ox, oy, size, size, 0, 0, fullSize, fullSize);
+                bitmap.close();
+                
+                // Now slice the normalized canvas into 8x8 tiles
+                const tileSize = 64;
+                const tileCanvas = document.createElement('canvas');
+                tileCanvas.width = tileSize;
+                tileCanvas.height = tileSize;
+                const tileCtx = tileCanvas.getContext('2d');
+                
+                bbPhotoTiles = [];
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        tileCtx.clearRect(0, 0, tileSize, tileSize);
+                        tileCtx.drawImage(fullCanvas, 
+                            c * tileSize, r * tileSize, tileSize, tileSize,
+                            0, 0, tileSize, tileSize
+                        );
+                        bbPhotoTiles.push(tileCanvas.toDataURL('image/jpeg', 0.85));
                     }
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+                }
+                
+                document.getElementById('bbPhotoBtn').classList.add('has-photo');
+                document.getElementById('bbPhotoClear').style.display = 'flex';
+                renderBBGrid();
+                if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+            }).catch(err => {
+                console.error('Photo processing error:', err);
+            });
+            
             input.value = '';
         }
         
