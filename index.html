@@ -364,6 +364,41 @@
             margin-bottom: 8px;
             letter-spacing: -0.3px;
         }
+        .tournament-timer {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .tournament-timer-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 48px;
+        }
+        .tournament-timer-value {
+            font-size: 24px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        .tournament-timer-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #8e8e93;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tournament-timer-sep {
+            font-size: 22px;
+            font-weight: 700;
+            color: #8e8e93;
+            line-height: 1.3;
+        }
         .tournament-card-text {
             font-size: 13px;
             line-height: 1.5;
@@ -1464,28 +1499,28 @@
             align-items: center;
             justify-content: space-between;
             height: calc(100% - 60px);
-            padding: 10px 10px 20px;
+            padding: 0 10px 10px;
             box-sizing: border-box;
         }
         .wordle-board {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            margin-top: 10px;
+            margin-top: 5px;
         }
         .wordle-row {
             display: flex;
             gap: 6px;
         }
         .wordle-tile {
-            width: 58px;
-            height: 58px;
+            width: 54px;
+            height: 54px;
             border: 2px solid var(--glass-border);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 800;
             text-transform: uppercase;
             background: var(--glass-bg);
@@ -1568,8 +1603,11 @@
             gap: 6px;
             width: 100%;
             max-width: 500px;
-            margin-bottom: 90px;
+            margin-bottom: calc(20px + var(--safe-bottom));
             padding: 0 4px;
+        }
+        #wordle-screen .game-top-bar {
+            padding-top: calc(60px + var(--safe-top));
         }
         .wordle-kb-row {
             display: flex;
@@ -1738,8 +1776,9 @@
             <div class="tournament-nail bl"></div>
             <div class="tournament-nail br"></div>
             <div class="tournament-lottie" id="tournamentCupLottie"></div>
-            <div class="tournament-card-title" data-i18n="tournamentSoon">Начало скоро..</div>
-            <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — когда турнир начнётся, ваш рекорд уже будет в таблице. Первое место заберёт весь приз!</div>
+            <div class="tournament-card-title">Турнир идёт!</div>
+            <div class="tournament-timer" id="tournamentTimer"></div>
+            <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!</div>
         </div>
         
         <!-- Tournament Banner for Referrers -->
@@ -1749,8 +1788,9 @@
             <div class="tournament-nail bl"></div>
             <div class="tournament-nail br"></div>
             <div class="tournament-lottie" id="referralCupLottie"></div>
-            <div class="tournament-card-title" data-i18n="refTournamentSoon">Начало скоро..</div>
-            <div class="tournament-card-text" data-i18n="refTournamentDesc">Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — когда турнир начнётся, ваши рефералы уже будут учтены. Первое место заберёт главный приз!</div>
+            <div class="tournament-card-title">Турнир идёт!</div>
+            <div class="tournament-timer" id="referralTimer"></div>
+            <div class="tournament-card-text" data-i18n="refTournamentDesc">Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — ваши рефералы уже учтены. Первое место заберёт главный приз!</div>
         </div>
         
         <div class="lb-list" id="lbList"></div>
@@ -3089,6 +3129,43 @@
             resetBannerInterval();
         }
         startBannerCarousel();
+        
+        // === TOURNAMENT COUNTDOWN TIMER ===
+        // End: 21 April 2026 12:30 UTC+3 (= 09:30 UTC)
+        const TOURNAMENT_END = new Date('2026-04-21T09:30:00Z').getTime();
+        
+        function updateTournamentTimers() {
+            const now = Date.now();
+            const diff = TOURNAMENT_END - now;
+            
+            if (diff <= 0) {
+                // Tournament ended
+                ['tournamentTimer', 'referralTimer'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = '<span style="font-size:16px; font-weight:700; color:#ff3b30;">Турнир завершён!</span>';
+                });
+                return;
+            }
+            
+            const days = Math.floor(diff / 86400000);
+            const hours = Math.floor((diff % 86400000) / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            
+            const html = 
+                `<div class="tournament-timer-block"><div class="tournament-timer-value">${days}</div><div class="tournament-timer-label">дн</div></div>` +
+                `<div class="tournament-timer-sep">:</div>` +
+                `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(hours).padStart(2,'0')}</div><div class="tournament-timer-label">час</div></div>` +
+                `<div class="tournament-timer-sep">:</div>` +
+                `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(minutes).padStart(2,'0')}</div><div class="tournament-timer-label">мин</div></div>`;
+            
+            ['tournamentTimer', 'referralTimer'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            });
+        }
+        
+        updateTournamentTimers();
+        setInterval(updateTournamentTimers, 30000); // Update every 30 sec
         
         function openPrivacyPolicy() {
             document.getElementById('privacyScreen').classList.add('visible');

@@ -687,7 +687,8 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         const session = gameSessions.get(key);
         
         if (!session || session.token !== session_token) {
-            logSuspiciousActivity(user_id, username, tgUsername, game_type, score, 'NO_SESSION');
+            // No strike — session loss is common after server restart/deploy
+            console.log(`NO_SESSION: user=${user_id}, game=${game_type}, score=${score}`);
             return res.status(400).json({ error: 'Invalid session' });
         }
         
