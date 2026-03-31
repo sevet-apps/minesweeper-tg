@@ -1770,10 +1770,10 @@
         <div class="banner-carousel" id="bannerCarousel">
             <div class="banner-track" id="bannerTrack">
                 <div class="banner-slide-wrap">
-                    <img class="banner-slide" src="tournament-banner.png" alt="Tournament" onclick="openTournamentInfo()">
+                    <img class="banner-slide" src="tournament-banner.png" alt="Tournament" onclick="openBannerLink('https://t.me/spark_game_news/4')">
                 </div>
                 <div class="banner-slide-wrap">
-                    <img class="banner-slide" src="referral-banner.png" alt="Referral" onclick="openTournamentInfo()" style="margin-top: -3px;">
+                    <img class="banner-slide" src="referral-banner.png" alt="Referral" onclick="openBannerLink('https://t.me/spark_game_news/5')" style="margin-top: -3px;">
                 </div>
             </div>
         </div>
@@ -2977,9 +2977,8 @@
             }
         }
         
-        function openTournamentInfo() {
-            // Open tournament channel or show info
-            tg.openTelegramLink('https://t.me/glassappnews');
+        function openBannerLink(url) {
+            tg.openTelegramLink(url);
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
         }
         
