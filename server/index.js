@@ -281,7 +281,7 @@ function bbPlaceAndScore(session, matrix, r, c) {
         colsToClear.forEach(col => { for (let r2 = 0; r2 < BB_ROWS; r2++) grid[r2][col] = 0; });
         
         // Score: base 10 per line, multi-line multiplier, combo multiplier
-        let points = totalCleared * 10;
+        let points = totalCleared * 20;
         if (totalCleared >= 2) points = points * totalCleared;
         if (session.bbCombo > 1) points = points * session.bbCombo;
         session.bbScore += points;

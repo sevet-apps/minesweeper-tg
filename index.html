@@ -1153,61 +1153,6 @@
         .bb-game-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding-top: 10px; position: relative; } 
         .bb-score-box { font-size: 40px; font-weight: 800; color: var(--accent); margin-bottom: 10px; transition: color 0.3s, transform 0.2s; } 
         .bb-score-box.active-combo { color: #ff9500; text-shadow: 0 0 15px rgba(255, 149, 0, 0.4); transform: scale(1.05); }
-
-        /* BB Photo Feature */
-        .bb-photo-wrap {
-            position: relative;
-        }
-        .bb-photo-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            color: var(--text-color);
-            cursor: pointer;
-            transition: all 0.2s;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .bb-photo-btn:active { transform: scale(0.9); }
-        .bb-photo-btn.has-photo {
-            background: var(--accent);
-            color: white;
-            border-color: transparent;
-        }
-        .bb-photo-clear {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--danger);
-            border: 2px solid var(--bg-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            padding: 0;
-        }
-        .bb-photo-clear:active { transform: scale(0.85); }
-        
-        /* Photo mode cell styling */
-        .bb-cell.filled.bb-photo-cell {
-            background: none !important;
-            background-size: cover !important;
-            background-position: center !important;
-            box-shadow: 
-                inset 0 1px 0 rgba(255,255,255,0.15),
-                inset 0 -1px 0 rgba(0,0,0,0.15),
-                0 1px 3px rgba(0,0,0,0.2);
-            border: 0.5px solid rgba(255,255,255,0.1);
-        }
         .bb-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 4px; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: var(--bb-grid); padding: 4px; border-radius: 12px; position: relative; } 
         .bb-cell { background: var(--bb-cell); border-radius: 6px; transition: transform 0.15s ease-out, opacity 0.15s ease-out, background 0.15s ease-out, box-shadow 0.15s ease-out; contain: layout style; } 
         .bb-cell.filled { 
@@ -2029,7 +1974,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; align-items:center; gap:10px;"> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> <div class="bb-photo-wrap"> <label class="bb-photo-btn" id="bbPhotoBtn" for="bbPhotoInput"> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> </label> <button class="bb-photo-clear" id="bbPhotoClear" onclick="clearBBPhoto()" style="display:none"> <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button> </div> </div> </div> <input type="file" id="bbPhotoInput" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;" onchange="handleBBPhoto(this)"> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -4155,82 +4100,8 @@
         }
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
         function initBB() { bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); startGameSession('bb_best_score'); }
-        // === BB PHOTO SYSTEM ===
-        let bbPhotoTiles = null;
-        
-        function handleBBPhoto(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            const url = URL.createObjectURL(file);
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = function() {
-                // Wait a frame to ensure full decode on iOS
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        // Draw full photo onto 512x512 intermediate canvas (handles EXIF, large files)
-                        const fullSize = 512;
-                        const fullCanvas = document.createElement('canvas');
-                        fullCanvas.width = fullSize;
-                        fullCanvas.height = fullSize;
-                        const fullCtx = fullCanvas.getContext('2d');
-                        
-                        const size = Math.min(img.naturalWidth, img.naturalHeight);
-                        const ox = (img.naturalWidth - size) / 2;
-                        const oy = (img.naturalHeight - size) / 2;
-                        
-                        fullCtx.drawImage(img, ox, oy, size, size, 0, 0, fullSize, fullSize);
-                        URL.revokeObjectURL(url);
-                        
-                        // Slice into 64 tiles
-                        const tileSize = 64;
-                        const tileCanvas = document.createElement('canvas');
-                        tileCanvas.width = tileSize;
-                        tileCanvas.height = tileSize;
-                        const tileCtx = tileCanvas.getContext('2d');
-                        
-                        bbPhotoTiles = [];
-                        for (let r = 0; r < 8; r++) {
-                            for (let c = 0; c < 8; c++) {
-                                tileCtx.clearRect(0, 0, tileSize, tileSize);
-                                tileCtx.drawImage(fullCanvas, 
-                                    c * tileSize, r * tileSize, tileSize, tileSize,
-                                    0, 0, tileSize, tileSize
-                                );
-                                bbPhotoTiles.push(tileCanvas.toDataURL('image/jpeg', 0.85));
-                            }
-                        }
-                        
-                        document.getElementById('bbPhotoBtn').classList.add('has-photo');
-                        document.getElementById('bbPhotoClear').style.display = 'flex';
-                        renderBBGrid();
-                        if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
-                    });
-                });
-            };
-            img.onerror = function() { URL.revokeObjectURL(url); };
-            img.src = url;
-            input.value = '';
-        }
-        
-        function clearBBPhoto() {
-            bbPhotoTiles = null;
-            document.getElementById('bbPhotoBtn').classList.remove('has-photo');
-            document.getElementById('bbPhotoClear').style.display = 'none';
-            renderBBGrid();
-            if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
-        }
-        
-        function applyPhotoToCell(cell, r, c) {
-            if (bbPhotoTiles && cell.classList.contains('filled')) {
-                const tileIdx = r * 8 + c;
-                cell.classList.add('bb-photo-cell');
-                cell.style.backgroundImage = `url(${bbPhotoTiles[tileIdx]})`;
-            }
-        }
 
-        function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); applyPhotoToCell(cell, r, c); } el.appendChild(cell); } } }
+        function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); } } }
         function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
         
         function shapeSize(m) { return m.reduce((a, row) => a + row.reduce((s, v) => s + v, 0), 0); }
@@ -4633,7 +4504,7 @@
 
         function placeShape(matrix, r, c, color) { 
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); let placedCount = 0; 
-            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; applyPhotoToCell(cell, r+i, c+j); setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); 
+            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = document.querySelector(`.bb-cell[data-r="${r+i}"][data-c="${c+j}"]`); cell.classList.add('no-transition'); cell.classList.add('filled', color); cell.style.backgroundColor = ''; setTimeout(() => cell.classList.remove('no-transition'), 50); placedCount++; } } } addScore(placedCount); 
         }
         function checkLines(triggerColor) { 
             let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
@@ -4648,7 +4519,7 @@
                 setTimeout(() => { 
                     document.querySelector('.bb-game-container').classList.remove('shake-screen'); 
                     // Базовые очки за линии (10 за каждую)
-                    let points = totalCleared * 10; 
+                    let points = totalCleared * 20; 
                     // Множитель за несколько линий одновременно
                     if (totalCleared >= 2) { 
                         points = points * totalCleared; 
@@ -4674,7 +4545,7 @@
             confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true });
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; cell.style.backgroundImage = ''; if(!isLiteMode) { cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } } }
+        function animateClear(r, c, color) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); if(cell) { cell.className = 'bb-cell'; cell.style.backgroundColor = ''; cell.style.boxShadow = ''; if(!isLiteMode) { cell.classList.add('appear-gray'); setTimeout(() => { cell.classList.remove('appear-gray'); }, 400); } } }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
