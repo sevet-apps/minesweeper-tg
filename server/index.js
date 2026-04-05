@@ -696,27 +696,27 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         const minDuration = MIN_GAME_DURATION[game_type] || 2000;
         
         if (duration < minDuration) {
-            logSuspiciousActivity(user_id, username, tgUsername, game_type, score, `TOO_FAST (${duration}ms < ${minDuration}ms)`);
+            console.log(`TOO_FAST: user=${user_id}, game=${game_type}, score=${score}, duration=${duration}ms`);
             gameSessions.delete(key);
             return res.status(400).json({ error: 'Game completed too quickly' });
         }
         
         // Check minimum moves for action games
         if (game_type === 'bb_best_score' && session.moveCount < 3) {
-            logSuspiciousActivity(user_id, username, tgUsername, game_type, score, `TOO_FEW_MOVES (${session.moveCount})`);
+            console.log(`TOO_FEW_MOVES: user=${user_id}, game=${game_type}, moves=${session.moveCount}`);
             gameSessions.delete(key);
             return res.status(400).json({ error: 'Insufficient gameplay' });
         }
         
         // Score-to-moves ratio check (only for non-BB games, BB is validated per-move)
         const SCORE_PER_MOVE_MAX = {
-            'tower_best': 1.5,   // score ≈ moves (1 block = 1 point, allow some margin)
+            'tower_best': 1.5,
         };
         const maxPerMove = SCORE_PER_MOVE_MAX[game_type];
         if (maxPerMove && session.moveCount > 0) {
             const maxPossibleScore = Math.ceil(session.moveCount * maxPerMove);
             if (score > maxPossibleScore) {
-                logSuspiciousActivity(user_id, username, tgUsername, game_type, score, `SCORE_VS_MOVES (score=${score}, moves=${session.moveCount}, max=${maxPossibleScore})`);
+                console.log(`SCORE_VS_MOVES: user=${user_id}, game=${game_type}, score=${score}, moves=${session.moveCount}`);
                 gameSessions.delete(key);
                 return res.status(400).json({ error: 'Score inconsistent with gameplay' });
             }
