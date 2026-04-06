@@ -637,29 +637,44 @@
         
         .language-selector {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 12px;
         }
         
         .lang-btn {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
+            gap: 10px;
+            padding: 14px 24px;
             background: var(--glass-bg);
             border: 2px solid var(--glass-border);
-            border-radius: 14px;
+            border-radius: 50px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.5px;
             color: var(--text-color);
             cursor: pointer;
             transition: all 0.2s;
+            flex: 1;
+            justify-content: center;
         }
         .lang-btn.active {
-            background: var(--card-bg);
             border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), 0 4px 12px rgba(0,122,255,0.15);
         }
-        .lang-btn:active { transform: scale(0.97); }
+        .lang-btn:active { transform: scale(0.96); }
+        .lang-flag {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .lang-flag svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
         
         .settings-group-sheet {
             background: var(--glass-bg);
@@ -2181,10 +2196,12 @@
             <div class="settings-section-label" data-i18n="language">ЯЗЫК</div>
             <div class="language-selector">
                 <button class="lang-btn active" data-lang="ru" onclick="setLanguage('ru')">
-                    🇷🇺 RU
+                    <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="ruClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#ruClip)"><rect width="60" height="20" fill="#fff"/><rect y="20" width="60" height="20" fill="#0039A6"/><rect y="40" width="60" height="20" fill="#D52B1E"/></g></svg></div>
+                    RU
                 </button>
                 <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">
-                    🇺🇸 EN
+                    <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="enClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#enClip)"><rect width="60" height="60" fill="#B22234"/><rect y="0" width="60" height="4.6" fill="#fff"/><rect y="9.2" width="60" height="4.6" fill="#fff"/><rect y="18.5" width="60" height="4.6" fill="#fff"/><rect y="27.7" width="60" height="4.6" fill="#fff"/><rect y="36.9" width="60" height="4.6" fill="#fff"/><rect y="46.2" width="60" height="4.6" fill="#fff"/><rect width="24" height="32.3" fill="#3C3B6E"/><g fill="#fff" font-size="3"><text x="2" y="5">★</text><text x="6" y="5">★</text><text x="10" y="5">★</text><text x="14" y="5">★</text><text x="18" y="5">★</text><text x="4" y="9">★</text><text x="8" y="9">★</text><text x="12" y="9">★</text><text x="16" y="9">★</text><text x="2" y="13">★</text><text x="6" y="13">★</text><text x="10" y="13">★</text><text x="14" y="13">★</text><text x="18" y="13">★</text><text x="4" y="17">★</text><text x="8" y="17">★</text><text x="12" y="17">★</text><text x="16" y="17">★</text><text x="2" y="21">★</text><text x="6" y="21">★</text><text x="10" y="21">★</text><text x="14" y="21">★</text><text x="18" y="21">★</text><text x="4" y="25">★</text><text x="8" y="25">★</text><text x="12" y="25">★</text><text x="16" y="25">★</text><text x="2" y="29">★</text><text x="6" y="29">★</text><text x="10" y="29">★</text><text x="14" y="29">★</text><text x="18" y="29">★</text></g></g></svg></div>
+                    EN
                 </button>
             </div>
             
@@ -4248,88 +4265,77 @@
             return bbAudioCtx;
         }
         
-        // Deep satisfying "thunk" when placing a piece
+        // Soft bubble pop when placing a piece
         function bbPlayPlace() {
             try {
                 const ctx = getBBAudioCtx();
                 const t = ctx.currentTime;
                 
-                // Layer 1: deep bass thud
-                const osc1 = ctx.createOscillator();
-                const g1 = ctx.createGain();
-                osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(150, t);
-                osc1.frequency.exponentialRampToValueAtTime(60, t + 0.12);
-                g1.gain.setValueAtTime(0.35, t);
-                g1.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-                osc1.connect(g1); g1.connect(ctx.destination);
-                osc1.start(t); osc1.stop(t + 0.15);
+                // Bubble: sine dropping in pitch (pop feel)
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(350, t);
+                osc.frequency.exponentialRampToValueAtTime(120, t + 0.1);
+                g.gain.setValueAtTime(0.2, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                osc.connect(g); g.connect(ctx.destination);
+                osc.start(t); osc.stop(t + 0.12);
                 
-                // Layer 2: mid click
-                const osc2 = ctx.createOscillator();
-                const g2 = ctx.createGain();
-                osc2.type = 'triangle';
-                osc2.frequency.setValueAtTime(400, t);
-                osc2.frequency.exponentialRampToValueAtTime(200, t + 0.06);
-                g2.gain.setValueAtTime(0.15, t);
-                g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-                osc2.connect(g2); g2.connect(ctx.destination);
-                osc2.start(t); osc2.stop(t + 0.08);
-                
-                // Layer 3: noise burst for texture
-                const bufSize = ctx.sampleRate * 0.03;
+                // Soft air puff (filtered noise)
+                const bufSize = ctx.sampleRate * 0.04;
                 const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
                 const data = buf.getChannelData(0);
-                for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+                for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
                 const noise = ctx.createBufferSource();
                 noise.buffer = buf;
                 const nGain = ctx.createGain();
                 const nFilter = ctx.createBiquadFilter();
-                nFilter.type = 'lowpass';
-                nFilter.frequency.value = 2000;
-                nGain.gain.setValueAtTime(0.08, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                nFilter.type = 'bandpass';
+                nFilter.frequency.value = 1200;
+                nFilter.Q.value = 1;
+                nGain.gain.setValueAtTime(0.04, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
                 noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(ctx.destination);
-                noise.start(t); noise.stop(t + 0.05);
+                noise.start(t); noise.stop(t + 0.06);
             } catch(e) {}
         }
         
-        // Satisfying whoosh + shimmer when clearing lines
-        function bbPlayClear(comboLevel) {
+        // Satisfying whoosh + shimmer when clearing lines (fixed tone)
+        function bbPlayClear() {
             try {
                 const ctx = getBBAudioCtx();
                 const t = ctx.currentTime;
-                const pitch = 1 + (Math.min(comboLevel, 6) * 0.12); // Pitch rises with combo
                 
-                // Layer 1: deep sweep up (the "whoosh")
+                // Layer 1: deep sweep up
                 const osc1 = ctx.createOscillator();
                 const g1 = ctx.createGain();
                 osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(80 * pitch, t);
-                osc1.frequency.exponentialRampToValueAtTime(300 * pitch, t + 0.2);
-                osc1.frequency.exponentialRampToValueAtTime(150 * pitch, t + 0.4);
-                g1.gain.setValueAtTime(0.3, t);
-                g1.gain.linearRampToValueAtTime(0.35, t + 0.1);
+                osc1.frequency.setValueAtTime(80, t);
+                osc1.frequency.exponentialRampToValueAtTime(300, t + 0.2);
+                osc1.frequency.exponentialRampToValueAtTime(150, t + 0.4);
+                g1.gain.setValueAtTime(0.25, t);
+                g1.gain.linearRampToValueAtTime(0.3, t + 0.1);
                 g1.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
                 osc1.connect(g1); g1.connect(ctx.destination);
                 osc1.start(t); osc1.stop(t + 0.45);
                 
-                // Layer 2: bright shimmer chord
+                // Layer 2: shimmer chord
                 [1, 1.25, 1.5].forEach((mult, i) => {
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'sine';
-                    const f = 500 * pitch * mult;
+                    const f = 500 * mult;
                     osc.frequency.setValueAtTime(f, t + 0.05);
                     osc.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.3);
-                    g.gain.setValueAtTime(0.08, t + 0.05);
+                    g.gain.setValueAtTime(0.07, t + 0.05);
                     g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
                     osc.connect(g); g.connect(ctx.destination);
                     osc.start(t + 0.05 + i * 0.02); osc.stop(t + 0.35);
                 });
                 
                 // Layer 3: noise swoosh
-                const bufSize = ctx.sampleRate * 0.2;
+                const bufSize = ctx.sampleRate * 0.15;
                 const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
                 const data = buf.getChannelData(0);
                 for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
@@ -4339,12 +4345,12 @@
                 const nFilter = ctx.createBiquadFilter();
                 nFilter.type = 'bandpass';
                 nFilter.frequency.setValueAtTime(500, t);
-                nFilter.frequency.exponentialRampToValueAtTime(3000 * pitch, t + 0.15);
-                nFilter.Q.value = 2;
-                nGain.gain.setValueAtTime(0.06, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                nFilter.frequency.exponentialRampToValueAtTime(2500, t + 0.12);
+                nFilter.Q.value = 1.5;
+                nGain.gain.setValueAtTime(0.05, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
                 noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(ctx.destination);
-                noise.start(t); noise.stop(t + 0.2);
+                noise.start(t); noise.stop(t + 0.15);
             } catch(e) {}
         }
 
@@ -4760,7 +4766,7 @@
             const totalCleared = rowsToClear.length + colsToClear.length; 
             if(totalCleared > 0) { 
                 bbCombo++; bbComboBuffer = 3; updateBBScoreUI(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); 
-                bbPlayClear(bbCombo);
+                bbPlayClear();
                 if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
                 
                 // All cells in line clear at once
