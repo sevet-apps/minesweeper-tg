@@ -1209,18 +1209,6 @@
             animation: popInGray 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         
-        /* Juicy line clear animation */
-        @keyframes bbClearGlow {
-            0% { transform: scale(1); opacity: 1; filter: brightness(1.5); }
-            30% { transform: scale(1.08); filter: brightness(2); }
-            60% { transform: scaleY(0.3) scaleX(1.1); opacity: 0.8; filter: brightness(2.5); }
-            100% { transform: scaleY(0) scaleX(0.5); opacity: 0; filter: brightness(3); }
-        }
-        .bb-cell.clearing-juicy {
-            animation: bbClearGlow 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-            z-index: 5;
-        }
-        
         /* Place shape pop */
         @keyframes bbPlacePop {
             0% { transform: scale(0.6); opacity: 0.5; }
@@ -4252,60 +4240,111 @@
         function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
         function initBB() { bbMoveQueue = []; bbMoveProcessing = false; bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); startGameSession('bb_best_score'); }
         
-        // === BB SOUND SYSTEM (Web Audio API — no files needed) ===
+        // === BB SOUND SYSTEM (Web Audio API — rich layered sounds) ===
         let bbAudioCtx = null;
         function getBBAudioCtx() {
             if (!bbAudioCtx) bbAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (bbAudioCtx.state === 'suspended') bbAudioCtx.resume();
             return bbAudioCtx;
         }
         
+        // Deep satisfying "thunk" when placing a piece
         function bbPlayPlace() {
             try {
                 const ctx = getBBAudioCtx();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.setValueAtTime(600, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.06);
-                osc.type = 'sine';
-                gain.gain.setValueAtTime(0.12, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.1);
+                const t = ctx.currentTime;
+                
+                // Layer 1: deep bass thud
+                const osc1 = ctx.createOscillator();
+                const g1 = ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(150, t);
+                osc1.frequency.exponentialRampToValueAtTime(60, t + 0.12);
+                g1.gain.setValueAtTime(0.35, t);
+                g1.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                osc1.connect(g1); g1.connect(ctx.destination);
+                osc1.start(t); osc1.stop(t + 0.15);
+                
+                // Layer 2: mid click
+                const osc2 = ctx.createOscillator();
+                const g2 = ctx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(400, t);
+                osc2.frequency.exponentialRampToValueAtTime(200, t + 0.06);
+                g2.gain.setValueAtTime(0.15, t);
+                g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+                osc2.connect(g2); g2.connect(ctx.destination);
+                osc2.start(t); osc2.stop(t + 0.08);
+                
+                // Layer 3: noise burst for texture
+                const bufSize = ctx.sampleRate * 0.03;
+                const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+                const noise = ctx.createBufferSource();
+                noise.buffer = buf;
+                const nGain = ctx.createGain();
+                const nFilter = ctx.createBiquadFilter();
+                nFilter.type = 'lowpass';
+                nFilter.frequency.value = 2000;
+                nGain.gain.setValueAtTime(0.08, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(ctx.destination);
+                noise.start(t); noise.stop(t + 0.05);
             } catch(e) {}
         }
         
+        // Satisfying whoosh + shimmer when clearing lines
         function bbPlayClear(comboLevel) {
             try {
                 const ctx = getBBAudioCtx();
-                const baseFreq = 400 + (comboLevel * 80); // Higher pitch with combo
+                const t = ctx.currentTime;
+                const pitch = 1 + (Math.min(comboLevel, 6) * 0.12); // Pitch rises with combo
                 
-                // Satisfying sweep up
+                // Layer 1: deep sweep up (the "whoosh")
                 const osc1 = ctx.createOscillator();
-                const gain1 = ctx.createGain();
-                osc1.connect(gain1);
-                gain1.connect(ctx.destination);
-                osc1.frequency.setValueAtTime(baseFreq, ctx.currentTime);
-                osc1.frequency.exponentialRampToValueAtTime(baseFreq * 2, ctx.currentTime + 0.15);
+                const g1 = ctx.createGain();
                 osc1.type = 'sine';
-                gain1.gain.setValueAtTime(0.15, ctx.currentTime);
-                gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-                osc1.start(ctx.currentTime);
-                osc1.stop(ctx.currentTime + 0.3);
+                osc1.frequency.setValueAtTime(80 * pitch, t);
+                osc1.frequency.exponentialRampToValueAtTime(300 * pitch, t + 0.2);
+                osc1.frequency.exponentialRampToValueAtTime(150 * pitch, t + 0.4);
+                g1.gain.setValueAtTime(0.3, t);
+                g1.gain.linearRampToValueAtTime(0.35, t + 0.1);
+                g1.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+                osc1.connect(g1); g1.connect(ctx.destination);
+                osc1.start(t); osc1.stop(t + 0.45);
                 
-                // Sparkle overtone
-                const osc2 = ctx.createOscillator();
-                const gain2 = ctx.createGain();
-                osc2.connect(gain2);
-                gain2.connect(ctx.destination);
-                osc2.frequency.setValueAtTime(baseFreq * 2.5, ctx.currentTime + 0.05);
-                osc2.frequency.exponentialRampToValueAtTime(baseFreq * 3, ctx.currentTime + 0.2);
-                osc2.type = 'triangle';
-                gain2.gain.setValueAtTime(0.06, ctx.currentTime + 0.05);
-                gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-                osc2.start(ctx.currentTime + 0.05);
-                osc2.stop(ctx.currentTime + 0.25);
+                // Layer 2: bright shimmer chord
+                [1, 1.25, 1.5].forEach((mult, i) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    const f = 500 * pitch * mult;
+                    osc.frequency.setValueAtTime(f, t + 0.05);
+                    osc.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.3);
+                    g.gain.setValueAtTime(0.08, t + 0.05);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+                    osc.connect(g); g.connect(ctx.destination);
+                    osc.start(t + 0.05 + i * 0.02); osc.stop(t + 0.35);
+                });
+                
+                // Layer 3: noise swoosh
+                const bufSize = ctx.sampleRate * 0.2;
+                const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+                const noise = ctx.createBufferSource();
+                noise.buffer = buf;
+                const nGain = ctx.createGain();
+                const nFilter = ctx.createBiquadFilter();
+                nFilter.type = 'bandpass';
+                nFilter.frequency.setValueAtTime(500, t);
+                nFilter.frequency.exponentialRampToValueAtTime(3000 * pitch, t + 0.15);
+                nFilter.Q.value = 2;
+                nGain.gain.setValueAtTime(0.06, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(ctx.destination);
+                noise.start(t); noise.stop(t + 0.2);
             } catch(e) {}
         }
 
@@ -4724,20 +4763,21 @@
                 bbPlayClear(bbCombo);
                 if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
                 
-                // Staggered glow + clear for rows
+                // All cells in line clear at once
                 rowsToClear.forEach(r => { 
                     if(!isLiteMode) fireNeonParticles(r, -1, triggerColor); 
+                    const center = (BB_COLS - 1) / 2;
                     for(let c=0; c<BB_COLS; c++) { 
                         bbGrid[r][c] = 0; 
-                        animateClear(r, c, triggerColor, c * 25); // Stagger left to right
+                        animateClear(r, c, triggerColor, 0, center);
                     } 
                 }); 
-                // Staggered glow + clear for columns
                 colsToClear.forEach(c => { 
                     if(!isLiteMode) fireNeonParticles(-1, c, triggerColor); 
+                    const center = (BB_ROWS - 1) / 2;
                     for(let r=0; r<BB_ROWS; r++) { 
                         bbGrid[r][c] = 0; 
-                        animateClear(r, c, triggerColor, r * 25); // Stagger top to bottom
+                        animateClear(r, c, triggerColor, 0, undefined);
                     } 
                 }); 
                 setTimeout(() => { 
@@ -4769,9 +4809,11 @@
             confetti({ particleCount: 40, startVelocity: 35, spread: 360, origin: { x: xOrigin, y: yOrigin }, colors: [hex, '#ffffff'], shapes: ['square'], scalar: 0.5, drift: 0, ticks: 50, gravity: 0.5, zIndex: 11000, disableForReducedMotion: true });
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-        function animateClear(r, c, color, delay) { 
+        function animateClear(r, c, color, delay, lineCenter) { 
             const cell = document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); 
             if(!cell) return;
+            
+            const hex = COLOR_MAP[color] || '#00ffff';
             
             if(isLiteMode) {
                 cell.className = 'bb-cell';
@@ -4780,26 +4822,54 @@
                 return;
             }
             
-            // Add glow before clearing
-            const hex = COLOR_MAP[color] || '#00ffff';
-            cell.style.boxShadow = `0 0 12px ${hex}, 0 0 24px ${hex}40, inset 0 0 8px ${hex}80`;
-            cell.style.filter = 'brightness(1.5)';
+            // Get cell position for particles
+            const rect = cell.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
             
-            setTimeout(() => {
-                cell.className = 'bb-cell clearing-juicy';
-                cell.style.background = hex;
-                cell.style.boxShadow = `0 0 20px ${hex}, 0 0 40px ${hex}60`;
-                cell.style.filter = '';
+            // Direction away from line center
+            const dirX = lineCenter !== undefined ? (c - lineCenter) * 0.8 : 0;
+            
+            // Bright flash then clear cell
+            cell.style.boxShadow = `0 0 12px ${hex}, 0 0 24px ${hex}60`;
+            cell.style.filter = 'brightness(2)';
+            
+            // Spawn particles
+            for (let p = 0; p < 4; p++) {
+                const particle = document.createElement('div');
+                const size = 5 + Math.random() * 5;
+                const angle = (p / 4) * Math.PI * 2 + Math.random() * 0.8;
+                const speed = 25 + Math.random() * 35;
+                const tx = Math.cos(angle) * speed + dirX * 25;
+                const ty = Math.sin(angle) * speed;
                 
-                setTimeout(() => {
-                    cell.className = 'bb-cell';
-                    cell.style.backgroundColor = '';
-                    cell.style.boxShadow = '';
-                    cell.style.background = '';
-                    cell.classList.add('appear-gray');
-                    setTimeout(() => cell.classList.remove('appear-gray'), 300);
-                }, 400);
-            }, delay || 0);
+                particle.style.cssText = `
+                    position:fixed; left:${cx - size/2}px; top:${cy - size/2}px;
+                    width:${size}px; height:${size}px; border-radius:2px;
+                    background:${hex}; box-shadow:0 0 6px ${hex};
+                    z-index:11000; pointer-events:none;
+                    transition: all 0.35s cubic-bezier(0.2, 0, 0.3, 1);
+                `;
+                document.body.appendChild(particle);
+                
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        particle.style.transform = `translate(${tx}px, ${ty}px) scale(0.1)`;
+                        particle.style.opacity = '0';
+                    });
+                });
+                
+                setTimeout(() => particle.remove(), 400);
+            }
+            
+            // Clear cell after brief flash
+            setTimeout(() => {
+                cell.className = 'bb-cell';
+                cell.style.backgroundColor = '';
+                cell.style.boxShadow = '';
+                cell.style.filter = '';
+                cell.style.background = '';
+            }, 80);
         }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
