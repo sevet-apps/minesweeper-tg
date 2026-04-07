@@ -637,38 +637,41 @@
         
         .language-selector {
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         
         .lang-btn {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 14px 24px;
+            gap: 8px;
+            padding: 10px 18px;
             background: var(--glass-bg);
             border: 2px solid var(--glass-border);
             border-radius: 50px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
-            letter-spacing: 0.5px;
             color: var(--text-color);
             cursor: pointer;
             transition: all 0.2s;
-            flex: 1;
-            justify-content: center;
         }
         .lang-btn.active {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 1px var(--accent), 0 4px 12px rgba(0,122,255,0.15);
+            background: #fff;
+            border-color: #fff;
+            color: #000;
+        }
+        [data-theme="dark"] .lang-btn.active {
+            background: #fff;
+            border-color: #fff;
+            color: #000;
         }
         .lang-btn:active { transform: scale(0.96); }
         .lang-flag {
-            width: 28px;
-            height: 28px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             overflow: hidden;
             flex-shrink: 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         .lang-flag svg {
             width: 100%;
@@ -2200,7 +2203,7 @@
                     RU
                 </button>
                 <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">
-                    <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="enClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#enClip)"><rect width="60" height="60" fill="#B22234"/><rect y="0" width="60" height="4.6" fill="#fff"/><rect y="9.2" width="60" height="4.6" fill="#fff"/><rect y="18.5" width="60" height="4.6" fill="#fff"/><rect y="27.7" width="60" height="4.6" fill="#fff"/><rect y="36.9" width="60" height="4.6" fill="#fff"/><rect y="46.2" width="60" height="4.6" fill="#fff"/><rect width="24" height="32.3" fill="#3C3B6E"/><g fill="#fff" font-size="3"><text x="2" y="5">★</text><text x="6" y="5">★</text><text x="10" y="5">★</text><text x="14" y="5">★</text><text x="18" y="5">★</text><text x="4" y="9">★</text><text x="8" y="9">★</text><text x="12" y="9">★</text><text x="16" y="9">★</text><text x="2" y="13">★</text><text x="6" y="13">★</text><text x="10" y="13">★</text><text x="14" y="13">★</text><text x="18" y="13">★</text><text x="4" y="17">★</text><text x="8" y="17">★</text><text x="12" y="17">★</text><text x="16" y="17">★</text><text x="2" y="21">★</text><text x="6" y="21">★</text><text x="10" y="21">★</text><text x="14" y="21">★</text><text x="18" y="21">★</text><text x="4" y="25">★</text><text x="8" y="25">★</text><text x="12" y="25">★</text><text x="16" y="25">★</text><text x="2" y="29">★</text><text x="6" y="29">★</text><text x="10" y="29">★</text><text x="14" y="29">★</text><text x="18" y="29">★</text></g></g></svg></div>
+                    <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="enClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#enClip)"><rect width="60" height="60" fill="#fff"/><rect y="0" width="60" height="9" fill="#E8323C"/><rect y="18" width="60" height="9" fill="#E8323C"/><rect y="36" width="60" height="9" fill="#E8323C"/><rect y="54" width="60" height="6" fill="#E8323C"/><rect width="30" height="36" fill="#3B5998"/><circle cx="8" cy="8" r="1.8" fill="#fff"/><circle cx="15" cy="8" r="1.8" fill="#fff"/><circle cx="22" cy="8" r="1.8" fill="#fff"/><circle cx="11.5" cy="14" r="1.8" fill="#fff"/><circle cx="18.5" cy="14" r="1.8" fill="#fff"/><circle cx="8" cy="20" r="1.8" fill="#fff"/><circle cx="15" cy="20" r="1.8" fill="#fff"/><circle cx="22" cy="20" r="1.8" fill="#fff"/><circle cx="11.5" cy="26" r="1.8" fill="#fff"/><circle cx="18.5" cy="26" r="1.8" fill="#fff"/><circle cx="8" cy="32" r="1.8" fill="#fff"/><circle cx="15" cy="32" r="1.8" fill="#fff"/><circle cx="22" cy="32" r="1.8" fill="#fff"/></g></svg></div>
                     EN
                 </button>
             </div>

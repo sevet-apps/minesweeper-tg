@@ -231,6 +231,30 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
 // ============================
 const BB_ROWS = 8, BB_COLS = 8;
 
+// All valid shapes (serialized for fast lookup)
+const BB_VALID_SHAPES = new Set();
+function initValidShapes() {
+    const SHAPES = [
+        [[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],
+        [[1,1,1,1]],[[1],[1],[1],[1]],[[1,1,1,1,1]],[[1],[1],[1],[1],[1]],
+        [[1,1],[1,1]],[[1,1,1],[1,1,1],[1,1,1]],[[1,1],[1,1],[1,1]],[[1,1,1],[1,1,1]],
+        [[1,0],[1,0],[1,1]],[[1,1],[0,1],[0,1]],[[1,1,1],[1,0,0]],[[0,0,1],[1,1,1]],
+        [[0,1],[0,1],[1,1]],[[1,1],[1,0],[1,0]],[[1,0,0],[1,1,1]],[[1,1,1],[0,0,1]],
+        [[1,1],[1,0]],[[1,1],[0,1]],[[1,0],[1,1]],[[0,1],[1,1]],
+        [[1,1,1],[1,0,0],[1,0,0]],[[1,1,1],[0,0,1],[0,0,1]],[[1,0,0],[1,0,0],[1,1,1]],[[0,0,1],[0,0,1],[1,1,1]],
+        [[0,1,0],[1,1,1]],[[1,1,1],[0,1,0]],[[0,1],[1,1],[0,1]],[[1,0],[1,1],[1,0]],
+        [[1,1,0],[0,1,1]],[[0,1],[1,1],[1,0]],[[0,1,1],[1,1,0]],[[1,0],[1,1],[0,1]],
+        [[0,1],[1,0]],[[1,0],[0,1]],[[0,0,1],[0,1,0],[1,0,0]],[[1,0,0],[0,1,0],[0,0,1]],
+        // Hard shapes
+        [[1,0,1],[1,1,1]],[[1,1],[1,0],[1,1]],[[1,1,1],[1,0,1]],[[1,1],[0,1],[1,1]],
+        [[0,1],[0,1],[1,0],[1,0]],[[1,0],[1,0],[0,1],[0,1]],
+        [[0,1,0],[0,1,0],[1,1,1]],[[1,0,0],[1,1,1],[1,0,0]],[[1,1,1],[0,1,0],[0,1,0]],[[0,0,1],[1,1,1],[0,0,1]],
+        [[1,1,0],[0,1,1],[0,1,0]],[[0,1],[0,1],[1,0]],[[1,0],[1,0],[0,1]],[[0,1],[1,0],[1,0]],[[1,0],[0,1],[0,1]]
+    ];
+    for (const s of SHAPES) BB_VALID_SHAPES.add(JSON.stringify(s));
+}
+initValidShapes();
+
 function bbCanPlace(grid, matrix, r, c) {
     for (let i = 0; i < matrix.length; i++) {
         for (let j = 0; j < matrix[0].length; j++) {
@@ -342,16 +366,35 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
             return res.json({ ok: false, reason: 'invalid_matrix' });
         }
         
+        // Validate shape exists in game
+        if (!BB_VALID_SHAPES.has(JSON.stringify(matrix))) {
+            return res.json({ ok: false, reason: 'invalid_shape' });
+        }
+        
         // Validate position
         if (typeof r !== 'number' || typeof c !== 'number' || r < 0 || c < 0 || r >= BB_ROWS || c >= BB_COLS) {
             return res.json({ ok: false, reason: 'invalid_position' });
         }
         
+        // Replay protection: track move hashes
+        if (!session.bbMoveHashes) session.bbMoveHashes = new Set();
+        const moveHash = `${r}:${c}:${session.moveCount}`;
+        if (session.bbMoveHashes.has(moveHash)) {
+            return res.json({ ok: false, reason: 'duplicate_move' });
+        }
+        session.bbMoveHashes.add(moveHash);
+        
         // Check placement validity on server grid
         if (!bbCanPlace(session.bbGrid, matrix, r, c)) {
-            const fullName = (user.first_name + ' ' + (user.last_name || '')).trim();
-            logSuspiciousActivity(userId, fullName, user.username, game_type, session.bbScore, `BB_INVALID_PLACEMENT (r=${r}, c=${c})`);
-            return res.json({ ok: false, reason: 'cannot_place' });
+            // Grid desync (lost move request) — force-resync by clearing target cells and placing
+            console.log(`BB desync: user=${userId}, r=${r}, c=${c}, score=${session.bbScore} — resyncing`);
+            for (let i = 0; i < matrix.length; i++) {
+                for (let j = 0; j < matrix[0].length; j++) {
+                    if (matrix[i][j] === 1 && (r+i) < BB_ROWS && (c+j) < BB_COLS) {
+                        session.bbGrid[r+i][c+j] = 0;
+                    }
+                }
+            }
         }
         
         // Simulate placement and scoring
@@ -656,7 +699,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     const username = (user.first_name + ' ' + (user.last_name || '')).trim();
     const tgUsername = user.username || '';
     const photo_url = user.photo_url || '';
-    const { game_type, score, session_token } = req.body;
+    let { game_type, score, session_token } = req.body;
     
     // Rate limit
     if (!checkRateLimit(user_id, 'save-stat')) {
@@ -722,15 +765,33 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             }
         }
         
-        // BB server-side: log score comparison (informational only, no reject)
-        // Real protection happens per-move: bbCanPlace + bbPlaceAndScore validate every placement
-        // If session was lost (server restart), we simply can't compare — that's fine
-        if (game_type === 'bb_best_score' && session.bbSynced) {
-            const diff = score - session.bbScore;
-            if (Math.abs(diff) > 10) {
-                console.log(`BB score diff: client=${score}, server=${session.bbScore}, diff=${diff}, user=${user_id}`);
+        // BB server-side score enforcement at save time
+        if (game_type === 'bb_best_score') {
+            if (session.bbSynced && session.moveCount >= 3) {
+                // Server tracked the game — use server score as ceiling
+                const maxAllowed = session.bbScore + Math.max(50, session.bbScore * 0.1);
+                
+                if (score > maxAllowed) {
+                    // Client claims way more than server calculated — cheat
+                    logSuspiciousActivity(user_id, username, tgUsername, game_type, score, 
+                        `BB_INFLATED_SCORE (client=${score}, server=${session.bbScore})`);
+                    score = session.bbScore;
+                } else if (score > session.bbScore) {
+                    score = session.bbScore;
+                }
+                console.log(`BB save [synced]: client=${req.body.score}, saved=${score}, server=${session.bbScore}, user=${user_id}`);
+            } else {
+                // Not synced (server restarted mid-game) — cap by generous per-move estimate
+                // Max realistic score per move: ~100 points (place 5 cells + clear 2 lines with combo)
+                const maxReasonable = Math.max(500, session.moveCount * 120);
+                if (score > maxReasonable) {
+                    console.log(`BB save [unsynced]: capped ${score} -> ${maxReasonable}, moves=${session.moveCount}, user=${user_id}`);
+                    score = maxReasonable;
+                }
             }
         }
+        
+        req.body.score = score;
         
         // Session used — delete it (but keep for tower_combo if tower_best was just saved)
         if (game_type !== 'tower_best') {
