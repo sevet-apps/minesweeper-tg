@@ -1150,6 +1150,7 @@ app.get('/referral-leaderboard', async (req, res) => {
 
 // --- SOCKET.IO ЛОГИКА (Шашки с таймером) ---
 const rooms = new Map();
+const monopolyRooms = new Map();
 const TURN_TIME_LIMIT = 60000; // 60 секунд на ход
 
 // Track online users (users with app open)
@@ -1430,6 +1431,90 @@ io.on('connection', (socket) => {
         cleanupRoom(roomCode);
     });
 
+    // =============================================
+    // MONOPOLY MULTIPLAYER
+    // =============================================
+    socket.on('monopoly_create', ({ username, photo_url, userId }) => {
+        let roomCode = 'M' + Math.floor(1000 + Math.random() * 9000).toString();
+        while (monopolyRooms.has(roomCode)) { roomCode = 'M' + Math.floor(1000 + Math.random() * 9000).toString(); }
+        
+        monopolyRooms.set(roomCode, {
+            players: [{ id: socket.id, username, photo_url, oderId: userId }],
+            status: 'waiting',
+            hostId: socket.id
+        });
+        
+        socket.join(roomCode);
+        socket.emit('monopoly_created', { roomCode });
+        io.to(roomCode).emit('monopoly_players', { players: monopolyRooms.get(roomCode).players });
+        console.log(`Monopoly room ${roomCode} created by ${username}`);
+    });
+    
+    socket.on('monopoly_join', ({ roomCode, username, photo_url, userId }) => {
+        const room = monopolyRooms.get(roomCode);
+        if (!room) { socket.emit('monopoly_error', { message: 'Комната не найдена' }); return; }
+        if (room.status !== 'waiting') { socket.emit('monopoly_error', { message: 'Игра уже началась' }); return; }
+        if (room.players.length >= 4) { socket.emit('monopoly_error', { message: 'Комната заполнена (макс 4)' }); return; }
+        
+        room.players.push({ id: socket.id, username, photo_url, oderId: userId });
+        socket.join(roomCode);
+        socket.emit('monopoly_joined', { roomCode });
+        io.to(roomCode).emit('monopoly_players', { players: room.players });
+        console.log(`${username} joined Monopoly room ${roomCode} (${room.players.length}/4)`);
+    });
+    
+    socket.on('monopoly_start', ({ roomCode }) => {
+        const room = monopolyRooms.get(roomCode);
+        if (!room || room.hostId !== socket.id) return;
+        if (room.players.length < 2) { socket.emit('monopoly_error', { message: 'Нужно минимум 2 игрока' }); return; }
+        
+        room.status = 'playing';
+        
+        const gamePlayers = room.players.map((p, i) => ({
+            username: p.username,
+            photo_url: p.photo_url,
+            oderId: p.oderId
+        }));
+        
+        room.players.forEach((p, i) => {
+            io.to(p.id).emit('monopoly_game_start', {
+                roomCode,
+                players: gamePlayers,
+                yourIndex: i
+            });
+        });
+        
+        console.log(`Monopoly game started in ${roomCode} with ${room.players.length} players`);
+    });
+    
+    socket.on('monopoly_leave', ({ roomCode }) => {
+        const room = monopolyRooms.get(roomCode);
+        if (!room) return;
+        
+        const idx = room.players.findIndex(p => p.id === socket.id);
+        if (idx === -1) return;
+        
+        const leftPlayer = room.players[idx];
+        room.players.splice(idx, 1);
+        socket.leave(roomCode);
+        
+        if (room.status === 'playing') {
+            io.to(roomCode).emit('monopoly_player_left', { playerIndex: idx, playerName: leftPlayer.username });
+        }
+        
+        if (room.players.length === 0) {
+            monopolyRooms.delete(roomCode);
+        } else {
+            if (room.hostId === socket.id) room.hostId = room.players[0].id;
+            io.to(roomCode).emit('monopoly_players', { players: room.players });
+        }
+    });
+    
+    // Relay monopoly game actions between players
+    socket.on('monopoly_action', ({ roomCode, action }) => {
+        socket.to(roomCode).emit('monopoly_action', { action });
+    });
+
     // Отключение
     socket.on('disconnect', () => {
         // Remove from online users
@@ -1464,6 +1549,24 @@ io.on('connection', (socket) => {
                 room.players.splice(index, 1);
                 socket.to(code).emit('opponent_disconnected');
                 cleanupRoom(code);
+            }
+        });
+        
+        // Cleanup monopoly rooms
+        monopolyRooms.forEach((room, code) => {
+            const idx = room.players.findIndex(p => p.id === socket.id);
+            if (idx !== -1) {
+                const leftPlayer = room.players[idx];
+                room.players.splice(idx, 1);
+                if (room.status === 'playing') {
+                    io.to(code).emit('monopoly_player_left', { playerIndex: idx, playerName: leftPlayer.username });
+                }
+                if (room.players.length === 0) {
+                    monopolyRooms.delete(code);
+                } else {
+                    if (room.hostId === socket.id) room.hostId = room.players[0].id;
+                    io.to(code).emit('monopoly_players', { players: room.players });
+                }
             }
         });
     });

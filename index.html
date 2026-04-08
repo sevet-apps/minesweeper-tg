@@ -1878,6 +1878,83 @@
             </div>
             <div style="color:var(--accent); font-weight:600;">Play</div>
         </div>
+        <div class="card" onclick="openMonopolyLobby()" style="position:relative; overflow:hidden;">
+            <div style="position:absolute; top:8px; right:-24px; background:linear-gradient(135deg, #ff9500, #ff6b00); color:#fff; font-size:9px; font-weight:800; padding:2px 28px; transform:rotate(35deg); letter-spacing:1px; z-index:2; text-transform:uppercase;" data-i18n="beta">БЕТА</div>
+            <div class="game-icon-box" style="background: linear-gradient(135deg, #2d6a4f, #40916c);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                    <rect x="7" y="7" width="10" height="10" rx="1"></rect>
+                    <circle cx="5" cy="5" r="1"></circle>
+                    <circle cx="19" cy="19" r="1"></circle>
+                </svg>
+            </div>
+            <div style="flex:1;">
+                <h3 style="margin:0; font-size:17px;">Монополия</h3>
+                <div style="font-size:12px; color:#40916c; font-weight:600; margin-top:2px;">2-4 игрока · Онлайн</div>
+            </div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+    </div>
+
+    <!-- Monopoly Lobby -->
+    <div id="monopoly-lobby" class="game-overlay">
+        <div id="bgPatternMonopoly" class="game-overlay-bg"></div>
+        <div class="game-top-bar">
+            <div class="back-btn" onclick="closeMonopolyLobby()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span>
+            </div>
+            <div style="font-weight:700; font-size:18px;">Монополия</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:16px; z-index:2;">
+            <div style="font-size:48px; margin-bottom:8px;">🏠</div>
+            <div style="font-size:24px; font-weight:800; letter-spacing:-0.5px;">Монополия</div>
+            <div style="font-size:14px; color:#8e8e93; text-align:center; max-width:280px; line-height:1.5; margin-bottom:16px;">
+                Классическая настольная игра для 2-4 игроков. Играйте онлайн с друзьями!
+            </div>
+            
+            <div style="background:rgba(255,69,58,0.15); border:1px solid rgba(255,69,58,0.3); border-radius:14px; padding:12px 16px; max-width:280px; text-align:center; margin-bottom:8px;">
+                <div style="font-size:12px; color:#ff6b6b; font-weight:600;">⚠️ Если вы покинете игру, вы будете признаны банкротом</div>
+            </div>
+            
+            <button class="btn-main" onclick="createMonopolyRoom()" style="width:260px; padding:16px; font-size:16px; border-radius:50px;">
+                🎲 Создать комнату
+            </button>
+            
+            <div style="display:flex; align-items:center; gap:10px; width:260px;">
+                <input type="text" id="monopolyRoomCode" placeholder="Код комнаты" maxlength="5" style="flex:1; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:50px; padding:14px 20px; color:var(--text-color); font-size:16px; font-weight:600; text-align:center; outline:none; font-family:inherit; letter-spacing:4px;" inputmode="numeric">
+                <button class="btn-main" onclick="joinMonopolyRoom()" style="padding:14px 20px; border-radius:50px; font-size:15px; white-space:nowrap;">
+                    Войти
+                </button>
+            </div>
+            
+            <div style="width:260px; height:1px; background:var(--glass-border); margin:8px 0;"></div>
+            
+            <button onclick="startMonopolyVsBots()" style="width:260px; padding:14px; font-size:15px; border-radius:50px; background:var(--glass-bg); border:1px solid var(--glass-border); color:var(--text-color); font-weight:600; cursor:pointer; font-family:inherit;">
+                🤖 Играть с ботами
+            </button>
+        </div>
+        
+        <!-- Waiting room (shown after creating) -->
+        <div id="monopolyWaiting" style="display:none; position:absolute; inset:0; z-index:5; background:var(--bg-color); flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:16px;">
+            <div style="font-size:14px; color:#8e8e93; text-transform:uppercase; letter-spacing:2px; font-weight:700;">Код комнаты</div>
+            <div id="monopolyDisplayCode" style="font-size:48px; font-weight:900; letter-spacing:8px; color:var(--accent);"></div>
+            <div style="font-size:14px; color:#8e8e93;">Отправьте код друзьям</div>
+            
+            <div id="monopolyPlayersList" style="width:280px; margin-top:16px;"></div>
+            
+            <button id="monopolyStartBtn" class="btn-main" onclick="startMonopolyGame()" style="width:260px; padding:16px; font-size:16px; border-radius:50px; display:none;">
+                ▶️ Начать игру
+            </button>
+            
+            <button class="btn-main" onclick="cancelMonopolyRoom()" style="width:260px; padding:14px; font-size:14px; border-radius:50px; background:var(--glass-bg); color:var(--text-color);">
+                Отмена
+            </button>
+        </div>
+    </div>
+    
+    <!-- Monopoly Game (full screen iframe) -->
+    <div id="monopoly-game" class="game-overlay" style="overflow:hidden;">
+        <iframe id="monopolyFrame" style="width:100%; height:100%; border:none;" src="about:blank"></iframe>
     </div>
 
     <!-- Profile sticky compact bar (outside scroll container) -->
@@ -5640,6 +5717,120 @@
         let wordleGuesses = [];
         let wordleCurrentGuess = '';
         let wordleGameOver = false;
+        // =============================================
+        // MONOPOLY LOBBY & MULTIPLAYER
+        // =============================================
+        let monopolyRoomCode = null;
+        let monopolyIsHost = false;
+        
+        function openMonopolyLobby() {
+            document.getElementById('monopoly-lobby').classList.add('visible');
+            document.getElementById('monopolyWaiting').style.display = 'none';
+        }
+        
+        function closeMonopolyLobby() {
+            document.getElementById('monopoly-lobby').classList.remove('visible');
+            if (monopolyRoomCode) cancelMonopolyRoom();
+        }
+        
+        function startMonopolyVsBots() {
+            document.getElementById('monopolyFrame').src = 'monopoly.html?mode=bots';
+            document.getElementById('monopoly-lobby').classList.remove('visible');
+            document.getElementById('monopoly-game').classList.add('visible');
+        }
+        
+        function createMonopolyRoom() {
+            const user = tg.initDataUnsafe.user || { first_name: 'Guest' };
+            socket.emit('monopoly_create', {
+                username: user.first_name,
+                photo_url: user.photo_url || '',
+                userId: user.id || 0
+            });
+        }
+        
+        function joinMonopolyRoom() {
+            const code = document.getElementById('monopolyRoomCode').value.trim();
+            if (!code || code.length < 4) { showIngameToast('Введите код комнаты'); return; }
+            const user = tg.initDataUnsafe.user || { first_name: 'Guest' };
+            socket.emit('monopoly_join', {
+                roomCode: code,
+                username: user.first_name,
+                photo_url: user.photo_url || '',
+                userId: user.id || 0
+            });
+        }
+        
+        function cancelMonopolyRoom() {
+            if (monopolyRoomCode) {
+                socket.emit('monopoly_leave', { roomCode: monopolyRoomCode });
+            }
+            monopolyRoomCode = null;
+            monopolyIsHost = false;
+            document.getElementById('monopolyWaiting').style.display = 'none';
+        }
+        
+        function startMonopolyGame() {
+            if (!monopolyRoomCode || !monopolyIsHost) return;
+            socket.emit('monopoly_start', { roomCode: monopolyRoomCode });
+        }
+        
+        function showIngameToast(msg) {
+            showToast(msg);
+        }
+        
+        // Socket listeners for monopoly
+        if (typeof socket !== 'undefined') {
+            socket.on('monopoly_created', ({ roomCode }) => {
+                monopolyRoomCode = roomCode;
+                monopolyIsHost = true;
+                document.getElementById('monopolyDisplayCode').innerText = roomCode;
+                document.getElementById('monopolyWaiting').style.display = 'flex';
+            });
+            
+            socket.on('monopoly_joined', ({ roomCode }) => {
+                monopolyRoomCode = roomCode;
+                monopolyIsHost = false;
+                document.getElementById('monopolyDisplayCode').innerText = roomCode;
+                document.getElementById('monopolyWaiting').style.display = 'flex';
+            });
+            
+            socket.on('monopoly_players', ({ players }) => {
+                const list = document.getElementById('monopolyPlayersList');
+                list.innerHTML = players.map((p, i) => `
+                    <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--glass-bg); border-radius:14px; margin-bottom:6px;">
+                        <div style="width:12px; height:12px; border-radius:50%; background:${['#e63946','#457b9d','#2a9d8f','#e9c46a'][i]}"></div>
+                        <div style="flex:1; font-weight:600; font-size:14px;">${p.username}</div>
+                        ${i === 0 ? '<div style="font-size:11px; color:#8e8e93;">Хост</div>' : ''}
+                    </div>
+                `).join('');
+                
+                // Show start button only for host with 2+ players
+                const startBtn = document.getElementById('monopolyStartBtn');
+                startBtn.style.display = (monopolyIsHost && players.length >= 2) ? '' : 'none';
+            });
+            
+            socket.on('monopoly_game_start', ({ roomCode, players: gamePlayers, yourIndex }) => {
+                // Load monopoly game in iframe with multiplayer params
+                const params = new URLSearchParams({
+                    room: roomCode,
+                    players: JSON.stringify(gamePlayers),
+                    myIdx: yourIndex,
+                    server: API_BASE_URL.replace('/api','')
+                });
+                document.getElementById('monopolyFrame').src = `monopoly.html?${params.toString()}`;
+                document.getElementById('monopoly-lobby').classList.remove('visible');
+                document.getElementById('monopoly-game').classList.add('visible');
+            });
+            
+            socket.on('monopoly_error', ({ message }) => {
+                showIngameToast(message);
+            });
+            
+            socket.on('monopoly_player_left', ({ playerIndex, playerName }) => {
+                showIngameToast(`${playerName} покинул игру`);
+            });
+        }
+        
         let wordleRevealing = false; // Block input during reveal animation
         let wordleWins = 0;
 
