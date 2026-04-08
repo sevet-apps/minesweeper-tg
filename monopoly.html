@@ -5,27 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Monopoly - Spark Games</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
-        
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         
         :root {
             --board-green: #d5e8d4;
             --board-center: #c8dfc6;
             --board-border: #1a5c2a;
-            --money-gold: #c9a93e;
+            --money-gold: #e8b923;
             --bg-dark: #0a0a14;
             --text-light: #f0f0f0;
             --accent: #007aff;
-            --glass-bg: rgba(255,255,255,0.06);
-            --glass-border: rgba(255,255,255,0.1);
+            --glass-bg: rgba(255,255,255,0.08);
+            --glass-border: rgba(255,255,255,0.12);
         }
         
         html, body {
             width: 100%; height: 100%;
             overflow: hidden;
             background: var(--bg-dark);
-            font-family: 'DM Sans', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: var(--text-light);
             touch-action: none;
         }
@@ -75,7 +73,7 @@
         }
         
         .hud-player-money {
-            font-family: 'Playfair Display', serif;
+            font-weight: 800;
             font-weight: 700;
             font-size: 16px;
             color: var(--money-gold);
@@ -98,7 +96,7 @@
             padding: 16px 40px;
             font-size: 17px;
             font-weight: 700;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
             cursor: pointer;
             box-shadow: 0 6px 20px rgba(0,122,255,0.3);
             transition: transform 0.15s, box-shadow 0.15s;
@@ -125,7 +123,7 @@
             padding: 14px 20px;
             font-size: 14px;
             font-weight: 600;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
             cursor: pointer;
             transition: transform 0.15s;
         }
@@ -149,23 +147,24 @@
         
         .property-card {
             width: 260px;
-            background: #fff;
-            border-radius: 16px;
+            background: rgba(30,30,50,0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            color: #1a1a1a;
+            color: #f0f0f0;
         }
         
         .property-card-header {
             padding: 14px 16px;
             text-align: center;
             color: white;
-            font-family: 'Playfair Display', serif;
+            font-weight: 800;
         }
         .property-card-header h3 {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 800;
-            letter-spacing: 0.5px;
         }
         
         .property-card-body {
@@ -173,20 +172,20 @@
         }
         .property-card-price {
             text-align: center;
-            font-family: 'Playfair Display', serif;
-            font-size: 28px;
-            font-weight: 900;
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--money-gold);
             margin-bottom: 12px;
         }
         .property-card-rents {
             font-size: 12px;
             line-height: 1.8;
-            color: #666;
+            color: #999;
         }
         .property-card-rents span {
             float: right;
             font-weight: 600;
-            color: #333;
+            color: #ddd;
         }
         
         .property-card-actions {
@@ -201,7 +200,7 @@
             border-radius: 12px;
             font-size: 14px;
             font-weight: 700;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
             cursor: pointer;
         }
         .btn-buy {
@@ -216,42 +215,49 @@
         /* Dice result display */
         .dice-result {
             position: absolute;
-            top: 35%;
+            top: 30%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 50;
-            font-family: 'Playfair Display', serif;
-            font-size: 64px;
-            font-weight: 900;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            padding: 10px 24px;
+            font-size: 20px;
+            font-weight: 700;
             color: white;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
             opacity: 0;
             pointer-events: none;
-            transition: all 0.4s ease;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
         .dice-result.visible {
             opacity: 1;
-            transform: translate(-50%, -50%) scale(1.1);
+            transform: translate(-50%, -50%) scale(1);
         }
         
         /* Message toast */
         .toast {
             position: absolute;
-            top: 30%;
+            top: 25%;
             left: 50%;
             transform: translate(-50%, -20px);
             z-index: 80;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 50px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             opacity: 0;
             pointer-events: none;
             transition: all 0.3s ease;
             white-space: nowrap;
+            max-width: 90%;
+            text-align: center;
         }
         .toast.visible {
             opacity: 1;
@@ -275,24 +281,27 @@
             pointer-events: auto;
         }
         .chance-card, .chest-card {
-            width: 270px;
-            border-radius: 18px;
+            width: 260px;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
             text-align: center;
+            border: 1px solid var(--glass-border);
         }
         .chance-card {
-            background: linear-gradient(135deg, #ff8c42, #ff6b1a);
+            background: rgba(50,35,20,0.95);
+            backdrop-filter: blur(15px);
         }
         .chest-card {
-            background: linear-gradient(135deg, #4a90d9, #2b6cb0);
+            background: rgba(20,35,55,0.95);
+            backdrop-filter: blur(15px);
         }
         .card-popup-icon {
             font-size: 48px;
             margin: 24px 0 8px;
         }
         .card-popup-title {
-            font-family: 'Playfair Display', serif;
+            font-weight: 800;
             font-size: 18px;
             font-weight: 800;
             color: rgba(255,255,255,0.9);
@@ -317,7 +326,7 @@
             color: white;
             font-size: 15px;
             font-weight: 700;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
             cursor: pointer;
             transition: background 0.2s;
         }
@@ -340,15 +349,15 @@
             pointer-events: auto;
         }
         .build-menu {
-            background: rgba(0,0,0,0.85);
+            background: rgba(30,30,50,0.95);
             backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
             border-radius: 20px;
             padding: 16px;
             min-width: 260px;
         }
         .build-menu-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             margin-bottom: 12px;
             text-align: center;
@@ -395,22 +404,24 @@
             pointer-events: auto;
         }
         .auction-card {
-            width: 280px;
-            background: #1a1a2e;
-            border: 2px solid var(--money-gold);
-            border-radius: 18px;
+            width: 260px;
+            background: rgba(30,30,50,0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--money-gold);
+            border-radius: 20px;
             padding: 20px;
             text-align: center;
         }
         .auction-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 700;
             color: var(--money-gold);
             letter-spacing: 2px;
             margin-bottom: 6px;
+            text-transform: uppercase;
         }
         .auction-field-name {
-            font-family: 'Playfair Display', serif;
+            font-weight: 800;
             font-size: 20px;
             font-weight: 800;
             margin-bottom: 12px;
@@ -419,7 +430,7 @@
             font-size: 32px;
             font-weight: 900;
             color: var(--money-gold);
-            font-family: 'Playfair Display', serif;
+            font-weight: 800;
             margin-bottom: 4px;
         }
         .auction-bidder {
@@ -438,7 +449,7 @@
             border-radius: 12px;
             font-size: 14px;
             font-weight: 700;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
             cursor: pointer;
         }
         .btn-bid {
@@ -476,7 +487,7 @@
             border: 1px solid rgba(255,255,255,0.1);
         }
         .trade-title {
-            font-family: 'Playfair Display', serif;
+            font-weight: 800;
             font-size: 18px;
             font-weight: 800;
             text-align: center;
@@ -536,7 +547,7 @@
             color: white;
             font-size: 16px;
             font-weight: 700;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
             outline: none;
             text-align: center;
         }
@@ -547,7 +558,7 @@
         .trade-buttons button {
             flex: 1; padding: 13px; border: none; border-radius: 12px;
             font-size: 14px; font-weight: 700; cursor: pointer;
-            font-family: 'DM Sans', sans-serif;
+            font-family: inherit;
         }
         .trade-btn-send { background: var(--money-gold); color: #1a1a2e; }
         .trade-btn-cancel { background: rgba(255,255,255,0.1); color: #aaa; }
@@ -574,18 +585,18 @@
             padding: 15px 10px 10px;
         }
         .player-chip {
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
             border-radius: 14px;
-            padding: 8px 14px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            border: 2px solid transparent;
+            gap: 6px;
+            border: 1.5px solid transparent;
             transition: border-color 0.3s;
         }
         .player-chip.active {
-            border-color: var(--money-gold);
+            border-color: var(--accent);
         }
         .player-chip-dot {
             width: 10px; height: 10px;
@@ -1362,11 +1373,12 @@
     scene.fog = new THREE.Fog(0x0f0f20, 20, 40);
     
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 18, 14);
+    camera.position.set(0, 22, 8);
     camera.lookAt(0, 0, 0);
     
     // Target camera for smooth transitions
-    let cameraTarget = { x: 0, y: 18, z: 14, lookX: 0, lookY: 0, lookZ: 0 };
+    const defaultCam = { x: 0, y: 22, z: 8, lookX: 0, lookY: 0, lookZ: 0 };
+    let cameraTarget = { ...defaultCam };
     let cameraLookAt = new THREE.Vector3(0, 0, 0);
     
     // Lighting
@@ -1761,34 +1773,33 @@
             d.position.set(i === 0 ? -0.4 : 0.4, 2.5, 0);
         });
         
-        // Animate dice to land on correct face
-        // Face layout: +x=2, -x=5, +y=1, -y=6, +z=3, -z=4
-        // Rotation to show value on top:
+        // Dice face rotations - BoxGeometry faces: +x=2, -x=5, +y=1, -y=6, +z=3, -z=4
+        // To show value N on top, we need specific X and Z rotations:
         const diceRotations = {
-            1: { x: 0, z: 0 },           // +y face up (default)
-            2: { x: 0, z: Math.PI / 2 },  // +x face up
-            3: { x: Math.PI / 2, z: 0 },  // +z face up
-            4: { x: -Math.PI / 2, z: 0 }, // -z face up
-            5: { x: 0, z: -Math.PI / 2 }, // -x face up
-            6: { x: Math.PI, z: 0 },      // -y face up
+            1: { x: 0, z: 0 },                         // +y up (default)
+            2: { x: 0, z: -Math.PI / 2 },              // +x up
+            3: { x: -Math.PI / 2, z: 0 },              // +z up
+            4: { x: Math.PI / 2, z: 0 },               // -z up
+            5: { x: 0, z: Math.PI / 2 },               // -x up
+            6: { x: Math.PI, z: 0 },                    // -y up
         };
         
         const rot1 = diceRotations[die1];
         const rot2 = diceRotations[die2];
-        // Add full spins for dramatic effect
-        const spins = 3;
         
         animations.push({
             start: performance.now(),
-            duration: 1200,
+            duration: 1000,
             easing: easeOutBounce,
             update: (t) => {
                 diceMeshes.forEach((d, i) => {
                     d.position.y = 0.3 + (1 - t) * 2;
                     const target = i === 0 ? rot1 : rot2;
-                    // Spin multiple times then land on target rotation
-                    d.rotation.x = t * Math.PI * 2 * spins + target.x;
-                    d.rotation.z = t * Math.PI * 2 * (spins - 1 + i * 0.7) + target.z;
+                    // Spin then land on target
+                    const spins = 4;
+                    d.rotation.x = (1 - t) * Math.PI * 2 * spins + target.x;
+                    d.rotation.z = target.z;
+                    d.rotation.y = (1 - t) * Math.PI * 2 * (spins - 1);
                 });
             }
         });
@@ -1896,15 +1907,15 @@
             setTimeout(stepForward, 180);
         }
         
-        // Camera follows token
+        // Camera follows token gently
         const endPos3d = getFieldPosition3D(endPos);
         cameraTarget = {
-            x: endPos3d.x * 0.3,
-            y: 14,
-            z: endPos3d.z * 0.3 + 10,
-            lookX: endPos3d.x * 0.5,
+            x: endPos3d.x * 0.15,
+            y: 20,
+            z: endPos3d.z * 0.15 + 8,
+            lookX: endPos3d.x * 0.3,
             lookY: 0,
-            lookZ: endPos3d.z * 0.5
+            lookZ: endPos3d.z * 0.3
         };
         
         stepForward();
@@ -2060,7 +2071,7 @@
         }
         
         updatePlayersUI();
-        cameraTarget = { x: 0, y: 18, z: 14, lookX: 0, lookY: 0, lookZ: 0 };
+        cameraTarget = { ...defaultCam };
         
         const cp = players[currentPlayerIdx];
         const canBuild = !cp.isBot && canPlayerBuild(currentPlayerIdx);
@@ -2187,7 +2198,7 @@
             gamePhase = 'roll';
             isRolling = false;
             updatePlayersUI();
-            cameraTarget = { x: 0, y: 18, z: 14, lookX: 0, lookY: 0, lookZ: 0 };
+            cameraTarget = { ...defaultCam };
             
             const cp = players[currentPlayerIdx];
             if (cp.isBot) {
