@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monopoly - Spark Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        
+        :root {
+            --board-green: #d5e8d4;
+            --board-center: #c8dfc6;
+            --board-border: #1a5c2a;
+            --money-gold: #e8b923;
+            --bg-dark: #0a0a14;
+            --text-light: #f0f0f0;
+            --accent: #007aff;
+            --glass-bg: rgba(255,255,255,0.08);
+            --glass-border: rgba(255,255,255,0.12);
+        }
+        
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-light);
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+        
+        /* HUD Overlay */
+        .hud {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .hud-top {
+            top: 0; left: 0; right: 0;
+            padding: 50px 20px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .hud-player-info {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        
+        .hud-player-color {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .hud-player-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .hud-player-money {
+            font-weight: 800;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--money-gold);
+        }
+        
+        .hud-bottom {
+            bottom: 0; left: 0; right: 0;
+            padding: 15px 20px 40px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .btn-roll {
+            pointer-events: auto;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 40px;
+            font-size: 17px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0,122,255,0.3);
+            transition: transform 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.5px;
+        }
+        .btn-roll:active {
+            transform: scale(0.95);
+            box-shadow: 0 3px 10px rgba(0,122,255,0.2);
+        }
+        .btn-roll:disabled {
+            background: rgba(255,255,255,0.1);
+            box-shadow: none;
+            cursor: default;
+            color: #666;
+        }
+        
+        .btn-secondary {
+            pointer-events: auto;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .btn-secondary:active { transform: scale(0.95); }
+        
+        /* Property Card Popup */
+        .property-popup {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .property-popup.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        
+        .property-card {
+            width: 260px;
+            background: rgba(30,30,50,0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            color: #f0f0f0;
+        }
+        
+        .property-card-header {
+            padding: 14px 16px;
+            text-align: center;
+            color: white;
+            font-weight: 800;
+        }
+        .property-card-header h3 {
+            font-size: 15px;
+            font-weight: 800;
+        }
+        
+        .property-card-body {
+            padding: 16px;
+        }
+        .property-card-price {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--money-gold);
+            margin-bottom: 12px;
+        }
+        .property-card-rents {
+            font-size: 12px;
+            line-height: 1.8;
+            color: #999;
+        }
+        .property-card-rents span {
+            float: right;
+            font-weight: 600;
+            color: #ddd;
+        }
+        
+        .property-card-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px 16px;
+        }
+        .property-card-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .btn-buy {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-pass {
+            background: var(--glass-bg);
+            color: #aaa;
+        }
+        
+        /* Dice result display */
+        .dice-result {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            padding: 10px 24px;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .dice-result.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        /* Message toast */
+        .toast {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -20px);
+            z-index: 80;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        
+        /* Chance / Community Chest Card */
+        .card-popup {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.5) rotateY(90deg);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            perspective: 800px;
+        }
+        .card-popup.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1) rotateY(0deg);
+            pointer-events: auto;
+        }
+        .chance-card, .chest-card {
+            width: 260px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            text-align: center;
+            border: 1px solid var(--glass-border);
+        }
+        .chance-card {
+            background: rgba(50,35,20,0.95);
+            backdrop-filter: blur(15px);
+        }
+        .chest-card {
+            background: rgba(20,35,55,0.95);
+            backdrop-filter: blur(15px);
+        }
+        .card-popup-icon {
+            font-size: 48px;
+            margin: 24px 0 8px;
+        }
+        .card-popup-title {
+            font-weight: 800;
+            font-size: 18px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        .card-popup-text {
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            padding: 0 24px 20px;
+            line-height: 1.5;
+        }
+        .card-popup-btn {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 0 16px 16px;
+            padding: 14px;
+            background: rgba(255,255,255,0.25);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .card-popup-btn:active { background: rgba(255,255,255,0.4); }
+        
+        /* Build menu */
+        .build-popup {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 90;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        .build-popup.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        .build-menu {
+            background: rgba(30,30,50,0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 16px;
+            min-width: 260px;
+        }
+        .build-menu-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .build-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 12px;
+            margin-bottom: 6px;
+            background: rgba(255,255,255,0.08);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .build-item:active { background: rgba(255,255,255,0.15); }
+        .build-item-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .build-item-houses {
+            font-size: 11px;
+            color: #aaa;
+        }
+        .build-item-cost {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--money-gold);
+        }
+        
+        /* Auction popup */
+        .auction-popup {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .auction-popup.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        .auction-card {
+            width: 260px;
+            background: rgba(30,30,50,0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--money-gold);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+        .auction-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--money-gold);
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .auction-field-name {
+            font-weight: 800;
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .auction-current-bid {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--money-gold);
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .auction-bidder {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 16px;
+        }
+        .auction-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .auction-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .btn-bid {
+            background: var(--money-gold);
+            color: #1a1a2e;
+        }
+        .btn-fold {
+            background: rgba(255,255,255,0.1);
+            color: #aaa;
+        }
+        
+        /* Trade popup */
+        .trade-popup {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 110;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .trade-popup.visible { opacity: 1; pointer-events: auto; }
+        .trade-panel {
+            width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background: #1e1e3a;
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .trade-title {
+            font-weight: 800;
+            font-size: 18px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .trade-section {
+            margin-bottom: 14px;
+        }
+        .trade-section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .trade-prop {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .trade-prop:active { background: rgba(255,255,255,0.1); }
+        .trade-prop-color {
+            width: 12px; height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .trade-prop-name { font-size: 13px; font-weight: 600; flex: 1; }
+        .trade-prop-check {
+            width: 20px; height: 20px;
+            border-radius: 6px;
+            border: 2px solid #555;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+        .trade-prop-check.on {
+            background: var(--money-gold);
+            border-color: var(--money-gold);
+            color: #000;
+        }
+        .trade-money-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-top: 8px;
+        }
+        .trade-money-input {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: inherit;
+            outline: none;
+            text-align: center;
+        }
+        .trade-money-label { font-size: 12px; color: #888; }
+        .trade-buttons {
+            display: flex; gap: 8px; margin-top: 16px;
+        }
+        .trade-buttons button {
+            flex: 1; padding: 13px; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            font-family: inherit;
+        }
+        .trade-btn-send { background: var(--money-gold); color: #1a1a2e; }
+        .trade-btn-cancel { background: rgba(255,255,255,0.1); color: #aaa; }
+        
+        /* Sell houses menu reuses build-popup styles */
+        
+        /* HUD action bar */
+        .hud-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        /* Players panel */
+        .players-strip {
+            position: absolute;
+            top: 50px;
+            left: 0; right: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 15px 10px 10px;
+        }
+        .player-chip {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 14px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1.5px solid transparent;
+            transition: border-color 0.3s;
+        }
+        .player-chip.active {
+            border-color: var(--accent);
+        }
+        .player-chip-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+        .player-chip-money {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--money-gold);
+        }
+        .player-chip-name {
+            font-size: 12px;
+            font-weight: 600;
+            max-width: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Players strip -->
+    <div class="players-strip" id="playersStrip"></div>
+    
+    <!-- Bottom HUD -->
+    <div class="hud hud-bottom" id="hudBottom">
+        <div class="hud-actions">
+            <button class="btn-secondary" id="btnBuild" onclick="showBuildMenu(currentPlayerIdx)" style="display:none">🏠 Строить</button>
+            <button class="btn-secondary" id="btnSell" onclick="showSellMenu(currentPlayerIdx)" style="display:none">📉 Продать</button>
+            <button class="btn-secondary" id="btnTrade" onclick="showTradeSelect()" style="display:none">🤝 Обмен</button>
+        </div>
+        <button class="btn-roll" id="btnRoll" onclick="rollDice()">🎲 Бросить кубики</button>
+    </div>
+    
+    <!-- Dice result -->
+    <div class="dice-result" id="diceResult"></div>
+    
+    <!-- Toast messages -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- Property popup -->
+    <div class="property-popup" id="propertyPopup">
+        <div class="property-card" id="propertyCard"></div>
+    </div>
+    
+    <!-- Chance / Chest card popup -->
+    <div class="card-popup" id="cardPopup">
+        <div id="cardPopupInner"></div>
+    </div>
+    
+    <!-- Build menu -->
+    <div class="build-popup" id="buildPopup">
+        <div class="build-menu" id="buildMenu"></div>
+    </div>
+    
+    <!-- Sell houses menu -->
+    <div class="build-popup" id="sellPopup">
+        <div class="build-menu" id="sellMenu"></div>
+    </div>
+    
+    <!-- Trade popup -->
+    <div class="trade-popup" id="tradePopup">
+        <div class="trade-panel" id="tradePanel"></div>
+    </div>
+    
+    <!-- Auction popup -->
+    <div class="auction-popup" id="auctionPopup">
+        <div class="auction-card" id="auctionCard"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    // =============================================
+    // MONOPOLY GAME DATA
+    // =============================================
+    
+    const BOARD_FIELDS = [
+        // Bottom row (right to left from GO)
+        { id: 0,  name: 'GO', type: 'go', label: 'СТАРТ' },
+        { id: 1,  name: 'Mediterranean Ave', type: 'property', color: '#8B4513', price: 60, rent: [2,10,30,90,160,250], group: 'brown' },
+        { id: 2,  name: 'Community Chest', type: 'chest', label: 'КАЗНА' },
+        { id: 3,  name: 'Baltic Ave', type: 'property', color: '#8B4513', price: 60, rent: [4,20,60,180,320,450], group: 'brown' },
+        { id: 4,  name: 'Income Tax', type: 'tax', label: 'НАЛОГ', amount: 200 },
+        { id: 5,  name: 'Reading Railroad', type: 'railroad', price: 200, label: 'Ж/Д' },
+        { id: 6,  name: 'Oriental Ave', type: 'property', color: '#87CEEB', price: 100, rent: [6,30,90,270,400,550], group: 'lightblue' },
+        { id: 7,  name: 'Chance', type: 'chance', label: 'ШАНС' },
+        { id: 8,  name: 'Vermont Ave', type: 'property', color: '#87CEEB', price: 100, rent: [6,30,90,270,400,550], group: 'lightblue' },
+        { id: 9,  name: 'Connecticut Ave', type: 'property', color: '#87CEEB', price: 120, rent: [8,40,100,300,450,600], group: 'lightblue' },
+        // Left column (bottom to top)
+        { id: 10, name: 'Jail', type: 'jail', label: 'ТЮРЬМА' },
+        { id: 11, name: 'St. Charles Place', type: 'property', color: '#FF69B4', price: 140, rent: [10,50,150,450,625,750], group: 'pink' },
+        { id: 12, name: 'Electric Company', type: 'utility', price: 150, label: '⚡' },
+        { id: 13, name: 'States Ave', type: 'property', color: '#FF69B4', price: 140, rent: [10,50,150,450,625,750], group: 'pink' },
+        { id: 14, name: 'Virginia Ave', type: 'property', color: '#FF69B4', price: 160, rent: [12,60,180,500,700,900], group: 'pink' },
+        { id: 15, name: 'Pennsylvania RR', type: 'railroad', price: 200, label: 'Ж/Д' },
+        { id: 16, name: 'St. James Place', type: 'property', color: '#FFA500', price: 180, rent: [14,70,200,550,750,950], group: 'orange' },
+        { id: 17, name: 'Community Chest', type: 'chest', label: 'КАЗНА' },
+        { id: 18, name: 'Tennessee Ave', type: 'property', color: '#FFA500', price: 180, rent: [14,70,200,550,750,950], group: 'orange' },
+        { id: 19, name: 'New York Ave', type: 'property', color: '#FFA500', price: 200, rent: [16,80,220,600,800,1000], group: 'orange' },
+        // Top row (left to right)
+        { id: 20, name: 'Free Parking', type: 'free', label: 'СТОЯНКА' },
+        { id: 21, name: 'Kentucky Ave', type: 'property', color: '#FF0000', price: 220, rent: [18,90,250,700,875,1050], group: 'red' },
+        { id: 22, name: 'Chance', type: 'chance', label: 'ШАНС' },
+        { id: 23, name: 'Indiana Ave', type: 'property', color: '#FF0000', price: 220, rent: [18,90,250,700,875,1050], group: 'red' },
+        { id: 24, name: 'Illinois Ave', type: 'property', color: '#FF0000', price: 240, rent: [20,100,300,750,925,1100], group: 'red' },
+        { id: 25, name: 'B&O Railroad', type: 'railroad', price: 200, label: 'Ж/Д' },
+        { id: 26, name: 'Atlantic Ave', type: 'property', color: '#FFD700', price: 260, rent: [22,110,330,800,975,1150], group: 'yellow' },
+        { id: 27, name: 'Ventnor Ave', type: 'property', color: '#FFD700', price: 260, rent: [22,110,330,800,975,1150], group: 'yellow' },
+        { id: 28, name: 'Water Works', type: 'utility', price: 150, label: '💧' },
+        { id: 29, name: 'Marvin Gardens', type: 'property', color: '#FFD700', price: 280, rent: [24,120,360,850,1025,1200], group: 'yellow' },
+        // Right column (top to bottom)
+        { id: 30, name: 'Go To Jail', type: 'gotojail', label: 'В ТЮРЬМУ' },
+        { id: 31, name: 'Pacific Ave', type: 'property', color: '#228B22', price: 300, rent: [26,130,390,900,1100,1275], group: 'green' },
+        { id: 32, name: 'North Carolina Ave', type: 'property', color: '#228B22', price: 300, rent: [26,130,390,900,1100,1275], group: 'green' },
+        { id: 33, name: 'Community Chest', type: 'chest', label: 'КАЗНА' },
+        { id: 34, name: 'Pennsylvania Ave', type: 'property', color: '#228B22', price: 320, rent: [28,150,450,1000,1200,1400], group: 'green' },
+        { id: 35, name: 'Short Line RR', type: 'railroad', price: 200, label: 'Ж/Д' },
+        { id: 36, name: 'Chance', type: 'chance', label: 'ШАНС' },
+        { id: 37, name: 'Park Place', type: 'property', color: '#0000CD', price: 350, rent: [35,175,500,1100,1300,1500], group: 'darkblue' },
+        { id: 38, name: 'Luxury Tax', type: 'tax', label: 'НАЛОГ', amount: 100 },
+        { id: 39, name: 'Boardwalk', type: 'property', color: '#0000CD', price: 400, rent: [50,200,600,1400,1700,2000], group: 'darkblue' },
+    ];
+    
+    const PLAYER_COLORS = ['#e63946', '#457b9d', '#2a9d8f', '#e9c46a'];
+    const PLAYER_NAMES = ['Вы', 'Бот Алиса', 'Бот Борис', 'Бот Вика'];
+    const HOUSE_COST = { brown:50, lightblue:50, pink:100, orange:100, red:150, yellow:150, green:200, darkblue:200 };
+    
+    // =============================================
+    // CHANCE & COMMUNITY CHEST CARDS
+    // =============================================
+    const CHANCE_CARDS = [
+        { text: 'Отправляйтесь на СТАРТ. Получите $200.', action: (p) => { moveToField(p, 0, true); } },
+        { text: 'Отправляйтесь на Illinois Ave.', action: (p) => { moveToField(p, 24, true); } },
+        { text: 'Отправляйтесь на St. Charles Place.', action: (p) => { moveToField(p, 11, true); } },
+        { text: 'Банк платит вам дивиденды $50.', action: (p) => { p.money += 50; updatePlayersUI(); } },
+        { text: 'Отправляйтесь в тюрьму. Не проходите СТАРТ.', action: (p) => { goToJail(p); } },
+        { text: 'Сделайте ремонт: $25 за дом, $100 за отель.', action: (p) => { chargeRepairs(p, 25, 100); } },
+        { text: 'Штраф за превышение скорости: $15.', action: (p) => { p.money -= 15; updatePlayersUI(); } },
+        { text: 'Вас избрали председателем. Заплатите каждому $50.', action: (p) => { payEachPlayer(p, 50); } },
+        { text: 'Ваш кредит созрел. Получите $150.', action: (p) => { p.money += 150; updatePlayersUI(); } },
+        { text: 'Отправляйтесь на Boardwalk.', action: (p) => { moveToField(p, 39, true); } },
+        { text: 'Вернитесь на 3 клетки назад.', action: (p) => { moveToField(p, (p.position - 3 + 40) % 40, false); } },
+        { text: 'Отправляйтесь на ближайшую железную дорогу. Заплатите владельцу двойную ренту.', action: (p) => { moveToNearestRR(p); } },
+    ];
+    
+    const CHEST_CARDS = [
+        { text: 'Ошибка банка в вашу пользу. Получите $200.', action: (p) => { p.money += 200; updatePlayersUI(); } },
+        { text: 'Оплата услуг доктора: $50.', action: (p) => { p.money -= 50; updatePlayersUI(); } },
+        { text: 'Продажа акций: получите $50.', action: (p) => { p.money += 50; updatePlayersUI(); } },
+        { text: 'Отправляйтесь в тюрьму. Не проходите СТАРТ.', action: (p) => { goToJail(p); } },
+        { text: 'Оплата страховки: $50.', action: (p) => { p.money -= 50; updatePlayersUI(); } },
+        { text: 'Подоходный налог: получите $20.', action: (p) => { p.money += 20; updatePlayersUI(); } },
+        { text: 'Наследство: получите $100.', action: (p) => { p.money += 100; updatePlayersUI(); } },
+        { text: 'Оплата больничных: $100.', action: (p) => { p.money -= 100; updatePlayersUI(); } },
+        { text: 'Второе место на конкурсе красоты. Получите $10.', action: (p) => { p.money += 10; updatePlayersUI(); } },
+        { text: 'Отправляйтесь на СТАРТ. Получите $200.', action: (p) => { moveToField(p, 0, true); } },
+        { text: 'День рождения! Получите $10 от каждого.', action: (p) => { collectFromAll(p, 10); } },
+        { text: 'Ремонт улиц: $40 за дом, $115 за отель.', action: (p) => { chargeRepairs(p, 40, 115); } },
+    ];
+    
+    let chanceIdx = 0, chestIdx = 0;
+    // Shuffle on init
+    function shuffleArray(arr) { for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} }
+    shuffleArray(CHANCE_CARDS);
+    shuffleArray(CHEST_CARDS);
+    
+    // Card action helpers
+    function moveToField(player, targetField, collectGo) {
+        const idx = players.indexOf(player);
+        if (collectGo && targetField < player.position) {
+            player.money += 200;
+            showToast('+$200 за прохождение СТАРТ');
+        }
+        player.position = targetField;
+        const pos = getFieldPosition3D(targetField);
+        const offsets = [[-0.2,-0.2],[0.2,-0.2],[-0.2,0.2],[0.2,0.2]];
+        const token = tokenMeshes[idx];
+        const sx = token.position.x, sz = token.position.z;
+        animations.push({
+            start: performance.now(), duration: 600, easing: easeOutCubic,
+            update: (t) => {
+                token.position.x = sx + (pos.x + offsets[idx][0] - sx) * t;
+                token.position.z = sz + (pos.z + offsets[idx][1] - sz) * t;
+                token.position.y = Math.sin(t * Math.PI) * 0.5 + 0.01;
+            }
+        });
+        updatePlayersUI();
+        setTimeout(() => onLand(idx), 700);
+    }
+    
+    function goToJail(player) {
+        const idx = players.indexOf(player);
+        player.position = 10;
+        player.inJail = true;
+        const pos = getFieldPosition3D(10);
+        const offsets = [[-0.2,-0.2],[0.2,-0.2],[-0.2,0.2],[0.2,0.2]];
+        tokenMeshes[idx].position.set(pos.x + offsets[idx][0], 0.01, pos.z + offsets[idx][1]);
+        showToast('В тюрьму!');
+        updatePlayersUI();
+    }
+    
+    function chargeRepairs(player, perHouse, perHotel) {
+        let total = 0;
+        player.properties.forEach(fi => {
+            const f = BOARD_FIELDS[fi];
+            if (f.houses === 5) total += perHotel;
+            else if (f.houses > 0) total += f.houses * perHouse;
+        });
+        player.money -= total;
+        if (total > 0) showToast(`Ремонт: -$${total}`);
+        updatePlayersUI();
+    }
+    
+    function payEachPlayer(player, amount) {
+        players.forEach(p => { if (p !== player) { player.money -= amount; p.money += amount; } });
+        showToast(`Заплатили $${amount} каждому`);
+        updatePlayersUI();
+    }
+    
+    function collectFromAll(player, amount) {
+        players.forEach(p => { if (p !== player) { p.money -= amount; player.money += amount; } });
+        showToast(`Получили $${amount} от каждого`);
+        updatePlayersUI();
+    }
+    
+    function moveToNearestRR(player) {
+        const rrs = [5, 15, 25, 35];
+        let nearest = rrs[0];
+        for (const rr of rrs) { if (rr > player.position) { nearest = rr; break; } }
+        moveToField(player, nearest, true);
+    }
+    
+    function drawCard(type) {
+        if (type === 'chance') {
+            const card = CHANCE_CARDS[chanceIdx % CHANCE_CARDS.length];
+            chanceIdx++;
+            return card;
+        } else {
+            const card = CHEST_CARDS[chestIdx % CHEST_CARDS.length];
+            chestIdx++;
+            return card;
+        }
+    }
+    
+    function showCardPopup(type, card, playerIdx) {
+        playSound('card');
+        const inner = document.getElementById('cardPopupInner');
+        const isChance = type === 'chance';
+        inner.innerHTML = `
+            <div class="${isChance ? 'chance-card' : 'chest-card'}">
+                <div class="card-popup-icon">${isChance ? '❓' : '💰'}</div>
+                <div class="card-popup-title">${isChance ? 'ШАНС' : 'ОБЩЕСТВЕННАЯ КАЗНА'}</div>
+                <div class="card-popup-text">${card.text}</div>
+                <button class="card-popup-btn" onclick="executeCard(${playerIdx}, '${type}', ${isChance ? chanceIdx-1 : chestIdx-1})">Принять</button>
+            </div>
+        `;
+        document.getElementById('cardPopup').classList.add('visible');
+    }
+    
+    function hideCardPopup() {
+        document.getElementById('cardPopup').classList.remove('visible');
+    }
+    
+    let pendingCard = null;
+    function executeCard(playerIdx, type, cardIdx) {
+        hideCardPopup();
+        const cards = type === 'chance' ? CHANCE_CARDS : CHEST_CARDS;
+        const card = cards[cardIdx % cards.length];
+        card.action(players[playerIdx]);
+        // If card moved player, onLand will handle endTurn
+        // Otherwise end turn after delay
+        if (!['Отправляйтесь', 'Вернитесь'].some(w => card.text.startsWith(w))) {
+            setTimeout(() => endTurn(), 1000);
+        }
+    }
+    
+    // =============================================
+    // HOUSE & HOTEL SYSTEM
+    // =============================================
+    let houseMeshes = {}; // fieldId -> [mesh, mesh, ...]
+    
+    function createHouseMesh(fieldIdx, houseNum) {
+        const field = BOARD_FIELDS[fieldIdx];
+        const pos = getFieldPosition3D(fieldIdx);
+        const isHotel = houseNum === 5;
+        
+        const color = isHotel ? 0xcc0000 : 0x00aa00;
+        const h = isHotel ? 0.3 : 0.2;
+        const w = isHotel ? 0.35 : 0.15;
+        
+        const group = new THREE.Group();
+        
+        // House body
+        const bodyGeo = new THREE.BoxGeometry(w, h, w);
+        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.1 });
+        const body = new THREE.Mesh(bodyGeo, mat);
+        body.position.y = h / 2;
+        body.castShadow = true;
+        group.add(body);
+        
+        // Roof (pyramid)
+        const roofGeo = new THREE.ConeGeometry(w * 0.75, h * 0.6, 4);
+        const roofMat = new THREE.MeshStandardMaterial({ color: isHotel ? 0x990000 : 0x008800, roughness: 0.5 });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.y = h + h * 0.25;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+        
+        // Position on field
+        let ox = 0, oz = 0;
+        const spread = 0.22;
+        if (!isHotel) {
+            const positions = [[-spread*1.5,0],[-spread*0.5,0],[spread*0.5,0],[spread*1.5,0]];
+            const [dx, dz] = positions[houseNum - 1] || [0, 0];
+            if (fieldIdx < 10) { ox = dx; oz = -0.35; }
+            else if (fieldIdx < 20) { ox = 0.35; oz = dx; }
+            else if (fieldIdx < 30) { ox = dx; oz = 0.35; }
+            else { ox = -0.35; oz = dx; }
+        } else {
+            if (fieldIdx < 10) oz = -0.35;
+            else if (fieldIdx < 20) ox = 0.35;
+            else if (fieldIdx < 30) oz = 0.35;
+            else ox = -0.35;
+        }
+        
+        group.position.set(pos.x + ox, 0.01, pos.z + oz);
+        
+        // Pop-in animation
+        group.scale.set(0, 0, 0);
+        animations.push({
+            start: performance.now(), duration: 400, easing: easeOutCubic,
+            update: (t) => { group.scale.set(t, t, t); }
+        });
+        
+        scene.add(group);
+        return group;
+    }
+    
+    function buildHouse(playerIdx, fieldIdx) {
+        const player = players[playerIdx];
+        const field = BOARD_FIELDS[fieldIdx];
+        if (!field.group || field.owner !== playerIdx) return;
+        if (!field.houses) field.houses = 0;
+        if (field.houses >= 5) return;
+        
+        const cost = HOUSE_COST[field.group];
+        if (player.money < cost) return;
+        
+        // Check owns full group
+        const groupFields = BOARD_FIELDS.filter(f => f.group === field.group);
+        if (!groupFields.every(f => f.owner === playerIdx)) return;
+        
+        // Even building rule: can't build if any in group has fewer houses
+        const minHouses = Math.min(...groupFields.map(f => f.houses || 0));
+        if ((field.houses || 0) > minHouses) return;
+        
+        player.money -= cost;
+        field.houses = (field.houses || 0) + 1;
+        
+        // Remove old meshes if upgrading to hotel
+        if (field.houses === 5) {
+            (houseMeshes[fieldIdx] || []).forEach(m => scene.remove(m));
+            houseMeshes[fieldIdx] = [createHouseMesh(fieldIdx, 5)];
+        } else {
+            if (!houseMeshes[fieldIdx]) houseMeshes[fieldIdx] = [];
+            houseMeshes[fieldIdx].push(createHouseMesh(fieldIdx, field.houses));
+        }
+        
+        showToast(`${field.houses === 5 ? 'Отель' : 'Дом'} на ${field.name} — $${cost}`);
+        updatePlayersUI();
+    }
+    
+    function showBuildMenu(playerIdx) {
+        const player = players[playerIdx];
+        const buildable = player.properties.filter(fi => {
+            const f = BOARD_FIELDS[fi];
+            if (!f.group || (f.houses || 0) >= 5) return false;
+            const group = BOARD_FIELDS.filter(gf => gf.group === f.group);
+            if (!group.every(gf => gf.owner === playerIdx)) return false;
+            const cost = HOUSE_COST[f.group];
+            if (player.money < cost) return false;
+            const minH = Math.min(...group.map(gf => gf.houses || 0));
+            if ((f.houses || 0) > minH) return false;
+            return true;
+        });
+        
+        if (buildable.length === 0) {
+            showToast('Нечего строить');
+            return;
+        }
+        
+        const menu = document.getElementById('buildMenu');
+        menu.innerHTML = `<div class="build-menu-title">🏠 Строительство</div>` +
+            buildable.map(fi => {
+                const f = BOARD_FIELDS[fi];
+                const h = f.houses || 0;
+                const cost = HOUSE_COST[f.group];
+                const label = h === 4 ? '→ Отель' : `${h}/4 домов`;
+                return `<div class="build-item" onclick="buildHouse(${playerIdx},${fi}); showBuildMenu(${playerIdx});">
+                    <div><div class="build-item-name">${f.name}</div><div class="build-item-houses">${label}</div></div>
+                    <div class="build-item-cost">$${cost}</div>
+                </div>`;
+            }).join('') +
+            `<div class="build-item" onclick="hideBuildMenu()" style="justify-content:center;color:#aaa;">Закрыть</div>`;
+        
+        document.getElementById('buildPopup').classList.add('visible');
+    }
+    
+    function hideBuildMenu() {
+        document.getElementById('buildPopup').classList.remove('visible');
+    }
+    
+    // =============================================
+    // SELL HOUSES
+    // =============================================
+    function showSellMenu(playerIdx) {
+        const player = players[playerIdx];
+        const sellable = player.properties.filter(fi => {
+            const f = BOARD_FIELDS[fi];
+            if (!f.houses || f.houses <= 0) return false;
+            // Even selling: can't sell if others in group have fewer
+            const group = BOARD_FIELDS.filter(gf => gf.group === f.group);
+            const maxH = Math.max(...group.map(gf => gf.houses || 0));
+            return (f.houses || 0) >= maxH;
+        });
+        
+        if (sellable.length === 0) { showToast('Нечего продавать'); return; }
+        
+        const menu = document.getElementById('sellMenu');
+        menu.innerHTML = `<div class="build-menu-title">📉 Продать дома</div>` +
+            sellable.map(fi => {
+                const f = BOARD_FIELDS[fi];
+                const h = f.houses || 0;
+                const refund = Math.floor(HOUSE_COST[f.group] / 2);
+                const label = h === 5 ? 'Отель' : `${h} дом(ов)`;
+                return `<div class="build-item" onclick="sellHouse(${playerIdx},${fi}); showSellMenu(${playerIdx});">
+                    <div><div class="build-item-name">${f.name}</div><div class="build-item-houses">${label}</div></div>
+                    <div class="build-item-cost" style="color:#4ade80">+$${refund}</div>
+                </div>`;
+            }).join('') +
+            `<div class="build-item" onclick="hideSellMenu()" style="justify-content:center;color:#aaa;">Закрыть</div>`;
+        
+        document.getElementById('sellPopup').classList.add('visible');
+    }
+    
+    function hideSellMenu() {
+        document.getElementById('sellPopup').classList.remove('visible');
+    }
+    
+    function sellHouse(playerIdx, fieldIdx) {
+        const player = players[playerIdx];
+        const field = BOARD_FIELDS[fieldIdx];
+        if (!field.houses || field.houses <= 0) return;
+        
+        const refund = Math.floor(HOUSE_COST[field.group] / 2);
+        
+        if (field.houses === 5) {
+            // Downgrade hotel to 4 houses
+            field.houses = 4;
+            (houseMeshes[fieldIdx] || []).forEach(m => scene.remove(m));
+            houseMeshes[fieldIdx] = [];
+            for (let i = 1; i <= 4; i++) houseMeshes[fieldIdx].push(createHouseMesh(fieldIdx, i));
+        } else {
+            field.houses--;
+            const meshes = houseMeshes[fieldIdx] || [];
+            if (meshes.length > 0) { scene.remove(meshes.pop()); }
+        }
+        
+        player.money += refund;
+        showToast(`Продан дом: ${field.name} +$${refund}`);
+        updatePlayersUI();
+    }
+    
+    // =============================================
+    // TRADE SYSTEM
+    // =============================================
+    let tradeState = null;
+    
+    function showTradeSelect() {
+        // Choose which bot to trade with
+        const bots = players.filter((p, i) => i !== currentPlayerIdx && !p.bankrupt && p.properties.length > 0);
+        if (bots.length === 0) { showToast('Не с кем торговать'); return; }
+        
+        const panel = document.getElementById('tradePanel');
+        panel.innerHTML = `
+            <div class="trade-title">🤝 Выберите игрока</div>
+            ${bots.map(b => `
+                <div class="build-item" onclick="openTrade(${currentPlayerIdx}, ${b.id})">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div class="player-chip-dot" style="background:${b.color}"></div>
+                        <div class="build-item-name">${b.name}</div>
+                    </div>
+                    <div class="build-item-houses">${b.properties.length} полей · $${b.money}</div>
+                </div>
+            `).join('')}
+            <div class="build-item" onclick="hideTradePopup()" style="justify-content:center;color:#aaa;">Отмена</div>
+        `;
+        document.getElementById('tradePopup').classList.add('visible');
+    }
+    
+    function openTrade(fromIdx, toIdx) {
+        tradeState = {
+            from: fromIdx, to: toIdx,
+            offerProps: [], wantProps: [],
+            offerMoney: 0, wantMoney: 0
+        };
+        renderTrade();
+    }
+    
+    function renderTrade() {
+        const from = players[tradeState.from];
+        const to = players[tradeState.to];
+        const panel = document.getElementById('tradePanel');
+        
+        const renderProps = (player, selected, toggleFn) => {
+            return player.properties
+                .filter(fi => !(BOARD_FIELDS[fi].houses > 0)) // Can't trade with houses
+                .map(fi => {
+                    const f = BOARD_FIELDS[fi];
+                    const checked = selected.includes(fi);
+                    return `<div class="trade-prop" onclick="${toggleFn}(${fi})">
+                        <div class="trade-prop-color" style="background:${f.color || '#888'}"></div>
+                        <div class="trade-prop-name">${f.name}</div>
+                        <div class="trade-prop-check ${checked ? 'on' : ''}">${checked ? '✓' : ''}</div>
+                    </div>`;
+                }).join('') || '<div style="color:#555;font-size:12px;padding:6px;">Нет доступных полей</div>';
+        };
+        
+        panel.innerHTML = `
+            <div class="trade-title">🤝 Обмен с ${to.name}</div>
+            <div class="trade-section">
+                <div class="trade-section-label">Вы отдаёте</div>
+                ${renderProps(from, tradeState.offerProps, 'toggleOffer')}
+                <div class="trade-money-row">
+                    <div class="trade-money-label">+$</div>
+                    <input class="trade-money-input" type="number" value="${tradeState.offerMoney}" min="0" max="${from.money}" onchange="tradeState.offerMoney=Math.max(0,Math.min(${from.money},parseInt(this.value)||0))" placeholder="0">
+                </div>
+            </div>
+            <div class="trade-section">
+                <div class="trade-section-label">Вы получаете</div>
+                ${renderProps(to, tradeState.wantProps, 'toggleWant')}
+                <div class="trade-money-row">
+                    <div class="trade-money-label">+$</div>
+                    <input class="trade-money-input" type="number" value="${tradeState.wantMoney}" min="0" max="${to.money}" onchange="tradeState.wantMoney=Math.max(0,Math.min(${to.money},parseInt(this.value)||0))" placeholder="0">
+                </div>
+            </div>
+            <div class="trade-buttons">
+                <button class="trade-btn-send" onclick="sendTrade()">Предложить</button>
+                <button class="trade-btn-cancel" onclick="hideTradePopup()">Отмена</button>
+            </div>
+        `;
+    }
+    
+    function toggleOffer(fi) {
+        const idx = tradeState.offerProps.indexOf(fi);
+        if (idx >= 0) tradeState.offerProps.splice(idx, 1);
+        else tradeState.offerProps.push(fi);
+        renderTrade();
+    }
+    function toggleWant(fi) {
+        const idx = tradeState.wantProps.indexOf(fi);
+        if (idx >= 0) tradeState.wantProps.splice(idx, 1);
+        else tradeState.wantProps.push(fi);
+        renderTrade();
+    }
+    
+    function sendTrade() {
+        const from = players[tradeState.from];
+        const to = players[tradeState.to];
+        
+        if (tradeState.offerProps.length === 0 && tradeState.wantProps.length === 0 && 
+            tradeState.offerMoney === 0 && tradeState.wantMoney === 0) {
+            showToast('Пустое предложение!');
+            return;
+        }
+        
+        // Bot decision logic
+        let offerValue = tradeState.offerMoney;
+        tradeState.offerProps.forEach(fi => { offerValue += BOARD_FIELDS[fi].price * 1.1; });
+        
+        let wantValue = tradeState.wantMoney;
+        tradeState.wantProps.forEach(fi => { wantValue += BOARD_FIELDS[fi].price * 1.1; });
+        
+        // Bot accepts if offer value >= want value (with some randomness)
+        const ratio = offerValue / Math.max(wantValue, 1);
+        const accepts = ratio >= 0.85 + Math.random() * 0.3;
+        
+        if (accepts) {
+            // Execute trade
+            tradeState.offerProps.forEach(fi => {
+                BOARD_FIELDS[fi].owner = tradeState.to;
+                from.properties = from.properties.filter(i => i !== fi);
+                to.properties.push(fi);
+            });
+            tradeState.wantProps.forEach(fi => {
+                BOARD_FIELDS[fi].owner = tradeState.from;
+                to.properties = to.properties.filter(i => i !== fi);
+                from.properties.push(fi);
+            });
+            from.money -= tradeState.offerMoney;
+            from.money += tradeState.wantMoney;
+            to.money += tradeState.offerMoney;
+            to.money -= tradeState.wantMoney;
+            
+            showToast(`✅ ${to.name} принял сделку!`);
+            updateOwnerMarkers();
+        } else {
+            showToast(`❌ ${to.name} отклонил сделку`);
+        }
+        
+        updatePlayersUI();
+        hideTradePopup();
+        tradeState = null;
+    }
+    
+    function hideTradePopup() {
+        document.getElementById('tradePopup').classList.remove('visible');
+    }
+    
+    // =============================================
+    // AUCTION SYSTEM
+    // =============================================
+    let auction = null; // { fieldIdx, currentBid, highBidder, activePlayers[], turnIdx }
+    
+    function startAuction(fieldIdx) {
+        const field = BOARD_FIELDS[fieldIdx];
+        auction = {
+            fieldIdx,
+            currentBid: Math.max(10, Math.floor(field.price * 0.5)),
+            highBidder: -1,
+            activePlayers: players.map((_, i) => i),
+            turnIdx: 0
+        };
+        showToast(`Аукцион: ${field.name}!`);
+        processAuctionTurn();
+    }
+    
+    function processAuctionTurn() {
+        if (!auction || auction.activePlayers.length <= 1) {
+            finishAuction();
+            return;
+        }
+        
+        const pidx = auction.activePlayers[auction.turnIdx % auction.activePlayers.length];
+        const player = players[pidx];
+        
+        if (player.isBot) {
+            // Bot bidding logic
+            const field = BOARD_FIELDS[auction.fieldIdx];
+            const maxBid = Math.min(player.money - 100, field.price * 1.2);
+            if (auction.currentBid < maxBid && Math.random() > 0.3) {
+                const raise = Math.ceil(auction.currentBid * 0.1 / 10) * 10;
+                auction.currentBid += Math.max(10, raise);
+                auction.highBidder = pidx;
+                showToast(`${player.name} ставит $${auction.currentBid}`);
+            } else {
+                auction.activePlayers = auction.activePlayers.filter(i => i !== pidx);
+                showToast(`${player.name} пас`);
+            }
+            auction.turnIdx++;
+            setTimeout(() => processAuctionTurn(), 800);
+        } else {
+            // Show auction UI for human
+            showAuctionUI();
+        }
+    }
+    
+    function showAuctionUI() {
+        const field = BOARD_FIELDS[auction.fieldIdx];
+        const bidder = auction.highBidder >= 0 ? players[auction.highBidder].name : 'Нет ставок';
+        const minBid = auction.currentBid + 10;
+        const card = document.getElementById('auctionCard');
+        card.innerHTML = `
+            <div class="auction-title">⚡ АУКЦИОН ⚡</div>
+            <div class="auction-field-name">${field.name}</div>
+            <div class="auction-current-bid">$${auction.currentBid}</div>
+            <div class="auction-bidder">${bidder}</div>
+            <div class="auction-buttons">
+                <button class="btn-bid" onclick="humanBid()">Ставка $${minBid}</button>
+                <button class="btn-fold" onclick="humanFold()">Пас</button>
+            </div>
+        `;
+        document.getElementById('auctionPopup').classList.add('visible');
+    }
+    
+    function hideAuctionUI() {
+        document.getElementById('auctionPopup').classList.remove('visible');
+    }
+    
+    function humanBid() {
+        const pidx = auction.activePlayers[auction.turnIdx % auction.activePlayers.length];
+        const minBid = auction.currentBid + 10;
+        if (players[pidx].money < minBid) {
+            showToast('Недостаточно денег!');
+            return;
+        }
+        auction.currentBid = minBid;
+        auction.highBidder = pidx;
+        auction.turnIdx++;
+        hideAuctionUI();
+        setTimeout(() => processAuctionTurn(), 500);
+    }
+    
+    function humanFold() {
+        const pidx = auction.activePlayers[auction.turnIdx % auction.activePlayers.length];
+        auction.activePlayers = auction.activePlayers.filter(i => i !== pidx);
+        auction.turnIdx++;
+        hideAuctionUI();
+        setTimeout(() => processAuctionTurn(), 500);
+    }
+    
+    function finishAuction() {
+        hideAuctionUI();
+        if (auction.highBidder >= 0) {
+            const winner = players[auction.highBidder];
+            const field = BOARD_FIELDS[auction.fieldIdx];
+            winner.money -= auction.currentBid;
+            field.owner = auction.highBidder;
+            winner.properties.push(auction.fieldIdx);
+            showToast(`${winner.name} выиграл аукцион: ${field.name} за $${auction.currentBid}`);
+            updateOwnerMarkers();
+        } else {
+            showToast('Никто не купил — поле остаётся в банке');
+        }
+        auction = null;
+        updatePlayersUI();
+        setTimeout(() => endTurn(), 1000);
+    }
+    
+    // =============================================
+    // GAME STATE
+    // =============================================
+    let players = [];
+    let currentPlayerIdx = 0;
+    let isRolling = false;
+    let gamePhase = 'roll';
+    let doublesCount = 0;
+    let lastDiceTotal = 0;
+    let lastWasDouble = false;
+    
+    function initPlayers(count) {
+        players = [];
+        for (let i = 0; i < count; i++) {
+            players.push({
+                id: i,
+                name: PLAYER_NAMES[i],
+                color: PLAYER_COLORS[i],
+                money: 1500,
+                position: 0,
+                properties: [],
+                inJail: false,
+                jailTurns: 0,
+                isBot: i > 0
+            });
+        }
+    }
+    
+    // =============================================
+    // THREE.JS SCENE
+    // =============================================
+    const canvas = document.getElementById('gameCanvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f0f20);
+    scene.fog = new THREE.Fog(0x0f0f20, 20, 40);
+    
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 22, 8);
+    camera.lookAt(0, 0, 0);
+    
+    // Target camera for smooth transitions
+    const defaultCam = { x: 0, y: 22, z: 8, lookX: 0, lookY: 0, lookZ: 0 };
+    let cameraTarget = { ...defaultCam };
+    let cameraLookAt = new THREE.Vector3(0, 0, 0);
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+    
+    const mainLight = new THREE.DirectionalLight(0xfff5e6, 0.8);
+    mainLight.position.set(8, 15, 8);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 1024;
+    mainLight.shadow.mapSize.height = 1024;
+    mainLight.shadow.camera.near = 1;
+    mainLight.shadow.camera.far = 40;
+    mainLight.shadow.camera.left = -12;
+    mainLight.shadow.camera.right = 12;
+    mainLight.shadow.camera.top = 12;
+    mainLight.shadow.camera.bottom = -12;
+    scene.add(mainLight);
+    
+    const fillLight = new THREE.DirectionalLight(0x8ecae6, 0.3);
+    fillLight.position.set(-5, 8, -5);
+    scene.add(fillLight);
+    
+    // =============================================
+    // BOARD GEOMETRY
+    // =============================================
+    const BOARD_SIZE = 11; // 11 fields per side
+    const FIELD_SIZE = 1.2;
+    const CORNER_SIZE = 1.6;
+    const BOARD_TOTAL = (CORNER_SIZE * 2) + (FIELD_SIZE * 9);
+    const HALF = BOARD_TOTAL / 2;
+    
+    function createBoard() {
+        // Table surface (dark wood)
+        const tableGeo = new THREE.PlaneGeometry(30, 30);
+        const tableMat = new THREE.MeshStandardMaterial({ color: 0x2a1f1a, roughness: 0.9, metalness: 0.05 });
+        const table = new THREE.Mesh(tableGeo, tableMat);
+        table.rotation.x = -Math.PI / 2;
+        table.position.y = -0.1;
+        table.receiveShadow = true;
+        scene.add(table);
+        
+        // Main board surface
+        const boardGeo = new THREE.BoxGeometry(BOARD_TOTAL + 0.4, 0.15, BOARD_TOTAL + 0.4);
+        const boardMat = new THREE.MeshStandardMaterial({ 
+            color: 0xc8dfc6, 
+            roughness: 0.7, 
+            metalness: 0.05 
+        });
+        const board = new THREE.Mesh(boardGeo, boardMat);
+        board.position.y = -0.075;
+        board.receiveShadow = true;
+        scene.add(board);
+        
+        // Board border/frame
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a5c2a, roughness: 0.5, metalness: 0.1 });
+        const frameThickness = 0.2;
+        const frameHeight = 0.25;
+        
+        // Four border pieces
+        [
+            [BOARD_TOTAL + 0.4, frameHeight, frameThickness, 0, frameHeight/2, HALF + 0.3],
+            [BOARD_TOTAL + 0.4, frameHeight, frameThickness, 0, frameHeight/2, -HALF - 0.3],
+            [frameThickness, frameHeight, BOARD_TOTAL + 0.4, HALF + 0.3, frameHeight/2, 0],
+            [frameThickness, frameHeight, BOARD_TOTAL + 0.4, -HALF - 0.3, frameHeight/2, 0],
+        ].forEach(([w,h,d,x,y,z]) => {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geo, frameMat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            scene.add(mesh);
+        });
+        
+        // Field tiles with labels
+        BOARD_FIELDS.forEach((field, idx) => {
+            const pos = getFieldPosition3D(idx);
+            const isCorner = [0, 10, 20, 30].includes(idx);
+            const w = idx >= 10 && idx < 20 || idx >= 30 ? (isCorner ? CORNER_SIZE : FIELD_SIZE) : (isCorner ? CORNER_SIZE : FIELD_SIZE);
+            const d = idx < 10 || (idx >= 20 && idx < 30) ? (isCorner ? CORNER_SIZE : FIELD_SIZE) : (isCorner ? CORNER_SIZE : FIELD_SIZE);
+            
+            let fieldColor = 0xf5f5dc;
+            if (field.type === 'go') fieldColor = 0xffe4c4;
+            else if (field.type === 'jail') fieldColor = 0xdcdcdc;
+            else if (field.type === 'free') fieldColor = 0xffe4b5;
+            else if (field.type === 'gotojail') fieldColor = 0xf0c0c0;
+            else if (field.type === 'chance') fieldColor = 0xfff0e0;
+            else if (field.type === 'chest') fieldColor = 0xe8f0ff;
+            
+            // Create canvas label for this field
+            const canvas = document.createElement('canvas');
+            const cw = 128, ch = 128;
+            canvas.width = cw; canvas.height = ch;
+            const ctx = canvas.getContext('2d');
+            
+            // Fill background
+            const hex = '#' + fieldColor.toString(16).padStart(6, '0');
+            ctx.fillStyle = hex;
+            ctx.fillRect(0, 0, cw, ch);
+            
+            // Draw color strip for properties
+            if (field.type === 'property' && field.color) {
+                ctx.fillStyle = field.color;
+                ctx.fillRect(0, 0, cw, 28);
+            }
+            
+            // Draw text
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'center';
+            
+            if (field.price) {
+                ctx.font = 'bold 13px sans-serif';
+                const name = field.name.length > 14 ? field.name.substring(0, 13) + '…' : field.name;
+                const textY = field.type === 'property' ? 58 : 48;
+                ctx.fillText(name, cw/2, textY);
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillStyle = '#1a5c2a';
+                ctx.fillText('$' + field.price, cw/2, textY + 22);
+            } else if (field.label) {
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(field.label, cw/2, ch/2 + 4);
+            }
+            
+            // Subtle border
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, cw-2, ch-2);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            
+            const geo = new THREE.BoxGeometry(w, 0.05, d);
+            const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });
+            const tile = new THREE.Mesh(geo, mat);
+            
+            // Rotate UV so text faces the correct direction per side
+            const uvAttr = geo.getAttribute('uv');
+            // Top face is indices 8-11 for BoxGeometry
+            if (idx < 10) { /* bottom row: text readable from bottom — default OK */ }
+            else if (idx >= 10 && idx < 20) {
+                // Left column: rotate 90° CW
+                [8,9,10,11].forEach(i => {
+                    const u = uvAttr.getX(i), v = uvAttr.getY(i);
+                    uvAttr.setXY(i, v, 1 - u);
+                });
+            } else if (idx >= 20 && idx < 30) {
+                // Top row: rotate 180°
+                [8,9,10,11].forEach(i => {
+                    const u = uvAttr.getX(i), v = uvAttr.getY(i);
+                    uvAttr.setXY(i, 1 - u, 1 - v);
+                });
+            } else {
+                // Right column: rotate 90° CCW
+                [8,9,10,11].forEach(i => {
+                    const u = uvAttr.getX(i), v = uvAttr.getY(i);
+                    uvAttr.setXY(i, 1 - v, u);
+                });
+            }
+            uvAttr.needsUpdate = true;
+            
+            tile.position.set(pos.x, 0.01, pos.z);
+            tile.receiveShadow = true;
+            scene.add(tile);
+        });
+        
+        // Center logo area
+        const centerGeo = new THREE.BoxGeometry(FIELD_SIZE * 5, 0.02, FIELD_SIZE * 5);
+        const centerMat = new THREE.MeshStandardMaterial({ color: 0xb8d4b0, roughness: 0.9 });
+        const center = new THREE.Mesh(centerGeo, centerMat);
+        center.position.y = 0.02;
+        scene.add(center);
+        
+        // Center text "MONOPOLY"
+        const logoCanvas = document.createElement('canvas');
+        logoCanvas.width = 256; logoCanvas.height = 256;
+        const logoCtx = logoCanvas.getContext('2d');
+        logoCtx.fillStyle = '#2d6a4f';
+        logoCtx.font = 'bold 36px serif';
+        logoCtx.textAlign = 'center';
+        logoCtx.textBaseline = 'middle';
+        logoCtx.fillText('MONOPOLY', 128, 128);
+        const logoTex = new THREE.CanvasTexture(logoCanvas);
+        const logoPlane = new THREE.PlaneGeometry(FIELD_SIZE * 4, FIELD_SIZE * 4);
+        const logoMesh = new THREE.Mesh(logoPlane, new THREE.MeshBasicMaterial({ map: logoTex, transparent: true }));
+        logoMesh.rotation.x = -Math.PI / 2;
+        logoMesh.position.y = 0.04;
+        scene.add(logoMesh);
+    }
+    
+    // Ownership ring markers
+    let ownerMarkers = {};
+    function updateOwnerMarkers() {
+        // Remove old markers
+        Object.values(ownerMarkers).forEach(m => scene.remove(m));
+        ownerMarkers = {};
+        
+        BOARD_FIELDS.forEach((field, idx) => {
+            if (field.owner === undefined) return;
+            const pos = getFieldPosition3D(idx);
+            const ringGeo = new THREE.RingGeometry(0.35, 0.42, 16);
+            const ringMat = new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(PLAYER_COLORS[field.owner]), 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.7
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(pos.x, 0.03, pos.z);
+            scene.add(ring);
+            ownerMarkers[idx] = ring;
+        });
+    }
+    
+    // Get 3D position for a field index
+    function getFieldPosition3D(idx) {
+        let x = 0, z = 0;
+        
+        if (idx === 0) { x = HALF - CORNER_SIZE/2; z = HALF - CORNER_SIZE/2; }
+        else if (idx < 10) {
+            x = HALF - CORNER_SIZE - (idx - 0.5) * FIELD_SIZE;
+            z = HALF - CORNER_SIZE/2;
+        }
+        else if (idx === 10) { x = -HALF + CORNER_SIZE/2; z = HALF - CORNER_SIZE/2; }
+        else if (idx < 20) {
+            x = -HALF + CORNER_SIZE/2;
+            z = HALF - CORNER_SIZE - (idx - 10.5) * FIELD_SIZE;
+        }
+        else if (idx === 20) { x = -HALF + CORNER_SIZE/2; z = -HALF + CORNER_SIZE/2; }
+        else if (idx < 30) {
+            x = -HALF + CORNER_SIZE + (idx - 20.5) * FIELD_SIZE;
+            z = -HALF + CORNER_SIZE/2;
+        }
+        else if (idx === 30) { x = HALF - CORNER_SIZE/2; z = -HALF + CORNER_SIZE/2; }
+        else {
+            x = HALF - CORNER_SIZE/2;
+            z = -HALF + CORNER_SIZE + (idx - 30.5) * FIELD_SIZE;
+        }
+        
+        return { x, z };
+    }
+    
+    // =============================================
+    // PLAYER TOKENS (3D pieces)
+    // =============================================
+    let tokenMeshes = [];
+    
+    function createTokens() {
+        tokenMeshes = [];
+        players.forEach((p, i) => {
+            // Simple token: cylinder + sphere top
+            const group = new THREE.Group();
+            
+            const bodyGeo = new THREE.CylinderGeometry(0.18, 0.22, 0.35, 16);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: new THREE.Color(p.color), 
+                roughness: 0.3,
+                metalness: 0.4
+            });
+            const body = new THREE.Mesh(bodyGeo, mat);
+            body.position.y = 0.175;
+            body.castShadow = true;
+            group.add(body);
+            
+            const headGeo = new THREE.SphereGeometry(0.15, 16, 12);
+            const head = new THREE.Mesh(headGeo, mat);
+            head.position.y = 0.45;
+            head.castShadow = true;
+            group.add(head);
+            
+            const pos = getFieldPosition3D(0);
+            // Offset tokens so they don't overlap on same field
+            const offsets = [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]];
+            group.position.set(pos.x + offsets[i][0], 0.01, pos.z + offsets[i][1]);
+            
+            scene.add(group);
+            tokenMeshes.push(group);
+        });
+    }
+    
+    // =============================================
+    // DICE (3D)
+    // =============================================
+    let diceMeshes = [];
+    
+    function createDice() {
+        for (let d = 0; d < 2; d++) {
+            const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            // Create dice faces with dots
+            const materials = makeDiceMaterials();
+            const dice = new THREE.Mesh(geo, materials);
+            dice.castShadow = true;
+            dice.position.set(d === 0 ? -0.5 : 0.5, 3, 0);
+            dice.visible = false;
+            scene.add(dice);
+            diceMeshes.push(dice);
+        }
+    }
+    
+    function makeDiceMaterials() {
+        const dotPatterns = [
+            [[0.5,0.5]], // 1
+            [[0.25,0.25],[0.75,0.75]], // 2
+            [[0.25,0.25],[0.5,0.5],[0.75,0.75]], // 3
+            [[0.25,0.25],[0.75,0.25],[0.25,0.75],[0.75,0.75]], // 4
+            [[0.25,0.25],[0.75,0.25],[0.5,0.5],[0.25,0.75],[0.75,0.75]], // 5
+            [[0.25,0.25],[0.75,0.25],[0.25,0.5],[0.75,0.5],[0.25,0.75],[0.75,0.75]], // 6
+        ];
+        // Face order in Three.js BoxGeometry: +x, -x, +y, -y, +z, -z
+        const faceValues = [2, 5, 1, 6, 3, 4]; // Standard dice opposite faces = 7
+        return faceValues.map(val => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            // White face with rounded corners
+            ctx.fillStyle = '#f8f8f8';
+            ctx.fillRect(0, 0, 128, 128);
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(2, 2, 124, 124);
+            // Black dots
+            ctx.fillStyle = '#1a1a1a';
+            dotPatterns[val - 1].forEach(([px, py]) => {
+                ctx.beginPath();
+                ctx.arc(px * 128, py * 128, 12, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.3, metalness: 0.05 });
+        });
+    }
+    
+    // =============================================
+    // ANIMATIONS
+    // =============================================
+    let animations = [];
+    
+    function animate(timestamp) {
+        requestAnimationFrame(animate);
+        
+        // Process animations
+        animations = animations.filter(anim => {
+            const progress = Math.min((timestamp - anim.start) / anim.duration, 1);
+            anim.update(anim.easing ? anim.easing(progress) : progress);
+            return progress < 1;
+        });
+        
+        // Smooth camera
+        camera.position.x += (cameraTarget.x - camera.position.x) * 0.05;
+        camera.position.y += (cameraTarget.y - camera.position.y) * 0.05;
+        camera.position.z += (cameraTarget.z - camera.position.z) * 0.05;
+        cameraLookAt.x += (cameraTarget.lookX - cameraLookAt.x) * 0.05;
+        cameraLookAt.y += (cameraTarget.lookY - cameraLookAt.y) * 0.05;
+        cameraLookAt.z += (cameraTarget.lookZ - cameraLookAt.z) * 0.05;
+        camera.lookAt(cameraLookAt);
+        
+        renderer.render(scene, camera);
+    }
+    
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+    function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+    function easeOutBounce(t) {
+        if (t < 1/2.75) return 7.5625*t*t;
+        if (t < 2/2.75) return 7.5625*(t-=1.5/2.75)*t+0.75;
+        if (t < 2.5/2.75) return 7.5625*(t-=2.25/2.75)*t+0.9375;
+        return 7.5625*(t-=2.625/2.75)*t+0.984375;
+    }
+    
+    // =============================================
+    // GAME LOGIC
+    // =============================================
+    
+    function rollDice() {
+        if (isRolling || gamePhase !== 'roll') return;
+        isRolling = true;
+        document.getElementById('btnRoll').disabled = true;
+        document.getElementById('btnBuild').style.display = 'none';
+        
+        const die1 = Math.floor(Math.random() * 6) + 1;
+        const die2 = Math.floor(Math.random() * 6) + 1;
+        const total = die1 + die2;
+        const isDouble = die1 === die2;
+        lastDiceTotal = total;
+        lastWasDouble = isDouble;
+        
+        const player = players[currentPlayerIdx];
+        
+        // Animate dice
+        playSound('dice');
+        diceMeshes.forEach((d, i) => {
+            d.visible = true;
+            d.position.set(i === 0 ? -0.4 : 0.4, 2.5, 0);
+        });
+        
+        // Dice face rotations - BoxGeometry faces: +x=2, -x=5, +y=1, -y=6, +z=3, -z=4
+        // To show value N on top, we need specific X and Z rotations:
+        const diceRotations = {
+            1: { x: 0, z: 0 },                         // +y up (default)
+            2: { x: 0, z: -Math.PI / 2 },              // +x up
+            3: { x: -Math.PI / 2, z: 0 },              // +z up
+            4: { x: Math.PI / 2, z: 0 },               // -z up
+            5: { x: 0, z: Math.PI / 2 },               // -x up
+            6: { x: Math.PI, z: 0 },                    // -y up
+        };
+        
+        const rot1 = diceRotations[die1];
+        const rot2 = diceRotations[die2];
+        
+        animations.push({
+            start: performance.now(),
+            duration: 1000,
+            easing: easeOutBounce,
+            update: (t) => {
+                diceMeshes.forEach((d, i) => {
+                    d.position.y = 0.3 + (1 - t) * 2;
+                    const target = i === 0 ? rot1 : rot2;
+                    // Spin then land on target
+                    const spins = 4;
+                    d.rotation.x = (1 - t) * Math.PI * 2 * spins + target.x;
+                    d.rotation.z = target.z;
+                    d.rotation.y = (1 - t) * Math.PI * 2 * (spins - 1);
+                });
+            }
+        });
+        
+        setTimeout(() => {
+            // Dice stay visible showing the result
+            const resultEl = document.getElementById('diceResult');
+            resultEl.innerText = isDouble ? `🎯 ${die1} + ${die2} = ${total}` : `${die1} + ${die2} = ${total}`;
+            resultEl.classList.add('visible');
+            
+            setTimeout(() => {
+                resultEl.classList.remove('visible');
+                diceMeshes.forEach(d => d.visible = false);
+                
+                // === JAIL LOGIC ===
+                if (player.inJail) {
+                    if (isDouble) {
+                        player.inJail = false;
+                        player.jailTurns = 0;
+                        showToast('Дубль! Вы свободны!');
+                        setTimeout(() => moveToken(currentPlayerIdx, total), 800);
+                    } else {
+                        player.jailTurns++;
+                        if (player.jailTurns >= 3) {
+                            player.money -= 50;
+                            player.inJail = false;
+                            player.jailTurns = 0;
+                            showToast('3 хода в тюрьме. Штраф $50.');
+                            updatePlayersUI();
+                            setTimeout(() => moveToken(currentPlayerIdx, total), 800);
+                        } else {
+                            showToast(`Тюрьма. Ход ${player.jailTurns}/3`);
+                            setTimeout(() => endTurn(), 1200);
+                        }
+                    }
+                    return;
+                }
+                
+                // === DOUBLES LOGIC ===
+                if (isDouble) {
+                    doublesCount++;
+                    if (doublesCount >= 3) {
+                        showToast('3 дубля подряд — в тюрьму!');
+                        goToJail(player);
+                        doublesCount = 0;
+                        setTimeout(() => endTurn(), 1500);
+                        return;
+                    }
+                } else {
+                    doublesCount = 0;
+                }
+                
+                moveToken(currentPlayerIdx, total);
+            }, 900);
+        }, 1300);
+    }
+    
+    function moveToken(playerIdx, steps) {
+        const player = players[playerIdx];
+        const token = tokenMeshes[playerIdx];
+        const startPos = player.position;
+        const endPos = (startPos + steps) % 40;
+        
+        gamePhase = 'moving';
+        
+        // Animate step by step
+        let currentStep = 0;
+        function stepForward() {
+            if (currentStep >= steps) {
+                player.position = endPos;
+                gamePhase = 'landed';
+                onLand(playerIdx);
+                return;
+            }
+            
+            currentStep++;
+            const nextField = (startPos + currentStep) % 40;
+            const pos3d = getFieldPosition3D(nextField);
+            const offsets = [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]];
+            const tx = pos3d.x + offsets[playerIdx][0];
+            const tz = pos3d.z + offsets[playerIdx][1];
+            
+            // Check if passing GO
+            if (nextField === 0 && currentStep > 0) {
+                player.money += 200;
+                showToast('Вы прошли СТАРТ! +$200');
+                updatePlayersUI();
+            }
+            
+            const startX = token.position.x;
+            const startZ = token.position.z;
+            
+            animations.push({
+                start: performance.now(),
+                duration: 150,
+                easing: easeOutCubic,
+                update: (t) => {
+                    token.position.x = startX + (tx - startX) * t;
+                    token.position.z = startZ + (tz - startZ) * t;
+                    token.position.y = Math.sin(t * Math.PI) * 0.3 + 0.01; // Hop
+                }
+            });
+            
+            playSound('step');
+            setTimeout(stepForward, 180);
+        }
+        
+        // Camera follows token gently
+        const endPos3d = getFieldPosition3D(endPos);
+        cameraTarget = {
+            x: endPos3d.x * 0.15,
+            y: 20,
+            z: endPos3d.z * 0.15 + 8,
+            lookX: endPos3d.x * 0.3,
+            lookY: 0,
+            lookZ: endPos3d.z * 0.3
+        };
+        
+        stepForward();
+    }
+    
+    function onLand(playerIdx) {
+        const player = players[playerIdx];
+        const field = BOARD_FIELDS[player.position];
+        
+        if (field.type === 'chance') {
+            const card = drawCard('chance');
+            if (player.isBot) {
+                card.action(player);
+                if (!['Отправляйтесь', 'Вернитесь'].some(w => card.text.startsWith(w))) {
+                    showToast(`${player.name}: ${card.text}`);
+                    setTimeout(() => endTurn(), 1500);
+                }
+            } else {
+                showCardPopup('chance', card, playerIdx);
+            }
+        } else if (field.type === 'chest') {
+            const card = drawCard('chest');
+            if (player.isBot) {
+                card.action(player);
+                if (!['Отправляйтесь', 'Вернитесь'].some(w => card.text.startsWith(w))) {
+                    showToast(`${player.name}: ${card.text}`);
+                    setTimeout(() => endTurn(), 1500);
+                }
+            } else {
+                showCardPopup('chest', card, playerIdx);
+            }
+        } else if ((field.type === 'property' || field.type === 'railroad' || field.type === 'utility') && field.owner === undefined) {
+            if (player.isBot) {
+                if (player.money >= field.price) {
+                    buyProperty(playerIdx, player.position);
+                    setTimeout(() => endTurn(), 1000);
+                } else {
+                    setTimeout(() => startAuction(player.position), 800);
+                }
+            } else {
+                showPropertyPopup(field);
+            }
+        } else if ((field.type === 'property' || field.type === 'railroad' || field.type === 'utility') && field.owner !== undefined && field.owner !== playerIdx) {
+            if (field.mortgaged) {
+                showToast('Поле в ипотеке — ренты нет');
+                setTimeout(() => endTurn(), 800);
+                return;
+            }
+            let rent = 0;
+            if (field.type === 'property') {
+                const h = field.houses || 0;
+                rent = field.rent[h];
+                // Double rent if owner has full group and no houses
+                if (h === 0) {
+                    const group = BOARD_FIELDS.filter(f => f.group === field.group);
+                    if (group.every(f => f.owner === field.owner)) rent *= 2;
+                }
+            } else if (field.type === 'railroad') {
+                const rrCount = [5,15,25,35].filter(i => BOARD_FIELDS[i].owner === field.owner).length;
+                rent = 25 * Math.pow(2, rrCount - 1);
+            } else if (field.type === 'utility') {
+                const utilCount = [12,28].filter(i => BOARD_FIELDS[i].owner === field.owner).length;
+                rent = utilCount === 2 ? lastDiceTotal * 10 : lastDiceTotal * 4;
+            }
+            player.money -= rent;
+            players[field.owner].money += rent;
+            playSound('rent');
+            showToast(`Аренда: $${rent} → ${players[field.owner].name}`);
+            updatePlayersUI();
+            setTimeout(() => endTurn(), 1500);
+        } else if (field.type === 'tax') {
+            player.money -= field.amount;
+            showToast(`Налог: -$${field.amount}`);
+            updatePlayersUI();
+            setTimeout(() => endTurn(), 1500);
+        } else if (field.type === 'gotojail') {
+            goToJail(player);
+            setTimeout(() => endTurn(), 1500);
+        } else {
+            setTimeout(() => endTurn(), 800);
+        }
+    }
+    
+    function buyProperty(playerIdx, fieldIdx) {
+        const player = players[playerIdx];
+        const field = BOARD_FIELDS[fieldIdx];
+        player.money -= field.price;
+        field.owner = playerIdx;
+        player.properties.push(fieldIdx);
+        playSound('buy');
+        showToast(`${player.name} купил ${field.name} за $${field.price}`);
+        updatePlayersUI();
+        updateOwnerMarkers();
+        hidePropertyPopup();
+    }
+    
+    function endTurn() {
+        hidePropertyPopup();
+        hideCardPopup();
+        hideBuildMenu();
+        hideAuctionUI();
+        
+        const curPlayer = players[currentPlayerIdx];
+        
+        // Check bankruptcy
+        if (curPlayer.money < 0) {
+            handleBankruptcy(currentPlayerIdx);
+            return;
+        }
+        
+        // Doubles = extra turn (same player rolls again)
+        if (lastWasDouble && !curPlayer.inJail && !curPlayer.bankrupt) {
+            gamePhase = 'roll';
+            isRolling = false;
+            showToast('Дубль! Ещё один ход!');
+            
+            const canBuild = !curPlayer.isBot && canPlayerBuild(currentPlayerIdx);
+            document.getElementById('btnBuild').style.display = canBuild ? '' : 'none';
+            const canSell = !curPlayer.isBot && curPlayer.properties.some(fi => (BOARD_FIELDS[fi].houses || 0) > 0);
+            document.getElementById('btnSell').style.display = canSell ? '' : 'none';
+            const canTrade = !curPlayer.isBot && curPlayer.properties.length > 0;
+            document.getElementById('btnTrade').style.display = canTrade ? '' : 'none';
+            
+            if (curPlayer.isBot) {
+                document.getElementById('btnRoll').disabled = true;
+                botBuild(currentPlayerIdx);
+                setTimeout(() => rollDice(), 1200);
+            } else {
+                document.getElementById('btnRoll').disabled = false;
+            }
+            updatePlayersUI();
+            return;
+        }
+        
+        doublesCount = 0;
+        
+        // Skip bankrupt players
+        do {
+            currentPlayerIdx = (currentPlayerIdx + 1) % players.length;
+        } while (players[currentPlayerIdx].bankrupt && players.filter(p => !p.bankrupt).length > 1);
+        
+        gamePhase = 'roll';
+        isRolling = false;
+        
+        // Check win condition
+        const alive = players.filter(p => !p.bankrupt);
+        if (alive.length <= 1) {
+            showToast(`🏆 ${alive[0].name} победил!`);
+            document.getElementById('btnRoll').disabled = true;
+            document.getElementById('btnBuild').style.display = 'none';
+            updatePlayersUI();
+            return;
+        }
+        
+        updatePlayersUI();
+        cameraTarget = { ...defaultCam };
+        
+        const cp = players[currentPlayerIdx];
+        const canBuild = !cp.isBot && canPlayerBuild(currentPlayerIdx);
+        document.getElementById('btnBuild').style.display = canBuild ? '' : 'none';
+        
+        // Sell button: visible if player has houses
+        const canSell = !cp.isBot && cp.properties.some(fi => (BOARD_FIELDS[fi].houses || 0) > 0);
+        document.getElementById('btnSell').style.display = canSell ? '' : 'none';
+        
+        // Trade button: visible if player has properties and there are other non-bankrupt players with properties
+        const canTrade = !cp.isBot && cp.properties.length > 0 && 
+            players.some((p, i) => i !== currentPlayerIdx && !p.bankrupt && p.properties.length > 0);
+        document.getElementById('btnTrade').style.display = canTrade ? '' : 'none';
+        
+        // Show jail pay button for human in jail
+        updateJailButton();
+        
+        if (cp.isBot) {
+            document.getElementById('btnRoll').disabled = true;
+            botBuild(currentPlayerIdx);
+            // Bot pays to leave jail if they can
+            if (cp.inJail && cp.jailTurns >= 1 && cp.money > 200) {
+                cp.money -= 50;
+                cp.inJail = false;
+                cp.jailTurns = 0;
+                showToast(`${cp.name} заплатил $50 за выход из тюрьмы`);
+                updatePlayersUI();
+            }
+            setTimeout(() => rollDice(), 1200);
+        } else {
+            document.getElementById('btnRoll').disabled = false;
+        }
+    }
+    
+    function canPlayerBuild(pidx) {
+        const p = players[pidx];
+        return p.properties.some(fi => {
+            const f = BOARD_FIELDS[fi];
+            if (!f.group || (f.houses||0) >= 5) return false;
+            const group = BOARD_FIELDS.filter(gf => gf.group === f.group);
+            return group.every(gf => gf.owner === pidx) && p.money >= HOUSE_COST[f.group];
+        });
+    }
+    
+    // === JAIL PAY BUTTON ===
+    function updateJailButton() {
+        let btn = document.getElementById('btnJailPay');
+        const cp = players[currentPlayerIdx];
+        if (cp.inJail && !cp.isBot && cp.money >= 50) {
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = 'btnJailPay';
+                btn.className = 'btn-secondary';
+                btn.style.pointerEvents = 'auto';
+                btn.innerText = '💰 Заплатить $50';
+                btn.onclick = payJailFine;
+                document.getElementById('hudBottom').prepend(btn);
+            }
+            btn.style.display = '';
+        } else if (btn) {
+            btn.style.display = 'none';
+        }
+    }
+    
+    function payJailFine() {
+        const cp = players[currentPlayerIdx];
+        if (!cp.inJail || cp.money < 50) return;
+        cp.money -= 50;
+        cp.inJail = false;
+        cp.jailTurns = 0;
+        showToast('Штраф $50 оплачен. Вы свободны!');
+        updatePlayersUI();
+        updateJailButton();
+    }
+    
+    // === BANKRUPTCY ===
+    function handleBankruptcy(playerIdx) {
+        const player = players[playerIdx];
+        
+        // Try to mortgage properties first (auto-mortgage)
+        while (player.money < 0 && player.properties.length > 0) {
+            const fi = player.properties.find(i => !BOARD_FIELDS[i].mortgaged);
+            if (!fi && fi !== 0) break;
+            mortgageProperty(playerIdx, fi);
+        }
+        
+        if (player.money < 0) {
+            // True bankruptcy
+            player.bankrupt = true;
+            showToast(`💀 ${player.name} обанкротился!`);
+            
+            // Return all properties to bank
+            player.properties.forEach(fi => {
+                BOARD_FIELDS[fi].owner = undefined;
+                BOARD_FIELDS[fi].houses = 0;
+                BOARD_FIELDS[fi].mortgaged = false;
+                (houseMeshes[fi] || []).forEach(m => scene.remove(m));
+                houseMeshes[fi] = [];
+            });
+            player.properties = [];
+            updateOwnerMarkers();
+            
+            // Hide token
+            tokenMeshes[playerIdx].visible = false;
+        }
+        
+        updatePlayersUI();
+        
+        // Continue to next turn
+        doublesCount = 0;
+        lastWasDouble = false;
+        setTimeout(() => {
+            do {
+                currentPlayerIdx = (currentPlayerIdx + 1) % players.length;
+            } while (players[currentPlayerIdx].bankrupt && players.filter(p => !p.bankrupt).length > 1);
+            
+            const alive = players.filter(p => !p.bankrupt);
+            if (alive.length <= 1) {
+                showToast(`🏆 ${alive[0].name} победил!`);
+                document.getElementById('btnRoll').disabled = true;
+                return;
+            }
+            
+            gamePhase = 'roll';
+            isRolling = false;
+            updatePlayersUI();
+            cameraTarget = { ...defaultCam };
+            
+            const cp = players[currentPlayerIdx];
+            if (cp.isBot) {
+                document.getElementById('btnRoll').disabled = true;
+                setTimeout(() => rollDice(), 1200);
+            } else {
+                document.getElementById('btnRoll').disabled = false;
+            }
+        }, 2000);
+    }
+    
+    // === MORTGAGE SYSTEM ===
+    function mortgageProperty(playerIdx, fieldIdx) {
+        const field = BOARD_FIELDS[fieldIdx];
+        if (field.mortgaged) return;
+        
+        // Must sell all houses first
+        if (field.houses > 0) {
+            const sellBack = Math.floor(HOUSE_COST[field.group] / 2) * field.houses;
+            players[playerIdx].money += sellBack;
+            field.houses = 0;
+            (houseMeshes[fieldIdx] || []).forEach(m => scene.remove(m));
+            houseMeshes[fieldIdx] = [];
+        }
+        
+        const mortgageValue = Math.floor(field.price / 2);
+        players[playerIdx].money += mortgageValue;
+        field.mortgaged = true;
+        showToast(`Ипотека: ${field.name} +$${mortgageValue}`);
+        updatePlayersUI();
+        updateOwnerMarkers();
+    }
+    
+    function unmortgageProperty(playerIdx, fieldIdx) {
+        const field = BOARD_FIELDS[fieldIdx];
+        if (!field.mortgaged) return;
+        const cost = Math.floor(field.price * 0.55); // 50% + 10% interest
+        if (players[playerIdx].money < cost) return;
+        players[playerIdx].money -= cost;
+        field.mortgaged = false;
+        showToast(`Выкуп: ${field.name} -$${cost}`);
+        updatePlayersUI();
+        updateOwnerMarkers();
+    }
+    
+    function botBuild(playerIdx) {
+        const player = players[playerIdx];
+        let built = true;
+        while (built) {
+            built = false;
+            for (const fi of player.properties) {
+                const f = BOARD_FIELDS[fi];
+                if (!f.group || (f.houses||0) >= 5) continue;
+                const group = BOARD_FIELDS.filter(gf => gf.group === f.group);
+                if (!group.every(gf => gf.owner === playerIdx)) continue;
+                const cost = HOUSE_COST[f.group];
+                if (player.money < cost + 200) continue; // Keep $200 reserve
+                const minH = Math.min(...group.map(gf => gf.houses || 0));
+                if ((f.houses||0) > minH) continue;
+                buildHouse(playerIdx, fi);
+                built = true;
+                break;
+            }
+        }
+    }
+    
+    // =============================================
+    // UI FUNCTIONS
+    // =============================================
+    
+    function updatePlayersUI() {
+        const strip = document.getElementById('playersStrip');
+        strip.innerHTML = players.map((p, i) => `
+            <div class="player-chip ${i === currentPlayerIdx ? 'active' : ''}" style="${p.bankrupt ? 'opacity:0.35' : ''}">
+                <div class="player-chip-dot" style="background:${p.color}"></div>
+                <div class="player-chip-name">${p.name}</div>
+                <div class="player-chip-money">${p.bankrupt ? '💀' : '$'+p.money}</div>
+            </div>
+        `).join('');
+    }
+    
+    function showPropertyPopup(field) {
+        const card = document.getElementById('propertyCard');
+        let rentInfo = '';
+        let headerColor = field.color || '#555';
+        
+        if (field.type === 'property') {
+            rentInfo = `
+                <div class="property-card-rents">
+                    Рента: <span>$${field.rent[0]}</span><br>
+                    С 1 домом: <span>$${field.rent[1]}</span><br>
+                    С 2 домами: <span>$${field.rent[2]}</span><br>
+                    С 3 домами: <span>$${field.rent[3]}</span><br>
+                    С 4 домами: <span>$${field.rent[4]}</span><br>
+                    С отелем: <span>$${field.rent[5]}</span>
+                </div>`;
+        } else if (field.type === 'railroad') {
+            headerColor = '#444';
+            rentInfo = `<div class="property-card-rents">1 ж/д: <span>$25</span><br>2 ж/д: <span>$50</span><br>3 ж/д: <span>$100</span><br>4 ж/д: <span>$200</span></div>`;
+        } else if (field.type === 'utility') {
+            headerColor = '#666';
+            rentInfo = `<div class="property-card-rents">1 компания: <span>4× кубики</span><br>2 компании: <span>10× кубики</span></div>`;
+        }
+        
+        card.innerHTML = `
+            <div class="property-card-header" style="background:${headerColor}">
+                <h3>${field.name}</h3>
+            </div>
+            <div class="property-card-body">
+                <div class="property-card-price">$${field.price}</div>
+                ${rentInfo}
+            </div>
+            <div class="property-card-actions">
+                <button class="btn-buy" onclick="buyProperty(${currentPlayerIdx}, ${field.id}); endTurn();">Купить</button>
+                <button class="btn-pass" onclick="hidePropertyPopup(); startAuction(${field.id});">Аукцион</button>
+            </div>
+        `;
+        document.getElementById('propertyPopup').classList.add('visible');
+    }
+    
+    function hidePropertyPopup() {
+        document.getElementById('propertyPopup').classList.remove('visible');
+    }
+    
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.classList.add('visible');
+        setTimeout(() => toast.classList.remove('visible'), 2500);
+    }
+    
+    // =============================================
+    // SOUNDS
+    // =============================================
+    let audioCtx = null;
+    function getAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+    
+    function playSound(type) {
+        try {
+            const ctx = getAudio();
+            const t = ctx.currentTime;
+            if (type === 'dice') {
+                // Rattling dice sound
+                const buf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+                const src = ctx.createBufferSource(); src.buffer = buf;
+                const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3000; f.Q.value = 1;
+                const g = ctx.createGain(); g.gain.setValueAtTime(0.15, t);
+                src.connect(f); f.connect(g); g.connect(ctx.destination);
+                src.start(t); src.stop(t + 0.3);
+            } else if (type === 'buy') {
+                // Ka-ching
+                const o = ctx.createOscillator(); const g = ctx.createGain();
+                o.type = 'sine'; o.frequency.setValueAtTime(800, t); o.frequency.setValueAtTime(1200, t + 0.08);
+                g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.2);
+            } else if (type === 'rent') {
+                // Sad descending tone
+                const o = ctx.createOscillator(); const g = ctx.createGain();
+                o.type = 'triangle'; o.frequency.setValueAtTime(400, t); o.frequency.exponentialRampToValueAtTime(200, t + 0.15);
+                g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.2);
+            } else if (type === 'card') {
+                // Swoosh
+                const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.04));
+                const src = ctx.createBufferSource(); src.buffer = buf;
+                const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2000;
+                const g = ctx.createGain(); g.gain.setValueAtTime(0.08, t);
+                src.connect(f); f.connect(g); g.connect(ctx.destination); src.start(t);
+            } else if (type === 'step') {
+                const o = ctx.createOscillator(); const g = ctx.createGain();
+                o.type = 'sine'; o.frequency.setValueAtTime(300 + Math.random() * 100, t);
+                g.gain.setValueAtTime(0.04, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.05);
+            }
+        } catch(e) {}
+    }
+    
+    // =============================================
+    // INIT
+    // =============================================
+    
+    function startGame() {
+        initPlayers(4);
+        createBoard();
+        createTokens();
+        createDice();
+        updatePlayersUI();
+        requestAnimationFrame(animate);
+    }
+    
+    startGame();
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    </script>
+</body>
+</html>
