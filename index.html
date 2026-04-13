@@ -1233,10 +1233,24 @@
         .bb-cell.place-pop {
             animation: bbPlacePop 0.15s ease-out;
         }
-        
-        /* FIXED v34.1: Lite Mode - отключаем тяжёлые эффекты для Android */
-        body.lite-mode .bb-cell.clearing {
-            transition: transform 0.1s ease-out, opacity 0.1s ease-out !important;
+
+        /* Красивая анимация клира линий — GPU-only (transform + opacity) */
+        @keyframes bbClearPop {
+            0% { transform: scale(1); opacity: 1; }
+            20% { transform: scale(1.25); opacity: 1; }
+            50% { transform: scale(0.6); opacity: 0.7; }
+            100% { transform: scale(0) rotate(45deg); opacity: 0; }
+        }
+        .bb-cell.clearing-anim {
+            animation: bbClearPop 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        /* Lite mode — мгновенно без анимации */
+        body.lite-mode .bb-cell.clearing-anim {
+            animation: none !important;
+            opacity: 0;
+            transform: scale(0);
         }
         
         /* Android GPU optimizations — disable heavy effects on weak GPUs */
@@ -4883,7 +4897,29 @@
             } return 0; 
         }
         function fireNeonParticles(row, col, colorClass) {
-            // Облегчённая версия — без confetti canvas, просто CSS flash
+            // Лёгкая вспышка линии через один CSS-элемент вместо confetti canvas
+            const hex = COLOR_MAP[colorClass] || '#ffffff';
+            const grid = document.getElementById('bbGrid');
+            const gridRect = grid.getBoundingClientRect();
+            const flash = document.createElement('div');
+            
+            if(row !== -1) {
+                // Горизонтальная вспышка
+                const cellH = gridRect.height / 8;
+                const y = row * cellH;
+                flash.style.cssText = `position:absolute;left:0;top:${y}px;width:100%;height:${cellH}px;background:linear-gradient(90deg,transparent,${hex}40,${hex}80,${hex}40,transparent);border-radius:4px;pointer-events:none;z-index:5;opacity:1;transition:opacity 0.3s ease-out;`;
+            } else {
+                // Вертикальная вспышка
+                const cellW = gridRect.width / 8;
+                const x = col * cellW;
+                flash.style.cssText = `position:absolute;left:${x}px;top:0;width:${cellW}px;height:100%;background:linear-gradient(180deg,transparent,${hex}40,${hex}80,${hex}40,transparent);border-radius:4px;pointer-events:none;z-index:5;opacity:1;transition:opacity 0.3s ease-out;`;
+            }
+            
+            grid.appendChild(flash);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => { flash.style.opacity = '0'; });
+            });
+            setTimeout(() => flash.remove(), 350);
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
         function animateClear(r, c, color, delay, lineCenter) { 
@@ -4899,17 +4935,31 @@
             
             const hex = COLOR_MAP[color] || '#00ffff';
             
-            // Лёгкая вспышка без частиц и filter
-            cell.style.boxShadow = `0 0 6px ${hex}`;
-            cell.style.opacity = '0.5';
+            // Волновой delay — от центра линии к краям
+            let waveDelay = 0;
+            if(lineCenter !== undefined) {
+                const dist = Math.abs(c - lineCenter);
+                waveDelay = dist * 25;
+            } else {
+                const dist = Math.abs(r - 3.5);
+                waveDelay = dist * 25;
+            }
+            
+            // Яркая вспышка перед анимацией
+            cell.style.boxShadow = `0 0 8px ${hex}`;
             
             setTimeout(() => {
-                cell.className = 'bb-cell';
-                cell.style.backgroundColor = '';
+                cell.classList.add('clearing-anim');
                 cell.style.boxShadow = '';
-                cell.style.opacity = '';
-                cell.style.background = '';
-            }, 90);
+                
+                // После анимации — очищаем
+                setTimeout(() => {
+                    cell.className = 'bb-cell';
+                    cell.style.backgroundColor = '';
+                    cell.style.boxShadow = '';
+                    cell.style.background = '';
+                }, 320);
+            }, waveDelay);
         }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
