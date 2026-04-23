@@ -1,0 +1,53 @@
+/* ============================================================
+   Spark Games — shared design tokens
+   Mirror of main app :root / [data-theme="dark"] variables
+   Keep in sync with sevet-apps.github.io/index.html
+   ============================================================ */
+
+:root {
+    /* Light theme base */
+    --bg-color: #f2f2f7;
+    --text-color: #000000;
+    --glass-bg: #ffffff;
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    --accent: #007aff;
+    --danger: #ff3b30;
+    --success: #34c759;
+    --tab-bg: rgba(255,255,255,0.95);
+    --icon-color: #3a3a3c;
+
+    --rank-gold: #ffd700;
+    --rank-silver: #c0c0c0;
+    --rank-bronze: #cd7f32;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+    /* Monopoly-specific additions */
+    --mono-accent-glow: rgba(0, 122, 255, 0.35);
+    --mono-dice-face: #ffffff;
+    --mono-dice-dot: #0a0a0a;
+
+    /* Property group colors (classic Monopoly palette, tuned for dark bg) */
+    --mono-brown:     #8B4513;
+    --mono-lightblue: #87CEEB;
+    --mono-pink:      #FF69B4;
+    --mono-orange:    #FFA500;
+    --mono-red:       #FF3B30;
+    --mono-yellow:    #FFD60A;
+    --mono-green:     #34C759;
+    --mono-blue:      #0A84FF;
+}
+
+[data-theme="dark"] {
+    --bg-color: #000000;
+    --text-color: #ffffff;
+    --glass-bg: #1c1c1e;
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    --tab-bg: rgba(30,30,30, 0.95);
+    --icon-color: #aeaeb2;
+    --accent: #0a84ff;
+    --mono-accent-glow: rgba(10, 132, 255, 0.45);
+}

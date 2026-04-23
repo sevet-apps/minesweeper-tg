@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>Spark Monopoly</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/monopoly.css">
+
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- 3D libs via CDN (swap for bundled in prod if needed) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- cannon-es UMD build -->
+    <script src="https://cdn.jsdelivr.net/gh/schteppe/cannon.js/build/cannon.min.js"></script>
+</head>
+<body data-theme="dark">
+    <!-- 3D canvas lives here, full-viewport -->
+    <div id="scene-container" aria-hidden="true"></div>
+
+    <!-- UI overlay -->
+    <div id="ui-root">
+        <!-- Top bar: back + title + turn indicator placeholder -->
+        <header class="top-bar">
+            <button class="back-btn" id="backBtn" aria-label="Назад">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+            <div class="top-title">Монополия</div>
+            <div class="top-spacer"></div>
+        </header>
+
+        <!-- Debug overlay (toggleable, helpful during development) -->
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-line">FPS: <span id="dbgFps">—</span></div>
+            <div class="debug-line">Dice: <span id="dbgDice">—</span></div>
+            <div class="debug-line">Retries: <span id="dbgRetries">—</span></div>
+        </div>
+
+        <!-- Dice result readout -->
+        <div class="dice-result" id="diceResult" aria-live="polite">
+            <div class="dice-result-die" id="dieA">—</div>
+            <div class="dice-result-plus">+</div>
+            <div class="dice-result-die" id="dieB">—</div>
+            <div class="dice-result-eq">=</div>
+            <div class="dice-result-sum" id="dieSum">—</div>
+        </div>
+
+        <!-- Bottom action: Roll button + swipe hint -->
+        <div class="bottom-dock">
+            <div class="swipe-hint" id="swipeHint">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+                <span>Свайп вверх для броска</span>
+            </div>
+            <button class="roll-btn" id="rollBtn">
+                <span class="roll-btn-label">Бросить кубики</span>
+                <span class="roll-btn-shine"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/scene/SceneManager.js"></script>
+    <script src="js/scene/Dice.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

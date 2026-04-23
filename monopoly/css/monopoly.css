@@ -1,0 +1,334 @@
+/* ============================================================
+   Spark Monopoly — main stylesheet
+   Mobile-first, glassmorphism matching main app
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    touch-action: none;
+}
+
+/* ============================================================
+   3D scene container
+   ============================================================ */
+
+#scene-container {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    /* Subtle radial vignette to focus attention center-stage */
+    background:
+        radial-gradient(ellipse at center,
+            rgba(10, 132, 255, 0.12) 0%,
+            rgba(0, 0, 0, 0) 55%),
+        var(--bg-color);
+}
+
+#scene-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    outline: none;
+}
+
+/* ============================================================
+   UI overlay root
+   ============================================================ */
+
+#ui-root {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none; /* let 3D receive touches by default */
+    display: flex;
+    flex-direction: column;
+}
+
+#ui-root > * {
+    pointer-events: auto; /* but children are interactive */
+}
+
+/* ============================================================
+   Top bar
+   ============================================================ */
+
+.top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: calc(12px + var(--safe-top)) 16px 12px;
+    background: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0.5) 0%,
+        rgba(0, 0, 0, 0) 100%);
+}
+
+.back-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: transform 0.15s ease-out;
+}
+
+.back-btn:active {
+    transform: scale(0.92);
+}
+
+.top-title {
+    flex: 1;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.top-spacer {
+    width: 40px;
+}
+
+/* ============================================================
+   Debug panel (dev helper)
+   ============================================================ */
+
+.debug-panel {
+    position: absolute;
+    top: calc(70px + var(--safe-top));
+    left: 16px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    color: #8aff8a;
+    line-height: 1.5;
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+.debug-line span {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* ============================================================
+   Dice result readout (top center)
+   ============================================================ */
+
+.dice-result {
+    position: absolute;
+    top: calc(70px + var(--safe-top));
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow);
+    font-weight: 700;
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+.dice-result.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.dice-result-die {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    background: rgba(10, 132, 255, 0.15);
+    border: 1px solid rgba(10, 132, 255, 0.3);
+    border-radius: 8px;
+    color: var(--accent);
+}
+
+.dice-result-plus,
+.dice-result-eq {
+    color: var(--icon-color);
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+.dice-result-sum {
+    color: var(--text-color);
+    font-size: 18px;
+    margin-left: 2px;
+}
+
+/* Doubles callout */
+.dice-result.doubles .dice-result-sum {
+    color: var(--rank-gold);
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+}
+
+/* ============================================================
+   Bottom dock: swipe hint + roll button
+   ============================================================ */
+
+.bottom-dock {
+    margin-top: auto;
+    padding: 12px 20px calc(20px + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(to top,
+        rgba(0, 0, 0, 0.6) 0%,
+        rgba(0, 0, 0, 0) 100%);
+}
+
+.swipe-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--icon-color);
+    opacity: 0.75;
+    animation: swipeHintPulse 2.4s ease-in-out infinite;
+}
+
+.swipe-hint svg {
+    animation: swipeHintArrow 2.4s ease-in-out infinite;
+}
+
+.swipe-hint.hidden {
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+@keyframes swipeHintPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.9; }
+}
+
+@keyframes swipeHintArrow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+.roll-btn {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    height: 56px;
+    border: none;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--accent) 0%, #5ac8fa 100%);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow:
+        0 8px 24px var(--mono-accent-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.25s ease;
+}
+
+.roll-btn:active {
+    transform: scale(0.97);
+    box-shadow:
+        0 4px 14px var(--mono-accent-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.roll-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.roll-btn-label {
+    position: relative;
+    z-index: 2;
+}
+
+.roll-btn-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.35),
+        transparent
+    );
+    transform: skewX(-20deg);
+    pointer-events: none;
+}
+
+.roll-btn:not(:disabled):hover .roll-btn-shine,
+.roll-btn:not(:disabled):focus .roll-btn-shine {
+    animation: rollShine 1.2s ease-in-out;
+}
+
+@keyframes rollShine {
+    0%   { left: -100%; }
+    100% { left: 120%; }
+}
+
+/* Rolling state — pulsing ring */
+.roll-btn.rolling {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.roll-btn.rolling .roll-btn-label::after {
+    content: "...";
+    display: inline-block;
+    width: 1ch;
+    animation: rollDots 1s steps(4, end) infinite;
+    overflow: hidden;
+    vertical-align: bottom;
+}
+
+@keyframes rollDots {
+    0%   { clip-path: inset(0 100% 0 0); }
+    100% { clip-path: inset(0 0 0 0); }
+}
