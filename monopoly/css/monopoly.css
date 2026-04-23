@@ -33,12 +33,12 @@ html, body {
     position: fixed;
     inset: 0;
     z-index: 0;
-    /* Subtle radial vignette to focus attention center-stage */
+    /* Very subtle radial vignette - the 3D plate should dominate, not the bg */
     background:
         radial-gradient(ellipse at center,
-            rgba(10, 132, 255, 0.12) 0%,
-            rgba(0, 0, 0, 0) 55%),
-        var(--bg-color);
+            rgba(10, 132, 255, 0.04) 0%,
+            rgba(0, 0, 0, 0) 40%),
+        #050810;
 }
 
 #scene-container canvas {

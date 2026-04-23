@@ -53,13 +53,16 @@
             container.appendChild(this.renderer.domElement);
 
             // --- Camera rig ---
-            // Perspective camera looking down at the arena at ~50° from horizontal.
+            // Perspective camera looking down at the arena.
+            // Position tuned for mobile portrait: high enough to see the full
+            // plate, close enough that dice feel present, angle steep enough
+            // that depth foreshortening doesn't crush the plate into a band.
             this.camera = new THREE.PerspectiveCamera(
-                45, this.width / this.height, 0.1, 100
+                42, this.width / this.height, 0.1, 100
             );
-            this.cameraHome = new THREE.Vector3(0, 9, 8);
+            this.cameraHome = new THREE.Vector3(0, 11, 6.5);
             this.camera.position.copy(this.cameraHome);
-            this.camera.lookAt(0, 0, 0);
+            this.camera.lookAt(0, 0, -0.5);
 
             this._setupLights();
             this._setupPhysics();
@@ -141,32 +144,64 @@
 
         _setupArena() {
             // --- Floor (visible disc / plate) ---
-            // Low-poly glass-like plate with emissive rim vibe
-            const floorGeom = new THREE.BoxGeometry(ARENA.width, 0.4, ARENA.depth);
+            // --- Visible plate ("stage") ---
+            // A dark glass-like plate that anchors the scene. Emissive underside
+            // + bright rim trim make it read clearly against the black vignette.
+            const floorGeom = new THREE.BoxGeometry(ARENA.width, 0.3, ARENA.depth);
             const floorMat = new THREE.MeshStandardMaterial({
-                color: 0x1a1a24,
-                metalness: 0.15,
-                roughness: 0.55,
-                transparent: true,
-                opacity: 0.85,
+                color: 0x2a3448,
+                metalness: 0.2,
+                roughness: 0.4,
+                emissive: 0x0a2548,
+                emissiveIntensity: 0.35,
             });
             const floorMesh = new THREE.Mesh(floorGeom, floorMat);
-            floorMesh.position.y = -0.2;
+            floorMesh.position.y = -0.15;
             floorMesh.receiveShadow = true;
             this.scene.add(floorMesh);
 
-            // Emissive edge trim — gives the glass-plate look
+            // Top surface highlight — slightly lighter than the base, receives
+            // shadows from the dice. Thin slab just above the plate.
+            const topGeom = new THREE.BoxGeometry(
+                ARENA.width - 0.1, 0.02, ARENA.depth - 0.1
+            );
+            const topMat = new THREE.MeshStandardMaterial({
+                color: 0x3a4a6e,
+                metalness: 0.1,
+                roughness: 0.35,
+                emissive: 0x0a84ff,
+                emissiveIntensity: 0.08,
+            });
+            const topMesh = new THREE.Mesh(topGeom, topMat);
+            topMesh.position.y = 0.001;
+            topMesh.receiveShadow = true;
+            this.scene.add(topMesh);
+
+            // Glowing edge trim — wraps the plate in app-brand blue
             const trimGeom = new THREE.BoxGeometry(
-                ARENA.width + 0.05, 0.06, ARENA.depth + 0.05
+                ARENA.width + 0.08, 0.08, ARENA.depth + 0.08
             );
             const trimMat = new THREE.MeshBasicMaterial({
                 color: 0x0a84ff,
                 transparent: true,
-                opacity: 0.55,
+                opacity: 0.75,
             });
             const trim = new THREE.Mesh(trimGeom, trimMat);
             trim.position.y = 0.03;
             this.scene.add(trim);
+
+            // Inner glow — a softer emissive ring just inside the trim
+            const innerGlowGeom = new THREE.BoxGeometry(
+                ARENA.width - 0.05, 0.04, ARENA.depth - 0.05
+            );
+            const innerGlowMat = new THREE.MeshBasicMaterial({
+                color: 0x5ac8fa,
+                transparent: true,
+                opacity: 0.15,
+            });
+            const innerGlow = new THREE.Mesh(innerGlowGeom, innerGlowMat);
+            innerGlow.position.y = 0.018;
+            this.scene.add(innerGlow);
 
             // --- Physics floor (infinite plane is fine) ---
             // NOTE: classic cannon.js Body() does not accept shape in options -
