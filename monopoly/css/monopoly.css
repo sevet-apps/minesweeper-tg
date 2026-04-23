@@ -33,12 +33,7 @@ html, body {
     position: fixed;
     inset: 0;
     z-index: 0;
-    /* Very subtle radial vignette - the 3D plate should dominate, not the bg */
-    background:
-        radial-gradient(ellipse at center,
-            rgba(10, 132, 255, 0.04) 0%,
-            rgba(0, 0, 0, 0) 40%),
-        #050810;
+    background: #000000;
 }
 
 #scene-container canvas {

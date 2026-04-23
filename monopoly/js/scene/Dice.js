@@ -37,11 +37,10 @@
     const MAX_INNER_RETRIES = 20;  // per-die seed attempts
     const HEADLESS_MAX_STEPS = 600; // ~10s sim time at 1/60 step
 
-    // Starting X offsets for the two dice. Must leave >=1 unit clearance from
-    // arena walls (die half-size = 0.5, plus margin for throw jitter).
-    // For arena.width=5 (walls at ±2.5), use ±1.4 for comfortable spacing.
-    const DIE_A_X = -1.4;
-    const DIE_B_X =  1.4;
+    // Starting X offsets. Arena walls at ±2.25, die half-size 0.5.
+    // Keep dice at ±1.2 for safe margin from walls and good visual spacing.
+    const DIE_A_X = -1.2;
+    const DIE_B_X =  1.2;
 
     // Face → local normal direction
     // These are the axes along which each face points.
