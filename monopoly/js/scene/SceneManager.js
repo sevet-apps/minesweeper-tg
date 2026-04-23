@@ -112,9 +112,10 @@
 
         _setupPhysics() {
             // Main visible-world physics
-            this.world = new CANNON.World({
-                gravity: new CANNON.Vec3(0, -20, 0),
-            });
+            // NOTE: classic cannon.js World() ignores options object - must
+            // set gravity via method call, not constructor argument.
+            this.world = new CANNON.World();
+            this.world.gravity.set(0, -20, 0);
             this.world.broadphase = new CANNON.SAPBroadphase(this.world);
             this.world.allowSleep = true;
             this.world.defaultContactMaterial.restitution = 0.3;
@@ -168,11 +169,13 @@
             this.scene.add(trim);
 
             // --- Physics floor (infinite plane is fine) ---
+            // NOTE: classic cannon.js Body() does not accept shape in options -
+            // must call addShape() after construction.
             const floorBody = new CANNON.Body({
                 mass: 0,
                 material: MATERIALS.floor,
-                shape: new CANNON.Plane(),
             });
+            floorBody.addShape(new CANNON.Plane());
             floorBody.quaternion.setFromAxisAngle(
                 new CANNON.Vec3(1, 0, 0), -Math.PI / 2
             );
@@ -206,9 +209,8 @@
         // Used by Dice.js to simulate forward and check final orientation
         // without rendering — fast enough for real-time retry.
         createHeadlessWorld() {
-            const world = new CANNON.World({
-                gravity: new CANNON.Vec3(0, -20, 0),
-            });
+            const world = new CANNON.World();
+            world.gravity.set(0, -20, 0);
             world.broadphase = new CANNON.SAPBroadphase(world);
             world.allowSleep = true;
             world.defaultContactMaterial.restitution = 0.3;
@@ -228,8 +230,9 @@
 
             // Floor
             const floorBody = new CANNON.Body({
-                mass: 0, material: MATERIALS.floor, shape: new CANNON.Plane(),
+                mass: 0, material: MATERIALS.floor,
             });
+            floorBody.addShape(new CANNON.Plane());
             floorBody.quaternion.setFromAxisAngle(
                 new CANNON.Vec3(1, 0, 0), -Math.PI / 2
             );

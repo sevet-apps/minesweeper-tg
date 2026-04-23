@@ -152,13 +152,15 @@
             this.body = new CANNON.Body({
                 mass: DIE_MASS,
                 material: sceneManager.materials.dice,
-                shape: new CANNON.Box(new CANNON.Vec3(DIE_HALF, DIE_HALF, DIE_HALF)),
                 linearDamping:  0.08,
                 angularDamping: 0.08,
                 allowSleep: true,
                 sleepSpeedLimit: 0.1,
                 sleepTimeLimit:  0.3,
             });
+            this.body.addShape(new CANNON.Box(
+                new CANNON.Vec3(DIE_HALF, DIE_HALF, DIE_HALF)
+            ));
             this.body.position.set(...initialPosition);
             sceneManager.world.addBody(this.body);
 
@@ -296,15 +298,15 @@
             const body = new CANNON.Body({
                 mass: DIE_MASS,
                 material: this.sm.materials.dice,
-                shape: new CANNON.Box(
-                    new CANNON.Vec3(DIE_HALF, DIE_HALF, DIE_HALF)
-                ),
                 linearDamping:  0.08,
                 angularDamping: 0.08,
                 allowSleep: true,
                 sleepSpeedLimit: 0.1,
                 sleepTimeLimit:  0.3,
             });
+            body.addShape(new CANNON.Box(
+                new CANNON.Vec3(DIE_HALF, DIE_HALF, DIE_HALF)
+            ));
             body.position.set(...seed.pos);
             body.quaternion.set(...seed.quat);
             body.velocity.set(...seed.vel);
@@ -352,15 +354,15 @@
                 const body = new CANNON.Body({
                     mass: DIE_MASS,
                     material: this.sm.materials.dice,
-                    shape: new CANNON.Box(
-                        new CANNON.Vec3(DIE_HALF, DIE_HALF, DIE_HALF)
-                    ),
                     linearDamping:  0.08,
                     angularDamping: 0.08,
                     allowSleep: true,
                     sleepSpeedLimit: 0.1,
                     sleepTimeLimit:  0.3,
                 });
+                body.addShape(new CANNON.Box(
+                    new CANNON.Vec3(DIE_HALF, DIE_HALF, DIE_HALF)
+                ));
                 body.position.set(...seed.pos);
                 body.quaternion.set(...seed.quat);
                 body.velocity.set(...seed.vel);
