@@ -13,11 +13,14 @@
     const CANNON = global.CANNON;
 
     // ---- Arena dimensions (in world units) ----
-    // Picked so two dice of size ~1 can land comfortably visible on phone.
+    // Sized so the plate fits within ~60% of a portrait phone viewport with
+    // visible dark margin around it - the plate must read as an OBJECT, not
+    // as the background. Kept slightly taller (Z) than wide (X) because the
+    // camera looks down at an angle, foreshortening depth.
     const ARENA = {
-        width: 8,      // X
-        depth: 10,     // Z
-        wallHeight: 6, // Y
+        width: 5,      // X
+        depth: 6,      // Z
+        wallHeight: 4, // Y
     };
 
     // ---- Physics materials (shared) ----
@@ -53,16 +56,15 @@
             container.appendChild(this.renderer.domElement);
 
             // --- Camera rig ---
-            // Perspective camera looking down at the arena.
-            // Position tuned for mobile portrait: high enough to see the full
-            // plate, close enough that dice feel present, angle steep enough
-            // that depth foreshortening doesn't crush the plate into a band.
+            // Positioned so the smaller 5×6 plate occupies the center of a
+            // portrait screen with visible dark margin around it. If the plate
+            // fills the whole screen, it stops reading as an object.
             this.camera = new THREE.PerspectiveCamera(
-                42, this.width / this.height, 0.1, 100
+                40, this.width / this.height, 0.1, 100
             );
-            this.cameraHome = new THREE.Vector3(0, 11, 6.5);
+            this.cameraHome = new THREE.Vector3(0, 8, 5.5);
             this.camera.position.copy(this.cameraHome);
-            this.camera.lookAt(0, 0, -0.5);
+            this.camera.lookAt(0, 0, -0.3);
 
             this._setupLights();
             this._setupPhysics();
@@ -143,65 +145,50 @@
         }
 
         _setupArena() {
-            // --- Floor (visible disc / plate) ---
             // --- Visible plate ("stage") ---
-            // A dark glass-like plate that anchors the scene. Emissive underside
-            // + bright rim trim make it read clearly against the black vignette.
-            const floorGeom = new THREE.BoxGeometry(ARENA.width, 0.3, ARENA.depth);
+            // A dark stone-like slab that anchors the scene. The key to making
+            // it read as a plate (not a background) is keeping it DARK - the
+            // rim trim + emissive underside provide the "lit object" feel.
+            const floorGeom = new THREE.BoxGeometry(ARENA.width, 0.35, ARENA.depth);
             const floorMat = new THREE.MeshStandardMaterial({
-                color: 0x2a3448,
-                metalness: 0.2,
-                roughness: 0.4,
-                emissive: 0x0a2548,
-                emissiveIntensity: 0.35,
+                color: 0x12151f,
+                metalness: 0.3,
+                roughness: 0.45,
+                emissive: 0x000000,
             });
             const floorMesh = new THREE.Mesh(floorGeom, floorMat);
-            floorMesh.position.y = -0.15;
+            floorMesh.position.y = -0.175;
             floorMesh.receiveShadow = true;
             this.scene.add(floorMesh);
 
-            // Top surface highlight — slightly lighter than the base, receives
-            // shadows from the dice. Thin slab just above the plate.
+            // Top playing surface - just marginally lighter so dice cast
+            // readable shadows. Still dark overall.
             const topGeom = new THREE.BoxGeometry(
-                ARENA.width - 0.1, 0.02, ARENA.depth - 0.1
+                ARENA.width - 0.08, 0.015, ARENA.depth - 0.08
             );
             const topMat = new THREE.MeshStandardMaterial({
-                color: 0x3a4a6e,
-                metalness: 0.1,
-                roughness: 0.35,
-                emissive: 0x0a84ff,
-                emissiveIntensity: 0.08,
+                color: 0x1a1f2e,
+                metalness: 0.2,
+                roughness: 0.5,
             });
             const topMesh = new THREE.Mesh(topGeom, topMat);
             topMesh.position.y = 0.001;
             topMesh.receiveShadow = true;
             this.scene.add(topMesh);
 
-            // Glowing edge trim — wraps the plate in app-brand blue
+            // Glowing edge trim - app-brand blue. This is what makes the plate
+            // visually "pop" as a lit object against the dark scene.
             const trimGeom = new THREE.BoxGeometry(
-                ARENA.width + 0.08, 0.08, ARENA.depth + 0.08
+                ARENA.width + 0.1, 0.1, ARENA.depth + 0.1
             );
             const trimMat = new THREE.MeshBasicMaterial({
                 color: 0x0a84ff,
                 transparent: true,
-                opacity: 0.75,
+                opacity: 0.85,
             });
             const trim = new THREE.Mesh(trimGeom, trimMat);
-            trim.position.y = 0.03;
+            trim.position.y = 0.02;
             this.scene.add(trim);
-
-            // Inner glow — a softer emissive ring just inside the trim
-            const innerGlowGeom = new THREE.BoxGeometry(
-                ARENA.width - 0.05, 0.04, ARENA.depth - 0.05
-            );
-            const innerGlowMat = new THREE.MeshBasicMaterial({
-                color: 0x5ac8fa,
-                transparent: true,
-                opacity: 0.15,
-            });
-            const innerGlow = new THREE.Mesh(innerGlowGeom, innerGlowMat);
-            innerGlow.position.y = 0.018;
-            this.scene.add(innerGlow);
 
             // --- Physics floor (infinite plane is fine) ---
             // NOTE: classic cannon.js Body() does not accept shape in options -
