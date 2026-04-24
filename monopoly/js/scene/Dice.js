@@ -37,10 +37,13 @@
     const MAX_INNER_RETRIES = 20;  // per-die seed attempts
     const HEADLESS_MAX_STEPS = 600; // ~10s sim time at 1/60 step
 
-    // Starting X offsets. Arena walls at ±2.25, die half-size 0.5.
-    // Keep dice at ±1.2 for safe margin from walls and good visual spacing.
+    // Starting X offsets. Arena is 6.3 wide (walls at ±3.15), die half 0.5.
+    // Keep dice at ±1.2 for visual spacing near center.
     const DIE_A_X = -1.2;
     const DIE_B_X =  1.2;
+
+    // Y offset above arena floor (arena.floorY = 0.08)
+    const START_Y_OFFSET = 0.6;
 
     // Face → local normal direction
     // These are the axes along which each face points.
@@ -227,10 +230,11 @@
         constructor(sceneManager) {
             this.sm = sceneManager;
 
-            // Two dice placed far apart so they don't collide at rest
-            // (matches DIE_A_X / DIE_B_X used during seed search)
-            this.dieA = new Die(sceneManager, [DIE_A_X, 0.5, 0]);
-            this.dieB = new Die(sceneManager, [DIE_B_X, 0.5, 0]);
+            // Two dice placed far apart so they don't collide at rest.
+            // Initial Y is above the arena floor (center plate of the board).
+            const startY = sceneManager.arena.floorY + START_Y_OFFSET;
+            this.dieA = new Die(sceneManager, [DIE_A_X, startY, 0]);
+            this.dieB = new Die(sceneManager, [DIE_B_X, startY, 0]);
 
             this.isRolling = false;
             this.lastResult = null;      // { a, b, sum, doubles }
@@ -256,7 +260,7 @@
 
             // Tight position jitter so dice start reliably separated
             const startZ = arena.depth / 2 - 1.2 + (r() - 0.5) * 0.5;
-            const startY = 1.8 + r() * 1.0;
+            const startY = arena.floorY + 1.8 + r() * 1.0;
             const startX = xOffset + (r() - 0.5) * 0.4 + dirHint * 0.6;
 
             // Random initial orientation — uniform in Euler

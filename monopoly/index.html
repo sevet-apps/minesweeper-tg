@@ -16,7 +16,7 @@
     <!-- 3D libs via CDN (swap for bundled in prod if needed) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- cannon-es UMD build -->
-    <script src="https://cdn.jsdelivr.net/gh/schteppe/cannon.js/build/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
 </head>
 <body data-theme="dark">
     <!-- 3D canvas lives here, full-viewport -->
@@ -68,6 +68,7 @@
 
     <!-- Scripts -->
     <script src="js/scene/SceneManager.js"></script>
+    <script src="js/scene/Board3D.js"></script>
     <script src="js/scene/Dice.js"></script>
     <script src="js/main.js"></script>
 </body>

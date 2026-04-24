@@ -42,6 +42,7 @@
 
     // ---- Scene setup ----
     const sm = new SceneManager(sceneContainer);
+    const board = new Board3D(sm);
     const dice = new Dice(sm);
     sm.start();
 
