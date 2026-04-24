@@ -15,11 +15,12 @@
 
     // Arena size matches the Board3D center plate (plateSide = 6.5).
     // Walls just inside the plate edges so dice never escape visually.
+    // floorY matches Board3D._buildCenterPlate topY (must stay in sync).
     const ARENA = {
         width:  6.3,
         depth:  6.3,
         height: 3.5,
-        floorY: 0.08, // must equal Board3D plate topY
+        floorY: 0.13,
     };
 
     const MATERIALS = {
@@ -52,14 +53,15 @@
             container.appendChild(this.renderer.domElement);
 
             // --- Camera ---
-            // Whole board is 13×13 units. On a portrait phone we want the
-            // board to fit with some margin. Camera at y=22, z=9, fov=34
-            // gives a top-down-ish view where the full board fits vertically
-            // and diagonal perspective makes nearest tiles (bottom) readable.
+            // Board is 13×13. To fit in a portrait phone (~2:1 aspect),
+            // camera must be high enough to frame the full board with
+            // visible margin. At y=28, z=3, fov=36 the whole board fits
+            // vertically with ~15% margin top/bottom, and diagonal view
+            // keeps depth readable without being pure top-down.
             this.camera = new THREE.PerspectiveCamera(
-                34, this.width / this.height, 0.1, 100
+                36, this.width / this.height, 0.1, 100
             );
-            this.camera.position.set(0, 22, 9);
+            this.camera.position.set(0, 28, 3);
             this.camera.lookAt(0, 0, 0);
 
             this._setupLights();

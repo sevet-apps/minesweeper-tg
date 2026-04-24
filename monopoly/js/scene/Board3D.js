@@ -251,30 +251,30 @@
         _makeCornerTile(tile) {
             const g = new THREE.Group();
 
-            // Main tile surface - slightly lighter than baseboard
-            const baseGeom = new THREE.BoxGeometry(CORNER, 0.08, CORNER);
+            // Main tile surface - brighter than baseboard for clear separation
+            const baseGeom = new THREE.BoxGeometry(CORNER, 0.12, CORNER);
             const baseMat = new THREE.MeshStandardMaterial({
-                color:     0x1c1e28,
-                metalness: 0.15,
-                roughness: 0.55,
+                color:     0x2a2e3e,
+                metalness: 0.2,
+                roughness: 0.45,
             });
             const base = new THREE.Mesh(baseGeom, baseMat);
-            base.position.y = 0.04;
+            base.position.y = 0.06;
             base.receiveShadow = true;
             g.add(base);
 
-            // Thin highlight edge on top for glassy feel
+            // Bright top edge
             const edgeGeom = new THREE.BoxGeometry(CORNER, 0.002, CORNER);
             const edges = new THREE.EdgesGeometry(edgeGeom);
             const edge = new THREE.LineSegments(
                 edges,
                 new THREE.LineBasicMaterial({
-                    color: 0x3a4a6e,
+                    color: 0x5ac8fa,
                     transparent: true,
-                    opacity: 0.7,
+                    opacity: 0.85,
                 })
             );
-            edge.position.y = 0.082;
+            edge.position.y = 0.122;
             g.add(edge);
 
             return g;
@@ -283,67 +283,66 @@
         _makeRegularTile(tile) {
             const g = new THREE.Group();
 
-            // Main body of the tile: rectangle with long side toward center
-            // In local coords: X = short (TILE_W), Z = long (TILE_L)
-            // Color band should be on the -Z side (inner edge facing center)
-            const baseGeom = new THREE.BoxGeometry(TILE_W, 0.08, TILE_L);
+            // Main body — brighter, more contrast against baseboard
+            const baseGeom = new THREE.BoxGeometry(TILE_W, 0.12, TILE_L);
             const baseMat = new THREE.MeshStandardMaterial({
-                color:     0x1c1e28,
-                metalness: 0.15,
-                roughness: 0.55,
+                color:     0x2a2e3e,
+                metalness: 0.2,
+                roughness: 0.45,
             });
             const base = new THREE.Mesh(baseGeom, baseMat);
-            base.position.y = 0.04;
+            base.position.y = 0.06;
             base.receiveShadow = true;
             g.add(base);
 
-            // Color band (only for properties)
+            // Color band — now saturated and glowing
             if (tile.type === 'property' && tile.group) {
                 const bandColor = GROUP_COLORS[tile.group];
-                const bandGeom = new THREE.BoxGeometry(TILE_W, 0.09, TILE_L * 0.28);
+                const bandGeom = new THREE.BoxGeometry(TILE_W, 0.14, TILE_L * 0.3);
                 const bandMat = new THREE.MeshStandardMaterial({
                     color:     bandColor,
-                    metalness: 0.05,
-                    roughness: 0.4,
+                    metalness: 0.0,
+                    roughness: 0.35,
                     emissive:  bandColor,
-                    emissiveIntensity: 0.12,
+                    emissiveIntensity: 0.55, // was 0.12 - now actually glows
                 });
                 const band = new THREE.Mesh(bandGeom, bandMat);
-                // Place band at inner edge (-Z in local = toward center)
-                band.position.set(0, 0.045, -TILE_L/2 + (TILE_L * 0.14));
+                band.position.set(0, 0.07, -TILE_L/2 + (TILE_L * 0.15));
                 band.receiveShadow = true;
                 g.add(band);
             }
 
-            // Icon/accent for special tiles (simple colored disc for now)
+            // Icon disc for special tiles - larger, more opaque, glowing
             if (tile.type === 'railroad' || tile.type === 'utility' ||
                 tile.type === 'chance'   || tile.type === 'chest' ||
                 tile.type === 'tax') {
                 const accentColor = GROUP_COLORS[tile.type] || 0x888888;
-                const iconGeom = new THREE.CircleGeometry(0.25, 16);
-                const iconMat = new THREE.MeshBasicMaterial({
-                    color: accentColor,
-                    transparent: true,
-                    opacity: 0.85,
+                const iconGeom = new THREE.CircleGeometry(0.32, 20);
+                const iconMat = new THREE.MeshStandardMaterial({
+                    color:     accentColor,
+                    emissive:  accentColor,
+                    emissiveIntensity: 0.6,
+                    metalness: 0.0,
+                    roughness: 0.4,
                 });
                 const icon = new THREE.Mesh(iconGeom, iconMat);
                 icon.rotation.x = -Math.PI / 2;
-                icon.position.set(0, 0.082, 0);
+                icon.position.set(0, 0.123, 0);
                 g.add(icon);
             }
 
-            // Top highlight edge
+            // Top highlight edge - brighter
             const edgeGeom = new THREE.BoxGeometry(TILE_W, 0.002, TILE_L);
             const edges = new THREE.EdgesGeometry(edgeGeom);
             const edge = new THREE.LineSegments(
                 edges,
                 new THREE.LineBasicMaterial({
-                    color: 0x3a4a6e,
+                    color: 0x4a5e8e,
                     transparent: true,
-                    opacity: 0.5,
+                    opacity: 0.6,
                 })
             );
-            edge.position.y = 0.082;
+            edge.position.y = 0.122;
             g.add(edge);
 
             return g;
@@ -355,25 +354,25 @@
          * So plate must be small enough to leave visible board ring around it.
          */
         _buildCenterPlate() {
-            // Inner playable area is 9x9 units.
-            // Make the dice plate a bit smaller so there's visible board around it.
+            // Inner area inside the tile ring is 9x9 units.
+            // Make dice plate slightly smaller to show board around it.
             const plateSide = 6.5;
 
-            // Glass plate - translucent light surface with rounded visual vibe
+            // Glass plate - brighter and more visible now
             const plateGeom = new THREE.BoxGeometry(plateSide, 0.06, plateSide);
             const plateMat = new THREE.MeshStandardMaterial({
-                color:     0x2a3448,
-                metalness: 0.35,
-                roughness: 0.25,
+                color:     0x3a4a6e,
+                metalness: 0.3,
+                roughness: 0.2,
                 transparent: true,
                 opacity: 0.55,
             });
             const plate = new THREE.Mesh(plateGeom, plateMat);
-            plate.position.y = 0.05;
+            plate.position.y = 0.10;
             plate.receiveShadow = true;
             this.group.add(plate);
 
-            // Bright rim for the glass plate
+            // Bright rim - more intense
             const rimEdgeGeom = new THREE.BoxGeometry(plateSide, 0.001, plateSide);
             const rimEdges = new THREE.EdgesGeometry(rimEdgeGeom);
             const rim = new THREE.LineSegments(
@@ -381,16 +380,16 @@
                 new THREE.LineBasicMaterial({
                     color: 0x5ac8fa,
                     transparent: true,
-                    opacity: 0.9,
+                    opacity: 0.95,
                 })
             );
-            rim.position.y = 0.085;
+            rim.position.y = 0.135;
             this.group.add(rim);
 
             // Store plate bounds for Dice code to read
             this.centerPlateBounds = {
                 size: plateSide,
-                topY: 0.08,
+                topY: 0.13,
             };
         }
 
