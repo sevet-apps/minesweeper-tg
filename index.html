@@ -3242,42 +3242,98 @@
         }
         startBannerCarousel();
         
-        // === TOURNAMENT COUNTDOWN TIMER ===
-        // End: 21 April 2026 12:30 UTC+3 (= 09:30 UTC)
-        const TOURNAMENT_END = new Date('2026-04-21T09:30:00Z').getTime();
-        
-        function updateTournamentTimers() {
-            const now = Date.now();
-            const diff = TOURNAMENT_END - now;
-            
-            if (diff <= 0) {
-                // Tournament ended
-                ['tournamentTimer', 'referralTimer'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerHTML = '<span style="font-size:16px; font-weight:700; color:#ff3b30;">Турнир завершён!</span>';
+        // === TOURNAMENT STATE (driven by backend) ===
+        let _tournamentState = { bb: null, referral: null, vpn_active: false };
+        let _tournamentStateAt = 0;
+        const TOURNAMENT_STATE_TTL_MS = 60_000;
+
+        async function fetchTournamentState(force = false) {
+            if (!force && Date.now() - _tournamentStateAt < TOURNAMENT_STATE_TTL_MS) {
+                return _tournamentState;
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/tournaments/state`, {
+                    headers: { 'x-telegram-init-data': tg.initData || '' },
                 });
+                if (res.ok) {
+                    _tournamentState = await res.json();
+                    _tournamentStateAt = Date.now();
+                }
+            } catch (e) {
+                console.warn('tournament state fetch failed:', e);
+            }
+            return _tournamentState;
+        }
+
+        function renderTournamentTimer(elementId, tournament) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            if (!tournament) {
+                el.innerHTML = '<span style="font-size:14px; font-weight:600; color:#8e8e93;">Скоро будет следующий турнир!</span>';
                 return;
             }
-            
+
+            const diff = new Date(tournament.end_at).getTime() - Date.now();
+            if (diff <= 0) {
+                el.innerHTML = '<span style="font-size:14px; font-weight:600; color:#8e8e93;">Скоро будет следующий турнир!</span>';
+                return;
+            }
+
             const days = Math.floor(diff / 86400000);
             const hours = Math.floor((diff % 86400000) / 3600000);
             const minutes = Math.floor((diff % 3600000) / 60000);
-            
-            const html = 
+
+            el.innerHTML =
                 `<div class="tournament-timer-block"><div class="tournament-timer-value">${days}</div><div class="tournament-timer-label">дн</div></div>` +
                 `<div class="tournament-timer-sep">:</div>` +
                 `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(hours).padStart(2,'0')}</div><div class="tournament-timer-label">час</div></div>` +
                 `<div class="tournament-timer-sep">:</div>` +
                 `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(minutes).padStart(2,'0')}</div><div class="tournament-timer-label">мин</div></div>`;
-            
-            ['tournamentTimer', 'referralTimer'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.innerHTML = html;
+        }
+
+        async function updateTournamentTimers() {
+            const state = await fetchTournamentState();
+            renderTournamentTimer('tournamentTimer', state.bb);
+            renderTournamentTimer('referralTimer', state.referral);
+
+            // Toggle the green "ТУРНИР" badge + subtitle on the BB game card
+            const bbCard = document.querySelector('.card.card-event');
+            if (bbCard) {
+                const badge = bbCard.querySelector('.card-event-badge');
+                const subtitle = bbCard.querySelector('[data-i18n="tournamentActive"]') ||
+                                 bbCard.querySelector('.bb-card-subtitle');
+                if (state.bb) {
+                    if (badge) badge.style.display = '';
+                    if (subtitle) {
+                        subtitle.style.display = '';
+                        subtitle.removeAttribute('data-i18n');
+                        subtitle.classList.add('bb-card-subtitle');
+                        subtitle.textContent = state.bb.prize_text
+                            ? `Турнир на ${state.bb.prize_text}`
+                            : 'Турнир идёт!';
+                    }
+                } else {
+                    if (badge) badge.style.display = 'none';
+                    if (subtitle) subtitle.style.display = 'none';
+                }
+            }
+
+            // Banner carousel: hide tournament/referral banners if their tournament isn't active
+            document.querySelectorAll('.banner-slide-wrap').forEach(wrap => {
+                const img = wrap.querySelector('img.banner-slide');
+                if (!img) return;
+                const src = img.getAttribute('src') || '';
+                if (src.includes('tournament-banner')) {
+                    wrap.style.display = state.bb ? '' : 'none';
+                } else if (src.includes('referral-banner')) {
+                    wrap.style.display = state.referral ? '' : 'none';
+                }
             });
         }
-        
+
         updateTournamentTimers();
-        setInterval(updateTournamentTimers, 30000); // Update every 30 sec
+        setInterval(updateTournamentTimers, 60000); // every minute
         
         function openPrivacyPolicy() {
             document.getElementById('privacyScreen').classList.add('visible');
@@ -3906,11 +3962,31 @@
             const tCard = document.getElementById('tournamentCard');
             if (tCard) {
                 if (currentLbGame === 'bb' && category.id === 'bb_best_score') {
+                    const tState = await fetchTournamentState();
                     tCard.style.display = '';
-                    const cupEl = document.getElementById('tournamentCupLottie');
-                    cupEl.innerHTML = '';
-                    if (tournamentCupAnim) { tournamentCupAnim.destroy(); tournamentCupAnim = null; }
-                    tournamentCupAnim = lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                    const titleEl = tCard.querySelector('.tournament-card-title');
+                    const textEl = tCard.querySelector('.tournament-card-text');
+                    if (tState.bb) {
+                        if (titleEl) titleEl.textContent = 'Турнир идёт!';
+                        if (textEl) {
+                            textEl.removeAttribute('data-i18n');
+                            textEl.textContent = tState.bb.description ||
+                                'Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!';
+                        }
+                        const cupEl = document.getElementById('tournamentCupLottie');
+                        cupEl.innerHTML = '';
+                        if (tournamentCupAnim) { tournamentCupAnim.destroy(); tournamentCupAnim = null; }
+                        tournamentCupAnim = lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                        renderTournamentTimer('tournamentTimer', tState.bb);
+                    } else {
+                        if (titleEl) titleEl.textContent = 'Турниры скоро вернутся';
+                        if (textEl) {
+                            textEl.removeAttribute('data-i18n');
+                            textEl.textContent = 'Прошлый турнир завершён — победители уже в архиве. Следите за объявлениями, скоро запустим новый!';
+                        }
+                        const timerEl = document.getElementById('tournamentTimer');
+                        if (timerEl) timerEl.innerHTML = '<span style="font-size:13px; color:#8e8e93;">Следующий турнир уже на подходе!</span>';
+                    }
                 } else {
                     tCard.style.display = 'none';
                 }
@@ -3967,14 +4043,34 @@
             const tCard = document.getElementById('tournamentCard');
             if (tCard) tCard.style.display = 'none';
             
-            // Show referral tournament card
+            // Show referral tournament card (driven by backend state)
             const refTCard = document.getElementById('referralTournamentCard');
             if (refTCard) {
+                const refState = await fetchTournamentState();
                 refTCard.style.display = '';
-                const cupEl = document.getElementById('referralCupLottie');
-                cupEl.innerHTML = '';
-                if (typeof lottie !== 'undefined') {
-                    lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                const titleEl = refTCard.querySelector('.tournament-card-title');
+                const textEl = refTCard.querySelector('.tournament-card-text');
+                if (refState.referral) {
+                    if (titleEl) titleEl.textContent = 'Турнир идёт!';
+                    if (textEl) {
+                        textEl.removeAttribute('data-i18n');
+                        textEl.textContent = refState.referral.description ||
+                            'Турнир среди рефоводов! Приглашайте друзей уже сейчас — ваши рефералы уже учтены. Первое место заберёт главный приз!';
+                    }
+                    const cupEl = document.getElementById('referralCupLottie');
+                    cupEl.innerHTML = '';
+                    if (typeof lottie !== 'undefined') {
+                        lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                    }
+                    renderTournamentTimer('referralTimer', refState.referral);
+                } else {
+                    if (titleEl) titleEl.textContent = 'Турниры скоро вернутся';
+                    if (textEl) {
+                        textEl.removeAttribute('data-i18n');
+                        textEl.textContent = 'Прошлый реф-турнир завершён — победители уже в архиве. Готовимся к новому!';
+                    }
+                    const timerEl = document.getElementById('referralTimer');
+                    if (timerEl) timerEl.innerHTML = '<span style="font-size:13px; color:#8e8e93;">Следующий реф-турнир уже на подходе!</span>';
                 }
             }
             

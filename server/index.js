@@ -23,6 +23,61 @@ const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_news';
 const OWNER_ID = '1482228376'; // Твой Telegram ID
 
 // ============================
+// TOURNAMENTS: shared helpers
+// ============================
+const { hasPartnerVpnSubscription } = require('./partner-vpn');
+const { registerAdminBot } = require('./admin-bot');
+
+// Cache of currently-active tournaments PER KIND (bb / referral).
+const _activeCache = new Map();
+const ACTIVE_TTL_MS = 30_000;
+
+async function getActiveTournament(kind) {
+    const cached = _activeCache.get(kind);
+    if (cached && Date.now() - cached.ts < ACTIVE_TTL_MS) return cached.data;
+
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('kind', kind)
+        .eq('status', 'active')
+        .lte('start_at', nowIso)
+        .gte('end_at', nowIso)
+        .order('start_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.warn(`[tournaments] active fetch error (${kind}):`, error.message);
+        return null;
+    }
+    _activeCache.set(kind, { data: data || null, ts: Date.now() });
+    return data || null;
+}
+
+function invalidateActiveTournamentCache(kind) {
+    if (kind) _activeCache.delete(kind);
+    else _activeCache.clear();
+}
+
+// Auto-transition: tournaments whose end_at passed should move from
+// 'active' -> 'ended' (admin still needs to take the snapshot to archive).
+setInterval(async () => {
+    try {
+        const nowIso = new Date().toISOString();
+        await supabase
+            .from('tournaments')
+            .update({ status: 'ended' })
+            .eq('status', 'active')
+            .lt('end_at', nowIso);
+        invalidateActiveTournamentCache();
+    } catch (e) {
+        console.warn('[tournaments] auto-transition error:', e.message);
+    }
+}, 5 * 60_000);
+
+// ============================
 // SECURITY: Telegram initData validation
 // ============================
 function validateInitData(initDataString) {
@@ -127,6 +182,7 @@ setInterval(() => {
 const SCORE_LIMITS = {
     'bb_best_score':      { min: 1, max: 10000000 },
     'bb_total_games':     { min: 1, max: 10000000 },
+    'bb_tournament_score':{ min: 1, max: 15000000 },
     'saper_wins':         { min: 1, max: 10000000 },
     'saper_best_6':       { min: 1, max: 86400 },   // seconds, max 24h
     'saper_best_8':       { min: 1, max: 86400 },
@@ -166,6 +222,7 @@ const gameSessions = new Map(); // `${userId}:${gameType}` -> { startTime, token
 // Minimum game durations in ms (impossible to play faster)
 const MIN_GAME_DURATION = {
     'bb_best_score': 5000,       // BB game takes at least 5 sec
+    'bb_tournament_score': 5000, // Tournament BB — same minimum
     'tower_best': 3000,          // Tower takes at least 3 sec
     'tower_combo': 3000,
     'saper_best_6': 2000,        // Minesweeper 6x6 at least 2 sec
@@ -722,7 +779,11 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     const isCounter = ['saper_wins', 'bb_total_games', 'checkers_total', 'checkers_wins_pve', 'sudoku_wins', 'wordle_wins'].includes(game_type);
     
     // tower_combo shares session with tower_best (same game, submitted together)
-    const sessionGameType = (game_type === 'tower_combo') ? 'tower_best' : game_type;
+    // bb_tournament_score shares session with bb_best_score (identical gameplay)
+    const sessionGameType =
+        (game_type === 'tower_combo')         ? 'tower_best'    :
+        (game_type === 'bb_tournament_score') ? 'bb_best_score' :
+        game_type;
     const needsSession = !isCounter;
     
     if (needsSession) {
@@ -745,7 +806,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
         
         // Check minimum moves for action games
-        if (game_type === 'bb_best_score' && session.moveCount < 3) {
+        if ((game_type === 'bb_best_score' || game_type === 'bb_tournament_score') && session.moveCount < 3) {
             console.log(`TOO_FEW_MOVES: user=${user_id}, game=${game_type}, moves=${session.moveCount}`);
             gameSessions.delete(key);
             return res.status(400).json({ error: 'Insufficient gameplay' });
@@ -766,7 +827,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
         
         // BB server-side score enforcement at save time
-        if (game_type === 'bb_best_score') {
+        if (game_type === 'bb_best_score' || game_type === 'bb_tournament_score') {
             if (session.bbSynced && session.moveCount >= 3) {
                 // Server tracked the game — use server score as ceiling
                 const maxAllowed = session.bbScore + Math.max(50, session.bbScore * 0.1);
@@ -820,6 +881,83 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             if (error) return res.status(500).json({ error: 'DB error' });
         }
         return res.json({ ok: true, value: currentVal + 1 });
+    }
+    
+    // ---- TOURNAMENT BB: separate write path (skip users table) ----
+    if (game_type === 'bb_tournament_score') {
+        try {
+            const tournament = await getActiveTournament('bb');
+            if (!tournament) {
+                return res.status(409).json({ error: 'No active tournament' });
+            }
+
+            let multiplier = 1.0;
+            if (tournament.partner_slug) {
+                const hasSub = await hasPartnerVpnSubscription(
+                    supabase, user_id, tournament.partner_slug
+                );
+                if (hasSub) multiplier = Number(tournament.multiplier) || 1.5;
+            }
+
+            const rawScore = score; // already capped above by bbScore enforcement
+            const finalScore = Math.floor(rawScore * multiplier);
+
+            const { data: existing } = await supabase
+                .from('tournament_scores')
+                .select('final_score, games_played')
+                .eq('tournament_id', tournament.id)
+                .eq('telegram_id', user_id)
+                .maybeSingle();
+
+            if (!existing) {
+                const { error: insErr } = await supabase
+                    .from('tournament_scores')
+                    .insert({
+                        tournament_id:      tournament.id,
+                        telegram_id:        user_id,
+                        username,
+                        photo_url,
+                        raw_score:          rawScore,
+                        multiplier_applied: multiplier,
+                        final_score:        finalScore,
+                        games_played:       1,
+                    });
+                if (insErr) {
+                    console.error('[tournament] insert error:', insErr.message);
+                    return res.status(500).json({ error: 'DB error' });
+                }
+            } else {
+                const updateData = {
+                    username, photo_url,
+                    games_played: (existing.games_played || 0) + 1,
+                    updated_at:   new Date().toISOString(),
+                };
+                if (finalScore > existing.final_score) {
+                    updateData.raw_score          = rawScore;
+                    updateData.multiplier_applied = multiplier;
+                    updateData.final_score        = finalScore;
+                }
+                const { error: updErr } = await supabase
+                    .from('tournament_scores').update(updateData)
+                    .eq('tournament_id', tournament.id).eq('telegram_id', user_id);
+                if (updErr) {
+                    console.error('[tournament] update error:', updErr.message);
+                    return res.status(500).json({ error: 'DB error' });
+                }
+            }
+
+            return res.json({
+                success: true,
+                tournament_id: tournament.id,
+                raw_score: rawScore,
+                multiplier,
+                final_score: finalScore,
+                vpn_active: multiplier > 1.0,
+            });
+        } catch (e) {
+            console.error('[tournament] error:', e);
+            return res.status(500).json({ error: e.message });
+        }
     }
     
     try {
@@ -915,6 +1053,119 @@ app.get('/leaderboard', async (req, res) => {
     if (error) return res.json([]);
     const result = data.map(u => ({ user_id: u.telegram_id, username: u.username, photo_url: u.photo_url, score: u[category] }));
     res.json(result);
+});
+
+// ============================
+// TOURNAMENTS: public endpoints
+// ============================
+
+// State of both banners (BB + Referral) for the home/leaderboard screens.
+app.get('/tournaments/state', async (req, res) => {
+    try {
+        const [bb, referral] = await Promise.all([
+            getActiveTournament('bb'),
+            getActiveTournament('referral'),
+        ]);
+
+        // Optional per-user VPN status (cosmetic — for the BB tournament card badge)
+        let vpnActive = false;
+        try {
+            const initData = req.headers['x-telegram-init-data'];
+            if (initData && bb && bb.partner_slug) {
+                const params = new URLSearchParams(initData);
+                const userJson = params.get('user');
+                if (userJson) {
+                    const u = JSON.parse(userJson);
+                    if (u && u.id) {
+                        vpnActive = await hasPartnerVpnSubscription(supabase, String(u.id), bb.partner_slug);
+                    }
+                }
+            }
+        } catch (_) { /* ignore */ }
+
+        const shape = (t) => t ? {
+            id: t.id, slug: t.slug, name: t.name, kind: t.kind,
+            description: t.description,
+            start_at: t.start_at, end_at: t.end_at,
+            multiplier: Number(t.multiplier),
+            partner_slug: t.partner_slug,
+            partner_cta_url: t.partner_cta_url,
+            prize_text: t.prize_text,
+        } : null;
+
+        res.json({
+            bb: shape(bb),
+            referral: shape(referral),
+            vpn_active: vpnActive,
+            server_time: new Date().toISOString(),
+        });
+    } catch (e) {
+        console.error('[tournaments/state] error:', e);
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
+// Live leaderboard for an active BB tournament with multiplier.
+app.get('/tournaments/:id/leaderboard', async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.json([]);
+
+    const { data, error } = await supabase
+        .from('tournament_scores')
+        .select('telegram_id, username, photo_url, raw_score, multiplier_applied, final_score')
+        .eq('tournament_id', id)
+        .order('final_score', { ascending: false })
+        .limit(50);
+    if (error) return res.json([]);
+
+    res.json((data || []).map(u => ({
+        user_id: u.telegram_id,
+        username: u.username,
+        photo_url: u.photo_url,
+        score: u.final_score,
+        raw_score: u.raw_score,
+        multiplier: Number(u.multiplier_applied),
+    })));
+});
+
+// History: list of archived tournaments.
+app.get('/tournaments/history', async (req, res) => {
+    const { kind } = req.query;
+    let q = supabase
+        .from('tournaments')
+        .select('id, slug, name, kind, end_at, prize_text')
+        .eq('status', 'archived')
+        .order('end_at', { ascending: false })
+        .limit(50);
+    if (kind === 'bb' || kind === 'referral') q = q.eq('kind', kind);
+    const { data, error } = await q;
+    if (error) return res.json([]);
+    res.json(data || []);
+});
+
+// Frozen final standings for one archived tournament.
+app.get('/tournaments/:id/history', async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.json({ tournament: null, entries: [] });
+
+    const [{ data: t }, { data: entries }] = await Promise.all([
+        supabase.from('tournaments').select('id, slug, name, kind, end_at, prize_text').eq('id', id).maybeSingle(),
+        supabase.from('tournament_history_entries')
+            .select('rank, telegram_id, username, photo_url, score')
+            .eq('tournament_id', id)
+            .order('rank', { ascending: true }),
+    ]);
+
+    res.json({
+        tournament: t || null,
+        entries: (entries || []).map(e => ({
+            user_id: e.telegram_id,
+            username: e.username,
+            photo_url: e.photo_url,
+            score: e.score,
+            rank: e.rank,
+        })),
+    });
 });
 
 // Get user ranks for all games
@@ -2105,6 +2356,9 @@ let bot = null;
 
 if (BOT_TOKEN) {
     bot = new TelegramBot(BOT_TOKEN, { polling: true });
+    
+    // Register admin tournament management commands (/admin)
+    registerAdminBot({ bot, supabase });
     
     // Обработчик ошибок polling - чтобы бот не падал
     bot.on('polling_error', (error) => {
