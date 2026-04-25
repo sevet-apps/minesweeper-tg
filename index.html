@@ -406,6 +406,71 @@
             max-width: 300px;
             margin: 0 auto;
         }
+        .tournament-history-btn {
+            margin-top: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--accent);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .tournament-history-btn:active {
+            background: rgba(255, 255, 255, 0.16);
+            transform: scale(0.97);
+        }
+        body.light-theme .tournament-history-btn {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        body.light-theme .tournament-history-btn:active {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .th-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--card-bg);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .th-item:active { transform: scale(0.98); }
+        .th-item-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .th-item-icon.bb { background: linear-gradient(135deg, #34c759, #30b0c7); }
+        .th-item-icon.referral { background: linear-gradient(135deg, #ff9500, #ff3b30); }
+        .th-item-info { flex: 1; min-width: 0; }
+        .th-item-name {
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .th-item-meta {
+            font-size: 12px;
+            color: #8e8e93;
+            margin-top: 2px;
+        }
+        .th-item-arrow {
+            color: #8e8e93;
+            flex-shrink: 0;
+        }
         
         .dropdown-menu { 
             position: absolute; 
@@ -1817,6 +1882,7 @@
             <div class="tournament-card-title">Турнир идёт!</div>
             <div class="tournament-timer" id="tournamentTimer"></div>
             <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!</div>
+            <button class="tournament-history-btn" onclick="openTournamentHistory('bb')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
         </div>
         
         <!-- Tournament Banner for Referrers -->
@@ -1829,9 +1895,35 @@
             <div class="tournament-card-title">Турнир идёт!</div>
             <div class="tournament-timer" id="referralTimer"></div>
             <div class="tournament-card-text" data-i18n="refTournamentDesc">Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — ваши рефералы уже учтены. Первое место заберёт главный приз!</div>
+            <button class="tournament-history-btn" onclick="openTournamentHistory('referral')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
         </div>
         
         <div class="lb-list" id="lbList"></div>
+    </div>
+
+    <!-- Tournament history overlay -->
+    <div id="view-tournament-history" class="screen" style="z-index: 250; background: var(--bg-color);">
+        <div class="header">
+            <div class="back-btn" onclick="closeTournamentHistory()" style="font-size: 17px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span data-i18n="back">Назад</span>
+            </div>
+        </div>
+        <div class="lb-title-lg" data-i18n="tournamentHistoryTitle">История турниров</div>
+        <div class="lb-list" id="tournamentHistoryList"></div>
+    </div>
+
+    <!-- Tournament history detail overlay (one specific archived tournament) -->
+    <div id="view-tournament-history-detail" class="screen" style="z-index: 260; background: var(--bg-color);">
+        <div class="header">
+            <div class="back-btn" onclick="closeTournamentHistoryDetail()" style="font-size: 17px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span data-i18n="back">Назад</span>
+            </div>
+        </div>
+        <div class="lb-title-lg" id="tournamentHistoryDetailTitle">—</div>
+        <div id="tournamentHistoryDetailMeta" style="text-align:center; color:#8e8e93; font-size:14px; margin-bottom:12px;"></div>
+        <div class="lb-list" id="tournamentHistoryDetailList"></div>
     </div>
     
     <div class="lb-sticky-user" id="lbStickyUser">
@@ -2900,6 +2992,25 @@
                 tournamentBadge: 'ТУРНИР',
                 liveEnded: 'Трансляция завершена',
                 tournamentActive: 'Турнир на 150$',
+                tournamentRunning: 'Турнир идёт!',
+                tournamentReturnsSoon: 'Турниры скоро вернутся',
+                tournamentNextSoon: 'Скоро будет следующий турнир!',
+                tournamentNextOnTheWay: 'Следующий турнир уже на подходе!',
+                tournamentNextRefOnTheWay: 'Следующий реф-турнир уже на подходе!',
+                tournamentBbEnded: 'Прошлый турнир завершён — победители уже в архиве. Следите за объявлениями, скоро запустим новый!',
+                tournamentRefEnded: 'Прошлый реф-турнир завершён — победители уже в архиве. Готовимся к новому!',
+                tournamentDays: 'дн',
+                tournamentHours: 'час',
+                tournamentMinutes: 'мин',
+                tournamentPrize: 'Турнир на',
+                tournamentHistoryTitle: 'История турниров',
+                tournamentHistoryEmpty: 'Здесь появятся завершённые турниры.',
+                tournamentHistoryArchived: 'Завершён',
+                tournamentHistoryViewBtn: 'История турниров',
+                tournamentHistoryWinner: '🏆 Победитель',
+                tournamentHistoryYourPlace: 'Ваше место',
+                tournamentHistoryNoPlace: 'Вы не участвовали',
+                back: 'Назад',
                 beta: 'БЕТА'
             },
             en: {
@@ -3088,6 +3199,25 @@
                 tournamentBadge: 'EVENT',
                 liveEnded: 'Stream ended',
                 tournamentActive: '$150 Tournament',
+                tournamentRunning: 'Tournament is live!',
+                tournamentReturnsSoon: 'Tournaments will return soon',
+                tournamentNextSoon: 'The next tournament is coming soon!',
+                tournamentNextOnTheWay: 'Next tournament is on the way!',
+                tournamentNextRefOnTheWay: 'Next referral tournament is on the way!',
+                tournamentBbEnded: 'The previous tournament has ended — winners are in the archive. Stay tuned, a new one is coming!',
+                tournamentRefEnded: 'The previous referral tournament has ended — winners are in the archive. We\u2019re prepping a new one!',
+                tournamentDays: 'd',
+                tournamentHours: 'h',
+                tournamentMinutes: 'm',
+                tournamentPrize: 'Tournament for',
+                tournamentHistoryTitle: 'Tournament history',
+                tournamentHistoryEmpty: 'Finished tournaments will appear here.',
+                tournamentHistoryArchived: 'Ended',
+                tournamentHistoryViewBtn: 'Tournament history',
+                tournamentHistoryWinner: '🏆 Winner',
+                tournamentHistoryYourPlace: 'Your place',
+                tournamentHistoryNoPlace: 'You didn\u2019t participate',
+                back: 'Back',
                 beta: 'BETA'
             }
         };
@@ -3270,13 +3400,13 @@
             if (!el) return;
 
             if (!tournament) {
-                el.innerHTML = '<span style="font-size:14px; font-weight:600; color:#8e8e93;">Скоро будет следующий турнир!</span>';
+                el.innerHTML = `<span style="font-size:14px; font-weight:600; color:#8e8e93;">${t('tournamentNextSoon')}</span>`;
                 return;
             }
 
             const diff = new Date(tournament.end_at).getTime() - Date.now();
             if (diff <= 0) {
-                el.innerHTML = '<span style="font-size:14px; font-weight:600; color:#8e8e93;">Скоро будет следующий турнир!</span>';
+                el.innerHTML = `<span style="font-size:14px; font-weight:600; color:#8e8e93;">${t('tournamentNextSoon')}</span>`;
                 return;
             }
 
@@ -3285,11 +3415,11 @@
             const minutes = Math.floor((diff % 3600000) / 60000);
 
             el.innerHTML =
-                `<div class="tournament-timer-block"><div class="tournament-timer-value">${days}</div><div class="tournament-timer-label">дн</div></div>` +
+                `<div class="tournament-timer-block"><div class="tournament-timer-value">${days}</div><div class="tournament-timer-label">${t('tournamentDays')}</div></div>` +
                 `<div class="tournament-timer-sep">:</div>` +
-                `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(hours).padStart(2,'0')}</div><div class="tournament-timer-label">час</div></div>` +
+                `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(hours).padStart(2,'0')}</div><div class="tournament-timer-label">${t('tournamentHours')}</div></div>` +
                 `<div class="tournament-timer-sep">:</div>` +
-                `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(minutes).padStart(2,'0')}</div><div class="tournament-timer-label">мин</div></div>`;
+                `<div class="tournament-timer-block"><div class="tournament-timer-value">${String(minutes).padStart(2,'0')}</div><div class="tournament-timer-label">${t('tournamentMinutes')}</div></div>`;
         }
 
         async function updateTournamentTimers() {
@@ -3310,8 +3440,8 @@
                         subtitle.removeAttribute('data-i18n');
                         subtitle.classList.add('bb-card-subtitle');
                         subtitle.textContent = state.bb.prize_text
-                            ? `Турнир на ${state.bb.prize_text}`
-                            : 'Турнир идёт!';
+                            ? `${t('tournamentPrize')} ${state.bb.prize_text}`
+                            : t('tournamentRunning');
                     }
                 } else {
                     if (badge) badge.style.display = 'none';
@@ -3945,6 +4075,123 @@
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
         function closeLeaderboardDetail() { document.getElementById('view-leaderboard-detail').classList.remove('active'); document.getElementById('lbStickyUser').classList.remove('visible'); const menu = document.getElementById('dropdownMenu'); menu.classList.remove('active'); document.getElementById('dropdownCatcher').classList.remove('active'); document.getElementById('lbSelector').classList.remove('open'); }
+
+        // ====== TOURNAMENT HISTORY ======
+        async function openTournamentHistory(kind) {
+            const view = document.getElementById('view-tournament-history');
+            const list = document.getElementById('tournamentHistoryList');
+            view.classList.add('active');
+            list.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>';
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/tournaments/history?kind=${encodeURIComponent(kind)}`);
+                const items = res.ok ? await res.json() : [];
+                if (!items || items.length === 0) {
+                    list.innerHTML = `<div style="padding:30px; text-align:center; color:#8e8e93;">${t('tournamentHistoryEmpty')}</div>`;
+                    return;
+                }
+                list.innerHTML = '';
+                const iconClass = kind === 'referral' ? 'referral' : 'bb';
+                const iconChar = kind === 'referral' ? '👥' : '🧱';
+                items.forEach(item => {
+                    const endDate = item.end_at ? new Date(item.end_at).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    const meta = [t('tournamentHistoryArchived') + ' ' + endDate, item.prize_text].filter(Boolean).join(' · ');
+                    const el = document.createElement('div');
+                    el.className = 'th-item';
+                    el.onclick = () => openTournamentHistoryDetail(item.id);
+                    el.innerHTML = `
+                        <div class="th-item-icon ${iconClass}">${iconChar}</div>
+                        <div class="th-item-info">
+                            <div class="th-item-name">${item.name || ('#' + item.id)}</div>
+                            <div class="th-item-meta">${meta}</div>
+                        </div>
+                        <div class="th-item-arrow">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                        </div>`;
+                    list.appendChild(el);
+                });
+            } catch (e) {
+                list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">${t('networkError')}</div>`;
+            }
+        }
+
+        function closeTournamentHistory() {
+            document.getElementById('view-tournament-history').classList.remove('active');
+        }
+
+        async function openTournamentHistoryDetail(tournamentId) {
+            const view = document.getElementById('view-tournament-history-detail');
+            const titleEl = document.getElementById('tournamentHistoryDetailTitle');
+            const metaEl = document.getElementById('tournamentHistoryDetailMeta');
+            const listEl = document.getElementById('tournamentHistoryDetailList');
+            view.classList.add('active');
+            titleEl.textContent = '...';
+            metaEl.textContent = '';
+            listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>';
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/tournaments/${tournamentId}/history`);
+                const data = res.ok ? await res.json() : { tournament: null, entries: [] };
+                const tt = data.tournament;
+                titleEl.textContent = tt ? tt.name : '#' + tournamentId;
+                if (tt) {
+                    const endDate = tt.end_at ? new Date(tt.end_at).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    metaEl.textContent = [t('tournamentHistoryArchived') + ' ' + endDate, tt.prize_text].filter(Boolean).join(' · ');
+                }
+
+                const entries = data.entries || [];
+                if (entries.length === 0) {
+                    listEl.innerHTML = `<div style="padding:30px; text-align:center; color:#8e8e93;">${t('tournamentHistoryEmpty')}</div>`;
+                    return;
+                }
+
+                const me = (tg.initDataUnsafe.user || {}).id;
+                const myEntry = me ? entries.find(e => String(e.user_id) === String(me)) : null;
+
+                listEl.innerHTML = '';
+
+                // Show "your place" header if user participated
+                if (myEntry) {
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'background: var(--card-bg); border:1px solid var(--accent); border-radius:14px; padding:14px 16px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;';
+                    banner.innerHTML = `
+                        <div>
+                            <div style="font-size:13px; color:#8e8e93;">${t('tournamentHistoryYourPlace')}</div>
+                            <div style="font-size:22px; font-weight:700; color:var(--accent);">#${myEntry.rank}</div>
+                        </div>
+                        <div style="font-size:22px; font-weight:700;">${myEntry.score}</div>`;
+                    listEl.appendChild(banner);
+                } else if (me) {
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'padding:10px 16px; margin-bottom:14px; color:#8e8e93; font-size:13px; text-align:center;';
+                    banner.textContent = t('tournamentHistoryNoPlace');
+                    listEl.appendChild(banner);
+                }
+
+                entries.forEach(u => {
+                    const rank = u.rank;
+                    const medal = rank <= 3 ? `<div class="lb-rank-badge">${rank}</div>` : '';
+                    const isMe = me && String(u.user_id) === String(me);
+                    const item = document.createElement('div');
+                    item.className = `lb-item rank-${rank}`;
+                    if (isMe) item.style.border = '1px solid var(--accent)';
+                    const avatarHtml = u.photo_url && u.photo_url.startsWith('http')
+                        ? `<img src="${u.photo_url}" class="lb-avatar">`
+                        : `<div class="lb-avatar" style="background:#ddd"></div>`;
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${isMe ? t('you') : ''}</div></div><div class="lb-val">${u.score}</div>`;
+                    listEl.appendChild(item);
+                });
+            } catch (e) {
+                listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">${t('networkError')}</div>`;
+            }
+        }
+
+        function closeTournamentHistoryDetail() {
+            document.getElementById('view-tournament-history-detail').classList.remove('active');
+        }
+        // ====== END TOURNAMENT HISTORY ======
         function toggleDropdown() {
             const menu = document.getElementById('dropdownMenu'); const catcher = document.getElementById('dropdownCatcher'); const selector = document.getElementById('lbSelector');
             if(!menu.classList.contains('active')) {
@@ -3966,26 +4213,32 @@
                     tCard.style.display = '';
                     const titleEl = tCard.querySelector('.tournament-card-title');
                     const textEl = tCard.querySelector('.tournament-card-text');
-                    if (tState.bb) {
-                        if (titleEl) titleEl.textContent = 'Турнир идёт!';
-                        if (textEl) {
-                            textEl.removeAttribute('data-i18n');
-                            textEl.textContent = tState.bb.description ||
-                                'Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!';
-                        }
-                        const cupEl = document.getElementById('tournamentCupLottie');
+
+                    // Always (re)load the cup lottie when the card is visible
+                    const cupEl = document.getElementById('tournamentCupLottie');
+                    if (cupEl) {
                         cupEl.innerHTML = '';
                         if (tournamentCupAnim) { tournamentCupAnim.destroy(); tournamentCupAnim = null; }
-                        tournamentCupAnim = lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
-                        renderTournamentTimer('tournamentTimer', tState.bb);
-                    } else {
-                        if (titleEl) titleEl.textContent = 'Турниры скоро вернутся';
+                        if (typeof lottie !== 'undefined') {
+                            tournamentCupAnim = lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
+                        }
+                    }
+
+                    if (tState.bb) {
+                        if (titleEl) titleEl.textContent = t('tournamentRunning');
                         if (textEl) {
                             textEl.removeAttribute('data-i18n');
-                            textEl.textContent = 'Прошлый турнир завершён — победители уже в архиве. Следите за объявлениями, скоро запустим новый!';
+                            textEl.textContent = tState.bb.description || t('tournamentDesc');
+                        }
+                        renderTournamentTimer('tournamentTimer', tState.bb);
+                    } else {
+                        if (titleEl) titleEl.textContent = t('tournamentReturnsSoon');
+                        if (textEl) {
+                            textEl.removeAttribute('data-i18n');
+                            textEl.textContent = t('tournamentBbEnded');
                         }
                         const timerEl = document.getElementById('tournamentTimer');
-                        if (timerEl) timerEl.innerHTML = '<span style="font-size:13px; color:#8e8e93;">Следующий турнир уже на подходе!</span>';
+                        if (timerEl) timerEl.innerHTML = `<span style="font-size:13px; color:#8e8e93;">${t('tournamentNextOnTheWay')}</span>`;
                     }
                 } else {
                     tCard.style.display = 'none';
@@ -4050,27 +4303,31 @@
                 refTCard.style.display = '';
                 const titleEl = refTCard.querySelector('.tournament-card-title');
                 const textEl = refTCard.querySelector('.tournament-card-text');
-                if (refState.referral) {
-                    if (titleEl) titleEl.textContent = 'Турнир идёт!';
-                    if (textEl) {
-                        textEl.removeAttribute('data-i18n');
-                        textEl.textContent = refState.referral.description ||
-                            'Турнир среди рефоводов! Приглашайте друзей уже сейчас — ваши рефералы уже учтены. Первое место заберёт главный приз!';
-                    }
-                    const cupEl = document.getElementById('referralCupLottie');
+
+                // Always (re)load the cup lottie when card is visible
+                const cupEl = document.getElementById('referralCupLottie');
+                if (cupEl) {
                     cupEl.innerHTML = '';
                     if (typeof lottie !== 'undefined') {
                         lottie.loadAnimation({ container: cupEl, renderer: 'svg', loop: false, autoplay: true, path: 'cup.json' });
                     }
-                    renderTournamentTimer('referralTimer', refState.referral);
-                } else {
-                    if (titleEl) titleEl.textContent = 'Турниры скоро вернутся';
+                }
+
+                if (refState.referral) {
+                    if (titleEl) titleEl.textContent = t('tournamentRunning');
                     if (textEl) {
                         textEl.removeAttribute('data-i18n');
-                        textEl.textContent = 'Прошлый реф-турнир завершён — победители уже в архиве. Готовимся к новому!';
+                        textEl.textContent = refState.referral.description || t('refTournamentDesc');
+                    }
+                    renderTournamentTimer('referralTimer', refState.referral);
+                } else {
+                    if (titleEl) titleEl.textContent = t('tournamentReturnsSoon');
+                    if (textEl) {
+                        textEl.removeAttribute('data-i18n');
+                        textEl.textContent = t('tournamentRefEnded');
                     }
                     const timerEl = document.getElementById('referralTimer');
-                    if (timerEl) timerEl.innerHTML = '<span style="font-size:13px; color:#8e8e93;">Следующий реф-турнир уже на подходе!</span>';
+                    if (timerEl) timerEl.innerHTML = `<span style="font-size:13px; color:#8e8e93;">${t('tournamentNextRefOnTheWay')}</span>`;
                 }
             }
             
