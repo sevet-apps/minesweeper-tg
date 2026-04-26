@@ -216,18 +216,23 @@
         }
         .banner-track {
             display: flex;
+            width: 100%;
             transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         .banner-slide-wrap {
-            flex-shrink: 0;
+            flex: 0 0 100%;     /* default for 1-slide case; JS overrides for multi */
+            width: 100%;
             border-radius: 20px;
             overflow: hidden;
+            line-height: 0;     /* kills the inline-image baseline gap */
         }
         .banner-slide {
             width: 100%;
+            height: auto;
             display: block;
             cursor: pointer;
             border-radius: 20px;
+            object-fit: cover;
         }
         .banner-slide:active { opacity: 0.85; }
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
@@ -498,32 +503,33 @@
             justify-content: center;
             box-sizing: border-box;
         }
+        .bb-mode-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 16px;
+        }
         .bb-mode-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            background: var(--card-bg);
-            border: 1px solid rgba(142, 142, 147, 0.3);
+            background: var(--accent);
+            border: none;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            z-index: 3;
-            color: var(--text-color);
+            color: #fff;
             transition: transform 0.1s, opacity 0.2s;
+            flex-shrink: 0;
         }
-        .bb-mode-arrow:active { transform: translateY(-50%) scale(0.92); }
-        .bb-mode-arrow.left  { left: 4px; }
-        .bb-mode-arrow.right { right: 4px; }
-        .bb-mode-arrow.disabled { opacity: 0.35; pointer-events: none; }
+        .bb-mode-arrow:active { transform: scale(0.92); }
+        .bb-mode-arrow.disabled { opacity: 0.3; pointer-events: none; }
         .bb-mode-dots {
             display: flex;
             justify-content: center;
             gap: 6px;
-            margin-top: 14px;
         }
         .bb-mode-dot {
             width: 7px;
@@ -2166,14 +2172,16 @@
                 <div class="bb-mode-track" id="bbModeTrack">
                     <!-- cards rendered by JS -->
                 </div>
-                <div class="bb-mode-arrow left" id="bbModeArrowLeft" onclick="bbModeStep(-1)">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </div>
+            <div class="bb-mode-controls">
+                <div class="bb-mode-arrow" id="bbModeArrowLeft" onclick="bbModeStep(-1)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 </div>
-                <div class="bb-mode-arrow right" id="bbModeArrowRight" onclick="bbModeStep(1)">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                <div class="bb-mode-dots" id="bbModeDots"></div>
+                <div class="bb-mode-arrow" id="bbModeArrowRight" onclick="bbModeStep(1)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
                 </div>
             </div>
-            <div class="bb-mode-dots" id="bbModeDots"></div>
         </div>
     </div>
     
@@ -5062,6 +5070,7 @@
         // 'original' — classic infinite mode (saved score goes to users.bb_best_score)
         // 'tournament' — same gameplay, score goes to tournament_scores with multiplier
         let bbMode = 'original';
+        let bbGameEnded = false; // true after game-over until next new/resumed game
         const BB_PARTNER_DEFAULT_CTA = 'https://t.me/phantomio_bot?start=spark';
 
         function bbStateKey() {
@@ -5277,6 +5286,7 @@
         }
 
         async function resumeBB() {
+            bbGameEnded = false;
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
             restoreBBState();
@@ -5296,6 +5306,7 @@
             } catch(e) { console.error('BB sync error:', e); }
         }
         function newGameBB() {
+            bbGameEnded = false;
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
             initBB();
@@ -5948,6 +5959,13 @@
             });
             if (canMove) return;
 
+            // Mark game as ended FIRST — any subsequent saveBBState() (e.g. from
+            // closeGame, autosave timers, or live broadcasts) becomes a no-op.
+            bbGameEnded = true;
+            // Remove the in-progress save immediately so even a stale read can't
+            // resurrect it.
+            try { localStorage.removeItem(bbStateKey()); } catch (e) {}
+
             bbLiveStop();
             if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');
             await animateGameOverFill();
@@ -5975,8 +5993,6 @@
                 showBBGameOverModal(isRecord && parseInt(localStorage.getItem('bb_best_score') || 0) >= bbScore, bbScore, currentBest);
             }
 
-            localStorage.removeItem(bbStateKey());
-
             // bb_total_games counts both modes (it's just a play counter)
             let t = parseInt(localStorage.getItem('bb_total_games') || 0) + 1;
             saveStatToCloud('bb_total_games', t);
@@ -5984,7 +6000,7 @@
         }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = getCellFast(r, c); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `<div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 10px 0; font-size:24px;">${t('newRecord')}</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('playAgain')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' }); let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2><p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">${t('best')}: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('newGame')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; } overlay.classList.add('visible'); }
-        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
+        function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
         function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
