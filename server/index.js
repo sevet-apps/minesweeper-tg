@@ -883,7 +883,10 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         return res.json({ ok: true, value: currentVal + 1 });
     }
     
-    // ---- TOURNAMENT BB: separate write path (skip users table) ----
+    // ---- TOURNAMENT BB: write to tournament_scores AND ALSO fall through to
+    // the global users.bb_best_score path so the player's raw score still
+    // contributes to the global all-time leaderboard.
+    let _tournamentResult = null;
     if (game_type === 'bb_tournament_score') {
         try {
             const tournament = await getActiveTournament('bb');
@@ -946,14 +949,21 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
                 }
             }
 
-            return res.json({
-                success: true,
+            // Stash the tournament outcome for the final response.
+            _tournamentResult = {
                 tournament_id: tournament.id,
-                raw_score: rawScore,
+                raw_score:     rawScore,
                 multiplier,
-                final_score: finalScore,
-                vpn_active: multiplier > 1.0,
-            });
+                final_score:   finalScore,
+                vpn_active:    multiplier > 1.0,
+            };
+
+            // Now fall through into the regular users.bb_best_score path with the
+            // RAW score (no multiplier). The score variable is unchanged (= rawScore).
+            // We just pretend the request was a regular bb_best_score for the
+            // remaining DB write.
+            game_type = 'bb_best_score';
+            req.body.game_type = 'bb_best_score';
         } catch (e) {
             console.error('[tournament] error:', e);
             return res.status(500).json({ error: e.message });
@@ -1033,7 +1043,11 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             }
         }
         
-        res.json({ success: true });
+        if (_tournamentResult) {
+            res.json({ success: true, tournament: _tournamentResult });
+        } else {
+            res.json({ success: true });
+        }
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

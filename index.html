@@ -471,7 +471,148 @@
             color: #8e8e93;
             flex-shrink: 0;
         }
-        
+
+        /* === BB Mode Selection Screen === */
+        .bb-mode-wrap {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .bb-mode-card {
+            position: relative;
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 20px;
+            cursor: pointer;
+            transition: transform 0.12s, opacity 0.2s;
+            border: 1px solid transparent;
+            overflow: hidden;
+        }
+        .bb-mode-card:active { transform: scale(0.98); }
+        .bb-mode-card.tournament {
+            border: 1px solid rgba(255, 165, 0, 0.4);
+            background: linear-gradient(135deg, var(--card-bg) 70%, rgba(255, 149, 0, 0.06));
+        }
+        .bb-mode-card.tournament::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            padding: 1px;
+            background: linear-gradient(135deg, #ffa500, #ff3b30, #ffa500);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            background-size: 200% 200%;
+            animation: tournamentBorder 4s ease infinite;
+            pointer-events: none;
+        }
+        .bb-mode-card.disabled { opacity: 0.55; cursor: default; }
+        .bb-mode-card.disabled:active { transform: none; }
+        .bb-mode-card-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .bb-mode-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .bb-mode-icon.original { background: linear-gradient(135deg, #34c759, #30b0c7); }
+        .bb-mode-icon.tournament { background: linear-gradient(135deg, #ffa500, #ff3b30); }
+        .bb-mode-info { flex: 1; min-width: 0; }
+        .bb-mode-name {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .bb-mode-mult-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #ffa500, #ff3b30);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.3px;
+        }
+        .bb-mode-desc {
+            font-size: 13px;
+            color: #8e8e93;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .bb-mode-extra {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(142, 142, 147, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .bb-mode-prize {
+            font-size: 13px;
+            color: #ffa500;
+            font-weight: 600;
+        }
+        .bb-mode-cta {
+            background: linear-gradient(135deg, #ffa500, #ff3b30);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 9px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .bb-mode-cta:active { transform: scale(0.96); opacity: 0.9; }
+        .bb-mode-resume-pill {
+            display: inline-block;
+            background: var(--accent);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        .bb-mode-inactive-text {
+            font-size: 12px;
+            color: #8e8e93;
+            margin-top: 8px;
+        }
+        /* HUD multiplier badge inside the BB game */
+        .bb-mult-hud {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: linear-gradient(135deg, #ffa500, #ff3b30);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 10px;
+            z-index: 5;
+            display: none;
+        }
+
         .dropdown-menu { 
             position: absolute; 
             top: 100%;
@@ -1925,6 +2066,20 @@
         <div id="tournamentHistoryDetailMeta" style="text-align:center; color:#8e8e93; font-size:14px; margin-bottom:12px;"></div>
         <div class="lb-list" id="tournamentHistoryDetailList"></div>
     </div>
+
+    <!-- BB Mode Selection (Original / Tournament) -->
+    <div id="view-bb-mode" class="screen" style="z-index: 220; background: var(--bg-color);">
+        <div class="header">
+            <div class="back-btn" onclick="closeBBMode()" style="font-size: 17px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span data-i18n="back">Назад</span>
+            </div>
+        </div>
+        <div class="lb-title-lg" data-i18n="bbModeTitle">Выберите режим</div>
+        <div class="bb-mode-wrap" id="bbModeCards">
+            <!-- cards rendered by JS -->
+        </div>
+    </div>
     
     <div class="lb-sticky-user" id="lbStickyUser">
         <div class="lb-rank" id="stickyRank">#</div>
@@ -2216,7 +2371,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -3010,6 +3165,16 @@
                 tournamentHistoryWinner: '🏆 Победитель',
                 tournamentHistoryYourPlace: 'Ваше место',
                 tournamentHistoryNoPlace: 'Вы не участвовали',
+                bbModeTitle: 'Выберите режим',
+                bbModeOriginal: 'Оригинал',
+                bbModeOriginalDesc: 'Классический Блок Бласт. Бьёте свой личный рекорд.',
+                bbModeTournament: 'Турнир',
+                bbModeTournamentDesc: 'Соревнуйтесь за главный приз. Ваш счёт идёт в турнирную таблицу.',
+                bbModeTournamentInactive: 'Сейчас турнира нет',
+                bbModeContinue: 'Есть незаконченная игра',
+                bbVpnActive: '×1.5 активен',
+                bbVpnCta: 'Купи VPN — получи ×1.5',
+                bbVpnPartnerLabel: 'Партнёр:',
                 back: 'Назад',
                 beta: 'БЕТА'
             },
@@ -3217,6 +3382,16 @@
                 tournamentHistoryWinner: '🏆 Winner',
                 tournamentHistoryYourPlace: 'Your place',
                 tournamentHistoryNoPlace: 'You didn\u2019t participate',
+                bbModeTitle: 'Choose mode',
+                bbModeOriginal: 'Original',
+                bbModeOriginalDesc: 'Classic Block Blast. Beat your personal record.',
+                bbModeTournament: 'Tournament',
+                bbModeTournamentDesc: 'Compete for the grand prize. Your score goes into the tournament leaderboard.',
+                bbModeTournamentInactive: 'No active tournament',
+                bbModeContinue: 'Unfinished game',
+                bbVpnActive: '×1.5 active',
+                bbVpnCta: 'Get VPN — earn ×1.5',
+                bbVpnPartnerLabel: 'Partner:',
                 back: 'Back',
                 beta: 'BETA'
             }
@@ -3504,7 +3679,7 @@
         function closeGame(game) { 
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
-            if(game==='bb') saveBBState(); 
+            if(game==='bb') { saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; }
             if(game==='sudoku') saveSudokuState();
             if(game==='tower') { 
                 if(twAnimationFrameId) cancelAnimationFrame(twAnimationFrameId); 
@@ -3723,7 +3898,11 @@
             if (userBanned) return false;
             const user = tg.initDataUnsafe.user; if (!user) return false;
             const url = `${API_BASE_URL}/save-stat`;
-            const sessionKey = (game_type === 'tower_combo') ? 'tower_best' : game_type;
+            // Tournament BB shares its session with regular BB on the backend
+            const sessionKey =
+                (game_type === 'tower_combo') ? 'tower_best' :
+                (game_type === 'bb_tournament_score') ? 'bb_best_score' :
+                game_type;
             const token = activeSessionTokens[sessionKey] || '';
             const payload = { game_type, score, session_token: token };
             try { 
@@ -4680,9 +4859,155 @@
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
         const DRAG_LIFT_Y = 150;
         const isDesktop = () => document.body.classList.contains('desktop');
-        function startBlockBlastCheck() { if(localStorage.getItem('bb_state')) document.getElementById('modalBBResume').classList.add('visible'); else newGameBB(); }
-        async function resumeBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); restoreBBState(); await startGameSession('bb_best_score'); syncBBSession(); }
+
+        // === BB MODE STATE ===
+        // 'original' — classic infinite mode (saved score goes to users.bb_best_score)
+        // 'tournament' — same gameplay, score goes to tournament_scores with multiplier
+        let bbMode = 'original';
+        const BB_PARTNER_DEFAULT_CTA = 'https://t.me/phantomio_bot?start=spark';
+
+        function bbStateKey() {
+            // Migrate any pre-existing 'bb_state' to 'bb_state_original' once
+            const legacy = localStorage.getItem('bb_state');
+            if (legacy && !localStorage.getItem('bb_state_original')) {
+                localStorage.setItem('bb_state_original', legacy);
+                localStorage.removeItem('bb_state');
+            }
+            return bbMode === 'tournament' ? 'bb_state_tournament' : 'bb_state_original';
+        }
+        function bbGameType() {
+            return bbMode === 'tournament' ? 'bb_tournament_score' : 'bb_best_score';
+        }
+        function hasBBSave(mode) {
+            const key = mode === 'tournament' ? 'bb_state_tournament' : 'bb_state_original';
+            return !!localStorage.getItem(key);
+        }
+
+        // Entry point from the game card on the home screen.
+        // ALWAYS opens the mode-select screen first, even if a save exists.
+        function startBlockBlastCheck() {
+            openBBMode();
+        }
+
+        async function openBBMode() {
+            const view = document.getElementById('view-bb-mode');
+            view.classList.add('active');
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+            await renderBBModeCards();
+        }
+
+        function closeBBMode() {
+            document.getElementById('view-bb-mode').classList.remove('active');
+        }
+
+        async function renderBBModeCards() {
+            const wrap = document.getElementById('bbModeCards');
+            wrap.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>';
+
+            const state = await fetchTournamentState();
+            const tournament = state.bb;
+            const vpnActive = !!state.vpn_active;
+            const cta = (tournament && tournament.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
+            const multiplier = tournament ? Number(tournament.multiplier) || 1.0 : 1.0;
+
+            wrap.innerHTML = '';
+
+            // ----- ORIGINAL CARD -----
+            const origResume = hasBBSave('original') ? `<span class="bb-mode-resume-pill">${t('bbModeContinue')}</span>` : '';
+            const origCard = document.createElement('div');
+            origCard.className = 'bb-mode-card';
+            origCard.onclick = () => pickBBMode('original');
+            origCard.innerHTML = `
+                <div class="bb-mode-card-head">
+                    <div class="bb-mode-icon original">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/></svg>
+                    </div>
+                    <div class="bb-mode-info">
+                        <div class="bb-mode-name">${t('bbModeOriginal')}${origResume}</div>
+                        <div class="bb-mode-desc">${t('bbModeOriginalDesc')}</div>
+                    </div>
+                </div>`;
+            wrap.appendChild(origCard);
+
+            // ----- TOURNAMENT CARD -----
+            const tournResume = hasBBSave('tournament') ? `<span class="bb-mode-resume-pill">${t('bbModeContinue')}</span>` : '';
+            const tournCard = document.createElement('div');
+            tournCard.className = 'bb-mode-card tournament' + (tournament ? '' : ' disabled');
+            if (tournament) {
+                tournCard.onclick = () => pickBBMode('tournament');
+            }
+
+            const multBadge = (tournament && multiplier > 1.0)
+                ? `<span class="bb-mode-mult-badge">×${multiplier} ${vpnActive ? t('bbVpnActive') : ''}</span>`
+                : '';
+            const prizeLine = (tournament && tournament.prize_text)
+                ? `<div class="bb-mode-prize">${t('tournamentPrize')} ${tournament.prize_text}</div>`
+                : '<div></div>';
+            const ctaBtn = (tournament && multiplier > 1.0 && !vpnActive)
+                ? `<button class="bb-mode-cta" onclick="event.stopPropagation(); openBBPartnerCta('${cta.replace(/'/g, "\\'")}');">${t('bbVpnCta')}</button>`
+                : '';
+            const inactiveText = !tournament
+                ? `<div class="bb-mode-inactive-text">${t('bbModeTournamentInactive')}</div>`
+                : '';
+
+            tournCard.innerHTML = `
+                <div class="bb-mode-card-head">
+                    <div class="bb-mode-icon tournament">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-2 6h-8z"/><path d="M8 9c0 4 2 6 4 6s4-2 4-6"/><path d="M12 15v3"/><path d="M9 21h6"/></svg>
+                    </div>
+                    <div class="bb-mode-info">
+                        <div class="bb-mode-name">${t('bbModeTournament')} ${multBadge}${tournResume}</div>
+                        <div class="bb-mode-desc">${t('bbModeTournamentDesc')}</div>
+                        ${inactiveText}
+                    </div>
+                </div>
+                ${(tournament && (prizeLine || ctaBtn)) ? `<div class="bb-mode-extra">${prizeLine}${ctaBtn}</div>` : ''}`;
+            wrap.appendChild(tournCard);
+        }
+
+        function openBBPartnerCta(url) {
+            try {
+                if (tg.openTelegramLink) tg.openTelegramLink(url);
+                else window.open(url, '_blank');
+            } catch (e) { window.open(url, '_blank'); }
+        }
+
+        async function pickBBMode(mode) {
+            bbMode = mode;
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+
+            // Show/hide HUD multiplier badge inside the game
+            const state = await fetchTournamentState();
+            const showMultHud = mode === 'tournament' && state.vpn_active && state.bb && Number(state.bb.multiplier) > 1.0;
+            const hud = document.getElementById('bbMultHud');
+            if (hud) {
+                if (showMultHud) {
+                    hud.textContent = `×${Number(state.bb.multiplier)}`;
+                    hud.style.display = 'block';
+                } else {
+                    hud.style.display = 'none';
+                }
+            }
+
+            closeBBMode();
+
+            // If a save exists for this mode, ask to resume; else start fresh.
+            if (hasBBSave(mode)) {
+                document.getElementById('modalBBResume').classList.add('visible');
+            } else {
+                newGameBB();
+            }
+        }
+
+        async function resumeBB() {
+            document.getElementById('modalBBResume').classList.remove('visible');
+            document.getElementById('bb-screen').classList.add('visible');
+            restoreBBState();
+            await startGameSession(bbGameType());
+            syncBBSession();
+        }
         async function syncBBSession() {
+            // Backend uses 'bb_best_score' as the session key for both modes
             const token = activeSessionTokens['bb_best_score'];
             if (!token) return;
             try {
@@ -4693,8 +5018,23 @@
                 });
             } catch(e) { console.error('BB sync error:', e); }
         }
-        function newGameBB() { document.getElementById('modalBBResume').classList.remove('visible'); document.getElementById('bb-screen').classList.add('visible'); initBB(); }
-        function initBB() { bbMoveQueue = []; bbMoveProcessing = false; bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0)); bbScore = 0; bbDisplayedScore = 0; bbCombo=0; bbComboBuffer=0; bbIsAnimating=false; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); spawnShapes(); saveBBState(); startGameSession('bb_best_score'); }
+        function newGameBB() {
+            document.getElementById('modalBBResume').classList.remove('visible');
+            document.getElementById('bb-screen').classList.add('visible');
+            initBB();
+        }
+        function initBB() {
+            bbMoveQueue = []; bbMoveProcessing = false;
+            bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
+            bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
+            bbIsAnimating = false;
+            updateBBScoreUI();
+            document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
+            renderBBGrid();
+            spawnShapes();
+            saveBBState();
+            startGameSession(bbGameType());
+        }
         
         // === BB SOUND SYSTEM (Web Audio API — rich layered sounds) ===
         let bbAudioCtx = null;
@@ -5317,11 +5657,58 @@
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
         function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
-        async function checkGameOver() { if(bbIsAnimating) return; const shapesLeft = bbShapes.filter(s => s !== null); if(shapesLeft.length === 0) return; const canMove = shapesLeft.some(s => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(canPlace(s.matrix, r, c)) return true; } } return false; }); if(!canMove) { bbLiveStop(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); await animateGameOverFill(); const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0); const isRecord = bbScore > currentBest; if(isRecord) { const accepted = await sendStatToBackend('bb_best_score', bbScore); if(accepted) saveStatToCloud('bb_best_score', bbScore); } localStorage.removeItem('bb_state'); let t = parseInt(localStorage.getItem('bb_total_games')||0)+1; saveStatToCloud('bb_total_games', t); sendStatToBackend('bb_total_games', t); showBBGameOverModal(isRecord && parseInt(localStorage.getItem('bb_best_score') || 0) >= bbScore, bbScore, currentBest); } }
+        async function checkGameOver() {
+            if (bbIsAnimating) return;
+            const shapesLeft = bbShapes.filter(s => s !== null);
+            if (shapesLeft.length === 0) return;
+            const canMove = shapesLeft.some(s => {
+                for (let r = 0; r < BB_ROWS; r++) {
+                    for (let c = 0; c < BB_COLS; c++) {
+                        if (canPlace(s.matrix, r, c)) return true;
+                    }
+                }
+                return false;
+            });
+            if (canMove) return;
+
+            bbLiveStop();
+            if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');
+            await animateGameOverFill();
+
+            const isTournament = (bbMode === 'tournament');
+            const gameType = bbGameType();
+
+            if (isTournament) {
+                // Tournament mode: every score is sent. Backend writes to tournament_scores
+                // AND falls through into users.bb_best_score with the raw score (no multiplier).
+                // We mirror that locally: if the raw score beat the personal record, update it.
+                const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0);
+                const accepted = await sendStatToBackend(gameType, bbScore);
+                if (accepted && bbScore > currentBest) {
+                    saveStatToCloud('bb_best_score', bbScore);
+                }
+                showBBGameOverModal(accepted === true && bbScore > currentBest, bbScore, currentBest);
+            } else {
+                const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0);
+                const isRecord = bbScore > currentBest;
+                if (isRecord) {
+                    const accepted = await sendStatToBackend('bb_best_score', bbScore);
+                    if (accepted) saveStatToCloud('bb_best_score', bbScore);
+                }
+                showBBGameOverModal(isRecord && parseInt(localStorage.getItem('bb_best_score') || 0) >= bbScore, bbScore, currentBest);
+            }
+
+            localStorage.removeItem(bbStateKey());
+
+            // bb_total_games counts both modes (it's just a play counter)
+            let t = parseInt(localStorage.getItem('bb_total_games') || 0) + 1;
+            saveStatToCloud('bb_total_games', t);
+            sendStatToBackend('bb_total_games', t);
+        }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = getCellFast(r, c); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
         function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `<div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 10px 0; font-size:24px;">${t('newRecord')}</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('playAgain')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' }); let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2><p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">${t('best')}: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('newGame')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; } overlay.classList.add('visible'); }
-        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem('bb_state', JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem('bb_state')); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
+        function saveBBState() { if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;

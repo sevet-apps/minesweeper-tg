@@ -159,9 +159,11 @@ async function startCreateFlow(bot, chatId, messageId, adminId, kind) {
         ? 'BB турнир — Май 2026'
         : 'Реф турнир — Май 2026';
 
+    const totalSteps = kind === 'bb' ? '5' : '3';
+
     await bot.editMessageText(
         `*Создание турнира (${kindLabel(kind)})*\n\n` +
-        `Шаг 1/3 — отправьте *название* турнира (как покажется на плашке).\n\n` +
+        `Шаг 1/${totalSteps} — отправьте *название* турнира (как покажется на плашке).\n\n` +
         `Пример: \`${example}\``,
         {
             chat_id: chatId, message_id: messageId, parse_mode: 'Markdown',
@@ -173,6 +175,7 @@ async function startCreateFlow(bot, chatId, messageId, adminId, kind) {
 async function continueCreateFlow(bot, supabase, msg, state) {
     const { chatId } = state;
     const text = msg.text.trim();
+    const totalSteps = state.payload.kind === 'bb' ? 5 : 3;
 
     if (state.payload.step === 'name') {
         if (text.length < 3 || text.length > 80) {
@@ -182,7 +185,7 @@ async function continueCreateFlow(bot, supabase, msg, state) {
         state.payload.name = text;
         state.payload.step = 'duration';
         await bot.sendMessage(chatId,
-            'Шаг 2/3 — *длительность* или дата окончания.\n\n' +
+            `Шаг 2/${totalSteps} — *длительность* или дата окончания.\n\n` +
             'Примеры: `7d` (7 дней), `48h` (48 часов), `2026-05-15`, `2026-05-15 21:00`',
             { parse_mode: 'Markdown' }
         );
@@ -198,7 +201,7 @@ async function continueCreateFlow(bot, supabase, msg, state) {
         state.payload.endAt = endAt;
         state.payload.step = 'prize';
         await bot.sendMessage(chatId,
-            'Шаг 3/3 — *призовой фонд* (текст на плашке).\n\n' +
+            `Шаг 3/${totalSteps} — *призовой фонд* (текст на плашке).\n\n` +
             'Пример: `150$` или `5000 ⭐`. Можно прислать `-` чтобы оставить пустым.',
             { parse_mode: 'Markdown' }
         );
@@ -206,42 +209,97 @@ async function continueCreateFlow(bot, supabase, msg, state) {
     }
 
     if (state.payload.step === 'prize') {
-        const prize = (text === '-' || text === '—') ? null : text.slice(0, 40);
-        const { kind, name, endAt } = state.payload;
+        state.payload.prize = (text === '-' || text === '—') ? null : text.slice(0, 40);
 
-        // Build slug: kind_YYYYMMDD_HHMM (unique enough)
-        const ts = endAt.toISOString().replace(/[-:T]/g, '').slice(0, 12); // 202605151800
-        const slug = `${kind}_${ts}`;
-
-        const { data, error } = await supabase
-            .from('tournaments')
-            .insert({
-                slug,
-                name,
-                kind,
-                start_at: new Date().toISOString(),
-                end_at: endAt.toISOString(),
-                multiplier: 1.0,
-                status: 'active',
-                prize_text: prize,
-            })
-            .select('id')
-            .single();
-
-        pendingInput.delete(String(msg.from.id));
-
-        if (error) {
-            await bot.sendMessage(chatId, `❌ Ошибка создания: ${error.message}`);
-            return;
+        // For referral tournaments — done; insert now.
+        if (state.payload.kind !== 'bb') {
+            return await finalizeCreate(bot, supabase, msg, state);
         }
+
+        // BB tournaments get multiplier + CTA url
+        state.payload.step = 'multiplier';
         await bot.sendMessage(chatId,
-            `✅ Турнир создан: *#${data.id}* ${kindLabel(kind)} — ${name}\n` +
-            `Завершится ${fmtDate(endAt)}. Призовой фонд: ${prize || '—'}.`,
+            'Шаг 4/5 — *множитель очков* для подписчиков партнёра.\n\n' +
+            'Введите число, например `1.5`. Если множителя нет — пришлите `1` или `-`.',
             { parse_mode: 'Markdown' }
         );
-        await sendRootMenu(bot, chatId);
         return;
     }
+
+    if (state.payload.step === 'multiplier') {
+        let mult = 1.0;
+        if (text !== '-' && text !== '—') {
+            const parsed = parseFloat(text.replace(',', '.'));
+            if (!isFinite(parsed) || parsed < 1.0 || parsed > 10.0) {
+                await bot.sendMessage(chatId, '⚠️ Множитель должен быть числом от 1.0 до 10.0. Например `1.5`.', { parse_mode: 'Markdown' });
+                return;
+            }
+            mult = parsed;
+        }
+        state.payload.multiplier = mult;
+        state.payload.step = 'cta';
+        await bot.sendMessage(chatId,
+            'Шаг 5/5 — *ссылка партнёра* (CTA на турнирной карточке).\n\n' +
+            'Например: `https://t.me/phantomio_bot?start=spark`. Если множителя нет или ссылка не нужна — пришлите `-`.',
+            { parse_mode: 'Markdown' }
+        );
+        return;
+    }
+
+    if (state.payload.step === 'cta') {
+        let cta = null;
+        if (text !== '-' && text !== '—') {
+            if (!/^https?:\/\//i.test(text)) {
+                await bot.sendMessage(chatId, '⚠️ Ссылка должна начинаться с `http://` или `https://`. Или пришлите `-`.', { parse_mode: 'Markdown' });
+                return;
+            }
+            cta = text.slice(0, 500);
+        }
+        state.payload.cta = cta;
+        return await finalizeCreate(bot, supabase, msg, state);
+    }
+}
+
+async function finalizeCreate(bot, supabase, msg, state) {
+    const { chatId } = state;
+    const { kind, name, endAt, prize, multiplier, cta } = state.payload;
+
+    // Build slug: kind_YYYYMMDD_HHMM (unique enough)
+    const ts = endAt.toISOString().replace(/[-:T]/g, '').slice(0, 12);
+    const slug = `${kind}_${ts}`;
+
+    const insertRow = {
+        slug,
+        name,
+        kind,
+        start_at: new Date().toISOString(),
+        end_at: endAt.toISOString(),
+        multiplier: multiplier || 1.0,
+        status: 'active',
+        prize_text: prize || null,
+    };
+    if (cta) insertRow.partner_cta_url = cta;
+    if (multiplier && multiplier > 1.0) insertRow.partner_slug = 'vpn_partner';
+
+    const { data, error } = await supabase
+        .from('tournaments').insert(insertRow).select('id').single();
+
+    pendingInput.delete(String(msg.from.id));
+
+    if (error) {
+        await bot.sendMessage(chatId, `❌ Ошибка создания: ${error.message}`);
+        return;
+    }
+
+    let summary = `✅ Турнир создан: *#${data.id}* ${kindLabel(kind)} — ${name}\n` +
+                  `Завершится ${fmtDate(endAt)}. Призовой фонд: ${prize || '—'}.`;
+    if (multiplier && multiplier > 1.0) {
+        summary += `\nМножитель: *×${multiplier}* для подписчиков партнёра.`;
+    }
+    if (cta) summary += `\nCTA: ${cta}`;
+
+    await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
+    await sendRootMenu(bot, chatId);
 }
 
 // ---- end-tournament flow ----------------------------------------------------
