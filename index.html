@@ -430,6 +430,8 @@
         body.light-theme .tournament-history-btn:active {
             background: rgba(0, 0, 0, 0.1);
         }
+        /* When buttons are grouped in a row, drop the per-button top margin */
+        .tournament-card > div .tournament-history-btn { margin-top: 0; }
         .th-item {
             display: flex;
             align-items: center;
@@ -475,15 +477,72 @@
         /* === BB Mode Selection Screen === */
         .bb-mode-wrap {
             padding: 16px;
+            position: relative;
+        }
+        .bb-mode-slider {
+            position: relative;
+            overflow: hidden;
+            border-radius: 18px;
+        }
+        .bb-mode-track {
+            display: flex;
+            transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform;
+        }
+        .bb-mode-track > .bb-mode-card {
+            flex: 0 0 100%;
+            width: 100%;
+            min-height: 320px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        .bb-mode-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid rgba(142, 142, 147, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 3;
+            color: var(--text-color);
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .bb-mode-arrow:active { transform: translateY(-50%) scale(0.92); }
+        .bb-mode-arrow.left  { left: 4px; }
+        .bb-mode-arrow.right { right: 4px; }
+        .bb-mode-arrow.disabled { opacity: 0.35; pointer-events: none; }
+        .bb-mode-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 14px;
+        }
+        .bb-mode-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: rgba(142, 142, 147, 0.4);
+            transition: width 0.2s, background 0.2s;
+            cursor: pointer;
+        }
+        .bb-mode-dot.active {
+            width: 22px;
+            border-radius: 4px;
+            background: var(--accent);
         }
         .bb-mode-card {
             position: relative;
             background: var(--card-bg);
             border-radius: 18px;
-            padding: 20px;
+            padding: 24px;
             cursor: pointer;
             transition: transform 0.12s, opacity 0.2s;
             border: 1px solid transparent;
@@ -517,8 +576,8 @@
             gap: 14px;
         }
         .bb-mode-icon {
-            width: 52px;
-            height: 52px;
+            width: 56px;
+            height: 56px;
             border-radius: 14px;
             display: flex;
             align-items: center;
@@ -530,7 +589,7 @@
         .bb-mode-icon.tournament { background: linear-gradient(135deg, #ffa500, #ff3b30); }
         .bb-mode-info { flex: 1; min-width: 0; }
         .bb-mode-name {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
             display: flex;
             align-items: center;
@@ -550,14 +609,14 @@
             letter-spacing: 0.3px;
         }
         .bb-mode-desc {
-            font-size: 13px;
+            font-size: 14px;
             color: #8e8e93;
-            margin-top: 4px;
+            margin-top: 6px;
             line-height: 1.4;
         }
         .bb-mode-extra {
-            margin-top: 14px;
-            padding-top: 14px;
+            margin-top: 18px;
+            padding-top: 16px;
             border-top: 1px solid rgba(142, 142, 147, 0.2);
             display: flex;
             align-items: center;
@@ -566,7 +625,7 @@
             flex-wrap: wrap;
         }
         .bb-mode-prize {
-            font-size: 13px;
+            font-size: 14px;
             color: #ffa500;
             font-weight: 600;
         }
@@ -594,9 +653,32 @@
             margin-left: 8px;
         }
         .bb-mode-inactive-text {
-            font-size: 12px;
+            font-size: 13px;
             color: #8e8e93;
-            margin-top: 8px;
+            margin-top: 10px;
+        }
+        .bb-mode-play-btn {
+            margin-top: 18px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 18px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            width: 100%;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .bb-mode-play-btn:active { transform: scale(0.98); opacity: 0.92; }
+        .bb-mode-play-btn.tournament-cta {
+            background: linear-gradient(135deg, #ffa500, #ff3b30);
+        }
+        .bb-mode-play-btn.disabled {
+            background: rgba(142, 142, 147, 0.3);
+            color: #8e8e93;
+            pointer-events: none;
         }
         /* HUD multiplier badge inside the BB game */
         .bb-mult-hud {
@@ -2023,7 +2105,10 @@
             <div class="tournament-card-title">Турнир идёт!</div>
             <div class="tournament-timer" id="tournamentTimer"></div>
             <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!</div>
-            <button class="tournament-history-btn" onclick="openTournamentHistory('bb')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
+            <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:14px;">
+                <button class="tournament-history-btn" onclick="switchToTournamentLb()" data-i18n="tournamentLeaderboardBtn">Турнирная таблица</button>
+                <button class="tournament-history-btn" onclick="openTournamentHistory('bb')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
+            </div>
         </div>
         
         <!-- Tournament Banner for Referrers -->
@@ -2076,8 +2161,19 @@
             </div>
         </div>
         <div class="lb-title-lg" data-i18n="bbModeTitle">Выберите режим</div>
-        <div class="bb-mode-wrap" id="bbModeCards">
-            <!-- cards rendered by JS -->
+        <div class="bb-mode-wrap">
+            <div class="bb-mode-slider">
+                <div class="bb-mode-track" id="bbModeTrack">
+                    <!-- cards rendered by JS -->
+                </div>
+                <div class="bb-mode-arrow left" id="bbModeArrowLeft" onclick="bbModeStep(-1)">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </div>
+                <div class="bb-mode-arrow right" id="bbModeArrowRight" onclick="bbModeStep(1)">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+            </div>
+            <div class="bb-mode-dots" id="bbModeDots"></div>
         </div>
     </div>
     
@@ -2091,14 +2187,11 @@
     <div id="view-games" class="screen active"> 
         <div class="header"> <div class="app-title" data-i18n="games">Игры</div> </div> 
         
-        <!-- Banner Carousel -->
+        <!-- Single banner (carousel auto-disables when only 1 slide) -->
         <div class="banner-carousel" id="bannerCarousel">
             <div class="banner-track" id="bannerTrack">
                 <div class="banner-slide-wrap" onclick="openBannerLink('https://t.me/spark_game_news/4')">
-                    <img class="banner-slide" src="tournament-banner.png" alt="Tournament">
-                </div>
-                <div class="banner-slide-wrap" onclick="openBannerLink('https://t.me/spark_game_news/5')">
-                    <img class="banner-slide" src="referral-banner.png" alt="Referral" style="margin-top: -3px;">
+                    <img class="banner-slide" src="Banner_IPhone_17.png" alt="Tournament">
                 </div>
             </div>
         </div>
@@ -3162,6 +3255,7 @@
                 tournamentHistoryEmpty: 'Здесь появятся завершённые турниры.',
                 tournamentHistoryArchived: 'Завершён',
                 tournamentHistoryViewBtn: 'История турниров',
+                tournamentLeaderboardBtn: 'Турнирная таблица',
                 tournamentHistoryWinner: '🏆 Победитель',
                 tournamentHistoryYourPlace: 'Ваше место',
                 tournamentHistoryNoPlace: 'Вы не участвовали',
@@ -3172,6 +3266,7 @@
                 bbModeTournamentDesc: 'Соревнуйтесь за главный приз. Ваш счёт идёт в турнирную таблицу.',
                 bbModeTournamentInactive: 'Сейчас турнира нет',
                 bbModeContinue: 'Есть незаконченная игра',
+                play: 'Играть',
                 bbVpnActive: '×1.5 активен',
                 bbVpnCta: 'Купи VPN — получи ×1.5',
                 bbVpnPartnerLabel: 'Партнёр:',
@@ -3379,6 +3474,7 @@
                 tournamentHistoryEmpty: 'Finished tournaments will appear here.',
                 tournamentHistoryArchived: 'Ended',
                 tournamentHistoryViewBtn: 'Tournament history',
+                tournamentLeaderboardBtn: 'Tournament table',
                 tournamentHistoryWinner: '🏆 Winner',
                 tournamentHistoryYourPlace: 'Your place',
                 tournamentHistoryNoPlace: 'You didn\u2019t participate',
@@ -3389,6 +3485,7 @@
                 bbModeTournamentDesc: 'Compete for the grand prize. Your score goes into the tournament leaderboard.',
                 bbModeTournamentInactive: 'No active tournament',
                 bbModeContinue: 'Unfinished game',
+                play: 'Play',
                 bbVpnActive: '×1.5 active',
                 bbVpnCta: 'Get VPN — earn ×1.5',
                 bbVpnPartnerLabel: 'Partner:',
@@ -3624,12 +3721,12 @@
                 }
             }
 
-            // Banner carousel: hide tournament/referral banners if their tournament isn't active
+            // Single tournament banner — hide if no active BB tournament
             document.querySelectorAll('.banner-slide-wrap').forEach(wrap => {
                 const img = wrap.querySelector('img.banner-slide');
                 if (!img) return;
                 const src = img.getAttribute('src') || '';
-                if (src.includes('tournament-banner')) {
+                if (src.includes('Banner_IPhone_17') || src.includes('tournament-banner')) {
                     wrap.style.display = state.bb ? '' : 'none';
                 } else if (src.includes('referral-banner')) {
                     wrap.style.display = state.referral ? '' : 'none';
@@ -4234,7 +4331,11 @@
         let currentLbCat = { id: 'saper_wins', name: 'Количество побед' };
         const SAPER_CATS = [{ id: 'saper_wins', nameKey: 'numWins' },{ id: 'saper_best_6', nameKey: 'bestTime6', isTime: true },{ id: 'saper_best_8', nameKey: 'bestTime8', isTime: true },{ id: 'saper_best_10', nameKey: 'bestTime10', isTime: true },{ id: 'saper_best_15', nameKey: 'bestTime15', isTime: true }];
         const CHECKERS_CATS = [{ id: 'checkers_total', nameKey: 'totalGames' },{ id: 'checkers_wins_pve', nameKey: 'winsVsBot' }];
-        const BB_CATS = [{ id: 'bb_best_score', nameKey: 'bestScore' },{ id: 'bb_total_games', nameKey: 'totalGames' }];
+        const BB_CATS = [
+            { id: 'bb_best_score', nameKey: 'bestScore' },
+            { id: 'bb_tournament_score', nameKey: 'bbModeTournament', tournamentLb: true },
+            { id: 'bb_total_games', nameKey: 'totalGames' }
+        ];
         const SUDOKU_CATS = [{ id: 'sudoku_wins', nameKey: 'numWins' }];
         const TOWER_CATS = [{ id: 'tower_best', nameKey: 'towerHeight' },{ id: 'tower_combo', nameKey: 'cleanSeries' }];
         const WORDLE_CATS = [{ id: 'wordle_wins', nameKey: 'numWins' }];
@@ -4256,6 +4357,17 @@
         function closeLeaderboardDetail() { document.getElementById('view-leaderboard-detail').classList.remove('active'); document.getElementById('lbStickyUser').classList.remove('visible'); const menu = document.getElementById('dropdownMenu'); menu.classList.remove('active'); document.getElementById('dropdownCatcher').classList.remove('active'); document.getElementById('lbSelector').classList.remove('open'); }
 
         // ====== TOURNAMENT HISTORY ======
+        function switchToTournamentLb() {
+            // Switch the BB leaderboard category to the tournament view
+            const cat = BB_CATS.find(c => c.tournamentLb);
+            if (!cat) return;
+            // Update the dropdown label and reload
+            const labelEl = document.getElementById('lbCurrentCat');
+            if (labelEl) labelEl.innerText = t(cat.nameKey);
+            loadLeaderboardData(cat);
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+
         async function openTournamentHistory(kind) {
             const view = document.getElementById('view-tournament-history');
             const list = document.getElementById('tournamentHistoryList');
@@ -4426,6 +4538,92 @@
             // Hide referral tournament card
             const refTCard = document.getElementById('referralTournamentCard');
             if (refTCard) refTCard.style.display = 'none';
+
+            // ===== Tournament BB leaderboard branch =====
+            if (category.tournamentLb) {
+                try {
+                    const tState = await fetchTournamentState();
+                    const t_ = tState.bb;
+                    const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
+
+                    if (!t_) {
+                        // No active tournament — show empty state with link to history
+                        listEl.innerHTML = `
+                            <div style="padding:30px 20px; text-align:center;">
+                                <div style="font-size:15px; color:#8e8e93; margin-bottom:14px;">${t('bbModeTournamentInactive')}</div>
+                                <button class="tournament-history-btn" onclick="openTournamentHistory('bb')">${t('tournamentHistoryViewBtn')}</button>
+                            </div>`;
+                        stickyEl.classList.remove('visible');
+                        return;
+                    }
+
+                    const url = `${API_BASE_URL}/tournaments/${t_.id}/leaderboard`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    const displayList = (data || []).map(item => ({
+                        user_id:    item.user_id,
+                        username:   item.username,
+                        photo_url:  item.photo_url,
+                        score:      item.score,        // final_score (with multiplier)
+                        raw_score:  item.raw_score,
+                        multiplier: item.multiplier,
+                        isMe:       item.user_id.toString() === user.id.toString(),
+                    }));
+
+                    listEl.innerHTML = '';
+                    const meEntry = displayList.find(u => u.isMe);
+                    const myRank = meEntry ? displayList.indexOf(meEntry) + 1 : 0;
+
+                    document.getElementById('stickyName').innerText =
+                        (user.first_name + ' ' + (user.last_name || '')).trim() + ' ' + t('you');
+                    if (user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url;
+                    else document.getElementById('stickyAvatar').style.background = '#ddd';
+                    if (myRank > 0) {
+                        document.getElementById('stickyRank').innerText = myRank;
+                        document.getElementById('stickyVal').innerText = meEntry.score;
+                    } else {
+                        document.getElementById('stickyRank').innerText = '- -';
+                        document.getElementById('stickyVal').innerText = t('noData');
+                    }
+
+                    if (myRank > 0) {
+                        lbObserver = new IntersectionObserver((entries) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) stickyEl.classList.remove('visible');
+                                else if (document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible');
+                            });
+                        }, { threshold: 0.1 });
+                    } else if (document.getElementById('view-leaderboard-detail').classList.contains('active')) {
+                        stickyEl.classList.add('visible');
+                    }
+
+                    if (displayList.length === 0) {
+                        listEl.innerHTML = `<div style="padding:30px 20px; text-align:center; color:#8e8e93;">${t('tournamentHistoryEmpty')}</div>`;
+                        return;
+                    }
+
+                    displayList.forEach((u, index) => {
+                        const rank = index + 1;
+                        const medal = rank <= 3 ? `<div class="lb-rank-badge">${rank}</div>` : '';
+                        const item = document.createElement('div');
+                        item.className = `lb-item rank-${rank}`;
+                        if (u.isMe) { item.style.border = '1px solid var(--accent)'; if (lbObserver) lbObserver.observe(item); }
+                        const avatarHtml = u.photo_url && u.photo_url.startsWith('http')
+                            ? `<img src="${u.photo_url}" class="lb-avatar">`
+                            : `<div class="lb-avatar" style="background:#ddd"></div>`;
+                        const multBadge = (u.multiplier && u.multiplier > 1.0)
+                            ? `<span style="margin-left:6px; font-size:10px; color:#ffa500; font-weight:700;">×${u.multiplier}</span>`
+                            : '';
+                        item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${u.score}${multBadge}</div>`;
+                        listEl.appendChild(item);
+                    });
+                } catch (error) {
+                    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">${t('networkError')}</div>`;
+                }
+                return;
+            }
+            // ===== End tournament branch =====
+
             try {
                 const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
                 const response = await fetch(url); const data = await response.json();
@@ -4892,6 +5090,9 @@
         async function openBBMode() {
             const view = document.getElementById('view-bb-mode');
             view.classList.add('active');
+            // Restore last picked slide (default: 0 = Original)
+            const saved = parseInt(localStorage.getItem('bb_mode_slide') || '0');
+            _bbModeIndex = (saved === 1) ? 1 : 0;
             if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
             await renderBBModeCards();
         }
@@ -4900,9 +5101,14 @@
             document.getElementById('view-bb-mode').classList.remove('active');
         }
 
+        let _bbModeIndex = 0;
+        let _bbModeSlides = []; // [{ key: 'original'|'tournament', clickable: bool }]
+
         async function renderBBModeCards() {
-            const wrap = document.getElementById('bbModeCards');
-            wrap.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>';
+            const track = document.getElementById('bbModeTrack');
+            const dotsEl = document.getElementById('bbModeDots');
+            track.innerHTML = '<div style="padding:24px; text-align:center; color:#8e8e93; flex:0 0 100%;">...</div>';
+            dotsEl.innerHTML = '';
 
             const state = await fetchTournamentState();
             const tournament = state.bb;
@@ -4910,32 +5116,31 @@
             const cta = (tournament && tournament.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
             const multiplier = tournament ? Number(tournament.multiplier) || 1.0 : 1.0;
 
-            wrap.innerHTML = '';
+            track.innerHTML = '';
+            _bbModeSlides = [];
 
             // ----- ORIGINAL CARD -----
             const origResume = hasBBSave('original') ? `<span class="bb-mode-resume-pill">${t('bbModeContinue')}</span>` : '';
             const origCard = document.createElement('div');
             origCard.className = 'bb-mode-card';
-            origCard.onclick = () => pickBBMode('original');
             origCard.innerHTML = `
                 <div class="bb-mode-card-head">
                     <div class="bb-mode-icon original">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/></svg>
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/></svg>
                     </div>
                     <div class="bb-mode-info">
                         <div class="bb-mode-name">${t('bbModeOriginal')}${origResume}</div>
                         <div class="bb-mode-desc">${t('bbModeOriginalDesc')}</div>
                     </div>
-                </div>`;
-            wrap.appendChild(origCard);
+                </div>
+                <button class="bb-mode-play-btn" onclick="pickBBMode('original')">${t('play') || 'Play'}</button>`;
+            track.appendChild(origCard);
+            _bbModeSlides.push({ key: 'original', clickable: true });
 
             // ----- TOURNAMENT CARD -----
             const tournResume = hasBBSave('tournament') ? `<span class="bb-mode-resume-pill">${t('bbModeContinue')}</span>` : '';
             const tournCard = document.createElement('div');
             tournCard.className = 'bb-mode-card tournament' + (tournament ? '' : ' disabled');
-            if (tournament) {
-                tournCard.onclick = () => pickBBMode('tournament');
-            }
 
             const multBadge = (tournament && multiplier > 1.0)
                 ? `<span class="bb-mode-mult-badge">×${multiplier} ${vpnActive ? t('bbVpnActive') : ''}</span>`
@@ -4950,10 +5155,14 @@
                 ? `<div class="bb-mode-inactive-text">${t('bbModeTournamentInactive')}</div>`
                 : '';
 
+            const playBtnHtml = tournament
+                ? `<button class="bb-mode-play-btn tournament-cta" onclick="pickBBMode('tournament')">${t('play') || 'Play'}</button>`
+                : `<button class="bb-mode-play-btn disabled">${t('bbModeTournamentInactive')}</button>`;
+
             tournCard.innerHTML = `
                 <div class="bb-mode-card-head">
                     <div class="bb-mode-icon tournament">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-2 6h-8z"/><path d="M8 9c0 4 2 6 4 6s4-2 4-6"/><path d="M12 15v3"/><path d="M9 21h6"/></svg>
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-2 6h-8z"/><path d="M8 9c0 4 2 6 4 6s4-2 4-6"/><path d="M12 15v3"/><path d="M9 21h6"/></svg>
                     </div>
                     <div class="bb-mode-info">
                         <div class="bb-mode-name">${t('bbModeTournament')} ${multBadge}${tournResume}</div>
@@ -4961,8 +5170,75 @@
                         ${inactiveText}
                     </div>
                 </div>
-                ${(tournament && (prizeLine || ctaBtn)) ? `<div class="bb-mode-extra">${prizeLine}${ctaBtn}</div>` : ''}`;
-            wrap.appendChild(tournCard);
+                ${(tournament && (prizeLine || ctaBtn)) ? `<div class="bb-mode-extra">${prizeLine}${ctaBtn}</div>` : ''}
+                ${playBtnHtml}`;
+            track.appendChild(tournCard);
+            _bbModeSlides.push({ key: 'tournament', clickable: !!tournament });
+
+            // Render dots
+            for (let i = 0; i < _bbModeSlides.length; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'bb-mode-dot' + (i === _bbModeIndex ? ' active' : '');
+                dot.onclick = () => bbModeGoTo(i);
+                dotsEl.appendChild(dot);
+            }
+            updateBBModeSlider();
+            attachBBModeSwipe();
+        }
+
+        function updateBBModeSlider() {
+            const track = document.getElementById('bbModeTrack');
+            if (!track) return;
+            track.style.transform = `translateX(-${_bbModeIndex * 100}%)`;
+
+            const dots = document.querySelectorAll('#bbModeDots .bb-mode-dot');
+            dots.forEach((d, i) => d.classList.toggle('active', i === _bbModeIndex));
+
+            const arrL = document.getElementById('bbModeArrowLeft');
+            const arrR = document.getElementById('bbModeArrowRight');
+            if (arrL) arrL.classList.toggle('disabled', _bbModeIndex === 0);
+            if (arrR) arrR.classList.toggle('disabled', _bbModeIndex >= _bbModeSlides.length - 1);
+        }
+
+        function bbModeStep(delta) {
+            const next = _bbModeIndex + delta;
+            if (next < 0 || next >= _bbModeSlides.length) return;
+            _bbModeIndex = next;
+            localStorage.setItem('bb_mode_slide', String(next));
+            updateBBModeSlider();
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+
+        function bbModeGoTo(i) {
+            if (i < 0 || i >= _bbModeSlides.length || i === _bbModeIndex) return;
+            _bbModeIndex = i;
+            localStorage.setItem('bb_mode_slide', String(i));
+            updateBBModeSlider();
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+
+        let _bbSwipeAttached = false;
+        function attachBBModeSwipe() {
+            if (_bbSwipeAttached) return;
+            const slider = document.querySelector('#view-bb-mode .bb-mode-slider');
+            if (!slider) return;
+            _bbSwipeAttached = true;
+
+            let startX = 0, deltaX = 0, dragging = false;
+            slider.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                deltaX = 0;
+                dragging = true;
+            }, { passive: true });
+            slider.addEventListener('touchmove', (e) => {
+                if (!dragging) return;
+                deltaX = e.touches[0].clientX - startX;
+            }, { passive: true });
+            slider.addEventListener('touchend', () => {
+                if (!dragging) return;
+                dragging = false;
+                if (Math.abs(deltaX) > 40) bbModeStep(deltaX < 0 ? 1 : -1);
+            });
         }
 
         function openBBPartnerCta(url) {
@@ -4974,6 +5250,7 @@
 
         async function pickBBMode(mode) {
             bbMode = mode;
+            localStorage.setItem('bb_mode_slide', mode === 'tournament' ? '1' : '0');
             if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
 
             // Show/hide HUD multiplier badge inside the game
