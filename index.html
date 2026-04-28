@@ -538,13 +538,14 @@
         }
         .bb-mode-track {
             display: flex;
-            transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
             will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
         .bb-mode-track > .bb-mode-card {
             flex: 0 0 100%;
             width: 100%;
-            min-height: 320px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -596,7 +597,7 @@
             background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 22px;
-            padding: 28px 22px;
+            padding: 18px 18px 20px;
             cursor: pointer;
             overflow: hidden;
             box-sizing: border-box;
@@ -607,35 +608,35 @@
         }
         .bb-mode-card.tournament {
             background: linear-gradient(160deg, rgba(255,149,0,0.18), rgba(255,59,48,0.10) 60%, rgba(255,255,255,0.02));
-            border-color: rgba(255,165,0,0.35);
-            box-shadow: 0 0 0 1px rgba(255,165,0,0.12) inset, 0 8px 28px rgba(255,90,0,0.12);
+            border-color: rgba(255,165,0,0.45);
+            /* No external box-shadow — it bleeds onto the adjacent slide in the slider */
         }
         body.light-theme .bb-mode-card.tournament {
             background: linear-gradient(160deg, rgba(255,149,0,0.20), rgba(255,59,48,0.10) 60%, rgba(0,0,0,0.02));
-            border-color: rgba(255,140,0,0.45);
+            border-color: rgba(255,140,0,0.55);
         }
         .bb-mode-card.disabled { opacity: 0.55; cursor: default; }
         .bb-mode-card-head {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
         }
         .bb-mode-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
             flex-shrink: 0;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
         }
         .bb-mode-icon.original { background: linear-gradient(135deg, #34c759, #30b0c7); }
         .bb-mode-icon.tournament { background: linear-gradient(135deg, #ffa500, #ff3b30); }
         .bb-mode-info { flex: 1; min-width: 0; }
         .bb-mode-name {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 800;
             display: flex;
             align-items: center;
@@ -670,12 +671,12 @@
             margin-top: 8px;
         }
         .bb-mode-play-btn {
-            margin-top: 22px;
+            margin-top: 16px;
             background: var(--accent);
             color: #fff;
             border: none;
             border-radius: 14px;
-            padding: 14px 18px;
+            padding: 12px 18px;
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
@@ -686,13 +687,11 @@
         .bb-mode-play-btn:active { opacity: 0.85; }
         .bb-mode-play-btn.tournament-cta {
             background: linear-gradient(135deg, #ffa500, #ff3b30);
-            box-shadow: 0 6px 18px rgba(255,90,0,0.25);
         }
         .bb-mode-play-btn.disabled {
             background: rgba(142,142,147,0.25);
             color: #8e8e93;
             pointer-events: none;
-            box-shadow: none;
         }
         /* HUD multiplier badge inside the BB game */
         .bb-mult-hud {
@@ -2487,7 +2486,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="onBBHudCtaClick()" data-i18n="bbHudVpnCta">Купить VPN</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -2550,6 +2549,19 @@
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
+
+    <!-- Multiplier promo modal: explains the x1.5 partner offer -->
+    <div class="modal-overlay" id="modalMultPromo" style="z-index: 22550;">
+        <div class="modal" style="max-width: 380px;">
+            <div style="margin: 4px auto 12px; width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #ffa500, #ff3b30); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(255, 90, 0, 0.35);">
+                <span style="font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.5px;">×1.5</span>
+            </div>
+            <h2 style="margin: 0 0 8px 0; font-size: 22px;" data-i18n="multPromoTitle">Получите ×1.5 к итоговым очкам</h2>
+            <p style="color: #8e8e93; margin: 0 0 18px 0; line-height: 1.5; font-size: 14px;" data-i18n="multPromoDesc">Каждый итоговый счёт в турнирном режиме умножается на 1.5, если вы оформили подписку у нашего партнёра — VPN-сервиса.</p>
+            <button class="btn-main" style="background: linear-gradient(135deg, #ffa500, #ff3b30);" onclick="closeMultPromoModalAndOpenPartner()" data-i18n="multPromoGoBtn">Перейти к партнёру</button>
+            <button style="margin-top: 10px; background: none; border: none; color: #8e8e93; font-size: 16px; width: 100%; padding: 10px;" onclick="closeMultPromoModal()" data-i18n="cancel">Отмена</button>
+        </div>
+    </div>
     <div class="modal-overlay" id="modalConfirmExit"><div class="modal"><h2 data-i18n="exitGame">Выйти из игры?</h2><p style="color:#8e8e93; margin-bottom:20px;" data-i18n="exitConfirm">Вы уверены, что хотите выйти? Игра будет засчитана как поражение.</p><button class="btn-main" onclick="confirmExit(true)" data-i18n="yesExit">Да, выйти</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; width:100%; padding:10px;" onclick="confirmExit(false)" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalLoading"><div class="modal" style="display:flex; flex-direction:column; align-items:center;"><div class="loader"></div><h3 data-i18n="creatingRoom">Создание комнаты...</h3></div></div>
@@ -3292,7 +3304,10 @@
                 play: 'Играть',
                 bbTournamentNewBest: 'Новый турнирный рекорд!',
                 bbFinalScore: 'Итоговый счёт',
-                bbHudVpnCta: 'Купить VPN',
+                bbHudVpnCta: 'Получить ×1.5',
+                multPromoTitle: 'Получите ×1.5 к итоговым очкам',
+                multPromoDesc: 'Каждый итоговый счёт в турнирном режиме умножается на 1.5, если вы оформили подписку у нашего партнёра — VPN-сервиса. Перейдите к партнёру, оформите подписку — и ×1.5 будет применяться автоматически.',
+                multPromoGoBtn: 'Перейти к партнёру',
                 bbLbGlobal: 'Глобальный',
                 bbLbTournament: 'Турнирный',
                 bbVpnActive: '×1.5 активен',
@@ -3516,7 +3531,10 @@
                 play: 'Play',
                 bbTournamentNewBest: 'New tournament record!',
                 bbFinalScore: 'Final score',
-                bbHudVpnCta: 'Get VPN',
+                bbHudVpnCta: 'Get ×1.5',
+                multPromoTitle: 'Earn ×1.5 on your final score',
+                multPromoDesc: 'Every final score in tournament mode is multiplied by 1.5 if you subscribed with our partner — a VPN service. Open the partner, subscribe — and ×1.5 will be applied automatically.',
+                multPromoGoBtn: 'Go to partner',
                 bbLbGlobal: 'Global',
                 bbLbTournament: 'Tournament',
                 bbVpnActive: '×1.5 active',
@@ -5258,7 +5276,8 @@
         function updateBBModeSlider() {
             const track = document.getElementById('bbModeTrack');
             if (!track) return;
-            track.style.transform = `translateX(-${_bbModeIndex * 100}%)`;
+            track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+            track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
 
             const dots = document.querySelectorAll('#bbModeDots .bb-mode-dot');
             dots.forEach((d, i) => d.classList.toggle('active', i === _bbModeIndex));
@@ -5290,23 +5309,76 @@
         function attachBBModeSwipe() {
             if (_bbSwipeAttached) return;
             const slider = document.querySelector('#view-bb-mode .bb-mode-slider');
-            if (!slider) return;
+            const track = document.getElementById('bbModeTrack');
+            if (!slider || !track) return;
             _bbSwipeAttached = true;
 
-            let startX = 0, deltaX = 0, dragging = false;
+            let startX = 0, startY = 0, deltaX = 0, dragging = false, locked = false, sliderWidth = 0;
+
             slider.addEventListener('touchstart', (e) => {
                 startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
                 deltaX = 0;
                 dragging = true;
+                locked = false;
+                sliderWidth = slider.offsetWidth || 1;
+                // Cancel the snap transition so finger drag is real-time
+                track.style.transition = 'none';
             }, { passive: true });
+
             slider.addEventListener('touchmove', (e) => {
                 if (!dragging) return;
-                deltaX = e.touches[0].clientX - startX;
+                const dx = e.touches[0].clientX - startX;
+                const dy = e.touches[0].clientY - startY;
+
+                // Lock direction once: if user moves vertically more than horizontally,
+                // give up and let the page scroll. If horizontal — own the gesture.
+                if (!locked) {
+                    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                        locked = true;
+                        if (Math.abs(dy) > Math.abs(dx)) {
+                            dragging = false;
+                            track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+                            track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
+                }
+
+                deltaX = dx;
+                // Add resistance at the edges (pull-back feel)
+                let effective = deltaX;
+                if ((_bbModeIndex === 0 && deltaX > 0) ||
+                    (_bbModeIndex === _bbModeSlides.length - 1 && deltaX < 0)) {
+                    effective = deltaX * 0.35;
+                }
+                const offsetPct = (effective / sliderWidth) * 100;
+                track.style.transform = `translate3d(calc(-${_bbModeIndex * 100}% + ${offsetPct}%), 0, 0)`;
             }, { passive: true });
+
             slider.addEventListener('touchend', () => {
                 if (!dragging) return;
                 dragging = false;
-                if (Math.abs(deltaX) > 40) bbModeStep(deltaX < 0 ? 1 : -1);
+                track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+
+                const threshold = sliderWidth * 0.18; // commit if moved >18% of width
+                if (deltaX <= -threshold && _bbModeIndex < _bbModeSlides.length - 1) {
+                    bbModeStep(1);
+                } else if (deltaX >= threshold && _bbModeIndex > 0) {
+                    bbModeStep(-1);
+                } else {
+                    // Snap back to current
+                    track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
+                }
+            });
+
+            slider.addEventListener('touchcancel', () => {
+                if (!dragging) return;
+                dragging = false;
+                track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+                track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
             });
         }
 
@@ -5350,7 +5422,15 @@
             }
         }
 
-        function onBBHudCtaClick() {
+        function openMultPromoModal() {
+            document.getElementById('modalMultPromo').classList.add('visible');
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+        function closeMultPromoModal() {
+            document.getElementById('modalMultPromo').classList.remove('visible');
+        }
+        function closeMultPromoModalAndOpenPartner() {
+            closeMultPromoModal();
             const tInfo = (_tournamentState && _tournamentState.bb) || null;
             const url = (tInfo && tInfo.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
             openBBPartnerCta(url);
@@ -6117,7 +6197,7 @@
 
             // Build CTA upsell HTML for tournament mode without VPN
             const ctaHtml = (isTournament && !vpnActive && multiplier > 1.0)
-                ? `<button class="bb-mode-cta" style="margin-top:14px; width:100%; padding:12px;" onclick="openBBPartnerCta('${cta.replace(/'/g, "\\'")}');">${t('bbVpnCta')}</button>`
+                ? `<button class="bb-mode-cta" style="margin-top:14px; width:100%; padding:12px; background:linear-gradient(135deg,#ffa500,#ff3b30); color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;" onclick="openMultPromoModal();">${t('bbHudVpnCta')}</button>`
                 : '';
 
             if (isRecord) {
