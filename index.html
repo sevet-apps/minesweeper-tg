@@ -312,6 +312,53 @@
 
         .lb-title-lg { font-size: 32px; font-weight: 800; margin-bottom: 20px; }
         .lb-selector-wrapper { position: relative; z-index: 23001; margin-bottom: 15px; }
+
+        /* BB leaderboard mode switcher (Global / Tournament) */
+        .bb-lb-segment {
+            position: relative;
+            display: flex;
+            background: rgba(120,120,128,0.20);
+            border-radius: 14px;
+            padding: 4px;
+            margin: 0 0 14px 0;
+            overflow: hidden;
+        }
+        body.light-theme .bb-lb-segment {
+            background: rgba(120,120,128,0.16);
+        }
+        .bb-lb-segment-thumb {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: calc(50% - 4px);
+            height: calc(100% - 8px);
+            background: var(--accent);
+            border-radius: 10px;
+            transition: transform 0.32s cubic-bezier(0.2, 0.85, 0.4, 1.2);
+            box-shadow: 0 2px 10px rgba(0, 122, 255, 0.35);
+            z-index: 0;
+        }
+        .bb-lb-segment.tournament-mode .bb-lb-segment-thumb {
+            transform: translateX(100%);
+            background: linear-gradient(135deg, #ffa500, #ff3b30);
+            box-shadow: 0 2px 10px rgba(255, 90, 0, 0.35);
+        }
+        .bb-lb-segment-btn {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #8e8e93;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 10px;
+            transition: color 0.2s;
+        }
+        .bb-lb-segment-btn.active { color: #fff; }
         .lb-selector { background: var(--glass-bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--glass-border); position: relative; }
         .lb-selector:active { background: rgba(0,0,0,0.05); }
         .lb-selector svg { transition: transform 0.3s ease; }
@@ -546,61 +593,55 @@
         }
         .bb-mode-card {
             position: relative;
-            background: var(--card-bg);
-            border-radius: 18px;
-            padding: 24px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 22px;
+            padding: 28px 22px;
             cursor: pointer;
-            transition: transform 0.12s, opacity 0.2s;
-            border: 1px solid transparent;
             overflow: hidden;
+            box-sizing: border-box;
         }
-        .bb-mode-card:active { transform: scale(0.98); }
+        body.light-theme .bb-mode-card {
+            background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.015));
+            border-color: rgba(0,0,0,0.08);
+        }
         .bb-mode-card.tournament {
-            border: 1px solid rgba(255, 165, 0, 0.4);
-            background: linear-gradient(135deg, var(--card-bg) 70%, rgba(255, 149, 0, 0.06));
+            background: linear-gradient(160deg, rgba(255,149,0,0.18), rgba(255,59,48,0.10) 60%, rgba(255,255,255,0.02));
+            border-color: rgba(255,165,0,0.35);
+            box-shadow: 0 0 0 1px rgba(255,165,0,0.12) inset, 0 8px 28px rgba(255,90,0,0.12);
         }
-        .bb-mode-card.tournament::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 18px;
-            padding: 1px;
-            background: linear-gradient(135deg, #ffa500, #ff3b30, #ffa500);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            background-size: 200% 200%;
-            animation: tournamentBorder 4s ease infinite;
-            pointer-events: none;
+        body.light-theme .bb-mode-card.tournament {
+            background: linear-gradient(160deg, rgba(255,149,0,0.20), rgba(255,59,48,0.10) 60%, rgba(0,0,0,0.02));
+            border-color: rgba(255,140,0,0.45);
         }
         .bb-mode-card.disabled { opacity: 0.55; cursor: default; }
-        .bb-mode-card.disabled:active { transform: none; }
         .bb-mode-card-head {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 16px;
         }
         .bb-mode-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
             flex-shrink: 0;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.18);
         }
         .bb-mode-icon.original { background: linear-gradient(135deg, #34c759, #30b0c7); }
         .bb-mode-icon.tournament { background: linear-gradient(135deg, #ffa500, #ff3b30); }
         .bb-mode-info { flex: 1; min-width: 0; }
         .bb-mode-name {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 22px;
+            font-weight: 800;
             display: flex;
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+            letter-spacing: -0.3px;
         }
         .bb-mode-mult-badge {
             display: inline-flex;
@@ -608,46 +649,12 @@
             gap: 4px;
             background: linear-gradient(135deg, #ffa500, #ff3b30);
             color: #fff;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 9px;
             border-radius: 10px;
             letter-spacing: 0.3px;
         }
-        .bb-mode-desc {
-            font-size: 14px;
-            color: #8e8e93;
-            margin-top: 6px;
-            line-height: 1.4;
-        }
-        .bb-mode-extra {
-            margin-top: 18px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(142, 142, 147, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .bb-mode-prize {
-            font-size: 14px;
-            color: #ffa500;
-            font-weight: 600;
-        }
-        .bb-mode-cta {
-            background: linear-gradient(135deg, #ffa500, #ff3b30);
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            padding: 9px 14px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: inherit;
-            transition: transform 0.1s, opacity 0.2s;
-        }
-        .bb-mode-cta:active { transform: scale(0.96); opacity: 0.9; }
         .bb-mode-resume-pill {
             display: inline-block;
             background: var(--accent);
@@ -656,35 +663,36 @@
             font-weight: 700;
             padding: 3px 8px;
             border-radius: 10px;
-            margin-left: 8px;
         }
         .bb-mode-inactive-text {
             font-size: 13px;
             color: #8e8e93;
-            margin-top: 10px;
+            margin-top: 8px;
         }
         .bb-mode-play-btn {
-            margin-top: 18px;
+            margin-top: 22px;
             background: var(--accent);
             color: #fff;
             border: none;
-            border-radius: 12px;
-            padding: 12px 18px;
-            font-size: 15px;
+            border-radius: 14px;
+            padding: 14px 18px;
+            font-size: 16px;
             font-weight: 700;
             cursor: pointer;
             font-family: inherit;
             width: 100%;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: opacity 0.2s;
         }
-        .bb-mode-play-btn:active { transform: scale(0.98); opacity: 0.92; }
+        .bb-mode-play-btn:active { opacity: 0.85; }
         .bb-mode-play-btn.tournament-cta {
             background: linear-gradient(135deg, #ffa500, #ff3b30);
+            box-shadow: 0 6px 18px rgba(255,90,0,0.25);
         }
         .bb-mode-play-btn.disabled {
-            background: rgba(142, 142, 147, 0.3);
+            background: rgba(142,142,147,0.25);
             color: #8e8e93;
             pointer-events: none;
+            box-shadow: none;
         }
         /* HUD multiplier badge inside the BB game */
         .bb-mult-hud {
@@ -2101,6 +2109,13 @@
         </div>
         <div class="dropdown-catcher" id="dropdownCatcher" onclick="toggleDropdown()"></div>
         
+        <!-- BB-only segmented switcher: Global vs Tournament leaderboard -->
+        <div class="bb-lb-segment" id="bbLbSegment" style="display:none;">
+            <div class="bb-lb-segment-thumb" id="bbLbSegmentThumb"></div>
+            <button class="bb-lb-segment-btn active" data-mode="global" onclick="setBBLbMode('global')" data-i18n="bbLbGlobal">Глобальный</button>
+            <button class="bb-lb-segment-btn" data-mode="tournament" onclick="setBBLbMode('tournament')" data-i18n="bbLbTournament">Турнирный</button>
+        </div>
+        
         <!-- Tournament Banner (visible only for BB best score) -->
         <div class="tournament-card" id="tournamentCard" style="display:none;">
             <div class="tournament-nail tl"></div>
@@ -2472,7 +2487,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="onBBHudCtaClick()" data-i18n="bbHudVpnCta">Купить VPN</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -3275,6 +3290,11 @@
                 bbModeTournamentInactive: 'Сейчас турнира нет',
                 bbModeContinue: 'Есть незаконченная игра',
                 play: 'Играть',
+                bbTournamentNewBest: 'Новый турнирный рекорд!',
+                bbFinalScore: 'Итоговый счёт',
+                bbHudVpnCta: 'Купить VPN',
+                bbLbGlobal: 'Глобальный',
+                bbLbTournament: 'Турнирный',
                 bbVpnActive: '×1.5 активен',
                 bbVpnCta: 'Купи VPN — получи ×1.5',
                 bbVpnPartnerLabel: 'Партнёр:',
@@ -3494,6 +3514,11 @@
                 bbModeTournamentInactive: 'No active tournament',
                 bbModeContinue: 'Unfinished game',
                 play: 'Play',
+                bbTournamentNewBest: 'New tournament record!',
+                bbFinalScore: 'Final score',
+                bbHudVpnCta: 'Get VPN',
+                bbLbGlobal: 'Global',
+                bbLbTournament: 'Tournament',
                 bbVpnActive: '×1.5 active',
                 bbVpnCta: 'Get VPN — earn ×1.5',
                 bbVpnPartnerLabel: 'Partner:',
@@ -3784,7 +3809,7 @@
         function closeGame(game) { 
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
-            if(game==='bb') { saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; }
+            if(game==='bb') { saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
             if(game==='sudoku') saveSudokuState();
             if(game==='tower') { 
                 if(twAnimationFrameId) cancelAnimationFrame(twAnimationFrameId); 
@@ -4021,7 +4046,13 @@
                     }
                     return false;
                 }
-                return resp.ok;
+                if (!resp.ok) return false;
+                // For tournament BB, the server returns { success: true, tournament: {...} }
+                // Surface that to callers that need it; everyone else can keep using truthy.
+                if (game_type === 'bb_tournament_score') {
+                    try { return await resp.json(); } catch { return true; }
+                }
+                return true;
             } catch (error) { console.error(error); return false; }
         }
         async function syncStatsFromServer() {
@@ -4341,7 +4372,6 @@
         const CHECKERS_CATS = [{ id: 'checkers_total', nameKey: 'totalGames' },{ id: 'checkers_wins_pve', nameKey: 'winsVsBot' }];
         const BB_CATS = [
             { id: 'bb_best_score', nameKey: 'bestScore' },
-            { id: 'bb_tournament_score', nameKey: 'bbModeTournament', tournamentLb: true },
             { id: 'bb_total_games', nameKey: 'totalGames' }
         ];
         const SUDOKU_CATS = [{ id: 'sudoku_wins', nameKey: 'numWins' }];
@@ -4351,8 +4381,12 @@
         function openLeaderboardDetail(game) {
             currentLbGame = game;
             const selectorWrapper = document.querySelector('.lb-selector-wrapper');
+            const bbSegment = document.getElementById('bbLbSegment');
             const tr = translations[currentLang] || translations.ru;
-            
+
+            // BB segment is only relevant for BB
+            if (bbSegment) bbSegment.style.display = (game === 'bb') ? '' : 'none';
+
             if(game === 'saper') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.minesweeper}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(SAPER_CATS[0]); } 
             else if (game === 'checkers') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.checkers}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(CHECKERS_CATS[0]); } 
             else if (game === 'bb') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.blockBlast}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(BB_CATS[0]); } 
@@ -4365,15 +4399,24 @@
         function closeLeaderboardDetail() { document.getElementById('view-leaderboard-detail').classList.remove('active'); document.getElementById('lbStickyUser').classList.remove('visible'); const menu = document.getElementById('dropdownMenu'); menu.classList.remove('active'); document.getElementById('dropdownCatcher').classList.remove('active'); document.getElementById('lbSelector').classList.remove('open'); }
 
         // ====== TOURNAMENT HISTORY ======
-        function switchToTournamentLb() {
-            // Switch the BB leaderboard category to the tournament view
-            const cat = BB_CATS.find(c => c.tournamentLb);
-            if (!cat) return;
-            // Update the dropdown label and reload
-            const labelEl = document.getElementById('lbCurrentCat');
-            if (labelEl) labelEl.innerText = t(cat.nameKey);
-            loadLeaderboardData(cat);
+        let bbLbMode = 'global'; // 'global' | 'tournament'
+        function setBBLbMode(mode) {
+            if (mode !== 'global' && mode !== 'tournament') return;
+            bbLbMode = mode;
+            const seg = document.getElementById('bbLbSegment');
+            if (seg) seg.classList.toggle('tournament-mode', mode === 'tournament');
+            document.querySelectorAll('#bbLbSegment .bb-lb-segment-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === mode);
+            });
             if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+            // Re-render leaderboard for current category in the new mode
+            const cat = (typeof currentLbCat !== 'undefined' && currentLbCat) ? currentLbCat : BB_CATS[0];
+            loadLeaderboardData(cat);
+        }
+
+        function switchToTournamentLb() {
+            // Programmatic switch (used by buttons on the BB tournament card)
+            setBBLbMode('tournament');
         }
 
         async function openTournamentHistory(kind) {
@@ -4503,7 +4546,13 @@
         let lbObserver = null;
         let tournamentCupAnim = null;
         async function loadLeaderboardData(category) {
-            currentLbCat = category; document.getElementById('lbCurrentCat').innerText = t(category.nameKey); const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>'; stickyEl.classList.remove('visible');
+            currentLbCat = category;
+            // BB segment relevance: only useful for bb_best_score
+            const bbSegment = document.getElementById('bbLbSegment');
+            if (bbSegment) {
+                bbSegment.style.display = (currentLbGame === 'bb' && category.id === 'bb_best_score') ? '' : 'none';
+            }
+            document.getElementById('lbCurrentCat').innerText = t(category.nameKey); const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>'; stickyEl.classList.remove('visible');
             // Tournament card — only for BB best score
             const tCard = document.getElementById('tournamentCard');
             if (tCard) {
@@ -4548,7 +4597,8 @@
             if (refTCard) refTCard.style.display = 'none';
 
             // ===== Tournament BB leaderboard branch =====
-            if (category.tournamentLb) {
+            // Active only when user toggled the BB segment to "Tournament"
+            if (currentLbGame === 'bb' && bbLbMode === 'tournament' && category.id === 'bb_best_score') {
                 try {
                     const tState = await fetchTournamentState();
                     const t_ = tState.bb;
@@ -5089,6 +5139,19 @@
             const key = mode === 'tournament' ? 'bb_state_tournament' : 'bb_state_original';
             return !!localStorage.getItem(key);
         }
+        // Personal best displayed in BB game header. Different per mode/tournament.
+        function getDisplayedBest() {
+            if (bbMode === 'tournament') {
+                const t_ = (_tournamentState && _tournamentState.bb) || null;
+                if (!t_) return 0;
+                return parseInt(localStorage.getItem('bb_tournament_best_' + t_.id) || '0');
+            }
+            return parseInt(localStorage.getItem('bb_best_score') || '0');
+        }
+        function updateBBHeaderBest() {
+            const el = document.getElementById('bbBestScore');
+            if (el) el.innerText = getDisplayedBest();
+        }
 
         // Entry point from the game card on the home screen.
         // ALWAYS opens the mode-select screen first, even if a save exists.
@@ -5132,14 +5195,15 @@
             const origResume = hasBBSave('original') ? `<span class="bb-mode-resume-pill">${t('bbModeContinue')}</span>` : '';
             const origCard = document.createElement('div');
             origCard.className = 'bb-mode-card';
+            origCard.style.cursor = 'default';
             origCard.innerHTML = `
                 <div class="bb-mode-card-head">
                     <div class="bb-mode-icon original">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/></svg>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/></svg>
                     </div>
                     <div class="bb-mode-info">
-                        <div class="bb-mode-name">${t('bbModeOriginal')}${origResume}</div>
-                        <div class="bb-mode-desc">${t('bbModeOriginalDesc')}</div>
+                        <div class="bb-mode-name">${t('bbModeOriginal')}</div>
+                        ${origResume ? `<div style="margin-top:8px;">${origResume}</div>` : ''}
                     </div>
                 </div>
                 <button class="bb-mode-play-btn" onclick="pickBBMode('original')">${t('play') || 'Play'}</button>`;
@@ -5150,36 +5214,32 @@
             const tournResume = hasBBSave('tournament') ? `<span class="bb-mode-resume-pill">${t('bbModeContinue')}</span>` : '';
             const tournCard = document.createElement('div');
             tournCard.className = 'bb-mode-card tournament' + (tournament ? '' : ' disabled');
+            tournCard.style.cursor = 'default';
 
             const multBadge = (tournament && multiplier > 1.0)
-                ? `<span class="bb-mode-mult-badge">×${multiplier} ${vpnActive ? t('bbVpnActive') : ''}</span>`
-                : '';
-            const prizeLine = (tournament && tournament.prize_text)
-                ? `<div class="bb-mode-prize">${t('tournamentPrize')} ${tournament.prize_text}</div>`
-                : '<div></div>';
-            const ctaBtn = (tournament && multiplier > 1.0 && !vpnActive)
-                ? `<button class="bb-mode-cta" onclick="event.stopPropagation(); openBBPartnerCta('${cta.replace(/'/g, "\\'")}');">${t('bbVpnCta')}</button>`
+                ? `<span class="bb-mode-mult-badge">×${multiplier}${vpnActive ? (' ' + t('bbVpnActive')) : ''}</span>`
                 : '';
             const inactiveText = !tournament
                 ? `<div class="bb-mode-inactive-text">${t('bbModeTournamentInactive')}</div>`
                 : '';
-
             const playBtnHtml = tournament
                 ? `<button class="bb-mode-play-btn tournament-cta" onclick="pickBBMode('tournament')">${t('play') || 'Play'}</button>`
                 : `<button class="bb-mode-play-btn disabled">${t('bbModeTournamentInactive')}</button>`;
+            const extraPills = (multBadge || tournResume)
+                ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${multBadge}${tournResume}</div>`
+                : '';
 
             tournCard.innerHTML = `
                 <div class="bb-mode-card-head">
                     <div class="bb-mode-icon tournament">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-2 6h-8z"/><path d="M8 9c0 4 2 6 4 6s4-2 4-6"/><path d="M12 15v3"/><path d="M9 21h6"/></svg>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-2 6h-8z"/><path d="M8 9c0 4 2 6 4 6s4-2 4-6"/><path d="M12 15v3"/><path d="M9 21h6"/></svg>
                     </div>
                     <div class="bb-mode-info">
-                        <div class="bb-mode-name">${t('bbModeTournament')} ${multBadge}${tournResume}</div>
-                        <div class="bb-mode-desc">${t('bbModeTournamentDesc')}</div>
+                        <div class="bb-mode-name">${t('bbModeTournament')}</div>
+                        ${extraPills}
                         ${inactiveText}
                     </div>
                 </div>
-                ${(tournament && (prizeLine || ctaBtn)) ? `<div class="bb-mode-extra">${prizeLine}${ctaBtn}</div>` : ''}
                 ${playBtnHtml}`;
             track.appendChild(tournCard);
             _bbModeSlides.push({ key: 'tournament', clickable: !!tournament });
@@ -5262,22 +5322,27 @@
             localStorage.setItem('bb_mode_slide', mode === 'tournament' ? '1' : '0');
             if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
 
-            // Show/hide HUD multiplier badge inside the game
-            const state = await fetchTournamentState();
-            const showMultHud = mode === 'tournament' && state.vpn_active && state.bb && Number(state.bb.multiplier) > 1.0;
+            // Refresh tournament state to ensure HUD is accurate
+            const state = await fetchTournamentState(true);
+            const tournament = state.bb;
+            const vpnActive = !!state.vpn_active;
+            const showMultHud = mode === 'tournament' && vpnActive && tournament && Number(tournament.multiplier) > 1.0;
+            const showHudCta  = mode === 'tournament' && !vpnActive && tournament && Number(tournament.multiplier) > 1.0;
+
             const hud = document.getElementById('bbMultHud');
             if (hud) {
                 if (showMultHud) {
-                    hud.textContent = `×${Number(state.bb.multiplier)}`;
+                    hud.textContent = `×${Number(tournament.multiplier)}`;
                     hud.style.display = 'block';
                 } else {
                     hud.style.display = 'none';
                 }
             }
+            const cta = document.getElementById('bbHudVpnCta');
+            if (cta) cta.style.display = showHudCta ? '' : 'none';
 
             closeBBMode();
 
-            // If a save exists for this mode, ask to resume; else start fresh.
             if (hasBBSave(mode)) {
                 document.getElementById('modalBBResume').classList.add('visible');
             } else {
@@ -5285,12 +5350,20 @@
             }
         }
 
+        function onBBHudCtaClick() {
+            const tInfo = (_tournamentState && _tournamentState.bb) || null;
+            const url = (tInfo && tInfo.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
+            openBBPartnerCta(url);
+        }
+
         async function resumeBB() {
             bbGameEnded = false;
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
             restoreBBState();
-            await startGameSession(bbGameType());
+            // Both modes share the SAME backend session ('bb_best_score').
+            // bbMode only affects which game_type we send to /save-stat at the end.
+            await startGameSession('bb_best_score');
             syncBBSession();
         }
         async function syncBBSession() {
@@ -5317,11 +5390,12 @@
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
             bbIsAnimating = false;
             updateBBScoreUI();
-            document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0;
+            document.getElementById('bbBestScore').innerText = getDisplayedBest();
             renderBBGrid();
             spawnShapes();
             saveBBState();
-            startGameSession(bbGameType());
+            // Both modes share the SAME backend session ('bb_best_score')
+            startGameSession('bb_best_score');
         }
         
         // === BB SOUND SYSTEM (Web Audio API — rich layered sounds) ===
@@ -5974,15 +6048,27 @@
             const gameType = bbGameType();
 
             if (isTournament) {
-                // Tournament mode: every score is sent. Backend writes to tournament_scores
-                // AND falls through into users.bb_best_score with the raw score (no multiplier).
-                // We mirror that locally: if the raw score beat the personal record, update it.
-                const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0);
-                const accepted = await sendStatToBackend(gameType, bbScore);
-                if (accepted && bbScore > currentBest) {
-                    saveStatToCloud('bb_best_score', bbScore);
+                const currentGlobalBest = parseInt(localStorage.getItem('bb_best_score') || 0);
+                const tInfo = (_tournamentState && _tournamentState.bb) || null;
+                const tBestKey = tInfo ? ('bb_tournament_best_' + tInfo.id) : null;
+                const currentTournamentBest = tBestKey
+                    ? parseInt(localStorage.getItem(tBestKey) || '0')
+                    : 0;
+                const result = await sendStatToBackend(gameType, bbScore);
+                const accepted = !!result;
+                const tResult = (result && typeof result === 'object') ? result.tournament : null;
+                if (accepted) {
+                    if (bbScore > currentGlobalBest) saveStatToCloud('bb_best_score', bbScore);
+                    if (tBestKey && bbScore > currentTournamentBest) {
+                        localStorage.setItem(tBestKey, String(bbScore));
+                    }
                 }
-                showBBGameOverModal(accepted === true && bbScore > currentBest, bbScore, currentBest);
+                showBBGameOverModal(
+                    accepted && bbScore > currentTournamentBest,
+                    bbScore,
+                    currentTournamentBest,
+                    tResult // {raw_score, multiplier, final_score, vpn_active} or null
+                );
             } else {
                 const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0);
                 const isRecord = bbScore > currentBest;
@@ -5999,9 +6085,141 @@
             sendStatToBackend('bb_total_games', t);
         }
         function animateGameOverFill() { return new Promise(resolve => { const emptyCells = []; for(let r=BB_ROWS-1; r>=0; r--) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) { const cell = getCellFast(r, c); emptyCells.push(cell); } } } let i = 0; const int = setInterval(() => { if(i >= emptyCells.length) { clearInterval(int); setTimeout(resolve, 300); return; } const cell = emptyCells[i]; const color = COLORS[Math.floor(Math.random() * COLORS.length)]; if(cell) cell.classList.add('filled', color); i++; }, 10); }); }
-        function showBBGameOverModal(isRecord, score, oldBest) { const modal = document.getElementById('bbGameOverContent'); const overlay = document.getElementById('modalBBGameOver'); modal.innerHTML = ''; if(isRecord) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 }); modal.innerHTML = `<div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 10px 0; font-size:24px;">${t('newRecord')}</h2><div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('playAgain')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' }); let s = oldBest; const step = Math.ceil((score - oldBest) / 30); const counter = document.getElementById('recCounter'); const int = setInterval(() => { s += step; if(s >= score) { s = score; clearInterval(int); } counter.innerText = s; }, 30); } else { modal.innerHTML = `<h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2><p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p><div style="font-size:32px; font-weight:700;">${score}</div><div style="font-size:14px; color:#8e8e93; margin-bottom:20px;">${t('best')}: ${oldBest}</div><button class="btn-main" onclick="closeResult(); newGameBB();">${t('newGame')}</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`; } overlay.classList.add('visible'); }
+        function animateNumber(el, from, to, duration = 900) {
+            return new Promise(resolve => {
+                if (!el) return resolve();
+                const start = performance.now();
+                const ease = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
+                function frame(now) {
+                    const t = Math.min(1, (now - start) / duration);
+                    const v = Math.round(from + (to - from) * ease(t));
+                    el.innerText = v.toLocaleString('ru-RU');
+                    if (t < 1) requestAnimationFrame(frame);
+                    else resolve();
+                }
+                requestAnimationFrame(frame);
+            });
+        }
+
+        function showBBGameOverModal(isRecord, score, oldBest, tournamentResult) {
+            const modal = document.getElementById('bbGameOverContent');
+            const overlay = document.getElementById('modalBBGameOver');
+            modal.innerHTML = '';
+
+            const isTournament = (bbMode === 'tournament');
+            const tInfo = (_tournamentState && _tournamentState.bb) || null;
+            const multiplier = (tournamentResult && tournamentResult.multiplier) ||
+                               (tInfo ? Number(tInfo.multiplier) : 1.0);
+            const finalScore = (tournamentResult && tournamentResult.final_score) || score;
+            const vpnActive = !!(tournamentResult && tournamentResult.vpn_active);
+            const showMultAnim = isTournament && vpnActive && multiplier > 1.0;
+            const cta = (tInfo && tInfo.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
+
+            // Build CTA upsell HTML for tournament mode without VPN
+            const ctaHtml = (isTournament && !vpnActive && multiplier > 1.0)
+                ? `<button class="bb-mode-cta" style="margin-top:14px; width:100%; padding:12px;" onclick="openBBPartnerCta('${cta.replace(/'/g, "\\'")}');">${t('bbVpnCta')}</button>`
+                : '';
+
+            if (isRecord) {
+                confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 });
+
+                const titleKey = isTournament ? 'bbTournamentNewBest' : 'newRecord';
+                modal.innerHTML = `
+                    <div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div>
+                    <h2 style="margin:0 0 10px 0; font-size:24px;">${t(titleKey) || t('newRecord')}</h2>
+                    <div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div>
+                    ${showMultAnim ? `
+                        <div id="bbMultLine" style="display:none; margin:6px 0 4px 0;">
+                            <span style="font-size:14px; color:#8e8e93;">×</span>
+                            <span id="bbMultValue" style="font-size:22px; font-weight:800; color:#ffa500;">${multiplier}</span>
+                        </div>
+                        <div id="bbFinalLine" style="display:none; margin-top:6px;">
+                            <div style="font-size:13px; color:#8e8e93; margin-bottom:2px;">${t('bbFinalScore')}</div>
+                            <div id="bbFinalCounter" style="font-size:36px; font-weight:800; color:#ffa500;">0</div>
+                        </div>
+                    ` : ''}
+                    ${ctaHtml}
+                    <button class="btn-main" style="margin-top:14px;" onclick="closeResult(); newGameBB();">${t('playAgain')}</button>
+                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`;
+                if (typeof lottie !== 'undefined') {
+                    lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' });
+                }
+
+                // 1) Count up the raw score
+                const counter = document.getElementById('recCounter');
+                animateNumber(counter, oldBest, score, 900).then(async () => {
+                    if (!showMultAnim) return;
+
+                    // 2) Briefly show ×N "appearing"
+                    const multLine = document.getElementById('bbMultLine');
+                    multLine.style.display = '';
+                    multLine.style.transform = 'scale(0.5)';
+                    multLine.style.opacity = '0';
+                    multLine.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s';
+                    await new Promise(r => requestAnimationFrame(r));
+                    multLine.style.transform = 'scale(1)';
+                    multLine.style.opacity = '1';
+                    if (vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');
+                    await new Promise(r => setTimeout(r, 500));
+
+                    // 3) Reveal final and animate it from raw to final
+                    const finalLine = document.getElementById('bbFinalLine');
+                    finalLine.style.display = '';
+                    finalLine.style.opacity = '0';
+                    finalLine.style.transition = 'opacity 0.25s';
+                    await new Promise(r => requestAnimationFrame(r));
+                    finalLine.style.opacity = '1';
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.55 }, colors: ['#ffa500', '#ff3b30', '#ffd700'], zIndex: 22001 });
+                    if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+                    await animateNumber(document.getElementById('bbFinalCounter'), score, finalScore, 800);
+                });
+            } else {
+                modal.innerHTML = `
+                    <h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2>
+                    <p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p>
+                    <div style="font-size:32px; font-weight:700;" id="bbScoreNum">${score}</div>
+                    ${showMultAnim ? `
+                        <div id="bbMultLine" style="display:none; margin:8px 0 4px 0;">
+                            <span style="font-size:14px; color:#8e8e93;">×</span>
+                            <span style="font-size:22px; font-weight:800; color:#ffa500;">${multiplier}</span>
+                        </div>
+                        <div id="bbFinalLine" style="display:none;">
+                            <div style="font-size:13px; color:#8e8e93;">${t('bbFinalScore')}</div>
+                            <div id="bbFinalCounter" style="font-size:30px; font-weight:800; color:#ffa500;">${score}</div>
+                        </div>
+                    ` : ''}
+                    <div style="font-size:14px; color:#8e8e93; margin: 14px 0 0;">${t('best')}: ${oldBest}</div>
+                    ${ctaHtml}
+                    <button class="btn-main" style="margin-top:14px;" onclick="closeResult(); newGameBB();">${t('newGame')}</button>
+                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`;
+
+                if (showMultAnim) {
+                    setTimeout(async () => {
+                        const multLine = document.getElementById('bbMultLine');
+                        if (!multLine) return;
+                        multLine.style.display = '';
+                        multLine.style.transform = 'scale(0.5)';
+                        multLine.style.opacity = '0';
+                        multLine.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s';
+                        await new Promise(r => requestAnimationFrame(r));
+                        multLine.style.transform = 'scale(1)';
+                        multLine.style.opacity = '1';
+                        if (vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');
+                        await new Promise(r => setTimeout(r, 500));
+                        const finalLine = document.getElementById('bbFinalLine');
+                        finalLine.style.display = '';
+                        finalLine.style.opacity = '0';
+                        finalLine.style.transition = 'opacity 0.25s';
+                        await new Promise(r => requestAnimationFrame(r));
+                        finalLine.style.opacity = '1';
+                        await animateNumber(document.getElementById('bbFinalCounter'), score, finalScore, 800);
+                    }, 400);
+                }
+            }
+            overlay.classList.add('visible');
+        }
         function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); document.getElementById('bbBestScore').innerText = localStorage.getItem('bb_best_score') || 0; renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;
