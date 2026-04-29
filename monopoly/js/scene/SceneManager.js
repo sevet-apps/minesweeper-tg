@@ -15,12 +15,12 @@
 
     // Arena size matches the Board3D center plate (plateSide = 6.5).
     // Walls just inside the plate edges so dice never escape visually.
-    // floorY matches Board3D._buildCenterPlate topY (must stay in sync).
+    // floorY matches Board3D._buildCenterPlate Y_PLATE + 0.02 (must stay in sync).
     const ARENA = {
         width:  6.3,
         depth:  6.3,
         height: 3.5,
-        floorY: 0.13,
+        floorY: 0.16,
     };
 
     const MATERIALS = {
@@ -53,15 +53,14 @@
             container.appendChild(this.renderer.domElement);
 
             // --- Camera ---
-            // Board is 13×13. To fit in a portrait phone (~2:1 aspect),
-            // camera must be high enough to frame the full board with
-            // visible margin. At y=28, z=3, fov=36 the whole board fits
-            // vertically with ~15% margin top/bottom, and diagonal view
-            // keeps depth readable without being pure top-down.
+            // Board is 13×13. Sized to FIT WITH VISIBLE MARGIN on portrait phones.
+            // At y=34, z=2, fov=32 the full board renders at ~85% of viewport
+            // height, leaving dark margin all around so board reads as a
+            // self-contained object.
             this.camera = new THREE.PerspectiveCamera(
-                36, this.width / this.height, 0.1, 100
+                32, this.width / this.height, 0.1, 100
             );
-            this.camera.position.set(0, 28, 3);
+            this.camera.position.set(0, 34, 2);
             this.camera.lookAt(0, 0, 0);
 
             this._setupLights();
@@ -87,13 +86,13 @@
         }
 
         _setupLights() {
-            // Cool ambient
-            const ambient = new THREE.AmbientLight(0xaac0ff, 0.35);
+            // Brighter ambient for overall scene readability on mobile displays
+            const ambient = new THREE.AmbientLight(0xbbcdff, 0.55);
             this.scene.add(ambient);
 
-            // Key light from upper-right
-            const key = new THREE.DirectionalLight(0xffffff, 1.1);
-            key.position.set(6, 14, 6);
+            // Key light - stronger, mostly top-down to match camera
+            const key = new THREE.DirectionalLight(0xffffff, 1.4);
+            key.position.set(4, 18, 5);
             key.castShadow = true;
             key.shadow.mapSize.set(2048, 2048);
             key.shadow.camera.left   = -10;
@@ -101,14 +100,19 @@
             key.shadow.camera.top    =  10;
             key.shadow.camera.bottom = -10;
             key.shadow.camera.near   = 0.1;
-            key.shadow.camera.far    = 40;
+            key.shadow.camera.far    = 50;
             key.shadow.bias = -0.0005;
             this.scene.add(key);
 
-            // Fill from opposite - cool blue accent
-            const fill = new THREE.DirectionalLight(0x5ac8fa, 0.45);
-            fill.position.set(-8, 6, -4);
+            // Cool blue fill from opposite side
+            const fill = new THREE.DirectionalLight(0x5ac8fa, 0.6);
+            fill.position.set(-8, 8, -4);
             this.scene.add(fill);
+
+            // Warm rim light for accent
+            const rim = new THREE.DirectionalLight(0xffd1a4, 0.3);
+            rim.position.set(6, 4, -6);
+            this.scene.add(rim);
         }
 
         _setupPhysics() {

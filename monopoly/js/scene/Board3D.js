@@ -295,16 +295,16 @@
             base.receiveShadow = true;
             g.add(base);
 
-            // Color band — now saturated and glowing
+            // Color band — highly saturated, strong glow
             if (tile.type === 'property' && tile.group) {
                 const bandColor = GROUP_COLORS[tile.group];
                 const bandGeom = new THREE.BoxGeometry(TILE_W, 0.14, TILE_L * 0.3);
                 const bandMat = new THREE.MeshStandardMaterial({
                     color:     bandColor,
                     metalness: 0.0,
-                    roughness: 0.35,
+                    roughness: 0.2,
                     emissive:  bandColor,
-                    emissiveIntensity: 0.55, // was 0.12 - now actually glows
+                    emissiveIntensity: 0.85, // bright punch
                 });
                 const band = new THREE.Mesh(bandGeom, bandMat);
                 band.position.set(0, 0.07, -TILE_L/2 + (TILE_L * 0.15));
@@ -312,7 +312,7 @@
                 g.add(band);
             }
 
-            // Icon disc for special tiles - larger, more opaque, glowing
+            // Icon disc — saturated glow
             if (tile.type === 'railroad' || tile.type === 'utility' ||
                 tile.type === 'chance'   || tile.type === 'chest' ||
                 tile.type === 'tax') {
@@ -321,9 +321,9 @@
                 const iconMat = new THREE.MeshStandardMaterial({
                     color:     accentColor,
                     emissive:  accentColor,
-                    emissiveIntensity: 0.6,
+                    emissiveIntensity: 0.9,
                     metalness: 0.0,
-                    roughness: 0.4,
+                    roughness: 0.3,
                 });
                 const icon = new THREE.Mesh(iconGeom, iconMat);
                 icon.rotation.x = -Math.PI / 2;
@@ -353,43 +353,116 @@
          * Inner dimensions of the board = BOARD_SIDE - 2*TILE_L = 13 - 4 = 9
          * So plate must be small enough to leave visible board ring around it.
          */
+        /**
+         * Center dice plate - frosted glass with inner crosshair markings.
+         * Styled to match the glassmorphism cards in the main Spark Games app:
+         *   - Thin translucent slab (frosted look)
+         *   - Bright neon rim contour
+         *   - Inner divider lines (will host 4 player zones in Phase 2.3)
+         *   - Soft glow underneath
+         */
         _buildCenterPlate() {
-            // Inner area inside the tile ring is 9x9 units.
-            // Make dice plate slightly smaller to show board around it.
             const plateSide = 6.5;
+            const Y_GROUND  = 0.10;  // baseboard surface level
+            const Y_PLATE   = 0.14;  // glass surface
+            const Y_LINES   = 0.145; // decoration just above glass
 
-            // Glass plate - brighter and more visible now
-            const plateGeom = new THREE.BoxGeometry(plateSide, 0.06, plateSide);
-            const plateMat = new THREE.MeshStandardMaterial({
-                color:     0x3a4a6e,
-                metalness: 0.3,
-                roughness: 0.2,
+            // --- Glow backdrop (slightly larger, below the glass) ---
+            // Creates a soft colored halo under the glass - reads as "lit from below"
+            const glowGeom = new THREE.PlaneGeometry(plateSide + 0.6, plateSide + 0.6);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0x0a84ff,
                 transparent: true,
-                opacity: 0.55,
+                opacity: 0.15,
+            });
+            const glow = new THREE.Mesh(glowGeom, glowMat);
+            glow.rotation.x = -Math.PI / 2;
+            glow.position.y = Y_GROUND + 0.005;
+            this.group.add(glow);
+
+            // --- Main glass panel ---
+            // Thin slab, frosted look via low opacity + moderate roughness.
+            // MeshPhysicalMaterial gives a bit more realism than Standard for glass.
+            const plateGeom = new THREE.BoxGeometry(plateSide, 0.04, plateSide);
+            const plateMat = new THREE.MeshPhysicalMaterial({
+                color:       0x8aa8d8,
+                metalness:   0.1,
+                roughness:   0.25,
+                transmission: 0.0,    // no real refraction (expensive on mobile)
+                transparent: true,
+                opacity:     0.35,
+                envMapIntensity: 0.5,
             });
             const plate = new THREE.Mesh(plateGeom, plateMat);
-            plate.position.y = 0.10;
+            plate.position.y = Y_PLATE;
             plate.receiveShadow = true;
             this.group.add(plate);
 
-            // Bright rim - more intense
-            const rimEdgeGeom = new THREE.BoxGeometry(plateSide, 0.001, plateSide);
-            const rimEdges = new THREE.EdgesGeometry(rimEdgeGeom);
-            const rim = new THREE.LineSegments(
-                rimEdges,
+            // --- Inner frosted highlight (very subtle tone variation) ---
+            const innerGeom = new THREE.PlaneGeometry(plateSide - 0.15, plateSide - 0.15);
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.05,
+            });
+            const inner = new THREE.Mesh(innerGeom, innerMat);
+            inner.rotation.x = -Math.PI / 2;
+            inner.position.y = Y_PLATE + 0.025;
+            this.group.add(inner);
+
+            // --- Outer neon rim (bright) ---
+            const rimOuterGeom = new THREE.BoxGeometry(plateSide, 0.001, plateSide);
+            const rimOuterEdges = new THREE.EdgesGeometry(rimOuterGeom);
+            const rimOuter = new THREE.LineSegments(
+                rimOuterEdges,
+                new THREE.LineBasicMaterial({
+                    color: 0x0a84ff,
+                    transparent: true,
+                    opacity: 1.0,
+                })
+            );
+            rimOuter.position.y = Y_PLATE + 0.025;
+            this.group.add(rimOuter);
+
+            // --- Inner rim (softer, slightly inset - adds depth) ---
+            const rimInnerGeom = new THREE.BoxGeometry(plateSide - 0.3, 0.001, plateSide - 0.3);
+            const rimInnerEdges = new THREE.EdgesGeometry(rimInnerGeom);
+            const rimInner = new THREE.LineSegments(
+                rimInnerEdges,
                 new THREE.LineBasicMaterial({
                     color: 0x5ac8fa,
                     transparent: true,
-                    opacity: 0.95,
+                    opacity: 0.5,
                 })
             );
-            rim.position.y = 0.135;
-            this.group.add(rim);
+            rimInner.position.y = Y_LINES;
+            this.group.add(rimInner);
 
-            // Store plate bounds for Dice code to read
+            // --- Crosshair dividers (mark 4 quadrants for player zones later) ---
+            const lineMat = new THREE.LineBasicMaterial({
+                color: 0x5ac8fa,
+                transparent: true,
+                opacity: 0.25,
+            });
+
+            // Horizontal line (along X)
+            const hGeom = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-plateSide/2 + 0.4, Y_LINES,  0),
+                new THREE.Vector3( plateSide/2 - 0.4, Y_LINES,  0),
+            ]);
+            this.group.add(new THREE.Line(hGeom, lineMat));
+
+            // Vertical line (along Z)
+            const vGeom = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, Y_LINES, -plateSide/2 + 0.4),
+                new THREE.Vector3(0, Y_LINES,  plateSide/2 - 0.4),
+            ]);
+            this.group.add(new THREE.Line(vGeom, lineMat));
+
+            // Store plate bounds
             this.centerPlateBounds = {
                 size: plateSide,
-                topY: 0.13,
+                topY: Y_PLATE + 0.02,
             };
         }
 
