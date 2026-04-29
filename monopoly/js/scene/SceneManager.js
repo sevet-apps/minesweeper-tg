@@ -15,12 +15,12 @@
 
     // Arena size matches the Board3D center plate (plateSide = 6.5).
     // Walls just inside the plate edges so dice never escape visually.
-    // floorY matches Board3D._buildCenterPlate Y_PLATE + 0.02 (must stay in sync).
+    // floorY matches Board3D._buildCenterPlate top (must stay in sync).
     const ARENA = {
         width:  6.3,
         depth:  6.3,
         height: 3.5,
-        floorY: 0.16,
+        floorY: 0.10,
     };
 
     const MATERIALS = {
@@ -53,14 +53,12 @@
             container.appendChild(this.renderer.domElement);
 
             // --- Camera ---
-            // Board is 13×13. Sized to FIT WITH VISIBLE MARGIN on portrait phones.
-            // At y=34, z=2, fov=32 the full board renders at ~85% of viewport
-            // height, leaving dark margin all around so board reads as a
-            // self-contained object.
+            // Pure top-down. Board is 13×13. Camera at y=22 with fov=42 frames
+            // the full board at ~85% of portrait viewport, leaving margin.
             this.camera = new THREE.PerspectiveCamera(
-                32, this.width / this.height, 0.1, 100
+                42, this.width / this.height, 0.1, 100
             );
-            this.camera.position.set(0, 34, 2);
+            this.camera.position.set(0, 22, 0.01); // tiny z to avoid gimbal-lock issues
             this.camera.lookAt(0, 0, 0);
 
             this._setupLights();
@@ -86,13 +84,14 @@
         }
 
         _setupLights() {
-            // Brighter ambient for overall scene readability on mobile displays
-            const ambient = new THREE.AmbientLight(0xbbcdff, 0.55);
+            // Top-down view: ambient dominates so all tiles read clearly without
+            // dark sides. Key light adds slight depth on dice faces.
+            const ambient = new THREE.AmbientLight(0xffffff, 0.85);
             this.scene.add(ambient);
 
-            // Key light - stronger, mostly top-down to match camera
-            const key = new THREE.DirectionalLight(0xffffff, 1.4);
-            key.position.set(4, 18, 5);
+            // Key light - just for dice shadow/depth, not strong on board
+            const key = new THREE.DirectionalLight(0xffffff, 0.7);
+            key.position.set(3, 14, 4);
             key.castShadow = true;
             key.shadow.mapSize.set(2048, 2048);
             key.shadow.camera.left   = -10;
@@ -104,15 +103,10 @@
             key.shadow.bias = -0.0005;
             this.scene.add(key);
 
-            // Cool blue fill from opposite side
-            const fill = new THREE.DirectionalLight(0x5ac8fa, 0.6);
-            fill.position.set(-8, 8, -4);
+            // Soft cool fill from opposite to lift shadow side of dice
+            const fill = new THREE.DirectionalLight(0xa0c0ff, 0.3);
+            fill.position.set(-4, 8, -3);
             this.scene.add(fill);
-
-            // Warm rim light for accent
-            const rim = new THREE.DirectionalLight(0xffd1a4, 0.3);
-            rim.position.set(6, 4, -6);
-            this.scene.add(rim);
         }
 
         _setupPhysics() {
