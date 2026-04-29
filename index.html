@@ -2126,7 +2126,7 @@
             <div class="tournament-timer" id="tournamentTimer"></div>
             <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!</div>
             <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:14px;">
-                <button class="tournament-history-btn" onclick="switchToTournamentLb()" data-i18n="tournamentLeaderboardBtn">Турнирная таблица</button>
+                <button class="tournament-history-btn" id="bbTournamentLbBtn" onclick="switchToTournamentLb()" data-i18n="tournamentLeaderboardBtn">Турнирная таблица</button>
                 <button class="tournament-history-btn" onclick="openTournamentHistory('bb')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
             </div>
         </div>
@@ -3756,7 +3756,8 @@
                 const badge = bbCard.querySelector('.card-event-badge');
                 const subtitle = bbCard.querySelector('[data-i18n="tournamentActive"]') ||
                                  bbCard.querySelector('.bb-card-subtitle');
-                if (state.bb) {
+                const showBBTourBadge = BB_TOURNAMENT_ENABLED && state.bb;
+                if (showBBTourBadge) {
                     if (badge) badge.style.display = '';
                     if (subtitle) {
                         subtitle.style.display = '';
@@ -3772,13 +3773,13 @@
                 }
             }
 
-            // Single tournament banner — hide if no active BB tournament
+            // Single tournament banner — hide if no active BB tournament OR feature disabled
             document.querySelectorAll('.banner-slide-wrap').forEach(wrap => {
                 const img = wrap.querySelector('img.banner-slide');
                 if (!img) return;
                 const src = img.getAttribute('src') || '';
                 if (src.includes('Banner_IPhone_17') || src.includes('tournament-banner')) {
-                    wrap.style.display = state.bb ? '' : 'none';
+                    wrap.style.display = (BB_TOURNAMENT_ENABLED && state.bb) ? '' : 'none';
                 } else if (src.includes('referral-banner')) {
                     wrap.style.display = state.referral ? '' : 'none';
                 }
@@ -4402,8 +4403,8 @@
             const bbSegment = document.getElementById('bbLbSegment');
             const tr = translations[currentLang] || translations.ru;
 
-            // BB segment is only relevant for BB
-            if (bbSegment) bbSegment.style.display = (game === 'bb') ? '' : 'none';
+            // BB segment is only relevant for BB AND when tournament mode is enabled
+            if (bbSegment) bbSegment.style.display = (game === 'bb' && BB_TOURNAMENT_ENABLED) ? '' : 'none';
 
             if(game === 'saper') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.minesweeper}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(SAPER_CATS[0]); } 
             else if (game === 'checkers') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.checkers}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(CHECKERS_CATS[0]); } 
@@ -4419,6 +4420,7 @@
         // ====== TOURNAMENT HISTORY ======
         let bbLbMode = 'global'; // 'global' | 'tournament'
         function setBBLbMode(mode) {
+            if (!BB_TOURNAMENT_ENABLED) { bbLbMode = 'global'; return; }
             if (mode !== 'global' && mode !== 'tournament') return;
             bbLbMode = mode;
             const seg = document.getElementById('bbLbSegment');
@@ -4568,17 +4570,21 @@
             // BB segment relevance: only useful for bb_best_score
             const bbSegment = document.getElementById('bbLbSegment');
             if (bbSegment) {
-                bbSegment.style.display = (currentLbGame === 'bb' && category.id === 'bb_best_score') ? '' : 'none';
+                bbSegment.style.display = (BB_TOURNAMENT_ENABLED && currentLbGame === 'bb' && category.id === 'bb_best_score') ? '' : 'none';
             }
             document.getElementById('lbCurrentCat').innerText = t(category.nameKey); const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>'; stickyEl.classList.remove('visible');
-            // Tournament card — only for BB best score
+            // Tournament card — only for BB best score, AND only when BB tournament UI is enabled
             const tCard = document.getElementById('tournamentCard');
             if (tCard) {
-                if (currentLbGame === 'bb' && category.id === 'bb_best_score') {
+                if (BB_TOURNAMENT_ENABLED && currentLbGame === 'bb' && category.id === 'bb_best_score') {
                     const tState = await fetchTournamentState();
                     tCard.style.display = '';
                     const titleEl = tCard.querySelector('.tournament-card-title');
                     const textEl = tCard.querySelector('.tournament-card-text');
+
+                    // Hide the "Tournament leaderboard" button when tournament UI is disabled
+                    const lbBtn = document.getElementById('bbTournamentLbBtn');
+                    if (lbBtn) lbBtn.style.display = BB_TOURNAMENT_ENABLED ? '' : 'none';
 
                     // Always (re)load the cup lottie when the card is visible
                     const cupEl = document.getElementById('tournamentCupLottie');
@@ -5140,6 +5146,10 @@
         let bbMode = 'original';
         let bbGameEnded = false; // true after game-over until next new/resumed game
         const BB_PARTNER_DEFAULT_CTA = 'https://t.me/phantomio_bot?start=spark';
+        // Master kill-switch for the BB Tournament mode UI. Set to true to re-enable
+        // mode-select screen, segmented leaderboard switcher, x1.5 multiplier UI, etc.
+        // Backend code & admin bot for BB tournaments are kept untouched.
+        const BB_TOURNAMENT_ENABLED = false;
 
         function bbStateKey() {
             // Migrate any pre-existing 'bb_state' to 'bb_state_original' once
@@ -5172,8 +5182,18 @@
         }
 
         // Entry point from the game card on the home screen.
-        // ALWAYS opens the mode-select screen first, even if a save exists.
+        // When BB_TOURNAMENT_ENABLED is false, behaves like before: prompts to
+        // resume if a save exists, otherwise starts a new game directly.
         function startBlockBlastCheck() {
+            if (!BB_TOURNAMENT_ENABLED) {
+                bbMode = 'original'; // force original mode so saves go to bb_state_original
+                if (hasBBSave('original')) {
+                    document.getElementById('modalBBResume').classList.add('visible');
+                } else {
+                    newGameBB();
+                }
+                return;
+            }
             openBBMode();
         }
 
@@ -5438,11 +5458,15 @@
 
         async function resumeBB() {
             bbGameEnded = false;
+            // When tournament mode is disabled, force original mode and hide all tournament HUD
+            if (!BB_TOURNAMENT_ENABLED) {
+                bbMode = 'original';
+                const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none';
+                const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none';
+            }
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
             restoreBBState();
-            // Both modes share the SAME backend session ('bb_best_score').
-            // bbMode only affects which game_type we send to /save-stat at the end.
             await startGameSession('bb_best_score');
             syncBBSession();
         }
@@ -5460,6 +5484,11 @@
         }
         function newGameBB() {
             bbGameEnded = false;
+            if (!BB_TOURNAMENT_ENABLED) {
+                bbMode = 'original';
+                const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none';
+                const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none';
+            }
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
             initBB();
@@ -7022,7 +7051,10 @@
         
         // Extended dictionary for validation (25000+ words)
         let WORDLE_VALID_EXTENDED = null;
-        
+        // Extended ANSWER pool (large list of acceptable puzzle words). When loaded,
+        // takes precedence over the small built-in WORDLE_WORDS array.
+        let WORDLE_ANSWERS_EXTENDED = null;
+
         // Load extended dictionary lazily
         async function loadWordleDict() {
             if (WORDLE_VALID_EXTENDED) return;
@@ -7030,10 +7062,31 @@
                 const resp = await fetch('wordle_dict.txt');
                 if (resp.ok) {
                     const text = await resp.text();
-                    WORDLE_VALID_EXTENDED = new Set(text.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length === 5));
+                    WORDLE_VALID_EXTENDED = new Set(
+                        text.split('\n')
+                            .map(w => w.trim().toLowerCase().replace(/ё/g, 'е'))
+                            .filter(w => w.length === 5)
+                    );
                 }
             } catch(e) {
-                console.log('Extended dict not loaded, using base');
+                console.log('Extended valid dict not loaded, using base');
+            }
+        }
+
+        // Load extended answer pool lazily (separate file so HTML stays small)
+        async function loadWordleAnswers() {
+            if (WORDLE_ANSWERS_EXTENDED) return;
+            try {
+                const resp = await fetch('wordle_answers.txt');
+                if (resp.ok) {
+                    const text = await resp.text();
+                    const arr = text.split('\n')
+                        .map(w => w.trim().toLowerCase())
+                        .filter(w => w.length === 5);
+                    if (arr.length > 0) WORDLE_ANSWERS_EXTENDED = arr;
+                }
+            } catch(e) {
+                console.log('Extended answer pool not loaded, using base WORDLE_WORDS');
             }
         }
         
@@ -7041,10 +7094,16 @@
             const w = word.toLowerCase().replace(/ё/g, 'е');
             // Check base dictionary first
             for (const baseWord of WORDLE_WORDS) {
-                if (baseWord.replace(/ё/g, 'е') === w) return true;
+                if (baseWord.toLowerCase().replace(/ё/g, 'е') === w) return true;
             }
-            // Check extended dictionary
+            // Check extended dictionary (already normalized ё→е at load time)
             if (WORDLE_VALID_EXTENDED && WORDLE_VALID_EXTENDED.has(w)) return true;
+            // Extended answer pool also counts as valid input
+            if (WORDLE_ANSWERS_EXTENDED) {
+                for (const ans of WORDLE_ANSWERS_EXTENDED) {
+                    if (ans.replace(/ё/g, 'е') === w) return true;
+                }
+            }
             return false;
         }
 
@@ -7173,7 +7232,10 @@
             document.getElementById('wordle-screen').classList.add('visible');
             wordleWins = parseInt(localStorage.getItem('wordle_wins') || 0);
             document.getElementById('wordleWins').innerText = wordleWins;
+            // Kick off both dictionary loads in parallel; initWordle uses the
+            // small built-in pool as a fallback if the extended one isn't ready yet.
             loadWordleDict();
+            loadWordleAnswers();
             
             // Physical keyboard support
             document.addEventListener('keydown', wordleKeyHandler);
@@ -7293,7 +7355,10 @@
 
         function initWordle() {
             clearWordleSave(); // Clear any saved game when starting new
-            wordleTarget = WORDLE_WORDS[Math.floor(Math.random() * WORDLE_WORDS.length)].toUpperCase();
+            const pool = (WORDLE_ANSWERS_EXTENDED && WORDLE_ANSWERS_EXTENDED.length > 0)
+                ? WORDLE_ANSWERS_EXTENDED
+                : WORDLE_WORDS;
+            wordleTarget = pool[Math.floor(Math.random() * pool.length)].toUpperCase();
             wordleGuesses = [];
             wordleCurrentGuess = '';
             wordleGameOver = false;

@@ -1,0 +1,3 @@
+_wordle_cache/
+node_modules/
+.env
