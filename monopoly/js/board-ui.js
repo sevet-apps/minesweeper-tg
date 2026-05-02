@@ -1,15 +1,7 @@
 /* ============================================================
-   board-ui.js
-   Renders 40 Monopoly tiles as DOM elements positioned in
-   an 11x11 CSS Grid. The center 9x9 area is reserved for the
-   3D dice canvas.
-
-   Grid positions (1-indexed for CSS):
-     (11,11) = bottom-right = GO (index 0)
-     Bottom row goes right→left (cols 11→1) for tiles 0..10
-     Left col goes bottom→top (rows 11→1) for tiles 10..20
-     Top row goes left→right (cols 1→11) for tiles 20..30
-     Right col goes top→bottom (rows 1→11) for tiles 30..0
+   board-ui.js  (v2)
+   Renders 40 Monopoly tiles with monochrome SVG icons.
+   Uses CSS Grid 13×13 to position perimeter tiles.
    ============================================================ */
 
 (function (global) {
@@ -17,74 +9,61 @@
 
     const TILES = global.MonopolyData.TILES;
 
-    /**
-     * Compute CSS Grid (col, row, colSpan, rowSpan) for tile at index i.
-     * Grid is 11x11. Corners take 2x2 cells, regular tiles 1x2 cells.
-     */
-    function gridPosition(i) {
-        // Corners: 4 fixed positions, each 2x2 cells
-        if (i === 0)  return { col: 10, row: 10, cw: 2, rh: 2 }; // bottom-right (GO)
-        if (i === 10) return { col: 1,  row: 10, cw: 2, rh: 2 }; // bottom-left (JAIL)
-        if (i === 20) return { col: 1,  row: 1,  cw: 2, rh: 2 }; // top-left (FREE PARKING)
-        if (i === 30) return { col: 10, row: 1,  cw: 2, rh: 2 }; // top-right (GO TO JAIL)
+    // ---- Inline SVG icons (monochrome, currentColor) ----
+    const ICONS = {
+        train: `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8 2 4 2.5 4 6v9.5C4 17.43 5.57 19 7.5 19L6 20.5V21h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-7H6V6h5v4zm2 0V6h5v4h-5zm3.5 7c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+            </svg>
+        `,
+        bulb: `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
+            </svg>
+        `,
+        drop: `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8 8 4 13 4 16a8 8 0 0 0 16 0c0-3-4-8-8-14zm0 17a3 3 0 0 1-3-3c0-.5.2-1.5 1-3 .5 1 1 1.5 2 1.5 1.5 0 2-1.5 2-1.5 .8 1.5 1 2.5 1 3a3 3 0 0 1-3 3z"/>
+            </svg>
+        `,
+        chance: `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.07 12.85c.77-1.39 2.25-2.21 3.11-3.44.91-1.29.4-3.7-2.18-3.7-1.69 0-2.52 1.28-2.87 2.34L6.54 6.96C7.25 4.83 9.18 3 11.99 3c2.35 0 3.96 1.07 4.78 2.41.7 1.15 1.11 3.3.03 4.9-1.2 1.77-2.35 2.31-2.97 3.45-.25.46-.35.76-.35 2.24h-2.89c-.01-.78-.13-2.05.48-3.15zM14 20c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/>
+            </svg>
+        `,
+        chest: `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 4h14a2 2 0 0 1 2 2v3H3V6a2 2 0 0 1 2-2zm-2 7h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8zm9 2v3h2v-3h-2z"/>
+            </svg>
+        `,
+        tax: `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+            </svg>
+        `,
+    };
 
-        // Regular tiles between corners
-        if (i < 10) {
-            // Bottom row, between GO (i=0) and JAIL (i=10)
-            // tiles 1..9 occupy cols 9 down to 1, at rows 10-11
-            // i=1 -> col 9, i=9 -> col 3? Let me reconsider:
-            // Wait — corner GO is at col 10-11 (2 wide), JAIL at col 1-2.
-            // So 9 regular tiles go between col 3 and col 9 (7 wide?). No, 9 tiles
-            // need 9 cols. Grid must be 13 wide actually for 2+9+2 = 13.
-            // Let me redo with 13×13 grid.
-        }
-        return null; // fallback
-    }
-
-    // ---- Use a 13x13 grid: 2 corners (each 2x2) + 9 regular tiles per side ----
-    // Total = 2 + 9 + 2 = 13. Corners take cols 1-2 and 12-13, rows 1-2 and 12-13.
-    // Regular tiles are 1 col × 2 rows (or 2 cols × 1 row depending on side).
     function gridPositionFinal(i) {
-        // Corners (2x2 each)
         if (i === 0)  return { col: 12, row: 12, cw: 2, rh: 2 };
         if (i === 10) return { col: 1,  row: 12, cw: 2, rh: 2 };
         if (i === 20) return { col: 1,  row: 1,  cw: 2, rh: 2 };
         if (i === 30) return { col: 12, row: 1,  cw: 2, rh: 2 };
 
         if (i >= 1 && i <= 9) {
-            // Bottom row: tile 1 next to GO (i=0), tile 9 next to JAIL (i=10)
-            // GO is at cols 12-13, JAIL at cols 1-2.
-            // Tile 1 → col 11, tile 9 → col 3.
-            const col = 12 - i;
-            return { col, row: 12, cw: 1, rh: 2 };
+            return { col: 12 - i, row: 12, cw: 1, rh: 2 };
         }
         if (i >= 11 && i <= 19) {
-            // Left column: tile 11 next to JAIL (i=10), tile 19 next to FREE PARKING (i=20)
-            // JAIL at rows 12-13, FREE PARKING at rows 1-2.
-            const row = 12 - (i - 10);
-            return { col: 1, row, cw: 2, rh: 1 };
+            return { col: 1, row: 12 - (i - 10), cw: 2, rh: 1 };
         }
         if (i >= 21 && i <= 29) {
-            // Top row: tile 21 next to FREE PARKING (i=20), tile 29 next to GO TO JAIL (i=30)
-            const col = 2 + (i - 20);
-            return { col, row: 1, cw: 1, rh: 2 };
+            return { col: 2 + (i - 20), row: 1, cw: 1, rh: 2 };
         }
         if (i >= 31 && i <= 39) {
-            // Right column: tile 31 next to GO TO JAIL (i=30), tile 39 next to GO (i=0)
-            const row = 2 + (i - 30);
-            return { col: 12, row, cw: 2, rh: 1 };
+            return { col: 12, row: 2 + (i - 30), cw: 2, rh: 1 };
         }
         return null;
     }
 
-    /**
-     * Determine which side each tile sits on for rotation purposes.
-     * 'bottom' tiles read normally (text upright)
-     * 'left'   tiles rotated 90° clockwise
-     * 'top'    tiles rotated 180°
-     * 'right'  tiles rotated 90° counter-clockwise
-     * Corners stay normal.
-     */
     function tileSide(i) {
         if (i === 0 || i === 10 || i === 20 || i === 30) return 'corner';
         if (i >= 1  && i <= 9)  return 'bottom';
@@ -94,19 +73,18 @@
         return 'corner';
     }
 
-    function formatPrice(p) {
-        return '$' + p;
-    }
+    function priceText(p) { return '$' + p; }
 
     /**
-     * Build the inner HTML for a tile based on its data + side orientation.
-     * Layout convention: color band always faces the BOARD CENTER,
-     * which differs by side. The CSS handles the rotation.
+     * Build inner HTML for a tile.
+     * Property tiles: <div.tile-band> + <div.tile-content>
+     * Specials: <div.tile-special> with icon + label
+     * Corners: <div.tile-inner-corner>
      */
     function tileInnerHtml(tile) {
         if (tile.type === 'corner') {
             return `
-                <div class="tile-inner tile-inner-corner">
+                <div class="tile-inner-corner">
                     <div class="corner-name">${tile.name}</div>
                     ${tile.subname ? `<div class="corner-subname">${tile.subname}</div>` : ''}
                 </div>
@@ -115,81 +93,66 @@
 
         if (tile.type === 'property') {
             return `
-                <div class="tile-inner">
-                    <div class="tile-band tile-band-${tile.group}"></div>
-                    <div class="tile-content">
-                        <div class="tile-name">${tile.name}</div>
-                        <div class="tile-price">${formatPrice(tile.price)}</div>
-                    </div>
+                <div class="tile-band tile-band-${tile.group}"></div>
+                <div class="tile-content">
+                    <div class="tile-name">${tile.name}</div>
+                    <div class="tile-price">${priceText(tile.price)}</div>
                 </div>
             `;
         }
 
         if (tile.type === 'railroad') {
             return `
-                <div class="tile-inner">
-                    <div class="tile-icon tile-icon-railroad">🚂</div>
-                    <div class="tile-content">
-                        <div class="tile-name tile-name-small">${tile.name}</div>
-                        <div class="tile-price">${formatPrice(tile.price)}</div>
-                    </div>
+                <div class="tile-content">
+                    <div class="tile-icon">${ICONS.train}</div>
+                    <div class="tile-name">${tile.name}</div>
+                    <div class="tile-price">${priceText(tile.price)}</div>
                 </div>
             `;
         }
 
         if (tile.type === 'utility') {
-            const icon = tile.name.startsWith('Electric') ? '💡' : '💧';
+            const icon = tile.name.startsWith('Electric') ? ICONS.bulb : ICONS.drop;
             return `
-                <div class="tile-inner">
-                    <div class="tile-icon tile-icon-utility">${icon}</div>
-                    <div class="tile-content">
-                        <div class="tile-name tile-name-small">${tile.name}</div>
-                        <div class="tile-price">${formatPrice(tile.price)}</div>
-                    </div>
+                <div class="tile-content">
+                    <div class="tile-icon">${icon}</div>
+                    <div class="tile-name">${tile.name}</div>
+                    <div class="tile-price">${priceText(tile.price)}</div>
                 </div>
             `;
         }
 
         if (tile.type === 'chance') {
             return `
-                <div class="tile-inner">
-                    <div class="tile-special tile-special-chance">
-                        <div class="special-icon">?</div>
-                        <div class="special-label">CHANCE</div>
-                    </div>
+                <div class="tile-special">
+                    <div class="special-icon-svg">${ICONS.chance}</div>
+                    <div class="special-label">CHANCE</div>
                 </div>
             `;
         }
 
         if (tile.type === 'chest') {
             return `
-                <div class="tile-inner">
-                    <div class="tile-special tile-special-chest">
-                        <div class="special-icon">$</div>
-                        <div class="special-label">CHEST</div>
-                    </div>
+                <div class="tile-special">
+                    <div class="special-icon-svg">${ICONS.chest}</div>
+                    <div class="special-label">CHEST</div>
                 </div>
             `;
         }
 
         if (tile.type === 'tax') {
             return `
-                <div class="tile-inner">
-                    <div class="tile-special tile-special-tax">
-                        <div class="special-icon">💰</div>
-                        <div class="special-label">${tile.name}</div>
-                        <div class="special-sub">${tile.subname || ''}</div>
-                    </div>
+                <div class="tile-special">
+                    <div class="special-icon-svg">${ICONS.tax}</div>
+                    <div class="special-label">${tile.name}</div>
+                    ${tile.subname ? `<div class="special-sub">${tile.subname}</div>` : ''}
                 </div>
             `;
         }
 
-        return `<div class="tile-inner">${tile.name}</div>`;
+        return '';
     }
 
-    /**
-     * Render all 40 tiles into the #board element.
-     */
     function renderBoard() {
         const board = document.getElementById('board');
         if (!board) return;

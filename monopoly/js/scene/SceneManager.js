@@ -53,11 +53,12 @@
             this.renderer.toneMappingExposure = 1.0;
             container.appendChild(this.renderer.domElement);
 
-            // Top-down camera fitted to the square arena
+            // Top-down camera. Pulled back so dice occupy ~30% of canvas
+            // instead of dominating it.
             this.camera = new THREE.PerspectiveCamera(
                 40, this.width / this.height, 0.1, 50
             );
-            this.camera.position.set(0, 6.5, 0.01);
+            this.camera.position.set(0, 11, 0.01);
             this.camera.lookAt(0, 0, 0);
 
             this._setupLights();
