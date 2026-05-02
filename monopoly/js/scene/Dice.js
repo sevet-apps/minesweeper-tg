@@ -37,12 +37,12 @@
     const MAX_INNER_RETRIES = 20;  // per-die seed attempts
     const HEADLESS_MAX_STEPS = 600; // ~10s sim time at 1/60 step
 
-    // Starting X offsets. Arena is 6.3 wide (walls at ±3.15), die half 0.5.
-    // Keep dice at ±1.2 for visual spacing near center.
-    const DIE_A_X = -1.2;
-    const DIE_B_X =  1.2;
+    // Arena is 4.5×4.5 (walls at ±2.25), die half 0.5.
+    // Keep dice well inside walls with comfortable spacing.
+    const DIE_A_X = -1.0;
+    const DIE_B_X =  1.0;
 
-    // Y offset above arena floor (arena.floorY = 0.08)
+    // Y offset above arena floor (arena.floorY = 0)
     const START_Y_OFFSET = 0.6;
 
     // Face → local normal direction

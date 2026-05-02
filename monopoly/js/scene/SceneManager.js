@@ -1,10 +1,13 @@
 /* ============================================================
-   SceneManager.js  (v3 — Board3D compatible)
+   SceneManager.js  (v4 — dice-only)
 
-   Owns: renderer, scene, camera, lights, physics world.
-   Does NOT own: the visible plate/arena geometry — that comes
-   from Board3D now (the center plate of the Monopoly board
-   serves as the dice arena).
+   Three.js scene mounted inside a small square <div> in the
+   center of the CSS Monopoly board. Renders ONLY:
+     - lighting
+     - physics floor + 4 invisible walls (the dice arena)
+     - the two dice (added by Dice.js)
+
+   No board geometry — that's the DOM's job now.
    ============================================================ */
 
 (function (global) {
@@ -13,14 +16,12 @@
     const THREE = global.THREE;
     const CANNON = global.CANNON;
 
-    // Arena size matches the Board3D center plate (plateSide = 6.5).
-    // Walls just inside the plate edges so dice never escape visually.
-    // floorY matches Board3D._buildCenterPlate top (must stay in sync).
+    // Square arena. Camera is positioned so this fills the canvas.
     const ARENA = {
-        width:  6.3,
-        depth:  6.3,
-        height: 3.5,
-        floorY: 0.10,
+        width:  4.5,
+        depth:  4.5,
+        height: 3.0,
+        floorY: 0.0,
     };
 
     const MATERIALS = {
@@ -35,12 +36,12 @@
             this.width  = container.clientWidth;
             this.height = container.clientHeight;
 
-            // --- Three.js ---
             this.scene = new THREE.Scene();
-            this.scene.background = null;
+            this.scene.background = null; // CSS handles background
 
             this.renderer = new THREE.WebGLRenderer({
-                antialias: true, alpha: true,
+                antialias: true,
+                alpha:     true,
                 powerPreference: 'high-performance',
             });
             this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -52,28 +53,19 @@
             this.renderer.toneMappingExposure = 1.0;
             container.appendChild(this.renderer.domElement);
 
-            // --- Camera ---
-            // Pure top-down. Board is 13×13. Camera at y=22 with fov=42 frames
-            // the full board at ~85% of portrait viewport, leaving margin.
+            // Top-down camera fitted to the square arena
             this.camera = new THREE.PerspectiveCamera(
-                42, this.width / this.height, 0.1, 100
+                40, this.width / this.height, 0.1, 50
             );
-            this.camera.position.set(0, 22, 0.01); // tiny z to avoid gimbal-lock issues
+            this.camera.position.set(0, 6.5, 0.01);
             this.camera.lookAt(0, 0, 0);
 
             this._setupLights();
             this._setupPhysics();
 
-            global.__sceneDebug = {
-                arena: { ...ARENA },
-                cameraPos: this.camera.position.toArray(),
-                renderer: { w: this.width, h: this.height },
-            };
-
             this.clock = new THREE.Clock();
             this.running = false;
             this.updateCallbacks = [];
-
             this._fpsSamples = [];
             this._lastFpsUpdate = 0;
             this.currentFps = 0;
@@ -84,28 +76,27 @@
         }
 
         _setupLights() {
-            // Top-down view: ambient dominates so all tiles read clearly without
-            // dark sides. Key light adds slight depth on dice faces.
-            const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+            // Strong ambient so dice read clearly from above
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
             this.scene.add(ambient);
 
-            // Key light - just for dice shadow/depth, not strong on board
-            const key = new THREE.DirectionalLight(0xffffff, 0.7);
-            key.position.set(3, 14, 4);
+            // Key light off-axis for dice depth + shadow
+            const key = new THREE.DirectionalLight(0xffffff, 0.9);
+            key.position.set(2, 8, 3);
             key.castShadow = true;
-            key.shadow.mapSize.set(2048, 2048);
-            key.shadow.camera.left   = -10;
-            key.shadow.camera.right  =  10;
-            key.shadow.camera.top    =  10;
-            key.shadow.camera.bottom = -10;
+            key.shadow.mapSize.set(1024, 1024);
+            key.shadow.camera.left   = -4;
+            key.shadow.camera.right  =  4;
+            key.shadow.camera.top    =  4;
+            key.shadow.camera.bottom = -4;
             key.shadow.camera.near   = 0.1;
-            key.shadow.camera.far    = 50;
+            key.shadow.camera.far    = 20;
             key.shadow.bias = -0.0005;
             this.scene.add(key);
 
-            // Soft cool fill from opposite to lift shadow side of dice
-            const fill = new THREE.DirectionalLight(0xa0c0ff, 0.3);
-            fill.position.set(-4, 8, -3);
+            // Cool fill from opposite to lift shadow side
+            const fill = new THREE.DirectionalLight(0x88aaff, 0.35);
+            fill.position.set(-3, 4, -2);
             this.scene.add(fill);
         }
 
@@ -136,10 +127,6 @@
             this._addArenaFloorAndWalls(this.world);
         }
 
-        /**
-         * Physics floor matches Board3D center plate top (y=0.08).
-         * Walls positioned just inside the plate perimeter.
-         */
         _addArenaFloorAndWalls(world) {
             const floorBody = new CANNON.Body({ mass: 0, material: MATERIALS.floor });
             floorBody.addShape(new CANNON.Plane());
@@ -223,9 +210,6 @@
             this.camera.aspect = this.width / this.height;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(this.width, this.height);
-            if (global.__sceneDebug) {
-                global.__sceneDebug.renderer = { w: this.width, h: this.height };
-            }
         }
 
         get arena()     { return ARENA; }
