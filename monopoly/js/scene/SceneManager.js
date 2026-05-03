@@ -16,13 +16,13 @@
     const THREE = global.THREE;
     const CANNON = global.CANNON;
 
-    // Arena bigger than visible canvas — invisible walls live OUTSIDE the
-    // camera view so dice are never seen hitting boundaries. Camera framing
-    // is what defines "the play area" visually; arena is just there to
-    // catch escapees.
+    // Arena sized to match visible canvas area. Camera at y=10 fov=42°
+    // shows ~7.67 units vertically/horizontally on the y=0 plane (since
+    // canvas is square). Walls at ±3.7 keeps them just inside the visible
+    // edge so dice visibly bounce off the box border.
     const ARENA = {
-        width:  9.0,
-        depth:  9.0,
+        width:  7.4,
+        depth:  7.4,
         height: 4.0,
         floorY: 0.0,
     };

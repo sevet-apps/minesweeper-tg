@@ -126,7 +126,6 @@
             return `
                 <div class="tile-special">
                     <div class="special-icon-svg">${ICONS.chance}</div>
-                    <div class="special-label">CHANCE</div>
                 </div>
             `;
         }
@@ -135,7 +134,6 @@
             return `
                 <div class="tile-special">
                     <div class="special-icon-svg">${ICONS.chest}</div>
-                    <div class="special-label">CHEST</div>
                 </div>
             `;
         }
@@ -144,8 +142,6 @@
             return `
                 <div class="tile-special">
                     <div class="special-icon-svg">${ICONS.tax}</div>
-                    <div class="special-label">${tile.name}</div>
-                    ${tile.subname ? `<div class="special-sub">${tile.subname}</div>` : ''}
                 </div>
             `;
         }

@@ -123,7 +123,7 @@ html, body {
 .dice-canvas-container {
     position: absolute;
     inset: 0;
-    z-index: 1;
+    z-index: 2;
 }
 
 .dice-canvas-container canvas {
@@ -135,7 +135,7 @@ html, body {
 .center-brand {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -266,7 +266,7 @@ html, body {
     position: fixed;
     left: 50%;
     bottom: calc(20px + var(--safe-bottom));
-    transform: translateX(-50%) translateY(120%);
+    transform: translateX(-50%) translateY(calc(100% + 40px));
     z-index: 101;
     width: min(92vw, 380px);
     background: linear-gradient(180deg, #1c1c1e 0%, #0e0e10 100%);
@@ -274,18 +274,23 @@ html, body {
     border-radius: 22px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     overflow: hidden;
-    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity   0.28s ease-out;
 }
 
 .prop-modal.visible {
     transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .prop-modal-content {
     padding: 0;
 }
 
-/* Header band - colored for properties, fits group */
 .prop-modal-band {
     height: 50px;
     width: 100%;
@@ -313,16 +318,21 @@ html, body {
     transform: translateY(-50%);
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    flex-shrink: 0;
+    padding: 0;
     border: none;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     color: #fff;
-    font-size: 18px;
-    line-height: 1;
+    font-size: 20px;
+    line-height: 32px;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    aspect-ratio: 1 / 1;
 }
 
 .prop-modal-body {
@@ -566,55 +576,31 @@ html, body {
 .tile-special {
     flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 2px;
-    text-align: center;
+    padding: 0;
 }
 
 .tile-side-top    .tile-special { transform: rotate(180deg); }
 .tile-side-left   .tile-special { transform: rotate(90deg); }
 .tile-side-right  .tile-special { transform: rotate(-90deg); }
 
-.tile-special-chance .tile-special { background: linear-gradient(135deg, #ff9b1f, #ff7a00); }
-.tile-special-chest  .tile-special { background: linear-gradient(135deg, #4ab8ff, #1a7df0); }
-.tile-special-tax    .tile-special { background: linear-gradient(135deg, #ff5fa2, #c91a4e); }
-
-/* For non-property tiles the gradient should fill the whole tile, not just .tile-special */
 .tile-chance  { background: linear-gradient(135deg, #ff9b1f, #ff7a00); }
 .tile-chest   { background: linear-gradient(135deg, #4ab8ff, #1a7df0); }
 .tile-tax     { background: linear-gradient(135deg, #ff5fa2, #c91a4e); }
 
+/* All special icons same physical footprint */
 .special-icon-svg {
     width: 50%;
-    max-width: 18px;
     aspect-ratio: 1 / 1;
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 .special-icon-svg svg { width: 100%; height: 100%; }
-
-.special-label {
-    font-size: clamp(6px, 0.85vw, 8px);
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    line-height: 1;
-}
-
-.special-sub {
-    font-size: clamp(5px, 0.7vw, 7px);
-    font-weight: 600;
-    opacity: 0.95;
-    text-transform: uppercase;
-    line-height: 1;
-}
 
 /* ============================================================
    Corner tiles

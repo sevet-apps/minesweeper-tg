@@ -15,7 +15,7 @@
         { i: 1,  type: 'property', name: 'Mediterranean',group: 'brown',     price: 60 },
         { i: 2,  type: 'chest',    name: 'Community',    subname: 'Chest' },
         { i: 3,  type: 'property', name: 'Baltic',       group: 'brown',     price: 60 },
-        { i: 4,  type: 'tax',      name: 'Income Tax',   subname: 'Pay $200' },
+        { i: 4,  type: 'tax',      name: 'Income Tax',   subname: 'Заплати $200' },
         { i: 5,  type: 'railroad', name: 'Reading',                          price: 200 },
         { i: 6,  type: 'property', name: 'Oriental',     group: 'lightblue', price: 100 },
         { i: 7,  type: 'chance',   name: 'Chance' },
@@ -49,7 +49,7 @@
         { i: 35, type: 'railroad', name: 'Short Line',   price: 200 },
         { i: 36, type: 'chance',   name: 'Chance' },
         { i: 37, type: 'property', name: 'Park Place',   group: 'blue',      price: 350 },
-        { i: 38, type: 'tax',      name: 'Luxury Tax',   subname: 'Pay $100' },
+        { i: 38, type: 'tax',      name: 'Luxury Tax',   subname: 'Заплати $100' },
         { i: 39, type: 'property', name: 'Boardwalk',    group: 'blue',      price: 400 },
     ];
 

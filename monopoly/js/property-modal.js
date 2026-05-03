@@ -209,9 +209,13 @@
                   : 'Свободная стоянка.',
         };
 
+        // Corners and specials don't display "#index" because they aren't
+        // numbered properties — number badge would be confusing here.
+        const showNum = tile.type !== 'corner';
+
         return `
             <div class="prop-modal-band" style="--prop-band: #1a1d28;">
-                <div class="prop-modal-num">#${tile.i}</div>
+                ${showNum ? `<div class="prop-modal-num">#${tile.i}</div>` : ''}
                 <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close">×</button>
             </div>
             <div class="prop-modal-body">
