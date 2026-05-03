@@ -53,5 +53,53 @@
         { i: 39, type: 'property', name: 'Boardwalk',    group: 'blue',      price: 400 },
     ];
 
-    global.MonopolyData = { TILES };
+    // Property economic data:
+    //   price        — purchase price
+    //   houseCost    — cost of building one house (4 max, then hotel)
+    //   mortgage     — value when mortgaged (=price/2)
+    //   rent         — [base, 1h, 2h, 3h, 4h, hotel]  (base = unimproved)
+    //
+    // Standard classic Monopoly numbers.
+    const PROPERTY_DATA = {
+        // brown
+        1:  { houseCost: 50,  mortgage: 30,  rent: [2,  10, 30,  90,  160, 250] },
+        3:  { houseCost: 50,  mortgage: 30,  rent: [4,  20, 60,  180, 320, 450] },
+        // light blue
+        6:  { houseCost: 50,  mortgage: 50,  rent: [6,  30, 90,  270, 400, 550] },
+        8:  { houseCost: 50,  mortgage: 50,  rent: [6,  30, 90,  270, 400, 550] },
+        9:  { houseCost: 50,  mortgage: 60,  rent: [8,  40, 100, 300, 450, 600] },
+        // pink
+        11: { houseCost: 100, mortgage: 70,  rent: [10, 50, 150, 450, 625, 750] },
+        13: { houseCost: 100, mortgage: 70,  rent: [10, 50, 150, 450, 625, 750] },
+        14: { houseCost: 100, mortgage: 80,  rent: [12, 60, 180, 500, 700, 900] },
+        // orange
+        16: { houseCost: 100, mortgage: 90,  rent: [14, 70, 200, 550, 750, 950] },
+        18: { houseCost: 100, mortgage: 90,  rent: [14, 70, 200, 550, 750, 950] },
+        19: { houseCost: 100, mortgage: 100, rent: [16, 80, 220, 600, 800, 1000] },
+        // red
+        21: { houseCost: 150, mortgage: 110, rent: [18, 90, 250, 700, 875, 1050] },
+        23: { houseCost: 150, mortgage: 110, rent: [18, 90, 250, 700, 875, 1050] },
+        24: { houseCost: 150, mortgage: 120, rent: [20, 100,300, 750, 925, 1100] },
+        // yellow
+        26: { houseCost: 150, mortgage: 130, rent: [22, 110,330, 800, 975, 1150] },
+        27: { houseCost: 150, mortgage: 130, rent: [22, 110,330, 800, 975, 1150] },
+        29: { houseCost: 150, mortgage: 140, rent: [24, 120,360, 850, 1025,1200] },
+        // green
+        31: { houseCost: 200, mortgage: 150, rent: [26, 130,390, 900, 1100,1275] },
+        32: { houseCost: 200, mortgage: 150, rent: [26, 130,390, 900, 1100,1275] },
+        34: { houseCost: 200, mortgage: 160, rent: [28, 150,450, 1000,1200,1400] },
+        // dark blue
+        37: { houseCost: 200, mortgage: 175, rent: [35, 175,500, 1100,1300,1500] },
+        39: { houseCost: 200, mortgage: 200, rent: [50, 200,600, 1400,1700,2000] },
+        // railroads (no houses, mortgage = 100)
+        5:  { mortgage: 100, rent: [25, 50, 100, 200] },
+        15: { mortgage: 100, rent: [25, 50, 100, 200] },
+        25: { mortgage: 100, rent: [25, 50, 100, 200] },
+        35: { mortgage: 100, rent: [25, 50, 100, 200] },
+        // utilities (rent depends on dice roll, not housed)
+        12: { mortgage: 75 },
+        28: { mortgage: 75 },
+    };
+
+    global.MonopolyData = { TILES, PROPERTY_DATA };
 })(window);

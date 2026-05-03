@@ -46,12 +46,19 @@
                     <div class="dice-result-sum" id="dieSum">—</div>
                 </div>
 
-                <!-- Center logo / brand area when no result -->
+                <!-- Large S logo by default; replaced by dice when rolled -->
                 <div class="center-brand" id="centerBrand">
-                    <div class="brand-title">МОНОПОЛИЯ</div>
-                    <div class="brand-subtitle">SPARK GAMES</div>
+                    <div class="brand-s">S</div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Property detail modal -->
+    <div class="modal-backdrop" id="propModalBackdrop"></div>
+    <div class="prop-modal" id="propModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="prop-modal-content" id="propModalContent">
+            <!-- filled by JS -->
         </div>
     </div>
 
@@ -79,6 +86,7 @@
     <!-- Scripts -->
     <script src="js/board-data.js"></script>
     <script src="js/board-ui.js"></script>
+    <script src="js/property-modal.js"></script>
     <script src="js/scene/SceneManager.js"></script>
     <script src="js/scene/Dice.js"></script>
     <script src="js/main.js"></script>

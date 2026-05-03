@@ -23,7 +23,11 @@
     }
 
     // ---- Render the static board first ----
-    BoardUI.renderBoard();
+    PropertyModal.init();
+    BoardUI.renderBoard((tile) => {
+        // Click handler: show details for ANY tile
+        PropertyModal.open(tile);
+    });
 
     // ---- DOM refs ----
     const diceCanvasContainer = document.getElementById('dice-canvas-container');

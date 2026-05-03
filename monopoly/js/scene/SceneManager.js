@@ -16,11 +16,14 @@
     const THREE = global.THREE;
     const CANNON = global.CANNON;
 
-    // Square arena. Camera is positioned so this fills the canvas.
+    // Arena bigger than visible canvas — invisible walls live OUTSIDE the
+    // camera view so dice are never seen hitting boundaries. Camera framing
+    // is what defines "the play area" visually; arena is just there to
+    // catch escapees.
     const ARENA = {
-        width:  4.5,
-        depth:  4.5,
-        height: 3.0,
+        width:  9.0,
+        depth:  9.0,
+        height: 4.0,
         floorY: 0.0,
     };
 
@@ -53,12 +56,14 @@
             this.renderer.toneMappingExposure = 1.0;
             container.appendChild(this.renderer.domElement);
 
-            // Top-down camera. Pulled back so dice occupy ~30% of canvas
-            // instead of dominating it.
+            // Top-down camera. At y=10, fov=42° the visible area is ~7.7
+            // units across the short side - well inside the 9×9 arena, so
+            // walls are off-screen. Dice can never be seen colliding with
+            // invisible boundaries.
             this.camera = new THREE.PerspectiveCamera(
-                40, this.width / this.height, 0.1, 50
+                42, this.width / this.height, 0.1, 50
             );
-            this.camera.position.set(0, 11, 0.01);
+            this.camera.position.set(0, 10, 0.01);
             this.camera.lookAt(0, 0, 0);
 
             this._setupLights();

@@ -95,8 +95,8 @@
             return `
                 <div class="tile-band tile-band-${tile.group}"></div>
                 <div class="tile-content">
-                    <div class="tile-name">${tile.name}</div>
-                    <div class="tile-price">${priceText(tile.price)}</div>
+                    <div class="tile-num">${tile.i}</div>
+                    <div class="tile-price">$${tile.price}</div>
                 </div>
             `;
         }
@@ -105,8 +105,8 @@
             return `
                 <div class="tile-content">
                     <div class="tile-icon">${ICONS.train}</div>
-                    <div class="tile-name">${tile.name}</div>
-                    <div class="tile-price">${priceText(tile.price)}</div>
+                    <div class="tile-num">${tile.i}</div>
+                    <div class="tile-price">$${tile.price}</div>
                 </div>
             `;
         }
@@ -116,8 +116,8 @@
             return `
                 <div class="tile-content">
                     <div class="tile-icon">${icon}</div>
-                    <div class="tile-name">${tile.name}</div>
-                    <div class="tile-price">${priceText(tile.price)}</div>
+                    <div class="tile-num">${tile.i}</div>
+                    <div class="tile-price">$${tile.price}</div>
                 </div>
             `;
         }
@@ -153,7 +153,7 @@
         return '';
     }
 
-    function renderBoard() {
+    function renderBoard(onTileClick) {
         const board = document.getElementById('board');
         if (!board) return;
 
@@ -170,9 +170,14 @@
             el.style.gridRow    = `${pos.row} / span ${pos.rh}`;
 
             el.innerHTML = tileInnerHtml(tile);
+
+            if (onTileClick) {
+                el.addEventListener('click', () => onTileClick(tile));
+            }
+
             board.appendChild(el);
         }
     }
 
-    global.BoardUI = { renderBoard };
+    global.BoardUI = { renderBoard, ICONS };
 })(window);

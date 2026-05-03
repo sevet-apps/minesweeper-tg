@@ -37,10 +37,9 @@
     const MAX_INNER_RETRIES = 20;  // per-die seed attempts
     const HEADLESS_MAX_STEPS = 600; // ~10s sim time at 1/60 step
 
-    // Arena is 4.5×4.5 (walls at ±2.25), die half 0.5.
-    // Keep dice well inside walls with comfortable spacing.
-    const DIE_A_X = -1.0;
-    const DIE_B_X =  1.0;
+    // Arena is 9×9 (walls at ±4.5). Keep dice near center for visible roll.
+    const DIE_A_X = -1.3;
+    const DIE_B_X =  1.3;
 
     // Y offset above arena floor (arena.floorY = 0)
     const START_Y_OFFSET = 0.6;
@@ -258,8 +257,10 @@
             const r = Math.random;
             const arena = this.sm.arena;
 
-            // Tight position jitter so dice start reliably separated
-            const startZ = arena.depth / 2 - 1.2 + (r() - 0.5) * 0.5;
+            // Tight position jitter so dice start reliably separated.
+            // Start closer to center now that arena is bigger - we don't want
+            // dice flying half the arena length and hitting walls.
+            const startZ = 2.0 + (r() - 0.5) * 0.5;
             const startY = arena.floorY + 1.8 + r() * 1.0;
             const startX = xOffset + (r() - 0.5) * 0.4 + dirHint * 0.6;
 
@@ -269,13 +270,13 @@
                               r() * Math.PI * 2,
                               r() * Math.PI * 2);
 
-            // Throw velocity: mostly -Z (into arena), upward arc, mild outward
-            // lateral bias so the two dice drift apart rather than colliding.
+            // Throw velocity: gentler now since arena is bigger and we don't
+            // want dice hitting walls visually.
             const outward = Math.sign(xOffset) * 0.3;
-            const speed = (6 + r() * 2.5) * strength;
+            const speed = (3.5 + r() * 1.5) * strength;
             const vel = [
-                outward + (r() - 0.5) * 1.5 - dirHint * 1.2,
-                2 + r() * 1.5,
+                outward + (r() - 0.5) * 1.0 - dirHint * 0.8,
+                2 + r() * 1.0,
                 -speed,
             ];
 
