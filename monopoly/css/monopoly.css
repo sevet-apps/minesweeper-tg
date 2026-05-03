@@ -560,6 +560,13 @@ html, body {
     height: 100%;
 }
 
+/* Counter-rotate icons so they always appear upright when viewing the
+   board from above, even though their parent .tile-content is rotated
+   to keep TEXT readable from the player's side. */
+.tile-side-top    .tile-icon { transform: rotate(180deg); }
+.tile-side-left   .tile-icon { transform: rotate(-90deg); }
+.tile-side-right  .tile-icon { transform: rotate(90deg); }
+
 /* ============================================================
    Chance / Chest / Tax - full color tiles
    ============================================================ */
@@ -601,6 +608,11 @@ html, body {
 }
 
 .special-icon-svg svg { width: 100%; height: 100%; }
+
+/* Counter-rotate special icons so they're always upright top-down */
+.tile-side-top    .special-icon-svg { transform: rotate(180deg); }
+.tile-side-left   .special-icon-svg { transform: rotate(-90deg); }
+.tile-side-right  .special-icon-svg { transform: rotate(90deg); }
 
 /* ============================================================
    Corner tiles

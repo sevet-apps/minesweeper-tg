@@ -16,13 +16,12 @@
     const THREE = global.THREE;
     const CANNON = global.CANNON;
 
-    // Arena sized to match visible canvas area. Camera at y=10 fov=42°
-    // shows ~7.67 units vertically/horizontally on the y=0 plane (since
-    // canvas is square). Walls at ±3.7 keeps them just inside the visible
-    // edge so dice visibly bounce off the box border.
+    // Arena sized to keep dice fully inside the visible canvas box.
+    // Camera at y=10, fov=42° shows ~7.67 units; arena at 7.0 leaves
+    // ~0.3 units margin so even spinning dice never visually escape.
     const ARENA = {
-        width:  7.4,
-        depth:  7.4,
+        width:  7.0,
+        depth:  7.0,
         height: 4.0,
         floorY: 0.0,
     };
