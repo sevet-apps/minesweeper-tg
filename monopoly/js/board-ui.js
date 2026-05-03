@@ -175,5 +175,5 @@
         }
     }
 
-    global.BoardUI = { renderBoard, ICONS };
+    global.BoardUI = { renderBoard, ICONS, gridPositionFinal, tileSide };
 })(window);

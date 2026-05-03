@@ -2,9 +2,9 @@
    main.js
    Bootstraps the page:
      1. Renders the CSS Monopoly board
-     2. Creates 3D scene + dice in the center container
-     3. Wires Roll button + swipe gesture
-     4. Updates result UI on dice settle
+     2. Initializes 4 players + tokens on GO
+     3. Creates 3D dice scene
+     4. Roll button → roll → move current player → advance turn
    ============================================================ */
 
 (function () {
@@ -25,8 +25,21 @@
     // ---- Render the static board first ----
     PropertyModal.init();
     BoardUI.renderBoard((tile) => {
-        // Click handler: show details for ANY tile
         PropertyModal.open(tile);
+    });
+
+    const boardEl = document.getElementById('board');
+
+    // ---- Initialize players ----
+    Players.init(boardEl);
+
+    // Re-layout tokens on resize so they stick to tiles
+    window.addEventListener('resize', () => {
+        // Allow CSS grid to recompute first
+        requestAnimationFrame(() => Players.relayoutAll());
+    });
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => Players.relayoutAll(), 100);
     });
 
     // ---- DOM refs ----
@@ -39,12 +52,23 @@
     const dieSumEl       = document.getElementById('dieSum');
     const swipeHintEl    = document.getElementById('swipeHint');
     const centerBrandEl  = document.getElementById('centerBrand');
+    const turnAvatarEl   = document.getElementById('turnAvatar');
+    const turnNameEl     = document.getElementById('turnName');
 
     const dbgFps     = document.getElementById('dbgFps');
     const dbgDice    = document.getElementById('dbgDice');
     const dbgRetries = document.getElementById('dbgRetries');
 
-    // ---- Scene setup (3D dice in center container only) ----
+    // ---- Render turn indicator for current player ----
+    function refreshTurnIndicator() {
+        const p = Players.getCurrentPlayer();
+        turnAvatarEl.textContent = p.initial;
+        turnAvatarEl.style.setProperty('--turn-color', p.color);
+        turnNameEl.textContent = p.name;
+    }
+    refreshTurnIndicator();
+
+    // ---- Scene setup (3D dice) ----
     const sm = new SceneManager(diceCanvasContainer);
     const dice = new Dice(sm);
     sm.start();
@@ -54,27 +78,41 @@
     }, 250);
 
     // ---- Dice result handling ----
-    dice.onResult((result) => {
+    dice.onResult(async (result) => {
         dieAEl.textContent = result.a;
         dieBEl.textContent = result.b;
         dieSumEl.textContent = result.sum;
         diceResultEl.classList.add('visible');
         diceResultEl.classList.toggle('doubles', result.doubles);
-
-        // Fade brand once dice settle
         centerBrandEl.classList.add('faded');
 
         dbgDice.textContent = `${result.a} + ${result.b} = ${result.sum}` +
                               (result.doubles ? ' 🎯' : '');
         dbgRetries.textContent = result.retries;
 
-        rollBtn.classList.remove('rolling');
-        rollBtn.disabled = false;
-
         try {
             if (result.doubles) tg?.HapticFeedback?.notificationOccurred('success');
             else                tg?.HapticFeedback?.impactOccurred('medium');
         } catch (_) {}
+
+        // ---- Move the current player ----
+        const player = Players.getCurrentPlayer();
+        await Players.moveSteps(player.id, result.sum);
+
+        // ---- Advance turn (unless doubles - doubles roll again, classic rule) ----
+        if (!result.doubles) {
+            Players.advanceTurn();
+            refreshTurnIndicator();
+        } else {
+            // brief flash on the current avatar to signal "you go again"
+            turnAvatarEl.animate(
+                [{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],
+                { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+            );
+        }
+
+        rollBtn.classList.remove('rolling');
+        rollBtn.disabled = false;
     });
 
     // ---- Server stub (Phase 5: replace with socket.emit) ----
@@ -150,5 +188,5 @@
         console.error('[monopoly] error:', e.error || e.message);
     });
 
-    console.log('[monopoly] Phase 2 (DOM board) ready.');
+    console.log('[monopoly] Phase 2.3 ready: 4 players + token movement.');
 })();

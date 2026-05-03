@@ -785,3 +785,119 @@ html, body {
     0%   { clip-path: inset(0 100% 0 0); }
     100% { clip-path: inset(0 0 0 0); }
 }
+
+/* ============================================================
+   Player tokens
+   ============================================================ */
+
+.tokens-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.player-token {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: clamp(20px, 3.4vw, 28px);
+    height: clamp(20px, 3.4vw, 28px);
+    border-radius: 50%;
+    background: var(--token-color, #888);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(11px, 1.6vw, 14px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 0 0 2px rgba(255, 255, 255, 0.1);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    will-change: transform;
+}
+
+/* Hopping bounce while traveling */
+.player-token.hopping {
+    animation: tokenHop 0.22s ease-out;
+}
+
+@keyframes tokenHop {
+    0%   { margin-top: 0; }
+    50%  { margin-top: -10px; }
+    100% { margin-top: 0; }
+}
+
+/* Final settle bounce on arrival */
+.player-token.landed {
+    animation: tokenLand 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes tokenLand {
+    0%   { box-shadow:
+              0 2px 6px rgba(0,0,0,0.55),
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 0 0 2px rgba(255,255,255,0.1); }
+    50%  { box-shadow:
+              0 4px 12px rgba(0,0,0,0.6),
+              inset 0 1px 0 rgba(255,255,255,0.5),
+              0 0 0 4px var(--token-color); }
+    100% { box-shadow:
+              0 2px 6px rgba(0,0,0,0.55),
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 0 0 2px rgba(255,255,255,0.1); }
+}
+
+/* ============================================================
+   Turn indicator (shows whose turn it is)
+   ============================================================ */
+
+.turn-indicator {
+    position: fixed;
+    top: calc(70px + var(--safe-top));
+    right: 12px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    background: rgba(28, 28, 30, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    transition: opacity 0.25s;
+}
+
+.turn-indicator-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--turn-color, #888);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 0 12px var(--turn-color, transparent);
+}
+
+.turn-indicator-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    margin-right: 2px;
+}
+
+.turn-indicator-name {
+    color: #fff;
+    font-weight: 700;
+}
