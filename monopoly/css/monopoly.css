@@ -546,13 +546,13 @@ html, body {
 .tile-side-right.tile-utility  .tile-content { transform: rotate(-90deg); }
 
 .tile-icon {
-    width: 60%;
-    max-width: 22px;
-    aspect-ratio: 1 / 1;
+    width: clamp(14px, 2.6vw, 22px);
+    height: clamp(14px, 2.6vw, 22px);
     color: #0a0a0a;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .tile-icon svg {
@@ -560,12 +560,8 @@ html, body {
     height: 100%;
 }
 
-/* Counter-rotate icons so they always appear upright when viewing the
-   board from above, even though their parent .tile-content is rotated
-   to keep TEXT readable from the player's side. */
-.tile-side-top    .tile-icon { transform: rotate(180deg); }
-.tile-side-left   .tile-icon { transform: rotate(-90deg); }
-.tile-side-right  .tile-icon { transform: rotate(90deg); }
+/* Icons rotate WITH their tile-content (no counter-rotate) - same as
+   classic Monopoly, where each side reads upright for its own player. */
 
 /* ============================================================
    Chance / Chest / Tax - full color tiles
@@ -598,21 +594,20 @@ html, body {
 
 /* All special icons same physical footprint */
 .special-icon-svg {
-    width: 50%;
-    aspect-ratio: 1 / 1;
+    width: clamp(16px, 3vw, 26px);
+    height: clamp(16px, 3vw, 26px);
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 .special-icon-svg svg { width: 100%; height: 100%; }
 
-/* Counter-rotate special icons so they're always upright top-down */
-.tile-side-top    .special-icon-svg { transform: rotate(180deg); }
-.tile-side-left   .special-icon-svg { transform: rotate(-90deg); }
-.tile-side-right  .special-icon-svg { transform: rotate(90deg); }
+/* Specials rotate with their parent .tile-special - they read for the
+   player on each side, like physical Monopoly. */
 
 /* ============================================================
    Corner tiles
