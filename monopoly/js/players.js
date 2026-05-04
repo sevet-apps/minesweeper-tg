@@ -44,15 +44,20 @@
             tokensRoot.appendChild(el);
         }
 
-        // Place all tokens on GO at start
-        for (const p of PLAYERS) {
-            placeTokenOnTile(p.id, 0, /* animate */ false);
-        }
+        // Defer first placement until after layout settles - getBoundingClientRect
+        // can return wrong values if called too early. Two RAFs is reliable.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                for (const p of PLAYERS) {
+                    placeTokenOnTile(p.id, 0, /* animate */ false);
+                }
+            });
+        });
     }
 
     /**
      * Compute the pixel center of a tile inside the board element.
-     * Uses getBoundingClientRect of the actual rendered tile <div>.
+     * Returns center + tile size info for offset calculations.
      */
     function tileCenterPx(tileIdx) {
         const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
@@ -65,18 +70,23 @@
         return {
             x: (tileRect.left + tileRect.right) / 2 - boardRect.left,
             y: (tileRect.top  + tileRect.bottom) / 2 - boardRect.top,
+            w: tileRect.width,
+            h: tileRect.height,
         };
     }
 
     /**
-     * Calculate per-token offset within a tile when multiple tokens stack.
-     * 4 tokens arrange in 2x2 mini grid centered on the tile.
+     * Calculate per-token offset within a tile for 2x2 stacking.
+     * Offset is a fraction of the tile's smallest dimension so tokens
+     * never escape the tile bounds, even on narrow side tiles.
      */
-    function tokenOffsetForSlot(slot, tokenSize) {
-        const half = tokenSize / 2;
-        // 2x2 layout: slot 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right
-        const dx = (slot % 2 === 0 ? -half : half) * 0.5;
-        const dy = (slot < 2 ? -half : half) * 0.5;
+    function tokenOffsetForSlot(slot, tileW, tileH) {
+        // 2x2 mini-grid offsets relative to tile center.
+        // ~18% of smaller tile dimension keeps tokens visually inside.
+        const dim = Math.min(tileW, tileH);
+        const off = dim * 0.18;
+        const dx = (slot % 2 === 0 ? -off : off);
+        const dy = (slot < 2 ? -off : off);
         return { dx, dy };
     }
 
@@ -96,8 +106,9 @@
         const slotIdx = sharers.findIndex(p => p.id === playerId);
         const validSlot = slotIdx >= 0 ? slotIdx : 0;
 
-        const tokenSize = tokenEl.offsetWidth || 26;
-        const { dx, dy } = tokenOffsetForSlot(validSlot, tokenSize);
+        const { dx, dy } = (sharers.length > 1)
+            ? tokenOffsetForSlot(validSlot, center.w, center.h)
+            : { dx: 0, dy: 0 };
 
         const x = center.x + dx;
         const y = center.y + dy;
