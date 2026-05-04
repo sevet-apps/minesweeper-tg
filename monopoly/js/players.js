@@ -76,25 +76,42 @@
     }
 
     /**
-     * Calculate per-token offset within a tile for 2x2 stacking.
-     * Offsets are clamped so the token always stays fully inside the
-     * tile, regardless of tile shape (corner, side, or stretched).
+     * Calculate per-token offset based on tile orientation:
+     * - Bottom/top tiles (vertical, taller than wide): stack vertically
+     * - Left/right tiles (horizontal, wider than tall): stack horizontally
+     * - Corners (square): 2x2 grid
+     *
+     * Tokens NEVER overlap — they sit next to each other with a small gap.
+     * If they don't fit at full size, the spacing tightens but stays >= the
+     * token size so circles remain side-by-side.
      */
     function tokenOffsetForSlot(slot, tileW, tileH, tokenSize) {
-        // Maximum offset that keeps the token fully inside the tile
-        // (with a 2px safety margin from the edge)
-        const maxOffsetX = Math.max(0, (tileW - tokenSize) / 2 - 2);
-        const maxOffsetY = Math.max(0, (tileH - tokenSize) / 2 - 2);
+        const isCorner = Math.abs(tileW - tileH) < 8;
+        const isHorizontalTile = tileW > tileH;
 
-        // Desired offset: ~28% of token size so two tokens partially
-        // overlap (looks like a "stack") but stay distinguishable.
-        const desired = tokenSize * 0.28;
+        if (isCorner) {
+            // 2x2 grid for corner tiles - tokens beside each other with gap
+            const desired = tokenSize * 0.55; // half-token + small gap each side
+            const maxOff  = Math.max(0, (Math.min(tileW, tileH) - tokenSize) / 2 - 2);
+            const off = Math.min(desired, maxOff);
+            const dx = (slot % 2 === 0 ? -off : off);
+            const dy = (slot < 2 ? -off : off);
+            return { dx, dy };
+        }
 
-        const off = Math.min(desired, Math.min(maxOffsetX, maxOffsetY));
+        // Linear arrangement: 4 tokens in a row/column, no overlap.
+        const slots = 4;
+        // Spacing center-to-center: token diameter + 2px gap
+        const desiredSpacing = tokenSize + 2;
+        // But if tile is too small, fall back to exactly tokenSize (touching)
+        const availableLength = (isHorizontalTile ? tileW : tileH) - tokenSize - 4;
+        const maxSpacing = availableLength / (slots - 1);
+        const spacing = Math.max(tokenSize, Math.min(desiredSpacing, maxSpacing));
+        const offset  = (slot - (slots - 1) / 2) * spacing;
 
-        const dx = (slot % 2 === 0 ? -off : off);
-        const dy = (slot < 2 ? -off : off);
-        return { dx, dy };
+        return isHorizontalTile
+            ? { dx: offset, dy: 0 }
+            : { dx: 0,      dy: offset };
     }
 
     /**
