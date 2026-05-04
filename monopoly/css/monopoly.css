@@ -807,21 +807,21 @@ html, body {
     position: absolute;
     top: 0;
     left: 0;
-    width: clamp(20px, 3.4vw, 28px);
-    height: clamp(20px, 3.4vw, 28px);
+    width: clamp(16px, 2.6vw, 22px);
+    height: clamp(16px, 2.6vw, 22px);
     border-radius: 50%;
     background: var(--token-color, #888);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(11px, 1.6vw, 14px);
+    font-size: clamp(9px, 1.3vw, 12px);
     font-weight: 800;
     letter-spacing: -0.02em;
     box-shadow:
         0 2px 6px rgba(0, 0, 0, 0.55),
         inset 0 1px 0 rgba(255, 255, 255, 0.35),
-        0 0 0 2px rgba(255, 255, 255, 0.1);
+        0 0 0 1.5px rgba(255, 255, 255, 0.15);
     transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
     will-change: transform;
 }

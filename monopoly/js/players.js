@@ -77,14 +77,21 @@
 
     /**
      * Calculate per-token offset within a tile for 2x2 stacking.
-     * Offset is a fraction of the tile's smallest dimension so tokens
-     * never escape the tile bounds, even on narrow side tiles.
+     * Offsets are clamped so the token always stays fully inside the
+     * tile, regardless of tile shape (corner, side, or stretched).
      */
-    function tokenOffsetForSlot(slot, tileW, tileH) {
-        // 2x2 mini-grid offsets relative to tile center.
-        // ~18% of smaller tile dimension keeps tokens visually inside.
-        const dim = Math.min(tileW, tileH);
-        const off = dim * 0.18;
+    function tokenOffsetForSlot(slot, tileW, tileH, tokenSize) {
+        // Maximum offset that keeps the token fully inside the tile
+        // (with a 2px safety margin from the edge)
+        const maxOffsetX = Math.max(0, (tileW - tokenSize) / 2 - 2);
+        const maxOffsetY = Math.max(0, (tileH - tokenSize) / 2 - 2);
+
+        // Desired offset: ~28% of token size so two tokens partially
+        // overlap (looks like a "stack") but stay distinguishable.
+        const desired = tokenSize * 0.28;
+
+        const off = Math.min(desired, Math.min(maxOffsetX, maxOffsetY));
+
         const dx = (slot % 2 === 0 ? -off : off);
         const dy = (slot < 2 ? -off : off);
         return { dx, dy };
@@ -106,9 +113,13 @@
         const slotIdx = sharers.findIndex(p => p.id === playerId);
         const validSlot = slotIdx >= 0 ? slotIdx : 0;
 
-        const { dx, dy } = (sharers.length > 1)
-            ? tokenOffsetForSlot(validSlot, center.w, center.h)
-            : { dx: 0, dy: 0 };
+        let dx = 0, dy = 0;
+        if (sharers.length > 1) {
+            const tokenSize = tokenEl.offsetWidth || 24;
+            const off = tokenOffsetForSlot(validSlot, center.w, center.h, tokenSize);
+            dx = off.dx;
+            dy = off.dy;
+        }
 
         const x = center.x + dx;
         const y = center.y + dy;
