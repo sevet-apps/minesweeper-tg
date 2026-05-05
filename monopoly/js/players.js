@@ -76,22 +76,29 @@
     }
 
     /**
-     * Calculate per-token offset based on tile orientation:
-     * - Bottom/top tiles (vertical, taller than wide): stack vertically
-     * - Left/right tiles (horizontal, wider than tall): stack horizontally
-     * - Corners (square): 2x2 grid
+     * Calculate per-token offset for a group of N tokens on the same tile.
+     * The group is centered as a unit, then each token is offset from the
+     * group's center by its slot number.
      *
-     * Tokens NEVER overlap — they sit next to each other with a small gap.
-     * If they don't fit at full size, the spacing tightens but stays >= the
-     * token size so circles remain side-by-side.
+     * Layouts:
+     *  - 1 token  → exactly center
+     *  - 2 tokens → side-by-side along tile's long axis
+     *  - 3 tokens → one center + one each side
+     *  - 4 tokens → 2x2 grid
+     *
+     * Spacing is `tokenSize + gap` so circles touch but don't overlap;
+     * if the tile is too small the spacing tightens but is never less
+     * than tokenSize (no overlap).
      */
-    function tokenOffsetForSlot(slot, tileW, tileH, tokenSize) {
+    function tokenOffsetForSlot(slot, totalCount, tileW, tileH, tokenSize) {
+        if (totalCount <= 1) return { dx: 0, dy: 0 };
+
         const isCorner = Math.abs(tileW - tileH) < 8;
         const isHorizontalTile = tileW > tileH;
 
-        if (isCorner) {
-            // 2x2 grid for corner tiles - tokens beside each other with gap
-            const desired = tokenSize * 0.55; // half-token + small gap each side
+        // 4 tokens on a corner: 2x2
+        if (totalCount === 4 && isCorner) {
+            const desired = tokenSize * 0.55;
             const maxOff  = Math.max(0, (Math.min(tileW, tileH) - tokenSize) / 2 - 2);
             const off = Math.min(desired, maxOff);
             const dx = (slot % 2 === 0 ? -off : off);
@@ -99,15 +106,17 @@
             return { dx, dy };
         }
 
-        // Linear arrangement: 4 tokens in a row/column, no overlap.
-        const slots = 4;
-        // Spacing center-to-center: token diameter + 2px gap
+        // Linear arrangement (2, 3, or 4 tokens in a line)
+        const axisLength = isHorizontalTile ? tileW : tileH;
         const desiredSpacing = tokenSize + 2;
-        // But if tile is too small, fall back to exactly tokenSize (touching)
-        const availableLength = (isHorizontalTile ? tileW : tileH) - tokenSize - 4;
-        const maxSpacing = availableLength / (slots - 1);
-        const spacing = Math.max(tokenSize, Math.min(desiredSpacing, maxSpacing));
-        const offset  = (slot - (slots - 1) / 2) * spacing;
+        const maxSpacing = Math.max(
+            tokenSize,
+            (axisLength - tokenSize - 4) / Math.max(1, totalCount - 1)
+        );
+        const spacing = Math.min(desiredSpacing, maxSpacing);
+
+        // Center the group: slots are 0..N-1, group center is at (N-1)/2
+        const offset = (slot - (totalCount - 1) / 2) * spacing;
 
         return isHorizontalTile
             ? { dx: offset, dy: 0 }
@@ -130,13 +139,10 @@
         const slotIdx = sharers.findIndex(p => p.id === playerId);
         const validSlot = slotIdx >= 0 ? slotIdx : 0;
 
-        let dx = 0, dy = 0;
-        if (sharers.length > 1) {
-            const tokenSize = tokenEl.offsetWidth || 24;
-            const off = tokenOffsetForSlot(validSlot, center.w, center.h, tokenSize);
-            dx = off.dx;
-            dy = off.dy;
-        }
+        const tokenSize = tokenEl.offsetWidth || 24;
+        const { dx, dy } = tokenOffsetForSlot(
+            validSlot, sharers.length, center.w, center.h, tokenSize
+        );
 
         const x = center.x + dx;
         const y = center.y + dy;
