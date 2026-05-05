@@ -56,20 +56,20 @@
     }
 
     /**
-     * Compute the pixel center of a tile inside the board element.
-     * Returns center + tile size info for offset calculations.
+     * Compute the pixel center of a tile relative to the tokens layer.
+     * The tokens layer is the actual coordinate system tokens live in,
+     * and it's inside the board's content box (after padding/border).
      */
     function tileCenterPx(tileIdx) {
         const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
-        const boardEl = document.getElementById('board');
-        if (!tileEl || !boardEl) return null;
+        if (!tileEl || !tokensRoot) return null;
 
-        const tileRect  = tileEl.getBoundingClientRect();
-        const boardRect = boardEl.getBoundingClientRect();
+        const tileRect = tileEl.getBoundingClientRect();
+        const layerRect = tokensRoot.getBoundingClientRect();
 
         return {
-            x: (tileRect.left + tileRect.right) / 2 - boardRect.left,
-            y: (tileRect.top  + tileRect.bottom) / 2 - boardRect.top,
+            x: (tileRect.left + tileRect.right) / 2 - layerRect.left,
+            y: (tileRect.top  + tileRect.bottom) / 2 - layerRect.top,
             w: tileRect.width,
             h: tileRect.height,
         };
