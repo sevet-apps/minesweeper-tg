@@ -1,16 +1,16 @@
 /* ============================================================
-   main.js
-   Bootstraps the page:
-     1. Renders the CSS Monopoly board
-     2. Initializes 4 players + tokens on GO
-     3. Creates 3D dice scene
-     4. Roll button → roll → move current player → advance turn
+   main.js  (Phase 3)
+   Full game loop:
+     1. Render board, init players, GameState, HUD, modals
+     2. Roll dice → move current player → resolve landing
+     3. Show appropriate ActionModal (buy / pay rent / pay tax / info)
+     4. Update balances, ownership, HUD
+     5. Advance turn (unless doubles)
    ============================================================ */
 
 (function () {
     'use strict';
 
-    // ---- Telegram WebApp init ----
     const tg = window.Telegram?.WebApp;
     if (tg) {
         try {
@@ -22,20 +22,26 @@
         }
     }
 
-    // ---- Render the static board first ----
+    // ---- Bootstrap ----
     PropertyModal.init();
-    BoardUI.renderBoard((tile) => {
-        PropertyModal.open(tile);
-    });
+    ActionModal.init();
+    MoneyToast.init();
+
+    BoardUI.renderBoard((tile) => PropertyModal.open(tile));
 
     const boardEl = document.getElementById('board');
 
-    // ---- Initialize players ----
     Players.init(boardEl);
+    GameState.init(Players.PLAYERS);
+    PlayerHUD.init(Players.PLAYERS);
 
-    // Re-layout tokens on resize so they stick to tiles
+    // Wire money-change events to floating toasts
+    GameState.on('moneyChange', ({ playerId, delta }) => {
+        if (delta !== 0) MoneyToast.showOverPlayer(playerId, delta);
+    });
+
+    // Re-layout tokens on resize
     window.addEventListener('resize', () => {
-        // Allow CSS grid to recompute first
         requestAnimationFrame(() => Players.relayoutAll());
     });
     window.addEventListener('orientationchange', () => {
@@ -52,23 +58,19 @@
     const dieSumEl       = document.getElementById('dieSum');
     const swipeHintEl    = document.getElementById('swipeHint');
     const centerBrandEl  = document.getElementById('centerBrand');
-    const turnAvatarEl   = document.getElementById('turnAvatar');
-    const turnNameEl     = document.getElementById('turnName');
 
     const dbgFps     = document.getElementById('dbgFps');
     const dbgDice    = document.getElementById('dbgDice');
     const dbgRetries = document.getElementById('dbgRetries');
 
-    // ---- Render turn indicator for current player ----
+    // ---- Turn indicator: highlight current player in HUD ----
     function refreshTurnIndicator() {
-        const p = Players.getCurrentPlayer();
-        turnAvatarEl.textContent = p.initial;
-        turnAvatarEl.style.setProperty('--turn-color', p.color);
-        turnNameEl.textContent = p.name;
+        const cur = Players.getCurrentPlayer();
+        PlayerHUD.setCurrentTurn(cur.id);
     }
     refreshTurnIndicator();
 
-    // ---- Scene setup (3D dice) ----
+    // ---- Scene + dice ----
     const sm = new SceneManager(diceCanvasContainer);
     const dice = new Dice(sm);
     sm.start();
@@ -77,7 +79,30 @@
         dbgFps.textContent = sm.currentFps || '—';
     }, 250);
 
-    // ---- Dice result handling ----
+    // ---- Resolve landing on a tile ----
+    async function handleLanding(player, tile, lastDiceSum) {
+        const pAsObj = { ...player, money: GameState.getMoney(player.id) };
+
+        const choice = await ActionModal.showForLanding({
+            tile,
+            playerId: player.id,
+            players: Players.PLAYERS.map(p => ({
+                ...p, money: GameState.getMoney(p.id)
+            })),
+            lastDiceSum,
+        });
+
+        if (choice === 'buy') {
+            GameState.buyTile(player.id, tile.i);
+        } else if (choice === 'pay') {
+            GameState.payRent(player.id, tile.i, lastDiceSum);
+        } else if (choice && choice.action === 'tax') {
+            GameState.payTax(player.id, choice.amount, tile.name);
+        }
+        // 'skip' / 'continue' → no transaction
+    }
+
+    // ---- Dice settle handler ----
     dice.onResult(async (result) => {
         dieAEl.textContent = result.a;
         dieBEl.textContent = result.b;
@@ -95,27 +120,38 @@
             else                tg?.HapticFeedback?.impactOccurred('medium');
         } catch (_) {}
 
-        // ---- Move the current player ----
         const player = Players.getCurrentPlayer();
-        await Players.moveSteps(player.id, result.sum);
 
-        // ---- Advance turn (unless doubles - doubles roll again, classic rule) ----
+        // Move with GO callback
+        await Players.moveSteps(player.id, result.sum, (pid) => {
+            GameState.awardGoBonus(pid);
+            try { tg?.HapticFeedback?.notificationOccurred('success'); } catch (_) {}
+        });
+
+        // Resolve landing
+        const landedIdx = Players.getPlayerState(player.id).position;
+        const landedTile = window.MonopolyData.TILES[landedIdx];
+        await handleLanding(player, landedTile, result.sum);
+
+        // Advance turn (unless doubles)
         if (!result.doubles) {
             Players.advanceTurn();
             refreshTurnIndicator();
         } else {
-            // brief flash on the current avatar to signal "you go again"
-            turnAvatarEl.animate(
-                [{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],
-                { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
-            );
+            const curEl = document.querySelector('.hud-player.current');
+            if (curEl) {
+                curEl.animate(
+                    [{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }],
+                    { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+                );
+            }
         }
 
         rollBtn.classList.remove('rolling');
         rollBtn.disabled = false;
     });
 
-    // ---- Server stub (Phase 5: replace with socket.emit) ----
+    // ---- Server stub ----
     function fakeServerRoll() {
         return {
             a: 1 + Math.floor(Math.random() * 6),
@@ -138,7 +174,7 @@
 
     rollBtn.addEventListener('click', () => doRoll());
 
-    // ---- Swipe gesture on dice canvas container ----
+    // ---- Swipe gesture ----
     (function installSwipe() {
         let touching = false;
         let startX = 0, startY = 0, startT = 0;
@@ -180,13 +216,12 @@
 
     backBtn.addEventListener('click', () => {
         try { tg?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
-        if (tg?.close && document.referrer) history.back();
-        else history.back();
+        history.back();
     });
 
     window.addEventListener('error', (e) => {
         console.error('[monopoly] error:', e.error || e.message);
     });
 
-    console.log('[monopoly] Phase 2.3 ready: 4 players + token movement.');
+    console.log('[monopoly] Phase 3 ready: economy + actions + HUD.');
 })();

@@ -156,9 +156,10 @@
 
     /**
      * Move a player N steps forward, hopping tile-by-tile with a bounce.
+     * Calls passedGoCallback if the player crosses GO (tile 0) during movement.
      * Returns a Promise that resolves once movement is complete.
      */
-    async function moveSteps(playerId, steps) {
+    async function moveSteps(playerId, steps, passedGoCallback) {
         const startIdx = STATE[playerId].position;
         const tokenEl = document.getElementById(`token-${playerId}`);
         if (!tokenEl) return;
@@ -166,31 +167,28 @@
         for (let s = 1; s <= steps; s++) {
             const newIdx = (startIdx + s) % 40;
 
-            // Track lap counts (for "passed GO" rule later)
-            if (newIdx === 0 && s > 0) STATE[playerId].lap++;
+            // Track lap counts (for "passed GO" rule)
+            if (newIdx === 0 && s > 0) {
+                STATE[playerId].lap++;
+                if (passedGoCallback) passedGoCallback(playerId);
+            }
 
             // Update logical position FIRST so other moves see it correctly
             STATE[playerId].position = newIdx;
 
             // Snap any other tokens that were on the OLD tile to recompute layout
-            // (so they fill in vacated slots)
             const oldIdx = (startIdx + s - 1) % 40;
             recomputeTileLayout(oldIdx);
 
-            // Hop animation: small upward bounce while moving
+            // Hop animation
             tokenEl.classList.add('hopping');
-
             placeTokenOnTile(playerId, newIdx, /* animate */ true);
-
             await new Promise(r => setTimeout(r, 220));
-
             tokenEl.classList.remove('hopping');
         }
 
-        // Final layout for destination tile (in case other tokens already there)
         recomputeTileLayout(STATE[playerId].position);
 
-        // Settle bounce
         tokenEl.classList.add('landed');
         await new Promise(r => setTimeout(r, 350));
         tokenEl.classList.remove('landed');
