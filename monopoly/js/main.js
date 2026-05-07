@@ -40,6 +40,16 @@
         if (delta !== 0) MoneyToast.showOverPlayer(playerId, delta);
     });
 
+    // Tint owned tiles with their owner's color
+    GameState.on('tileBought', ({ playerId, tileIdx }) => {
+        const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
+        const player = Players.PLAYERS.find(p => p.id === playerId);
+        if (tileEl && player) {
+            tileEl.classList.add('tile-owned');
+            tileEl.style.setProperty('--owner-color', player.color);
+        }
+    });
+
     // Re-layout tokens on resize
     window.addEventListener('resize', () => {
         requestAnimationFrame(() => Players.relayoutAll());

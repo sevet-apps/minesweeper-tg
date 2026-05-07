@@ -40,6 +40,37 @@
         green: '#29c463', blue: '#1a7df0',
     };
 
+    /**
+     * Render the "Владелец" row dynamically from GameState.
+     * Shows the owner's avatar+name, or "— Банк —" if unowned.
+     */
+    function ownerHtml(tileIdx) {
+        const ownerId = window.GameState?.getOwner?.(tileIdx);
+        if (!ownerId) {
+            return `
+                ${ownerHtml(tile.i)}
+            `;
+        }
+        const player = window.Players?.PLAYERS?.find(p => p.id === ownerId);
+        if (!player) {
+            return `
+                <div class="prop-modal-owner">
+                    <span class="prop-modal-owner-label">Владелец</span>
+                    <span class="prop-modal-owner-value">—</span>
+                </div>
+            `;
+        }
+        return `
+            <div class="prop-modal-owner">
+                <span class="prop-modal-owner-label">Владелец</span>
+                <span class="prop-modal-owner-pill" style="--owner-color: ${player.color}">
+                    <span class="owner-pill-avatar" style="background: ${player.color}">${player.initial}</span>
+                    ${player.name}
+                </span>
+            </div>
+        `;
+    }
+
     let backdropEl = null;
     let modalEl = null;
     let contentEl = null;
@@ -83,10 +114,7 @@
                 <div class="prop-modal-name">${fullName}</div>
                 <div class="prop-modal-type">${TYPE_LABELS[tile.type]}</div>
 
-                <div class="prop-modal-owner">
-                    <span class="prop-modal-owner-label">Владелец</span>
-                    <span class="prop-modal-owner-value">— Банк —</span>
-                </div>
+                ${ownerHtml(tile.i)}
 
                 <div class="prop-modal-prices">
                     <div class="prop-price-row">
@@ -132,10 +160,7 @@
                 <div class="prop-modal-name">${fullName}</div>
                 <div class="prop-modal-type">${TYPE_LABELS.railroad}</div>
 
-                <div class="prop-modal-owner">
-                    <span class="prop-modal-owner-label">Владелец</span>
-                    <span class="prop-modal-owner-value">— Банк —</span>
-                </div>
+                ${ownerHtml(tile.i)}
 
                 <div class="prop-modal-prices">
                     <div class="prop-price-row">
@@ -167,10 +192,7 @@
                 <div class="prop-modal-name">${fullName}</div>
                 <div class="prop-modal-type">${TYPE_LABELS.utility}</div>
 
-                <div class="prop-modal-owner">
-                    <span class="prop-modal-owner-label">Владелец</span>
-                    <span class="prop-modal-owner-value">— Банк —</span>
-                </div>
+                ${ownerHtml(tile.i)}
 
                 <div class="prop-modal-prices">
                     <div class="prop-price-row">

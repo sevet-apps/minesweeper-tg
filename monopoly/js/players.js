@@ -96,8 +96,9 @@
         const isCorner = Math.abs(tileW - tileH) < 8;
         const isHorizontalTile = tileW > tileH;
 
-        // 4 tokens on a corner: 2x2
-        if (totalCount === 4 && isCorner) {
+        // Corners with 3 or 4 tokens: 2x2 grid
+        // (3 tokens = L-shape, since slot 3 stays empty - looks better than a line)
+        if (isCorner && totalCount >= 3) {
             const desired = tokenSize * 0.55;
             const maxOff  = Math.max(0, (Math.min(tileW, tileH) - tokenSize) / 2 - 2);
             const off = Math.min(desired, maxOff);
@@ -106,7 +107,7 @@
             return { dx, dy };
         }
 
-        // Linear arrangement (2, 3, or 4 tokens in a line)
+        // Linear arrangement (2 tokens, or non-corner tiles with 2-4 tokens)
         const axisLength = isHorizontalTile ? tileW : tileH;
         const desiredSpacing = tokenSize + 2;
         const maxSpacing = Math.max(
@@ -115,7 +116,7 @@
         );
         const spacing = Math.min(desiredSpacing, maxSpacing);
 
-        // Center the group: slots are 0..N-1, group center is at (N-1)/2
+        // Center the group
         const offset = (slot - (totalCount - 1) / 2) * spacing;
 
         return isHorizontalTile

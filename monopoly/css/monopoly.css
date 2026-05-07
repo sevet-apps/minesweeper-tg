@@ -1082,8 +1082,13 @@ html, body {
 .panel-close {
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    max-width: 32px;
+    max-height: 32px;
     aspect-ratio: 1/1;
     flex-shrink: 0;
+    flex-grow: 0;
     border: none;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
@@ -1094,6 +1099,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
 }
 
 .panel-stats {
@@ -1450,4 +1456,46 @@ html, body {
         transform: translate(-50%, -50%) translateY(-70px) scale(1);
         opacity: 0;
     }
+}
+
+/* Tile owned by a player - subtle tint of their color */
+.tile.tile-owned {
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--owner-color) 22%, #ffffff) 0%,
+            color-mix(in srgb, var(--owner-color) 12%, #ffffff) 100%);
+    box-shadow:
+        inset 0 0 0 1.5px var(--owner-color),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Owner pill in property modal */
+.prop-modal-owner-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--owner-color);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-left: auto;
+}
+
+.owner-pill-avatar {
+    width: 22px;
+    height: 22px;
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }

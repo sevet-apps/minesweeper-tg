@@ -74,6 +74,12 @@
      *   'buy', 'skip', 'continue' (after info-only modal)
      */
     function showForLanding({ tile, playerId, players, lastDiceSum }) {
+        // Skip modal entirely for GO and Free Parking — visual feedback (toast,
+        // animation) already conveys what's happening, no decision needed.
+        // GO TO JAIL we'll handle later when jail logic exists.
+        if (tile.type === 'corner' && (tile.i === 0 || tile.i === 20)) {
+            return Promise.resolve('skip');
+        }
         return new Promise((resolve) => {
             pendingResolve = resolve;
             renderForLanding({ tile, playerId, players, lastDiceSum });
