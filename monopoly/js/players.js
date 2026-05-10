@@ -224,10 +224,28 @@
 
     function getPlayerState(playerId) { return STATE[playerId]; }
 
+    /**
+     * Move a player directly to a specific tile (used by Chance/Chest cards).
+     * If awardGo=true, passing GO (or landing on it) awards $200.
+     * Uses moveSteps so animation is the same (step-by-step hop).
+     */
+    async function movePlayerTo(playerId, targetIdx, awardGo, passedGoCallback) {
+        const current = STATE[playerId].position;
+        let steps;
+        if (targetIdx >= current) {
+            steps = targetIdx - current;
+        } else {
+            steps = (40 - current) + targetIdx;
+        }
+        if (steps === 0) return; // already there
+        await moveSteps(playerId, steps, awardGo ? passedGoCallback : null);
+    }
+
     global.Players = {
         PLAYERS,
         init,
         moveSteps,
+        movePlayerTo,
         relayoutAll,
         getCurrentPlayer,
         advanceTurn,

@@ -35,6 +35,7 @@
                 money: 1500,
                 ownedTiles: new Set(),
                 mortgaged: new Set(),
+                bankrupt: false,
             };
         }
         for (const t of TILES) {
@@ -157,14 +158,51 @@
         emit('goBonus', { playerId, amount: 200 });
     }
 
+    function canAfford(playerId, amount) {
+        return getMoney(playerId) >= amount;
+    }
+
+    function isBankrupt(playerId) {
+        return playerEcon[playerId]?.bankrupt === true;
+    }
+
+    /**
+     * Declare a player bankrupt. Their properties return to the bank
+     * (or transfer to creditor in classic rules - we go simple).
+     */
+    function declareBankrupt(playerId, creditorId = null) {
+        if (!playerEcon[playerId]) return;
+        playerEcon[playerId].bankrupt = true;
+        const owned = Array.from(playerEcon[playerId].ownedTiles);
+        for (const idx of owned) {
+            tileEcon[idx].ownedBy = null;
+        }
+        playerEcon[playerId].ownedTiles.clear();
+        playerEcon[playerId].mortgaged.clear();
+        playerEcon[playerId].money = 0;
+        emit('bankrupt', { playerId, creditorId, returnedTiles: owned });
+        emit('moneyChanged', { playerId, money: 0 });
+    }
+
+    /**
+     * Internal: directly assign tile ownership (used by Auction).
+     * Bypasses the base-price check in buyTile since auction price differs.
+     * Caller is responsible for charging the buyer.
+     */
+    function _assignOwnership(playerId, tileIdx) {
+        if (!playerEcon[playerId]) return;
+        tileEcon[tileIdx].ownedBy = playerId;
+        playerEcon[playerId].ownedTiles.add(tileIdx);
+        emit('tileBought', { playerId, tileIdx, price: 0 });
+    }
+
     global.GameState = {
         init,
         on,
-        // money
-        getMoney, changeMoney,
-        // ownership
+        getMoney, changeMoney, canAfford,
         getOwner, isOwned, isPurchasable, getOwnedTiles, isMortgaged,
-        // transactions
         buyTile, calcRent, payRent, payTax, awardGoBonus,
+        isBankrupt, declareBankrupt,
+        _assignOwnership,
     };
 })(window);

@@ -25,7 +25,11 @@
     // ---- Bootstrap ----
     PropertyModal.init();
     ActionModal.init();
+    CardModal.init();
+    Auction.init();
+    BankruptcyModal.init();
     MoneyToast.init();
+    Cards.init();
 
     BoardUI.renderBoard((tile) => PropertyModal.open(tile));
 
@@ -48,6 +52,24 @@
             tileEl.classList.add('tile-owned');
             tileEl.style.setProperty('--owner-color', player.color);
         }
+    });
+
+    // On bankruptcy: hide player's token, un-tint their tiles, mark HUD card
+    GameState.on('bankrupt', ({ playerId, returnedTiles }) => {
+        const tokenEl = document.getElementById(`token-${playerId}`);
+        if (tokenEl) tokenEl.classList.add('player-token-bankrupt');
+
+        for (const idx of returnedTiles) {
+            const tileEl = document.querySelector(`.tile[data-idx="${idx}"]`);
+            if (tileEl) {
+                tileEl.classList.remove('tile-owned');
+                tileEl.style.removeProperty('--owner-color');
+            }
+        }
+
+        // Mark HUD card
+        const hudCard = document.querySelector(`.hud-player[data-player-id="${playerId}"]`);
+        if (hudCard) hudCard.classList.add('hud-player-bankrupt');
     });
 
     // Re-layout tokens on resize
@@ -89,27 +111,163 @@
         dbgFps.textContent = sm.currentFps || '—';
     }, 250);
 
-    // ---- Resolve landing on a tile ----
-    async function handleLanding(player, tile, lastDiceSum) {
-        const pAsObj = { ...player, money: GameState.getMoney(player.id) };
-
-        const choice = await ActionModal.showForLanding({
-            tile,
-            playerId: player.id,
-            players: Players.PLAYERS.map(p => ({
-                ...p, money: GameState.getMoney(p.id)
-            })),
-            lastDiceSum,
-        });
-
-        if (choice === 'buy') {
-            GameState.buyTile(player.id, tile.i);
-        } else if (choice === 'pay') {
-            GameState.payRent(player.id, tile.i, lastDiceSum);
-        } else if (choice && choice.action === 'tax') {
-            GameState.payTax(player.id, choice.amount, tile.name);
+    // ---- Helper: pay or go bankrupt ----
+    async function payOrBust(playerId, amount, reason, creditorId) {
+        if (GameState.canAfford(playerId, amount)) {
+            GameState.changeMoney(playerId, -amount, reason);
+            if (creditorId) GameState.changeMoney(creditorId, amount, 'Получено');
+            return true;
         }
-        // 'skip' / 'continue' → no transaction
+        // Bankrupt
+        const player = Players.PLAYERS.find(p => p.id === playerId);
+        const creditor = creditorId ? Players.PLAYERS.find(p => p.id === creditorId) : null;
+        await BankruptcyModal.show({
+            player,
+            owedTo: creditor,
+            owedAmount: amount,
+            reason: 'Все имущества возвращены в банк. Игрок выбывает.',
+        });
+        // Give remaining balance to creditor (classic rule) then mark bankrupt
+        const remaining = GameState.getMoney(playerId);
+        if (creditorId && remaining > 0) {
+            GameState.changeMoney(playerId, -remaining, 'Передано кредитору');
+            GameState.changeMoney(creditorId, remaining, 'От банкрота');
+        }
+        GameState.declareBankrupt(playerId, creditorId);
+        return false;
+    }
+
+    // ---- Card draw + apply ----
+    async function drawAndApplyCard(playerId, type) {
+        const card = type === 'chance' ? Cards.drawChance() : Cards.drawChest();
+        await CardModal.show(type, card);
+
+        const ctx = {
+            playerId,
+            players: Players.PLAYERS,
+            lastDiceSum: 0,
+            movePlayerTo: async (idx, awardGo) => {
+                await Players.movePlayerTo(playerId, idx, awardGo, (pid) => {
+                    GameState.awardGoBonus(pid);
+                });
+                // Re-resolve landing on the new tile (excluding card tiles to avoid loop)
+                const newTile = window.MonopolyData.TILES[idx];
+                if (newTile.type !== 'chance' && newTile.type !== 'chest') {
+                    const curPlayer = Players.PLAYERS.find(p => p.id === playerId);
+                    await handleLanding(curPlayer, newTile, 0, /* skipCards */ true);
+                }
+            },
+        };
+        await card.effect(ctx);
+    }
+
+    // ---- Resolve landing on a tile ----
+    async function handleLanding(player, tile, lastDiceSum, skipCards = false) {
+        // Chance / Chest → draw card
+        if (!skipCards && (tile.type === 'chance' || tile.type === 'chest')) {
+            await drawAndApplyCard(player.id, tile.type);
+            return;
+        }
+
+        // GO TO JAIL → for now, just move them back to JAIL tile (no jail rules yet)
+        if (tile.type === 'corner' && tile.i === 30) {
+            await Players.movePlayerTo(player.id, 10, /*awardGo*/ false);
+            return;
+        }
+
+        // For chuжая property → pay rent or bankrupt
+        const ownerId = GameState.getOwner(tile.i);
+        if (ownerId && ownerId !== player.id) {
+            const rent = GameState.calcRent(tile.i, lastDiceSum);
+            if (rent > 0) {
+                // Show rent modal first (informational)
+                const choice = await ActionModal.showForLanding({
+                    tile,
+                    playerId: player.id,
+                    players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
+                    lastDiceSum,
+                });
+                // Regardless of choice (user can't really decline), settle the rent
+                await payOrBust(player.id, rent, `Аренда ${tile.name}`, ownerId);
+            }
+            return;
+        }
+
+        // Tax tile → must pay
+        if (tile.type === 'tax') {
+            const amount = tile.name === 'Income Tax' ? 200 : 100;
+            const choice = await ActionModal.showForLanding({
+                tile,
+                playerId: player.id,
+                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
+                lastDiceSum,
+            });
+            await payOrBust(player.id, amount, tile.name);
+            return;
+        }
+
+        // Free purchasable tile → buy or auction
+        if ((tile.type === 'property' || tile.type === 'railroad' || tile.type === 'utility')
+            && !ownerId) {
+            const choice = await ActionModal.showForLanding({
+                tile,
+                playerId: player.id,
+                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
+                lastDiceSum,
+            });
+
+            if (choice === 'buy') {
+                GameState.buyTile(player.id, tile.i);
+            } else {
+                // Skipped → auction among other players
+                const eligible = Players.PLAYERS.filter(p =>
+                    p.id !== player.id && !GameState.isBankrupt(p.id)
+                );
+                if (eligible.length > 0) {
+                    const result = await Auction.start(tile, eligible);
+                    if (result.winnerId && result.price > 0) {
+                        // Charge winner, transfer ownership
+                        GameState.changeMoney(result.winnerId, -result.price, 'Выиграл аукцион');
+                        // Manually flip ownership (buyTile assumes base price)
+                        const tileEconRef = window.MonopolyData.TILES[tile.i];
+                        // Use buyTile-style state mutation: re-emit tileBought
+                        const winner = Players.PLAYERS.find(p => p.id === result.winnerId);
+                        // Mark owned by manipulating game state directly via the buy event chain
+                        directAssignOwnership(result.winnerId, tile.i, result.price);
+                    }
+                }
+            }
+            return;
+        }
+
+        // Owned by self → show informational modal
+        if (ownerId && ownerId === player.id) {
+            await ActionModal.showForLanding({
+                tile,
+                playerId: player.id,
+                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
+                lastDiceSum,
+            });
+            return;
+        }
+    }
+
+    // Direct ownership assignment (used by auction - bypasses base-price check)
+    function directAssignOwnership(playerId, tileIdx, price) {
+        const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
+        const player = Players.PLAYERS.find(p => p.id === playerId);
+        if (tileEl && player) {
+            tileEl.classList.add('tile-owned');
+            tileEl.style.setProperty('--owner-color', player.color);
+        }
+        // Trigger an event so HUD updates - we hack it by emitting tileBought
+        // through the existing flow. Since GameState's buyTile would require
+        // base price, we mutate ownership records via a direct path.
+        // Simplest: temporarily set the player's money high, call buyTile,
+        // then refund the difference. But cleaner is just to assign and emit.
+        // We rely on internal getter shape:
+        // (Done in GameState below via a setter we'll expose.)
+        GameState._assignOwnership(playerId, tileIdx);
     }
 
     // ---- Dice settle handler ----
@@ -143,9 +301,13 @@
         const landedTile = window.MonopolyData.TILES[landedIdx];
         await handleLanding(player, landedTile, result.sum);
 
-        // Advance turn (unless doubles)
+        // Advance turn (unless doubles), skipping bankrupt players
         if (!result.doubles) {
-            Players.advanceTurn();
+            let next = Players.advanceTurn();
+            let safety = 0;
+            while (GameState.isBankrupt(next.id) && safety++ < 4) {
+                next = Players.advanceTurn();
+            }
             refreshTurnIndicator();
         } else {
             const curEl = document.querySelector('.hud-player.current');

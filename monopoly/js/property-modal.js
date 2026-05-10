@@ -48,7 +48,10 @@
         const ownerId = window.GameState?.getOwner?.(tileIdx);
         if (!ownerId) {
             return `
-                ${ownerHtml(tile.i)}
+                <div class="prop-modal-owner">
+                    <span class="prop-modal-owner-label">Владелец</span>
+                    <span class="prop-modal-owner-value">— Банк —</span>
+                </div>
             `;
         }
         const player = window.Players?.PLAYERS?.find(p => p.id === ownerId);

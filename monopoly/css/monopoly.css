@@ -1499,3 +1499,318 @@ html, body {
     flex-shrink: 0;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
+
+/* ============================================================
+   AUCTION MODAL
+   ============================================================ */
+
+.auction-modal {
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + var(--safe-bottom));
+    transform: translateX(-50%) translateY(calc(100% + 40px));
+    z-index: 120;
+    width: min(94vw, 420px);
+    background: linear-gradient(180deg, #1c1c1e 0%, #0e0e10 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7),
+                0 0 40px rgba(255, 215, 0, 0.15);
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity   0.28s ease-out;
+}
+
+.auction-modal.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.auction-modal-content {
+    padding: 20px 22px 22px;
+    color: #fff;
+}
+
+.auction-header { margin-bottom: 14px; }
+
+.auction-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    color: #ffd700;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.auction-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.auction-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 2px;
+}
+
+.auction-state {
+    text-align: center;
+    padding: 10px 12px;
+    background: rgba(255, 215, 0, 0.08);
+    border: 1px solid rgba(255, 215, 0, 0.25);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.auction-state strong {
+    color: #ffd700;
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.auction-participants {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.auction-participant {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.auction-participant.is-current {
+    border-color: var(--p-color);
+    box-shadow: 0 0 0 1px var(--p-color);
+}
+
+.auction-participant.is-leader {
+    background: rgba(255, 215, 0, 0.08);
+}
+
+.auction-participant-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--p-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.auction-participant-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.auction-leader-badge {
+    background: linear-gradient(135deg, #ffd700, #ffae00);
+    color: #1a1d28;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.auction-current-turn {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 12px;
+}
+
+.auction-current-turn strong { color: #fff; }
+
+.auction-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ============================================================
+   CARD MODAL (Chance / Chest)
+   ============================================================ */
+
+.card-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    z-index: 115;
+    width: min(90vw, 360px);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity   0.28s ease-out;
+}
+
+.card-modal.visible {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.card-modal-content {
+    background: linear-gradient(180deg, #1c1c1e 0%, #0e0e10 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+    padding: 22px;
+}
+
+.card-modal-card {
+    border-radius: 16px;
+    padding: 26px 22px;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 18px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.card-modal-card-icon {
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    margin-bottom: 4px;
+}
+
+.card-modal-card-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    opacity: 0.85;
+    margin-bottom: 14px;
+}
+
+.card-modal-card-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 8px;
+}
+
+.card-modal-card-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0.95;
+}
+
+/* ============================================================
+   BANKRUPTCY MODAL
+   ============================================================ */
+
+.bankruptcy-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    z-index: 130;
+    width: min(92vw, 380px);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity   0.28s ease-out;
+}
+
+.bankruptcy-modal.visible {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.bankruptcy-modal-content {
+    background: linear-gradient(180deg, #1c1c1e 0%, #0e0e10 100%);
+    border: 1px solid rgba(255, 80, 80, 0.35);
+    border-radius: 22px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7),
+                0 0 40px rgba(255, 80, 80, 0.15);
+    padding: 26px 22px;
+    text-align: center;
+    color: #fff;
+}
+
+.bankruptcy-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.bankruptcy-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #ff5f5f;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+}
+
+.bankruptcy-subtitle {
+    font-size: 14px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 14px;
+}
+
+.bankruptcy-amount,
+.bankruptcy-balance {
+    font-size: 14px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.bankruptcy-amount strong,
+.bankruptcy-balance strong {
+    color: #fff;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.bankruptcy-reason {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 14px 0 18px;
+    line-height: 1.4;
+}
+
+/* Bankrupt token: faded out, no interaction */
+.player-token-bankrupt {
+    opacity: 0.25;
+    filter: grayscale(1);
+}
+
+/* Bankrupt HUD card */
+.hud-player-bankrupt {
+    opacity: 0.4;
+    filter: grayscale(1);
+    pointer-events: none;
+}
