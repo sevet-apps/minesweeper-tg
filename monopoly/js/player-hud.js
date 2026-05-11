@@ -58,6 +58,12 @@
         });
         GameState.on('rentPaid',     () => renderHud());
         GameState.on('goBonus',      () => renderHud());
+        GameState.on('houseBuilt',   () => {
+            if (currentPanelPlayer) renderPanel(currentPanelPlayer);
+        });
+        GameState.on('houseSold',    () => {
+            if (currentPanelPlayer) renderPanel(currentPanelPlayer);
+        });
     }
 
     function setCurrentTurn(playerId) {
@@ -138,6 +144,30 @@
         const p = players.find(pl => pl.id === playerId);
         if (!p) return;
 
+        // Bankrupt player → simplified panel
+        if (GameState.isBankrupt(playerId)) {
+            document.getElementById('hudPanelContent').innerHTML = `
+                <div class="panel-header">
+                    <div class="panel-avatar panel-avatar-bankrupt" style="--p-color: ${p.color}">${p.initial}</div>
+                    <div class="panel-name-block">
+                        <div class="panel-name">${p.name}</div>
+                        <div class="panel-bankrupt-label">БАНКРОТ</div>
+                    </div>
+                    <button class="panel-close" id="hudPanelCloseBtn">×</button>
+                </div>
+
+                <div class="panel-bankrupt-message">
+                    <div class="panel-bankrupt-icon">💸</div>
+                    <div class="panel-bankrupt-text">
+                        Этот игрок выбыл из игры.<br>
+                        Все его карточки возвращены банку.
+                    </div>
+                </div>
+            `;
+            document.getElementById('hudPanelCloseBtn').addEventListener('click', closePanel);
+            return;
+        }
+
         const owned = GameState.getOwnedTiles(playerId);
 
         // Group owned tiles
@@ -176,6 +206,11 @@
                     <div class="panel-group-tiles">
                         ${tiles.map(t => renderOwnedTileChip(t)).join('')}
                     </div>
+                    ${isComplete ? `
+                        <button class="panel-build-btn" data-group="${group}">
+                            🏗 Строить дома
+                        </button>
+                    ` : ''}
                 </div>
             `;
         }).join('');
@@ -240,14 +275,29 @@
         `;
 
         document.getElementById('hudPanelCloseBtn').addEventListener('click', closePanel);
+
+        // Wire "Строить дома" buttons
+        document.querySelectorAll('.panel-build-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.dataset.group;
+                if (window.BuildModal) {
+                    BuildModal.show(currentPanelPlayer, group);
+                }
+            });
+        });
     }
 
     function renderOwnedTileChip(tile) {
+        const houses = window.GameState?.getHouses?.(tile.i) ?? 0;
         const isMortgaged = GameState.isMortgaged(tile.i);
+        let houseLabel = '';
+        if (houses === 5) houseLabel = '🏨';
+        else if (houses > 0) houseLabel = '🏠'.repeat(houses);
         return `
             <div class="panel-tile ${isMortgaged ? 'panel-tile-mortgaged' : ''}">
                 <div class="panel-tile-num">#${tile.i}</div>
                 <div class="panel-tile-name">${FULL_NAMES[tile.i] || tile.name}</div>
+                ${houseLabel ? `<div class="panel-tile-houses">${houseLabel}</div>` : ''}
                 <div class="panel-tile-price">$${tile.price}</div>
             </div>
         `;

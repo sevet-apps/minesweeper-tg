@@ -1812,5 +1812,305 @@ html, body {
 .hud-player-bankrupt {
     opacity: 0.4;
     filter: grayscale(1);
+}
+
+.hud-player-bankrupt:active {
+    opacity: 0.5;
+}
+
+/* Bankrupt panel styles */
+.panel-avatar-bankrupt {
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+.panel-bankrupt-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ff5f5f;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+}
+
+.panel-bankrupt-message {
+    text-align: center;
+    padding: 40px 20px 30px;
+}
+
+.panel-bankrupt-icon {
+    font-size: 48px;
+    margin-bottom: 14px;
+    opacity: 0.7;
+}
+
+.panel-bankrupt-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.5;
+}
+
+/* Token in flight - bigger shadow, slight glow above board */
+.player-token.flying {
+    z-index: 60;
+    box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.75),
+        0 0 24px var(--token-color),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        0 0 0 2.5px rgba(255, 255, 255, 0.25);
+}
+
+/* ============================================================
+   JAIL MODAL
+   ============================================================ */
+
+.jail-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    z-index: 125;
+    width: min(92vw, 380px);
+    background: linear-gradient(180deg, #1c1c1e 0%, #0e0e10 100%);
+    border: 1px solid rgba(255, 155, 31, 0.35);
+    border-radius: 22px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7),
+                0 0 40px rgba(255, 155, 31, 0.15);
+    padding: 24px 22px;
+    color: #fff;
+    text-align: center;
+    opacity: 0;
     pointer-events: none;
+    transition:
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity   0.28s ease-out;
+}
+
+.jail-modal.visible {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.jail-icon {
+    font-size: 56px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.jail-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.jail-subtitle {
+    font-size: 14px;
+    color: rgba(255, 155, 31, 0.95);
+    margin-bottom: 18px;
+}
+
+.jail-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.jail-bankruptcy-hint {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #ff5f5f;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   BUILD MODAL
+   ============================================================ */
+
+.build-modal {
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + var(--safe-bottom));
+    transform: translateX(-50%) translateY(calc(100% + 40px));
+    z-index: 105;
+    width: min(94vw, 420px);
+    background: linear-gradient(180deg, #1c1c1e 0%, #0e0e10 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity   0.28s ease-out;
+}
+
+.build-modal.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.build-modal-content {
+    padding: 18px 20px 20px;
+    color: #fff;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.build-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.build-band {
+    width: 6px;
+    height: 32px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.build-title-block { flex: 1; }
+
+.build-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.build-title {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.build-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 14px;
+}
+
+.build-info-row strong {
+    color: #fff;
+    font-weight: 800;
+}
+
+.build-tiles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.build-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+}
+
+.build-row-info { flex: 1; min-width: 0; }
+
+.build-row-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.build-row-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.build-row-houses {
+    font-size: 13px;
+    min-width: 70px;
+    text-align: center;
+}
+
+.build-house-icons { font-size: 11px; letter-spacing: 1px; }
+
+.build-hotel {
+    color: #ffd700;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.build-row-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.build-btn {
+    width: 32px;
+    height: 32px;
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.build-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.build-btn-buy:not(:disabled) {
+    background: linear-gradient(135deg, #29c463, #1a9d4d);
+    box-shadow: 0 2px 8px rgba(41, 196, 99, 0.4);
+}
+
+.build-btn-sell:not(:disabled) {
+    background: linear-gradient(135deg, #ff7a00, #c25400);
+    box-shadow: 0 2px 8px rgba(255, 122, 0, 0.4);
+}
+
+.build-rules {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.4;
+    text-align: center;
+}
+
+.panel-build-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #ffd700, #ffae00);
+    color: #1a1d28;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.panel-tile-houses {
+    font-size: 11px;
+    margin-right: 4px;
 }

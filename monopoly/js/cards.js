@@ -21,22 +21,22 @@
         },
         {
             id: 'c2', title: 'Банковский дивиденд',
-            description: 'Банк выплачивает вам $50.',
+            description: 'Банк выплачивает вам $50. Не транжирьте.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, 50, 'Дивиденд'); }
         },
         {
-            id: 'c3', title: 'Штраф за превышение скорости',
-            description: 'Заплатите $15 штрафа.',
+            id: 'c3', title: 'Штраф ГАИ',
+            description: 'Превысили скорость в жилой зоне. $15 в казну.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, -15, 'Штраф'); }
         },
         {
             id: 'c4', title: 'Ремонт улиц',
-            description: 'Заплатите $40 (мы не строим дома пока).',
+            description: 'Город ремонтирует ваши улицы. Заплатите $40 муниципалитету.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, -40, 'Ремонт'); }
         },
         {
             id: 'c5', title: 'Идите на Boardwalk',
-            description: 'Переместитесь на самую дорогую улицу.',
+            description: 'Свежий воздух у моря не повредит.',
             async effect(ctx) { await ctx.movePlayerTo(39, /*awardGo*/ false); }
         },
         {
@@ -46,17 +46,50 @@
         },
         {
             id: 'c7', title: 'Премия за красоту',
-            description: 'Вы выиграли в конкурсе. Получите $10.',
+            description: 'Вас выбрали мисс/мистер Монополия. Получите $10.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, 10, 'Премия'); }
         },
         {
             id: 'c8', title: 'Назад на 3 клетки',
-            description: 'Двигайтесь на 3 клетки назад.',
+            description: 'Передумали? Возвращайтесь.',
             async effect(ctx) {
                 const pos = Players.getPlayerState(ctx.playerId).position;
                 const newPos = (pos - 3 + 40) % 40;
                 await ctx.movePlayerTo(newPos, /*awardGo*/ false);
             }
+        },
+        {
+            id: 'c9', title: 'Выигрыш в лотерею',
+            description: 'Вы случайно нашли в кармане билет. Получите $100.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, 100, 'Лотерея'); }
+        },
+        {
+            id: 'c10', title: 'Идите в тюрьму',
+            description: 'Не проходите СТАРТ, не получайте $200.',
+            async effect(ctx) {
+                await ctx.movePlayerTo(10, /*awardGo*/ false);
+                GameState.sendToJail(ctx.playerId);
+            }
+        },
+        {
+            id: 'c11', title: 'Налог на роскошь',
+            description: 'Соседи завидуют вашему BMW. Заплатите $75.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, -75, 'Налог'); }
+        },
+        {
+            id: 'c12', title: 'Идите на Reading Railroad',
+            description: 'Если пройдёте СТАРТ — получите $200.',
+            async effect(ctx) { await ctx.movePlayerTo(5, /*awardGo*/ true); }
+        },
+        {
+            id: 'c13', title: 'Инвестиции в стартап',
+            description: 'Ваш племянник занял $50 «на будущее».',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, -50, 'Стартап'); }
+        },
+        {
+            id: 'c14', title: 'Возврат акций',
+            description: 'Брокер вернул депозит. $150 ваши.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, 150, 'Брокер'); }
         },
     ];
 
@@ -73,25 +106,25 @@
         },
         {
             id: 'b3', title: 'Доктор',
-            description: 'Оплатите визит к врачу — $50.',
+            description: 'Простуда на пустом месте. Оплатите визит $50.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, -50, 'Доктор'); }
         },
         {
             id: 'b4', title: 'Дивиденды от акций',
-            description: 'Получите $50 дивидендов.',
+            description: 'Старые бумаги принесли $50.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, 50, 'Дивиденды'); }
         },
         {
-            id: 'b5', title: 'Налог на доходы',
-            description: 'Возврат налога. Получите $20.',
-            async effect(ctx) { GameState.changeMoney(ctx.playerId, 20, 'Возврат налога'); }
+            id: 'b5', title: 'Возврат налога',
+            description: 'Бухгалтерия удивила. Получите $20.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, 20, 'Возврат'); }
         },
         {
-            id: 'b6', title: 'День рождения',
+            id: 'b6', title: 'День рождения!',
             description: 'Каждый игрок дарит вам $10.',
             async effect(ctx) {
                 for (const p of ctx.players) {
-                    if (p.id !== ctx.playerId) {
+                    if (p.id !== ctx.playerId && !GameState.isBankrupt(p.id)) {
                         GameState.changeMoney(p.id, -10, 'ДР');
                         GameState.changeMoney(ctx.playerId, 10, 'ДР');
                     }
@@ -99,14 +132,47 @@
             }
         },
         {
-            id: 'b7', title: 'Страховка',
-            description: 'Получите страховую выплату $100.',
+            id: 'b7', title: 'Страховая выплата',
+            description: 'Соседский кот разбил вашу вазу. $100 от страховой.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, 100, 'Страховка'); }
         },
         {
             id: 'b8', title: 'Школьный сбор',
-            description: 'Оплатите школьный сбор $50.',
+            description: 'На ремонт классов. $50 школе.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, -50, 'Сбор'); }
+        },
+        {
+            id: 'b9', title: 'Наследство',
+            description: 'Дальний родственник вспомнил о вас. $100 ваши.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, 100, 'Наследство'); }
+        },
+        {
+            id: 'b10', title: 'Алименты',
+            description: 'Бывшая в курсе ваших успехов. Заплатите $100.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, -100, 'Алименты'); }
+        },
+        {
+            id: 'b11', title: 'В тюрьму',
+            description: 'Соседи донесли. Не проходите СТАРТ.',
+            async effect(ctx) {
+                await ctx.movePlayerTo(10, /*awardGo*/ false);
+                GameState.sendToJail(ctx.playerId);
+            }
+        },
+        {
+            id: 'b12', title: 'Книжный гонорар',
+            description: 'Мемуары неожиданно популярны. $25.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, 25, 'Гонорар'); }
+        },
+        {
+            id: 'b13', title: 'Победа в покере',
+            description: 'Партия с приятелями оказалась прибыльной. $50.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, 50, 'Покер'); }
+        },
+        {
+            id: 'b14', title: 'Услуги сантехника',
+            description: 'Снова прорыв в подвале. $40 мастеру.',
+            async effect(ctx) { GameState.changeMoney(ctx.playerId, -40, 'Сантехник'); }
         },
     ];
 

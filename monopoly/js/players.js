@@ -156,8 +156,9 @@
     }
 
     /**
-     * Move a player N steps forward, hopping tile-by-tile with a bounce.
-     * Calls passedGoCallback if the player crosses GO (tile 0) during movement.
+     * Move a player N steps. Positive = forward, negative = backward.
+     * Forward movement crosses GO and triggers passedGoCallback.
+     * Backward movement never awards GO.
      * Returns a Promise that resolves once movement is complete.
      */
     async function moveSteps(playerId, steps, passedGoCallback) {
@@ -165,23 +166,23 @@
         const tokenEl = document.getElementById(`token-${playerId}`);
         if (!tokenEl) return;
 
-        for (let s = 1; s <= steps; s++) {
-            const newIdx = (startIdx + s) % 40;
+        const direction = steps >= 0 ? 1 : -1;
+        const absSteps = Math.abs(steps);
 
-            // Track lap counts (for "passed GO" rule)
-            if (newIdx === 0 && s > 0) {
+        for (let s = 1; s <= absSteps; s++) {
+            const newIdx = (startIdx + direction * s + 40 * absSteps) % 40;
+
+            // GO bonus only on forward crossing
+            if (direction === 1 && newIdx === 0 && s > 0) {
                 STATE[playerId].lap++;
                 if (passedGoCallback) passedGoCallback(playerId);
             }
 
-            // Update logical position FIRST so other moves see it correctly
             STATE[playerId].position = newIdx;
 
-            // Snap any other tokens that were on the OLD tile to recompute layout
-            const oldIdx = (startIdx + s - 1) % 40;
+            const oldIdx = (startIdx + direction * (s - 1) + 40 * absSteps) % 40;
             recomputeTileLayout(oldIdx);
 
-            // Hop animation
             tokenEl.classList.add('hopping');
             placeTokenOnTile(playerId, newIdx, /* animate */ true);
             await new Promise(r => setTimeout(r, 220));
@@ -222,23 +223,72 @@
         return getCurrentPlayer();
     }
 
+    /**
+     * Fly a player directly to a specific tile in one smooth animation.
+     * Used by Chance/Chest cards (long jumps, GO TO JAIL, etc).
+     * Token lifts up, flies in an arc, lands at destination.
+     *
+     * If awardGo is true, awards $200 if the trip crosses GO going forward.
+     */
+    async function flyTo(playerId, targetIdx, awardGo, passedGoCallback) {
+        const tokenEl = document.getElementById(`token-${playerId}`);
+        if (!tokenEl) return;
+
+        const fromIdx = STATE[playerId].position;
+
+        // Determine if we cross GO going forward
+        const crossesGo = awardGo && targetIdx < fromIdx;
+
+        // Update logical position immediately
+        STATE[playerId].position = targetIdx;
+        if (crossesGo) {
+            STATE[playerId].lap++;
+            if (passedGoCallback) passedGoCallback(playerId);
+        }
+
+        // Recompute layout on origin tile (other tokens slide back together)
+        recomputeTileLayout(fromIdx);
+
+        // Get target pixel position
+        const center = tileCenterPx(targetIdx);
+        if (!center) return;
+
+        const sharers = PLAYERS.filter(p => STATE[p.id].position === targetIdx);
+        const slotIdx = sharers.findIndex(p => p.id === playerId);
+        const tokenSize = tokenEl.offsetWidth || 24;
+        const { dx, dy } = tokenOffsetForSlot(slotIdx, sharers.length, center.w, center.h, tokenSize);
+        const targetX = center.x + dx;
+        const targetY = center.y + dy;
+
+        // Apply flight animation
+        tokenEl.classList.add('flying');
+        // Custom easing: ease-out cubic - fast start, slow end (deceleration on landing)
+        tokenEl.style.transition = 'transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1)';
+        tokenEl.style.transform =
+            `translate(-50%, -50%) translate(${targetX}px, ${targetY}px)`;
+
+        // Wait for flight to complete
+        await new Promise(r => setTimeout(r, 720));
+
+        tokenEl.classList.remove('flying');
+        tokenEl.style.transition = '';
+
+        // Settle bounce
+        recomputeTileLayout(targetIdx);
+        tokenEl.classList.add('landed');
+        await new Promise(r => setTimeout(r, 350));
+        tokenEl.classList.remove('landed');
+    }
+
     function getPlayerState(playerId) { return STATE[playerId]; }
 
     /**
      * Move a player directly to a specific tile (used by Chance/Chest cards).
-     * If awardGo=true, passing GO (or landing on it) awards $200.
-     * Uses moveSteps so animation is the same (step-by-step hop).
+     * Uses smooth flight animation, not step-by-step.
      */
     async function movePlayerTo(playerId, targetIdx, awardGo, passedGoCallback) {
-        const current = STATE[playerId].position;
-        let steps;
-        if (targetIdx >= current) {
-            steps = targetIdx - current;
-        } else {
-            steps = (40 - current) + targetIdx;
-        }
-        if (steps === 0) return; // already there
-        await moveSteps(playerId, steps, awardGo ? passedGoCallback : null);
+        if (STATE[playerId].position === targetIdx) return;
+        await flyTo(playerId, targetIdx, awardGo, passedGoCallback);
     }
 
     global.Players = {

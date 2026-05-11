@@ -28,6 +28,8 @@
     CardModal.init();
     Auction.init();
     BankruptcyModal.init();
+    JailModal.init();
+    BuildModal.init();
     MoneyToast.init();
     Cards.init();
 
@@ -169,9 +171,10 @@
             return;
         }
 
-        // GO TO JAIL → for now, just move them back to JAIL tile (no jail rules yet)
+        // GO TO JAIL → fly to JAIL tile and set in-jail state
         if (tile.type === 'corner' && tile.i === 30) {
             await Players.movePlayerTo(player.id, 10, /*awardGo*/ false);
+            GameState.sendToJail(player.id);
             return;
         }
 
@@ -270,6 +273,8 @@
         GameState._assignOwnership(playerId, tileIdx);
     }
 
+    let consecutiveDoubles = 0;
+
     // ---- Dice settle handler ----
     dice.onResult(async (result) => {
         dieAEl.textContent = result.a;
@@ -290,6 +295,32 @@
 
         const player = Players.getCurrentPlayer();
 
+        // Jail roll: trying to escape via doubles
+        if (GameState.isInJail(player.id)) {
+            if (result.doubles) {
+                // Released — move normally
+                GameState.releaseFromJail(player.id);
+                // Fall through to normal move below
+            } else {
+                // Failed attempt
+                const attempts = GameState.incrementJailTurns(player.id);
+                if (attempts >= 3) {
+                    // 3 failed attempts: must pay $50 and move
+                    await payOrBust(player.id, 50, 'Принудительный выход');
+                    if (GameState.isBankrupt(player.id)) {
+                        advanceTurnSkippingBankrupt();
+                        return;
+                    }
+                    GameState.releaseFromJail(player.id);
+                    // Fall through to move
+                } else {
+                    // Stay in jail, turn ends
+                    advanceTurnSkippingBankrupt();
+                    return;
+                }
+            }
+        }
+
         // Move with GO callback
         await Players.moveSteps(player.id, result.sum, (pid) => {
             GameState.awardGoBonus(pid);
@@ -303,6 +334,7 @@
 
         // Advance turn (unless doubles), skipping bankrupt players
         if (!result.doubles) {
+            consecutiveDoubles = 0;
             let next = Players.advanceTurn();
             let safety = 0;
             while (GameState.isBankrupt(next.id) && safety++ < 4) {
@@ -310,12 +342,26 @@
             }
             refreshTurnIndicator();
         } else {
-            const curEl = document.querySelector('.hud-player.current');
-            if (curEl) {
-                curEl.animate(
-                    [{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }],
-                    { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
-                );
+            consecutiveDoubles++;
+            if (consecutiveDoubles >= 3) {
+                // Three doubles in a row → straight to jail
+                consecutiveDoubles = 0;
+                await Players.movePlayerTo(player.id, 10, /*awardGo*/ false);
+                GameState.sendToJail(player.id);
+                let next = Players.advanceTurn();
+                let safety = 0;
+                while (GameState.isBankrupt(next.id) && safety++ < 4) {
+                    next = Players.advanceTurn();
+                }
+                refreshTurnIndicator();
+            } else {
+                const curEl = document.querySelector('.hud-player.current');
+                if (curEl) {
+                    curEl.animate(
+                        [{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }],
+                        { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+                    );
+                }
             }
         }
 
@@ -333,6 +379,30 @@
 
     async function doRoll(throwParams = {}) {
         if (dice.isRolling) return;
+
+        // Jail check: if current player is in jail, show jail modal first
+        const cur = Players.getCurrentPlayer();
+        if (GameState.isInJail(cur.id)) {
+            const result = await JailModal.show(cur);
+            if (result.action === 'pay') {
+                // Pay $50 fine and exit jail
+                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
+                if (GameState.isBankrupt(cur.id)) {
+                    advanceTurnSkippingBankrupt();
+                    return;
+                }
+                GameState.releaseFromJail(cur.id);
+                // Fall through to normal roll
+            } else if (result.action === 'cant_pay') {
+                // Forced bankruptcy
+                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
+                advanceTurnSkippingBankrupt();
+                return;
+            }
+            // For 'roll' just continue to dice roll. After roll, we'll check
+            // if it was doubles in the result handler.
+        }
+
         diceResultEl.classList.remove('visible');
         swipeHintEl.classList.add('hidden');
         rollBtn.classList.add('rolling');
@@ -342,6 +412,17 @@
 
         const { a, b } = fakeServerRoll();
         await dice.rollTo(a, b, throwParams);
+    }
+
+    function advanceTurnSkippingBankrupt() {
+        let next = Players.advanceTurn();
+        let safety = 0;
+        while (GameState.isBankrupt(next.id) && safety++ < 4) {
+            next = Players.advanceTurn();
+        }
+        refreshTurnIndicator();
+        rollBtn.classList.remove('rolling');
+        rollBtn.disabled = false;
     }
 
     rollBtn.addEventListener('click', () => doRoll());

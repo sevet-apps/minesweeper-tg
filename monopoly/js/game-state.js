@@ -36,6 +36,9 @@
                 ownedTiles: new Set(),
                 mortgaged: new Set(),
                 bankrupt: false,
+                inJail: false,
+                jailTurns: 0,  // how many turns spent in jail this stint
+                houses: {},    // tileIdx -> number of houses (0-5, 5 = hotel)
             };
         }
         for (const t of TILES) {
@@ -100,7 +103,11 @@
      * Railroad: 25 / 50 / 100 / 200 based on # railroads owned.
      * Utility:  4× or 10× last dice roll based on # utilities owned.
      */
-    function calcRent(tileIdx, lastDiceSum = 0) {
+    /**
+     * Calculate rent owed for landing on tileIdx.
+     * Will be overridden later in this module to account for houses.
+     */
+    let calcRent = function(tileIdx, lastDiceSum = 0) {
         const tile = TILES[tileIdx];
         const data = PROPERTY_DATA[tileIdx];
         const owner = getOwner(tileIdx);
@@ -109,7 +116,6 @@
 
         if (tile.type === 'property') {
             const baseRent = data.rent[0];
-            // Doubled if owner has all tiles in the color group, no houses yet
             const groupTiles = TILES.filter(t =>
                 t.type === 'property' && t.group === tile.group);
             const allOwned = groupTiles.every(t => getOwner(t.i) === owner);
@@ -130,7 +136,7 @@
         }
 
         return 0;
-    }
+    };
 
     function payRent(payerId, tileIdx, lastDiceSum) {
         const owner = getOwner(tileIdx);
@@ -196,13 +202,143 @@
         emit('tileBought', { playerId, tileIdx, price: 0 });
     }
 
+    // ---------- Jail ----------
+    function isInJail(playerId)   { return playerEcon[playerId]?.inJail === true; }
+    function getJailTurns(playerId) { return playerEcon[playerId]?.jailTurns ?? 0; }
+
+    function sendToJail(playerId) {
+        if (!playerEcon[playerId]) return;
+        playerEcon[playerId].inJail = true;
+        playerEcon[playerId].jailTurns = 0;
+        emit('jailEntered', { playerId });
+    }
+
+    function releaseFromJail(playerId) {
+        if (!playerEcon[playerId]) return;
+        playerEcon[playerId].inJail = false;
+        playerEcon[playerId].jailTurns = 0;
+        emit('jailReleased', { playerId });
+    }
+
+    function incrementJailTurns(playerId) {
+        if (!playerEcon[playerId]) return 0;
+        playerEcon[playerId].jailTurns++;
+        return playerEcon[playerId].jailTurns;
+    }
+
+    // ---------- Houses & hotels ----------
+    function getHouses(tileIdx) {
+        const owner = getOwner(tileIdx);
+        if (!owner) return 0;
+        return playerEcon[owner].houses[tileIdx] ?? 0;
+    }
+
+    /**
+     * Whether player can build a house on this tile.
+     * Requires: owns the tile, owns the full color group, group is unmortgaged,
+     * current count < 5 (max hotel), and building parity (even distribution).
+     */
+    function canBuildHouse(playerId, tileIdx) {
+        const tile = TILES[tileIdx];
+        if (tile.type !== 'property') return false;
+        if (getOwner(tileIdx) !== playerId) return false;
+
+        // Must own all tiles of the group
+        const groupTiles = TILES.filter(t => t.type === 'property' && t.group === tile.group);
+        if (!groupTiles.every(t => getOwner(t.i) === playerId)) return false;
+        // No tile in group can be mortgaged
+        if (groupTiles.some(t => isMortgaged(t.i))) return false;
+
+        const curHouses = getHouses(tileIdx);
+        if (curHouses >= 5) return false; // already hotel
+
+        // Building parity: this tile must have <= min count in group
+        const minInGroup = Math.min(...groupTiles.map(t => getHouses(t.i)));
+        if (curHouses > minInGroup) return false;
+
+        const cost = PROPERTY_DATA[tileIdx].houseCost;
+        if (!canAfford(playerId, cost)) return false;
+        return true;
+    }
+
+    function buildHouse(playerId, tileIdx) {
+        if (!canBuildHouse(playerId, tileIdx)) return false;
+        const cost = PROPERTY_DATA[tileIdx].houseCost;
+        changeMoney(playerId, -cost, `Дом ${tileIdx}`);
+        playerEcon[playerId].houses[tileIdx] = (playerEcon[playerId].houses[tileIdx] ?? 0) + 1;
+        emit('houseBuilt', { playerId, tileIdx, count: playerEcon[playerId].houses[tileIdx] });
+        return true;
+    }
+
+    function canSellHouse(playerId, tileIdx) {
+        const tile = TILES[tileIdx];
+        if (tile.type !== 'property') return false;
+        if (getOwner(tileIdx) !== playerId) return false;
+        const curHouses = getHouses(tileIdx);
+        if (curHouses === 0) return false;
+
+        // Reverse parity
+        const groupTiles = TILES.filter(t => t.type === 'property' && t.group === tile.group);
+        const maxInGroup = Math.max(...groupTiles.map(t => getHouses(t.i)));
+        if (curHouses < maxInGroup) return false;
+        return true;
+    }
+
+    function sellHouse(playerId, tileIdx) {
+        if (!canSellHouse(playerId, tileIdx)) return false;
+        const halfPrice = Math.floor(PROPERTY_DATA[tileIdx].houseCost / 2);
+        changeMoney(playerId, halfPrice, `Продан дом ${tileIdx}`);
+        playerEcon[playerId].houses[tileIdx]--;
+        emit('houseSold', { playerId, tileIdx, count: playerEcon[playerId].houses[tileIdx] });
+        return true;
+    }
+
+    // Update calcRent to account for houses
+    calcRent = function(tileIdx, lastDiceSum = 0) {
+        const tile = TILES[tileIdx];
+        const data = PROPERTY_DATA[tileIdx];
+        const owner = getOwner(tileIdx);
+        if (!owner || !data) return 0;
+        if (isMortgaged(tileIdx)) return 0;
+
+        if (tile.type === 'property') {
+            const houses = getHouses(tileIdx);
+            if (houses > 0) {
+                return data.rent[houses] ?? data.rent[data.rent.length - 1];
+            }
+            // No houses: base rent, doubled if owner has all group
+            const groupTiles = TILES.filter(t =>
+                t.type === 'property' && t.group === tile.group);
+            const allOwned = groupTiles.every(t => getOwner(t.i) === owner);
+            return allOwned ? data.rent[0] * 2 : data.rent[0];
+        }
+
+        if (tile.type === 'railroad') {
+            const ownedRails = TILES.filter(t =>
+                t.type === 'railroad' && getOwner(t.i) === owner).length;
+            return data.rent[ownedRails - 1] ?? 0;
+        }
+
+        if (tile.type === 'utility') {
+            const ownedUtils = TILES.filter(t =>
+                t.type === 'utility' && getOwner(t.i) === owner).length;
+            const multiplier = ownedUtils === 1 ? 4 : 10;
+            return lastDiceSum * multiplier;
+        }
+        return 0;
+    };
+
     global.GameState = {
         init,
         on,
         getMoney, changeMoney, canAfford,
         getOwner, isOwned, isPurchasable, getOwnedTiles, isMortgaged,
-        buyTile, calcRent, payRent, payTax, awardGoBonus,
+        buyTile, calcRent: (...args) => calcRent(...args), payRent, payTax, awardGoBonus,
         isBankrupt, declareBankrupt,
         _assignOwnership,
+        // jail
+        isInJail, getJailTurns, sendToJail, releaseFromJail, incrementJailTurns,
+        // houses
+        getHouses, canBuildHouse, buildHouse, canSellHouse, sellHouse,
     };
 })(window);
