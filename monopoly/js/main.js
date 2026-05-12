@@ -30,6 +30,7 @@
     BankruptcyModal.init();
     JailModal.init();
     BuildModal.init();
+    SellAssetsModal.init();
     MoneyToast.init();
     Cards.init();
 
@@ -66,12 +67,44 @@
             if (tileEl) {
                 tileEl.classList.remove('tile-owned');
                 tileEl.style.removeProperty('--owner-color');
+                renderHouseMarkers(idx, 0);
             }
         }
 
-        // Mark HUD card
         const hudCard = document.querySelector(`.hud-player[data-player-id="${playerId}"]`);
         if (hudCard) hudCard.classList.add('hud-player-bankrupt');
+    });
+
+    // ---- Render house/hotel markers on tile ----
+    function renderHouseMarkers(tileIdx, count) {
+        const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
+        if (!tileEl) return;
+        let layer = tileEl.querySelector('.house-marker-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.className = 'house-marker-layer';
+            tileEl.appendChild(layer);
+        }
+        layer.innerHTML = '';
+        if (count === 0) return;
+        if (count === 5) {
+            const hotel = document.createElement('div');
+            hotel.className = 'house-marker house-marker-hotel';
+            layer.appendChild(hotel);
+        } else {
+            for (let i = 0; i < count; i++) {
+                const h = document.createElement('div');
+                h.className = 'house-marker';
+                layer.appendChild(h);
+            }
+        }
+    }
+
+    GameState.on('houseBuilt', ({ tileIdx, count }) => {
+        renderHouseMarkers(tileIdx, count);
+    });
+    GameState.on('houseSold', ({ tileIdx, count }) => {
+        renderHouseMarkers(tileIdx, count);
     });
 
     // Re-layout tokens on resize
@@ -120,16 +153,54 @@
             if (creditorId) GameState.changeMoney(creditorId, amount, 'Получено');
             return true;
         }
-        // Bankrupt
+
+        // Not enough cash. Check if player can sell assets to cover.
+        const totalCash    = GameState.getMoney(playerId);
+        const sellableValue = calculateSellableValue(playerId);
+        const totalAssets  = totalCash + sellableValue;
+
+        if (totalAssets < amount) {
+            // Truly bankrupt
+            const player   = Players.PLAYERS.find(p => p.id === playerId);
+            const creditor = creditorId ? Players.PLAYERS.find(p => p.id === creditorId) : null;
+            await BankruptcyModal.show({
+                player,
+                owedTo: creditor,
+                owedAmount: amount,
+                reason: 'Все имущества возвращены в банк. Игрок выбывает.',
+            });
+            const remaining = GameState.getMoney(playerId);
+            if (creditorId && remaining > 0) {
+                GameState.changeMoney(playerId, -remaining, 'Передано кредитору');
+                GameState.changeMoney(creditorId, remaining, 'От банкрота');
+            }
+            GameState.declareBankrupt(playerId, creditorId);
+            return false;
+        }
+
+        // Player has enough total assets - let them sell to cover
+        await SellAssetsModal.show({
+            playerId,
+            amountOwed: amount,
+            reason,
+        });
+
+        // After sell-assets modal closes, recheck
+        if (GameState.canAfford(playerId, amount)) {
+            GameState.changeMoney(playerId, -amount, reason);
+            if (creditorId) GameState.changeMoney(creditorId, amount, 'Получено');
+            return true;
+        }
+
+        // User didn't sell enough → still bankrupt
         const player = Players.PLAYERS.find(p => p.id === playerId);
         const creditor = creditorId ? Players.PLAYERS.find(p => p.id === creditorId) : null;
         await BankruptcyModal.show({
             player,
             owedTo: creditor,
             owedAmount: amount,
-            reason: 'Все имущества возвращены в банк. Игрок выбывает.',
+            reason: 'Не удалось собрать нужную сумму. Игрок выбывает.',
         });
-        // Give remaining balance to creditor (classic rule) then mark bankrupt
         const remaining = GameState.getMoney(playerId);
         if (creditorId && remaining > 0) {
             GameState.changeMoney(playerId, -remaining, 'Передано кредитору');
@@ -137,6 +208,21 @@
         }
         GameState.declareBankrupt(playerId, creditorId);
         return false;
+    }
+
+    function calculateSellableValue(playerId) {
+        // Sum of (half house cost × current houses) across all owned properties
+        const owned = GameState.getOwnedTiles(playerId);
+        let total = 0;
+        for (const idx of owned) {
+            const data = window.MonopolyData.PROPERTY_DATA[idx];
+            if (!data) continue;
+            const houses = GameState.getHouses(idx);
+            if (houses > 0 && data.houseCost) {
+                total += Math.floor(data.houseCost / 2) * houses;
+            }
+        }
+        return total;
     }
 
     // ---- Card draw + apply ----
@@ -426,6 +512,41 @@
     }
 
     rollBtn.addEventListener('click', () => doRoll());
+
+    // Dock action buttons: open current player's profile / placeholder for future
+    const dockMyCardsBtn = document.getElementById('dockMyCardsBtn');
+    const dockTradeBtn   = document.getElementById('dockTradeBtn');
+    const dockMortgageBtn = document.getElementById('dockMortgageBtn');
+    const dockMenuBtn    = document.getElementById('dockMenuBtn');
+
+    if (dockMyCardsBtn) dockMyCardsBtn.addEventListener('click', () => {
+        const cur = Players.getCurrentPlayer();
+        PlayerHUD.openPanel(cur.id);
+    });
+
+    // Placeholders for future phases
+    if (dockTradeBtn) dockTradeBtn.addEventListener('click', () => {
+        showComingSoon('Обмен между игроками появится в следующем обновлении');
+    });
+    if (dockMortgageBtn) dockMortgageBtn.addEventListener('click', () => {
+        showComingSoon('Залог карточек появится в следующем обновлении');
+    });
+    if (dockMenuBtn) dockMenuBtn.addEventListener('click', () => {
+        showComingSoon('Меню игры появится в следующем обновлении');
+    });
+
+    function showComingSoon(text) {
+        // Lightweight toast for placeholder buttons
+        const el = document.createElement('div');
+        el.className = 'coming-soon-toast';
+        el.textContent = text;
+        document.body.appendChild(el);
+        setTimeout(() => el.classList.add('visible'), 10);
+        setTimeout(() => {
+            el.classList.remove('visible');
+            setTimeout(() => el.remove(), 300);
+        }, 2200);
+    }
 
     // ---- Swipe gesture ----
     (function installSwipe() {

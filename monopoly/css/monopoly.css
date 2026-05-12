@@ -719,39 +719,86 @@ html, body {
     50%      { transform: translateY(-4px); }
 }
 
-.roll-btn {
-    position: relative;
+.action-dock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     width: 100%;
-    max-width: 380px;
+    max-width: 440px;
+    padding: 8px 10px;
+    background: rgba(28, 28, 30, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dock-btn {
+    flex: 1;
+    min-width: 0;
     height: 56px;
     border: none;
-    border-radius: 18px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px 2px;
+    border-radius: 14px;
+    font-family: inherit;
+    transition: transform 0.15s, background 0.2s;
+}
+
+.dock-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.05); }
+
+.dock-btn svg { flex-shrink: 0; opacity: 0.9; }
+
+.dock-btn-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1;
+}
+
+/* Central round dice button */
+.dice-btn {
+    position: relative;
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    border: none;
+    border-radius: 50%;
     background: linear-gradient(135deg, #0a84ff 0%, #5ac8fa 100%);
     color: #ffffff;
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: 0.01em;
     cursor: pointer;
     overflow: hidden;
     box-shadow:
-        0 8px 24px rgba(10, 132, 255, 0.45),
+        0 8px 24px rgba(10, 132, 255, 0.55),
         inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
                 box-shadow 0.25s ease;
+    padding: 0;
 }
 
-.roll-btn:active {
-    transform: scale(0.97);
+.dice-btn:active:not(:disabled) {
+    transform: scale(0.93);
     box-shadow:
-        0 4px 14px rgba(10, 132, 255, 0.45),
+        0 4px 12px rgba(10, 132, 255, 0.55),
         inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.roll-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.dice-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-.roll-btn-label { position: relative; z-index: 2; }
-
-.roll-btn-shine {
+.dice-btn-shine {
     position: absolute;
     top: 0;
     left: -100%;
@@ -762,7 +809,7 @@ html, body {
     pointer-events: none;
 }
 
-.roll-btn:not(:disabled):hover .roll-btn-shine {
+.dice-btn:not(:disabled):hover .dice-btn-shine {
     animation: rollShine 1.2s ease-in-out;
 }
 
@@ -771,20 +818,18 @@ html, body {
     100% { left: 120%; }
 }
 
-.roll-btn.rolling { pointer-events: none; opacity: 0.7; }
-
-.roll-btn.rolling .roll-btn-label::after {
-    content: "...";
-    display: inline-block;
-    width: 1ch;
-    animation: rollDots 1s steps(4, end) infinite;
-    overflow: hidden;
-    vertical-align: bottom;
+.dice-btn.rolling {
+    pointer-events: none;
+    opacity: 0.7;
 }
 
-@keyframes rollDots {
-    0%   { clip-path: inset(0 100% 0 0); }
-    100% { clip-path: inset(0 0 0 0); }
+.dice-btn.rolling svg {
+    animation: diceSpin 1s linear infinite;
+}
+
+@keyframes diceSpin {
+    0%   { transform: rotate(0); }
+    100% { transform: rotate(360deg); }
 }
 
 /* ============================================================
@@ -2060,19 +2105,29 @@ html, body {
 }
 
 .build-btn {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    max-width: 36px;
+    max-height: 36px;
     aspect-ratio: 1/1;
+    flex-shrink: 0;
+    flex-grow: 0;
     border-radius: 50%;
     border: none;
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
-    font-size: 18px;
-    font-weight: 800;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
+    text-align: center;
+    font-family: inherit;
 }
 
 .build-btn:disabled {
@@ -2113,4 +2168,67 @@ html, body {
 .panel-tile-houses {
     font-size: 11px;
     margin-right: 4px;
+}
+
+/* ============================================================
+   House / hotel markers on board tiles
+   ============================================================ */
+
+.house-marker-layer {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    z-index: 6;
+    pointer-events: none;
+    height: 12px;
+}
+
+/* On left/right side tiles, markers should be horizontal too but sit
+   on the inner edge (right edge for left col, left edge for right col) */
+.tile-side-left .house-marker-layer {
+    top: 50%;
+    left: auto;
+    right: 2px;
+    transform: translateY(-50%);
+    flex-direction: column;
+}
+.tile-side-right .house-marker-layer {
+    top: 50%;
+    left: 2px;
+    right: auto;
+    transform: translateY(-50%);
+    flex-direction: column;
+}
+.tile-side-top .house-marker-layer {
+    top: auto;
+    bottom: 2px;
+}
+
+.house-marker {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a7df0, #0a4cb3);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.house-marker-hotel {
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(135deg, #ff2a2a, #b30b0b);
+}
+
+/* On non-property owned tiles, also tint border slightly */
+.tile-property.tile-owned {
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--owner-color) 16%, #ffffff) 28%,
+            color-mix(in srgb, var(--owner-color) 6%, #ffffff)  100%);
 }

@@ -123,11 +123,15 @@
             id: 'b6', title: 'День рождения!',
             description: 'Каждый игрок дарит вам $10.',
             async effect(ctx) {
+                let total = 0;
                 for (const p of ctx.players) {
                     if (p.id !== ctx.playerId && !GameState.isBankrupt(p.id)) {
                         GameState.changeMoney(p.id, -10, 'ДР');
-                        GameState.changeMoney(ctx.playerId, 10, 'ДР');
+                        total += 10;
                     }
+                }
+                if (total > 0) {
+                    GameState.changeMoney(ctx.playerId, total, 'Подарки на ДР');
                 }
             }
         },

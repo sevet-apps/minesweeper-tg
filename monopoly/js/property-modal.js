@@ -271,16 +271,48 @@
 
         contentEl.innerHTML = html;
 
-        // Wire close button
         const closeBtn = document.getElementById('propModalCloseBtn');
         if (closeBtn) closeBtn.addEventListener('click', close);
+
+        // If this is a property the current player owns and they own the
+        // full group, offer a "Построить" button that opens BuildModal.
+        maybeShowBuildButton(tile);
 
         modalEl.classList.add('visible');
         backdropEl.classList.add('visible');
         modalEl.setAttribute('aria-hidden', 'false');
 
-        // Haptic
         try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+    }
+
+    function maybeShowBuildButton(tile) {
+        if (tile.type !== 'property') return;
+        const curPlayer = window.Players?.getCurrentPlayer?.();
+        if (!curPlayer) return;
+        const ownerId = window.GameState?.getOwner?.(tile.i);
+        if (ownerId !== curPlayer.id) return;
+
+        // Check full group ownership
+        const groupTiles = window.MonopolyData.TILES.filter(t =>
+            t.type === 'property' && t.group === tile.group);
+        const ownsAll = groupTiles.every(t => GameState.getOwner(t.i) === curPlayer.id);
+        if (!ownsAll) return;
+
+        // Insert button at the bottom of the modal body
+        const body = contentEl.querySelector('.prop-modal-body');
+        if (!body) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'prop-modal-build-btn';
+        btn.textContent = '🏗 Построить дом / отель';
+        btn.addEventListener('click', () => {
+            close();
+            // Open BuildModal for this group
+            setTimeout(() => {
+                if (window.BuildModal) BuildModal.show(curPlayer.id, tile.group);
+            }, 250); // slight delay so close animation plays
+        });
+        body.appendChild(btn);
     }
 
     global.PropertyModal = { init, open, close };

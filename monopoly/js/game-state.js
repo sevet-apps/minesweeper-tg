@@ -37,12 +37,22 @@
                 mortgaged: new Set(),
                 bankrupt: false,
                 inJail: false,
-                jailTurns: 0,  // how many turns spent in jail this stint
-                houses: {},    // tileIdx -> number of houses (0-5, 5 = hotel)
+                jailTurns: 0,
+                houses: {},
+                builtThisTurn: 0,  // # of houses built in current turn
             };
         }
         for (const t of TILES) {
             tileEcon[t.i] = { ownedBy: null };
+        }
+    }
+
+    /**
+     * Reset per-turn counters. Called when a turn ends.
+     */
+    function resetTurnCounters(playerId) {
+        if (playerEcon[playerId]) {
+            playerEcon[playerId].builtThisTurn = 0;
         }
     }
 
@@ -243,16 +253,16 @@
         if (tile.type !== 'property') return false;
         if (getOwner(tileIdx) !== playerId) return false;
 
-        // Must own all tiles of the group
+        // Only one house per turn
+        if ((playerEcon[playerId].builtThisTurn ?? 0) >= 1) return false;
+
         const groupTiles = TILES.filter(t => t.type === 'property' && t.group === tile.group);
         if (!groupTiles.every(t => getOwner(t.i) === playerId)) return false;
-        // No tile in group can be mortgaged
         if (groupTiles.some(t => isMortgaged(t.i))) return false;
 
         const curHouses = getHouses(tileIdx);
-        if (curHouses >= 5) return false; // already hotel
+        if (curHouses >= 5) return false;
 
-        // Building parity: this tile must have <= min count in group
         const minInGroup = Math.min(...groupTiles.map(t => getHouses(t.i)));
         if (curHouses > minInGroup) return false;
 
@@ -266,6 +276,7 @@
         const cost = PROPERTY_DATA[tileIdx].houseCost;
         changeMoney(playerId, -cost, `Дом ${tileIdx}`);
         playerEcon[playerId].houses[tileIdx] = (playerEcon[playerId].houses[tileIdx] ?? 0) + 1;
+        playerEcon[playerId].builtThisTurn = (playerEcon[playerId].builtThisTurn ?? 0) + 1;
         emit('houseBuilt', { playerId, tileIdx, count: playerEcon[playerId].houses[tileIdx] });
         return true;
     }
@@ -340,5 +351,6 @@
         isInJail, getJailTurns, sendToJail, releaseFromJail, incrementJailTurns,
         // houses
         getHouses, canBuildHouse, buildHouse, canSellHouse, sellHouse,
+        resetTurnCounters,
     };
 })(window);

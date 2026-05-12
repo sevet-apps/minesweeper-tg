@@ -219,6 +219,11 @@
     function getCurrentPlayer() { return PLAYERS[currentTurnIndex]; }
 
     function advanceTurn() {
+        // Reset per-turn building counters for the OUTGOING player
+        const outgoing = PLAYERS[currentTurnIndex];
+        if (outgoing && window.GameState?.resetTurnCounters) {
+            window.GameState.resetTurnCounters(outgoing.id);
+        }
         currentTurnIndex = (currentTurnIndex + 1) % PLAYERS.length;
         return getCurrentPlayer();
     }
@@ -236,20 +241,29 @@
 
         const fromIdx = STATE[playerId].position;
 
-        // Determine if we cross GO going forward
-        const crossesGo = awardGo && targetIdx < fromIdx;
+        // Determine if movement is forward and crosses GO.
+        // Forward distance (clockwise): how many steps forward to reach target.
+        // Backward distance: how many steps backward.
+        // We move in the SHORTER direction (visually shortest).
+        const forwardDist  = (targetIdx - fromIdx + 40) % 40;
+        const backwardDist = (fromIdx - targetIdx + 40) % 40;
+        const movingForward = forwardDist <= backwardDist;
 
-        // Update logical position immediately
+        // GO is only awarded if:
+        //  - the caller requested it (awardGo=true),
+        //  - we're moving forward,
+        //  - the forward path actually crosses tile 0 (i.e. wraps around).
+        const crossesGoForward = movingForward && fromIdx + forwardDist >= 40;
+        const crossesGo = awardGo && crossesGoForward;
+
         STATE[playerId].position = targetIdx;
         if (crossesGo) {
             STATE[playerId].lap++;
             if (passedGoCallback) passedGoCallback(playerId);
         }
 
-        // Recompute layout on origin tile (other tokens slide back together)
         recomputeTileLayout(fromIdx);
 
-        // Get target pixel position
         const center = tileCenterPx(targetIdx);
         if (!center) return;
 
@@ -260,20 +274,16 @@
         const targetX = center.x + dx;
         const targetY = center.y + dy;
 
-        // Apply flight animation
         tokenEl.classList.add('flying');
-        // Custom easing: ease-out cubic - fast start, slow end (deceleration on landing)
         tokenEl.style.transition = 'transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1)';
         tokenEl.style.transform =
             `translate(-50%, -50%) translate(${targetX}px, ${targetY}px)`;
 
-        // Wait for flight to complete
         await new Promise(r => setTimeout(r, 720));
 
         tokenEl.classList.remove('flying');
         tokenEl.style.transition = '';
 
-        // Settle bounce
         recomputeTileLayout(targetIdx);
         tokenEl.classList.add('landed');
         await new Promise(r => setTimeout(r, 350));

@@ -77,10 +77,53 @@
             </svg>
             <span>Свайп вверх для броска</span>
         </div>
-        <button class="roll-btn" id="rollBtn">
-            <span class="roll-btn-label">Бросить кубики</span>
-            <span class="roll-btn-shine"></span>
-        </button>
+
+        <div class="action-dock">
+            <!-- Left action buttons -->
+            <button class="dock-btn" id="dockMyCardsBtn" title="Мои карточки">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="6" width="14" height="14" rx="2"/>
+                    <path d="M7 2h14v14"/>
+                </svg>
+                <span class="dock-btn-label">Карточки</span>
+            </button>
+
+            <button class="dock-btn" id="dockTradeBtn" title="Обмен">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 7h14l-3-3M21 7l-3 3M17 17H3l3 3M3 17l3-3"/>
+                </svg>
+                <span class="dock-btn-label">Обмен</span>
+            </button>
+
+            <!-- Central dice button -->
+            <button class="dice-btn" id="rollBtn" aria-label="Бросить кубики">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <circle cx="8" cy="8" r="1.5"/>
+                    <circle cx="16" cy="8" r="1.5"/>
+                    <circle cx="12" cy="12" r="1.5"/>
+                    <circle cx="8" cy="16" r="1.5"/>
+                    <circle cx="16" cy="16" r="1.5"/>
+                </svg>
+                <span class="dice-btn-shine"></span>
+            </button>
+
+            <button class="dock-btn" id="dockMortgageBtn" title="Залог">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="6" width="18" height="13" rx="2"/>
+                    <path d="M3 10h18M8 15h3"/>
+                </svg>
+                <span class="dock-btn-label">Залог</span>
+            </button>
+
+            <button class="dock-btn" id="dockMenuBtn" title="Меню">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 8v4l3 2"/>
+                </svg>
+                <span class="dock-btn-label">Меню</span>
+            </button>
+        </div>
     </div>
 
     <!-- Scripts -->
@@ -97,6 +140,7 @@
     <script src="js/bankruptcy-modal.js"></script>
     <script src="js/jail-modal.js"></script>
     <script src="js/build-modal.js"></script>
+    <script src="js/sell-assets-modal.js"></script>
     <script src="js/player-hud.js"></script>
     <script src="js/scene/SceneManager.js"></script>
     <script src="js/scene/Dice.js"></script>
