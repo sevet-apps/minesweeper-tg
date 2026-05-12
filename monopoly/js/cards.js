@@ -53,9 +53,8 @@
             id: 'c8', title: 'Назад на 3 клетки',
             description: 'Передумали? Возвращайтесь.',
             async effect(ctx) {
-                const pos = Players.getPlayerState(ctx.playerId).position;
-                const newPos = (pos - 3 + 40) % 40;
-                await ctx.movePlayerTo(newPos, /*awardGo*/ false);
+                // Walk backwards 3 tiles (not a flight). No GO award.
+                await Players.moveSteps(ctx.playerId, -3, null);
             }
         },
         {

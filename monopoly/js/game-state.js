@@ -39,7 +39,7 @@
                 inJail: false,
                 jailTurns: 0,
                 houses: {},
-                builtThisTurn: 0,  // # of houses built in current turn
+                builtGroupsThisTurn: new Set(),  // groups built this turn
             };
         }
         for (const t of TILES) {
@@ -47,12 +47,9 @@
         }
     }
 
-    /**
-     * Reset per-turn counters. Called when a turn ends.
-     */
     function resetTurnCounters(playerId) {
         if (playerEcon[playerId]) {
-            playerEcon[playerId].builtThisTurn = 0;
+            playerEcon[playerId].builtGroupsThisTurn = new Set();
         }
     }
 
@@ -212,6 +209,35 @@
         emit('tileBought', { playerId, tileIdx, price: 0 });
     }
 
+    /**
+     * Internal: transfer tile ownership between two players (used by Trade).
+     * Mortgage state and house count travel with the tile.
+     */
+    function _transferTile(fromId, toId, tileIdx) {
+        if (!playerEcon[fromId] || !playerEcon[toId]) return;
+        if (tileEcon[tileIdx].ownedBy !== fromId) return;
+
+        playerEcon[fromId].ownedTiles.delete(tileIdx);
+        playerEcon[toId].ownedTiles.add(tileIdx);
+        tileEcon[tileIdx].ownedBy = toId;
+
+        // Move mortgage state
+        if (playerEcon[fromId].mortgaged.has(tileIdx)) {
+            playerEcon[fromId].mortgaged.delete(tileIdx);
+            playerEcon[toId].mortgaged.add(tileIdx);
+        }
+
+        // Move house count
+        const houses = playerEcon[fromId].houses[tileIdx];
+        if (houses) {
+            delete playerEcon[fromId].houses[tileIdx];
+            playerEcon[toId].houses[tileIdx] = houses;
+        }
+
+        // Re-emit tileBought so HUD/tile-tint refresh
+        emit('tileBought', { playerId: toId, tileIdx, price: 0 });
+    }
+
     // ---------- Jail ----------
     function isInJail(playerId)   { return playerEcon[playerId]?.inJail === true; }
     function getJailTurns(playerId) { return playerEcon[playerId]?.jailTurns ?? 0; }
@@ -253,8 +279,9 @@
         if (tile.type !== 'property') return false;
         if (getOwner(tileIdx) !== playerId) return false;
 
-        // Only one house per turn
-        if ((playerEcon[playerId].builtThisTurn ?? 0) >= 1) return false;
+        // Only one house per turn PER GROUP (different groups OK)
+        const built = playerEcon[playerId].builtGroupsThisTurn;
+        if (built && built.has(tile.group)) return false;
 
         const groupTiles = TILES.filter(t => t.type === 'property' && t.group === tile.group);
         if (!groupTiles.every(t => getOwner(t.i) === playerId)) return false;
@@ -273,10 +300,11 @@
 
     function buildHouse(playerId, tileIdx) {
         if (!canBuildHouse(playerId, tileIdx)) return false;
+        const tile = TILES[tileIdx];
         const cost = PROPERTY_DATA[tileIdx].houseCost;
         changeMoney(playerId, -cost, `Дом ${tileIdx}`);
         playerEcon[playerId].houses[tileIdx] = (playerEcon[playerId].houses[tileIdx] ?? 0) + 1;
-        playerEcon[playerId].builtThisTurn = (playerEcon[playerId].builtThisTurn ?? 0) + 1;
+        playerEcon[playerId].builtGroupsThisTurn.add(tile.group);
         emit('houseBuilt', { playerId, tileIdx, count: playerEcon[playerId].houses[tileIdx] });
         return true;
     }
@@ -301,6 +329,58 @@
         changeMoney(playerId, halfPrice, `Продан дом ${tileIdx}`);
         playerEcon[playerId].houses[tileIdx]--;
         emit('houseSold', { playerId, tileIdx, count: playerEcon[playerId].houses[tileIdx] });
+        return true;
+    }
+
+    // ---------- Mortgage ----------
+    function canMortgage(playerId, tileIdx) {
+        const tile = TILES[tileIdx];
+        const data = PROPERTY_DATA[tileIdx];
+        if (!data) return false;
+        if (getOwner(tileIdx) !== playerId) return false;
+        if (isMortgaged(tileIdx)) return false;
+
+        // For properties: no houses on any tile in the group
+        if (tile.type === 'property') {
+            const groupTiles = TILES.filter(t =>
+                t.type === 'property' && t.group === tile.group);
+            const anyHouses = groupTiles.some(t => getHouses(t.i) > 0);
+            if (anyHouses) return false;
+        }
+        return true;
+    }
+
+    function mortgage(playerId, tileIdx) {
+        if (!canMortgage(playerId, tileIdx)) return false;
+        const data = PROPERTY_DATA[tileIdx];
+        playerEcon[playerId].mortgaged.add(tileIdx);
+        changeMoney(playerId, data.mortgage, `Залог #${tileIdx}`);
+        emit('tileMortgaged', { playerId, tileIdx, amount: data.mortgage });
+        return true;
+    }
+
+    function canUnmortgage(playerId, tileIdx) {
+        const data = PROPERTY_DATA[tileIdx];
+        if (!data) return false;
+        if (getOwner(tileIdx) !== playerId) return false;
+        if (!isMortgaged(tileIdx)) return false;
+        const cost = unmortgageCost(tileIdx);
+        return canAfford(playerId, cost);
+    }
+
+    function unmortgageCost(tileIdx) {
+        const data = PROPERTY_DATA[tileIdx];
+        if (!data) return 0;
+        // mortgage + 10% interest
+        return Math.ceil(data.mortgage * 1.1);
+    }
+
+    function unmortgage(playerId, tileIdx) {
+        if (!canUnmortgage(playerId, tileIdx)) return false;
+        const cost = unmortgageCost(tileIdx);
+        playerEcon[playerId].mortgaged.delete(tileIdx);
+        changeMoney(playerId, -cost, `Выкуп #${tileIdx}`);
+        emit('tileUnmortgaged', { playerId, tileIdx, cost });
         return true;
     }
 
@@ -347,10 +427,13 @@
         buyTile, calcRent: (...args) => calcRent(...args), payRent, payTax, awardGoBonus,
         isBankrupt, declareBankrupt,
         _assignOwnership,
+        _transferTile,
         // jail
         isInJail, getJailTurns, sendToJail, releaseFromJail, incrementJailTurns,
         // houses
         getHouses, canBuildHouse, buildHouse, canSellHouse, sellHouse,
         resetTurnCounters,
+        // mortgage
+        canMortgage, mortgage, canUnmortgage, unmortgage, unmortgageCost,
     };
 })(window);

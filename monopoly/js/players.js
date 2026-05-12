@@ -235,51 +235,76 @@
      *
      * If awardGo is true, awards $200 if the trip crosses GO going forward.
      */
+    /**
+     * Fly a player to a target tile by moving CLOCKWISE around the board
+     * (always forward direction). Path is built from each intermediate
+     * tile center so motion follows the board edge, not a diagonal.
+     *
+     * Awards GO ($200) automatically if the path crosses tile 0 and awardGo=true.
+     * The whole flight is fast — total duration scales with distance but never
+     * step-by-step like normal walking.
+     */
     async function flyTo(playerId, targetIdx, awardGo, passedGoCallback) {
         const tokenEl = document.getElementById(`token-${playerId}`);
         if (!tokenEl) return;
 
         const fromIdx = STATE[playerId].position;
+        const forwardDist = (targetIdx - fromIdx + 40) % 40;
+        if (forwardDist === 0) return;
 
-        // Determine if movement is forward and crosses GO.
-        // Forward distance (clockwise): how many steps forward to reach target.
-        // Backward distance: how many steps backward.
-        // We move in the SHORTER direction (visually shortest).
-        const forwardDist  = (targetIdx - fromIdx + 40) % 40;
-        const backwardDist = (fromIdx - targetIdx + 40) % 40;
-        const movingForward = forwardDist <= backwardDist;
+        // Build clockwise path of tile indices (excluding start, including target)
+        const path = [];
+        for (let s = 1; s <= forwardDist; s++) {
+            path.push((fromIdx + s) % 40);
+        }
 
-        // GO is only awarded if:
-        //  - the caller requested it (awardGo=true),
-        //  - we're moving forward,
-        //  - the forward path actually crosses tile 0 (i.e. wraps around).
-        const crossesGoForward = movingForward && fromIdx + forwardDist >= 40;
-        const crossesGo = awardGo && crossesGoForward;
-
-        STATE[playerId].position = targetIdx;
+        // Award GO if path passes through tile 0
+        const crossesGo = awardGo && path.includes(0);
         if (crossesGo) {
             STATE[playerId].lap++;
             if (passedGoCallback) passedGoCallback(playerId);
         }
 
+        // Visually lift token and clear from origin layout
+        STATE[playerId].position = targetIdx; // logical update
         recomputeTileLayout(fromIdx);
-
-        const center = tileCenterPx(targetIdx);
-        if (!center) return;
-
-        const sharers = PLAYERS.filter(p => STATE[p.id].position === targetIdx);
-        const slotIdx = sharers.findIndex(p => p.id === playerId);
-        const tokenSize = tokenEl.offsetWidth || 24;
-        const { dx, dy } = tokenOffsetForSlot(slotIdx, sharers.length, center.w, center.h, tokenSize);
-        const targetX = center.x + dx;
-        const targetY = center.y + dy;
-
         tokenEl.classList.add('flying');
-        tokenEl.style.transition = 'transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1)';
-        tokenEl.style.transform =
-            `translate(-50%, -50%) translate(${targetX}px, ${targetY}px)`;
 
-        await new Promise(r => setTimeout(r, 720));
+        // Total flight time scales with distance: ~50ms per tile, min 500, max 1400
+        const totalMs = Math.max(500, Math.min(1400, forwardDist * 55));
+        const perStepMs = totalMs / path.length;
+
+        // Move through each waypoint
+        const tokenSize = tokenEl.offsetWidth || 24;
+        for (let i = 0; i < path.length; i++) {
+            const idx = path[i];
+            const center = tileCenterPx(idx);
+            if (!center) continue;
+
+            // For intermediate steps, center on tile (no slot offset).
+            // For the final step, compute proper slot offset based on sharers.
+            let dx = 0, dy = 0;
+            if (i === path.length - 1) {
+                const sharers = PLAYERS.filter(p => STATE[p.id].position === targetIdx);
+                const slotIdx = sharers.findIndex(p => p.id === playerId);
+                const offs = tokenOffsetForSlot(slotIdx, sharers.length, center.w, center.h, tokenSize);
+                dx = offs.dx;
+                dy = offs.dy;
+            }
+
+            const targetX = center.x + dx;
+            const targetY = center.y + dy;
+
+            // Last step uses ease-out for landing deceleration; others are linear
+            const easing = (i === path.length - 1)
+                ? 'cubic-bezier(0.22, 0.61, 0.36, 1)'
+                : 'linear';
+            tokenEl.style.transition = `transform ${perStepMs}ms ${easing}`;
+            tokenEl.style.transform =
+                `translate(-50%, -50%) translate(${targetX}px, ${targetY}px)`;
+
+            await new Promise(r => setTimeout(r, perStepMs));
+        }
 
         tokenEl.classList.remove('flying');
         tokenEl.style.transition = '';

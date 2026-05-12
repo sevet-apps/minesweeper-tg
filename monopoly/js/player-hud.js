@@ -208,7 +208,7 @@
                     </div>
                     ${isComplete ? `
                         <button class="panel-build-btn" data-group="${group}">
-                            🏗 Строить дома
+                            Строить дома
                         </button>
                     ` : ''}
                 </div>

@@ -31,6 +31,9 @@
     JailModal.init();
     BuildModal.init();
     SellAssetsModal.init();
+    MortgageModal.init();
+    TradeModal.init();
+    GameOverModal.init();
     MoneyToast.init();
     Cards.init();
 
@@ -73,6 +76,15 @@
 
         const hudCard = document.querySelector(`.hud-player[data-player-id="${playerId}"]`);
         if (hudCard) hudCard.classList.add('hud-player-bankrupt');
+
+        // Check for game over: only one non-bankrupt left
+        const survivors = Players.PLAYERS.filter(p => !GameState.isBankrupt(p.id));
+        if (survivors.length === 1) {
+            // Slight delay so the bankrupt animation has time to play
+            setTimeout(() => {
+                GameOverModal.show(survivors[0]);
+            }, 1000);
+        }
     });
 
     // ---- Render house/hotel markers on tile ----
@@ -105,6 +117,15 @@
     });
     GameState.on('houseSold', ({ tileIdx, count }) => {
         renderHouseMarkers(tileIdx, count);
+    });
+
+    GameState.on('tileMortgaged', ({ tileIdx }) => {
+        const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
+        if (tileEl) tileEl.classList.add('tile-mortgaged');
+    });
+    GameState.on('tileUnmortgaged', ({ tileIdx }) => {
+        const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
+        if (tileEl) tileEl.classList.remove('tile-mortgaged');
     });
 
     // Re-layout tokens on resize
@@ -526,10 +547,12 @@
 
     // Placeholders for future phases
     if (dockTradeBtn) dockTradeBtn.addEventListener('click', () => {
-        showComingSoon('Обмен между игроками появится в следующем обновлении');
+        const cur = Players.getCurrentPlayer();
+        TradeModal.show(cur.id);
     });
     if (dockMortgageBtn) dockMortgageBtn.addEventListener('click', () => {
-        showComingSoon('Залог карточек появится в следующем обновлении');
+        const cur = Players.getCurrentPlayer();
+        MortgageModal.show(cur.id);
     });
     if (dockMenuBtn) dockMenuBtn.addEventListener('click', () => {
         showComingSoon('Меню игры появится в следующем обновлении');

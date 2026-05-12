@@ -97,16 +97,52 @@
         const fullName = FULL_NAMES[tile.i] || tile.name;
         const bandColor = GROUP_COLORS[tile.group] || '#888';
 
-        // Rent table — base / 1h / 2h / 3h / 4h / hotel
+        // Determine current effective rent row to highlight
+        const houses = window.GameState?.getHouses?.(tile.i) ?? 0;
+        const ownerId = window.GameState?.getOwner?.(tile.i);
+        let activeRentIdx = -1; // -1 if unowned
+        let monopolyBonus = false;
+
+        if (ownerId) {
+            if (houses > 0) {
+                activeRentIdx = houses; // 1=1 house, 2=2 houses, ..., 5=hotel
+            } else {
+                // No houses: base rent (idx 0), doubled if monopoly
+                activeRentIdx = 0;
+                const groupTiles = window.MonopolyData.TILES.filter(t =>
+                    t.type === 'property' && t.group === tile.group);
+                monopolyBonus = groupTiles.every(t => GameState.getOwner(t.i) === ownerId);
+            }
+        }
+
+        const labels = ['Базовая аренда', '1 дом', '2 дома', '3 дома', '4 дома', 'Отель'];
         const rentRows = data.rent.map((r, idx) => {
-            const labels = ['Базовая аренда', '1 дом', '2 дома', '3 дома', '4 дома', 'Отель'];
+            const isActive = idx === activeRentIdx;
+            const displayRent = (isActive && monopolyBonus && idx === 0) ? r * 2 : r;
             return `
-                <div class="prop-price-row">
-                    <span class="prop-price-label">${labels[idx]}</span>
-                    <span class="prop-price-value">$${r}</span>
+                <div class="prop-price-row ${isActive ? 'prop-price-row-active' : ''}">
+                    <span class="prop-price-label">
+                        ${labels[idx]}
+                        ${isActive && monopolyBonus && idx === 0
+                            ? '<span class="prop-rent-bonus">×2 монополия</span>' : ''}
+                    </span>
+                    <span class="prop-price-value">$${displayRent}</span>
                 </div>
             `;
         }).join('');
+
+        // Rent banner: what someone landing here would owe
+        let rentBanner = '';
+        if (activeRentIdx >= 0) {
+            const baseRent = data.rent[activeRentIdx];
+            const finalRent = (monopolyBonus && activeRentIdx === 0) ? baseRent * 2 : baseRent;
+            rentBanner = `
+                <div class="prop-rent-banner">
+                    <div class="prop-rent-banner-label">При остановке здесь</div>
+                    <div class="prop-rent-banner-value">$${finalRent}</div>
+                </div>
+            `;
+        }
 
         return `
             <div class="prop-modal-band" style="--prop-band: ${bandColor};">
@@ -118,6 +154,8 @@
                 <div class="prop-modal-type">${TYPE_LABELS[tile.type]}</div>
 
                 ${ownerHtml(tile.i)}
+
+                ${rentBanner}
 
                 <div class="prop-modal-prices">
                     <div class="prop-price-row">
@@ -147,12 +185,28 @@
     function renderRailroad(tile, data) {
         const fullName = FULL_NAMES[tile.i] || tile.name;
         const labels = ['1 ж/д', '2 ж/д', '3 ж/д', 'Все 4'];
+
+        // Active row = number of railroads owner has (-1 if unowned)
+        const ownerId = window.GameState?.getOwner?.(tile.i);
+        let activeIdx = -1;
+        if (ownerId) {
+            activeIdx = window.MonopolyData.TILES.filter(t =>
+                t.type === 'railroad' && GameState.getOwner(t.i) === ownerId).length - 1;
+        }
+
         const rentRows = data.rent.map((r, idx) => `
-            <div class="prop-price-row">
+            <div class="prop-price-row ${idx === activeIdx ? 'prop-price-row-active' : ''}">
                 <span class="prop-price-label">${labels[idx]}</span>
                 <span class="prop-price-value">$${r}</span>
             </div>
         `).join('');
+
+        const rentBanner = activeIdx >= 0 ? `
+            <div class="prop-rent-banner">
+                <div class="prop-rent-banner-label">При остановке здесь</div>
+                <div class="prop-rent-banner-value">$${data.rent[activeIdx]}</div>
+            </div>
+        ` : '';
 
         return `
             <div class="prop-modal-band" style="--prop-band: #2a2a32;">
@@ -164,6 +218,8 @@
                 <div class="prop-modal-type">${TYPE_LABELS.railroad}</div>
 
                 ${ownerHtml(tile.i)}
+
+                ${rentBanner}
 
                 <div class="prop-modal-prices">
                     <div class="prop-price-row">
@@ -304,7 +360,7 @@
 
         const btn = document.createElement('button');
         btn.className = 'prop-modal-build-btn';
-        btn.textContent = '🏗 Построить дом / отель';
+        btn.textContent = 'Построить дом / отель';
         btn.addEventListener('click', () => {
             close();
             // Open BuildModal for this group
