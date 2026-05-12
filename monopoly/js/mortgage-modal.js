@@ -122,7 +122,7 @@
                     <div class="mortgage-eyebrow">ЗАЛОГ И ВЫКУП</div>
                     <div class="mortgage-title">${player.name}</div>
                 </div>
-                <button class="panel-close" id="mortgageCloseBtn">×</button>
+                <button class="panel-close" id="mortgageCloseBtn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
 
             <div class="mortgage-balance">

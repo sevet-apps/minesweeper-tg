@@ -120,7 +120,7 @@
                     <div class="build-eyebrow">СТРОИТЕЛЬСТВО</div>
                     <div class="build-title">${GROUP_LABELS[currentGroup]}</div>
                 </div>
-                <button class="panel-close" id="buildCloseBtn">×</button>
+                <button class="panel-close" id="buildCloseBtn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
 
             <div class="build-info-row">

@@ -153,7 +153,7 @@
                         <div class="panel-name">${p.name}</div>
                         <div class="panel-bankrupt-label">БАНКРОТ</div>
                     </div>
-                    <button class="panel-close" id="hudPanelCloseBtn">×</button>
+                    <button class="panel-close" id="hudPanelCloseBtn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
                 </div>
 
                 <div class="panel-bankrupt-message">
@@ -248,7 +248,7 @@
                     <div class="panel-name">${p.name}</div>
                     <div class="panel-money">$${GameState.getMoney(playerId)}</div>
                 </div>
-                <button class="panel-close" id="hudPanelCloseBtn">×</button>
+                <button class="panel-close" id="hudPanelCloseBtn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
 
             <div class="panel-stats">

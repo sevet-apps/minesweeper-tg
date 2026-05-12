@@ -147,7 +147,7 @@
         return `
             <div class="prop-modal-band" style="--prop-band: ${bandColor};">
                 <div class="prop-modal-num">#${tile.i}</div>
-                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close">×</button>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
             <div class="prop-modal-body">
                 <div class="prop-modal-name">${fullName}</div>
@@ -211,7 +211,7 @@
         return `
             <div class="prop-modal-band" style="--prop-band: #2a2a32;">
                 <div class="prop-modal-num">#${tile.i}</div>
-                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close">×</button>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
             <div class="prop-modal-body">
                 <div class="prop-modal-name">${fullName}</div>
@@ -245,7 +245,7 @@
         return `
             <div class="prop-modal-band" style="--prop-band: #b8b8c4;">
                 <div class="prop-modal-num">#${tile.i}</div>
-                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close">×</button>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
             <div class="prop-modal-body">
                 <div class="prop-modal-name">${fullName}</div>
@@ -297,7 +297,7 @@
         return `
             <div class="prop-modal-band" style="--prop-band: #1a1d28;">
                 ${showNum ? `<div class="prop-modal-num">#${tile.i}</div>` : ''}
-                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close">×</button>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
             <div class="prop-modal-body">
                 <div class="prop-modal-name">${tile.name}${tile.subname ? ' ' + tile.subname : ''}</div>

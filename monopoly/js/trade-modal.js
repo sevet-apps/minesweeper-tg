@@ -113,7 +113,7 @@
                     <div class="trade-eyebrow">ОБМЕН</div>
                     <div class="trade-title">${me.name}, выберите партнёра</div>
                 </div>
-                <button class="panel-close" id="tradeCloseBtn">×</button>
+                <button class="panel-close" id="tradeCloseBtn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
 
             <div class="trade-partners">
@@ -198,7 +198,7 @@
                     <div class="trade-eyebrow">ОБМЕН</div>
                     <div class="trade-title">${me.name} ⇄ ${partner.name}</div>
                 </div>
-                <button class="panel-close" id="tradeCloseBtn">×</button>
+                <button class="panel-close" id="tradeCloseBtn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
             </div>
 
             <div class="trade-two-cols">
@@ -305,8 +305,11 @@
 
     // ---- Send offer to partner for acceptance ----
     async function sendOffer() {
-        const me = Players.PLAYERS.find(p => p.id === initiatorId);
-        const partner = Players.PLAYERS.find(p => p.id === partnerId);
+        // Snapshot all trade params BEFORE close() resets them
+        const fromId = initiatorId;
+        const toId = partnerId;
+        const me = Players.PLAYERS.find(p => p.id === fromId);
+        const partner = Players.PLAYERS.find(p => p.id === toId);
         const give = Array.from(giveTiles);
         const get  = Array.from(getTiles);
         const cash = cashOffer;
@@ -317,8 +320,8 @@
         const accepted = await showAcceptModal(me, partner, give, get, cash);
         if (!accepted) return;
 
-        // Execute trade
-        executeTrade(initiatorId, partnerId, give, get, cash);
+        // Execute trade using snapshot, not live state
+        executeTrade(fromId, toId, give, get, cash);
 
         try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success'); } catch (_) {}
     }
@@ -326,8 +329,8 @@
     function showAcceptModal(initiator, partner, give, get, cash) {
         return new Promise((resolve) => {
             const wrap = document.createElement('div');
+            // Note: NO backdrop here - we want to keep the board visible
             wrap.innerHTML = `
-                <div class="modal-backdrop visible" id="tradeAcceptBackdrop"></div>
                 <div class="trade-accept-modal visible" id="tradeAcceptModal">
                     <div class="trade-accept-content">
                         <div class="trade-accept-eyebrow">ПРЕДЛОЖЕНИЕ ОБМЕНА</div>
@@ -348,6 +351,13 @@
                             </div>
                         </div>
 
+                        <button class="trade-accept-show-btn" id="tradeShowBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            </svg>
+                            Показать карточки на поле
+                        </button>
+
                         <div class="trade-accept-buttons">
                             <button class="action-btn action-btn-secondary" id="tradeRejectBtn">Отклонить</button>
                             <button class="action-btn action-btn-primary" id="tradeAcceptBtn">Принять</button>
@@ -359,8 +369,31 @@
                 document.body.appendChild(wrap.firstElementChild);
             }
 
+            // Highlight tiles on board with colored outlines
+            const allTiles = [...give, ...get];
+            function highlightTiles(on) {
+                for (const idx of give) {
+                    const el = document.querySelector(`.tile[data-idx="${idx}"]`);
+                    if (el) el.classList.toggle('tile-trade-give', on);
+                }
+                for (const idx of get) {
+                    const el = document.querySelector(`.tile[data-idx="${idx}"]`);
+                    if (el) el.classList.toggle('tile-trade-get', on);
+                }
+            }
+
+            let isHighlighted = false;
+            const showBtn = document.getElementById('tradeShowBtn');
+            const modalDiv = document.getElementById('tradeAcceptModal');
+            showBtn.addEventListener('click', () => {
+                isHighlighted = !isHighlighted;
+                highlightTiles(isHighlighted);
+                showBtn.classList.toggle('is-active', isHighlighted);
+                modalDiv.classList.toggle('is-minimized', isHighlighted);
+            });
+
             function cleanup(result) {
-                document.getElementById('tradeAcceptBackdrop')?.remove();
+                highlightTiles(false);
                 document.getElementById('tradeAcceptModal')?.remove();
                 resolve(result);
             }

@@ -236,13 +236,12 @@
      * If awardGo is true, awards $200 if the trip crosses GO going forward.
      */
     /**
-     * Fly a player to a target tile by moving CLOCKWISE around the board
-     * (always forward direction). Path is built from each intermediate
-     * tile center so motion follows the board edge, not a diagonal.
+     * Fly a player to a target tile by moving CLOCKWISE around the board.
+     * Unlike step-by-step movement, this is an actual flight: the token
+     * lifts up (scales up), traverses corner waypoints in the air, then
+     * descends to the destination.
      *
      * Awards GO ($200) automatically if the path crosses tile 0 and awardGo=true.
-     * The whole flight is fast — total duration scales with distance but never
-     * step-by-step like normal walking.
      */
     async function flyTo(playerId, targetIdx, awardGo, passedGoCallback) {
         const tokenEl = document.getElementById(`token-${playerId}`);
@@ -252,39 +251,57 @@
         const forwardDist = (targetIdx - fromIdx + 40) % 40;
         if (forwardDist === 0) return;
 
-        // Build clockwise path of tile indices (excluding start, including target)
-        const path = [];
-        for (let s = 1; s <= forwardDist; s++) {
-            path.push((fromIdx + s) % 40);
-        }
-
-        // Award GO if path passes through tile 0
-        const crossesGo = awardGo && path.includes(0);
+        // Determine if we cross GO (tile 0)
+        const crossesGo = awardGo && (fromIdx + forwardDist >= 40);
         if (crossesGo) {
             STATE[playerId].lap++;
             if (passedGoCallback) passedGoCallback(playerId);
         }
 
-        // Visually lift token and clear from origin layout
-        STATE[playerId].position = targetIdx; // logical update
+        // Build waypoint list: corners (0/10/20/30) that lie strictly between
+        // fromIdx and targetIdx on the clockwise path. The token will fly to
+        // each in turn, then descend on the final waypoint (the target).
+        const corners = [0, 10, 20, 30];
+        const waypoints = [];
+        for (let s = 1; s < forwardDist; s++) {
+            const idx = (fromIdx + s) % 40;
+            if (corners.includes(idx)) waypoints.push(idx);
+        }
+        waypoints.push(targetIdx);
+
+        // Logical position update happens up front (so other moves see it)
+        STATE[playerId].position = targetIdx;
         recomputeTileLayout(fromIdx);
-        tokenEl.classList.add('flying');
 
-        // Total flight time scales with distance: ~50ms per tile, min 500, max 1400
-        const totalMs = Math.max(500, Math.min(1400, forwardDist * 55));
-        const perStepMs = totalMs / path.length;
-
-        // Move through each waypoint
         const tokenSize = tokenEl.offsetWidth || 24;
-        for (let i = 0; i < path.length; i++) {
-            const idx = path[i];
+
+        // Begin flight: lift the token (scale up + class for shadow)
+        tokenEl.classList.add('flying');
+        tokenEl.style.zIndex = 60;
+
+        // First leg: rise quickly to "flight altitude" while moving toward
+        // first waypoint. Use a single transform with scale baked in.
+        const firstWaypoint = waypoints[0];
+        const fromCenter = tileCenterPx(fromIdx);
+        if (!fromCenter) return;
+
+        // Total flight duration scales with distance, but each leg is a
+        // smooth bezier — no per-tile steps.
+        const totalMs = Math.max(800, Math.min(2200, forwardDist * 50));
+        const perLegMs = totalMs / waypoints.length;
+
+        for (let i = 0; i < waypoints.length; i++) {
+            const idx = waypoints[i];
             const center = tileCenterPx(idx);
             if (!center) continue;
 
-            // For intermediate steps, center on tile (no slot offset).
-            // For the final step, compute proper slot offset based on sharers.
+            const isLast = i === waypoints.length - 1;
+
+            // On the last leg, center on slot. Intermediate: just tile center
+            // with a slight inward offset so the token isn't on the edge of
+            // the board.
             let dx = 0, dy = 0;
-            if (i === path.length - 1) {
+            if (isLast) {
                 const sharers = PLAYERS.filter(p => STATE[p.id].position === targetIdx);
                 const slotIdx = sharers.findIndex(p => p.id === playerId);
                 const offs = tokenOffsetForSlot(slotIdx, sharers.length, center.w, center.h, tokenSize);
@@ -295,19 +312,25 @@
             const targetX = center.x + dx;
             const targetY = center.y + dy;
 
-            // Last step uses ease-out for landing deceleration; others are linear
-            const easing = (i === path.length - 1)
-                ? 'cubic-bezier(0.22, 0.61, 0.36, 1)'
-                : 'linear';
-            tokenEl.style.transition = `transform ${perStepMs}ms ${easing}`;
-            tokenEl.style.transform =
-                `translate(-50%, -50%) translate(${targetX}px, ${targetY}px)`;
+            // Mid-flight scale = 1.6 (large, "up high"); landing scale = 1.0
+            const scale = isLast ? 1.0 : 1.6;
 
-            await new Promise(r => setTimeout(r, perStepMs));
+            // Easing: first leg slow start, intermediates smooth, last decelerates
+            let easing;
+            if (i === 0)         easing = 'cubic-bezier(0.45, 0, 0.55, 1)';
+            else if (isLast)     easing = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+            else                 easing = 'cubic-bezier(0.4, 0, 0.4, 1)';
+
+            tokenEl.style.transition = `transform ${perLegMs}ms ${easing}`;
+            tokenEl.style.transform =
+                `translate(-50%, -50%) translate(${targetX}px, ${targetY}px) scale(${scale})`;
+
+            await new Promise(r => setTimeout(r, perLegMs));
         }
 
         tokenEl.classList.remove('flying');
         tokenEl.style.transition = '';
+        tokenEl.style.zIndex = '';
 
         recomputeTileLayout(targetIdx);
         tokenEl.classList.add('landed');

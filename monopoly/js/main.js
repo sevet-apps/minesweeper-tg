@@ -34,6 +34,8 @@
     MortgageModal.init();
     TradeModal.init();
     GameOverModal.init();
+    NoticeModal.init();
+    MenuModal.init();
     MoneyToast.init();
     Cards.init();
 
@@ -451,8 +453,15 @@
         } else {
             consecutiveDoubles++;
             if (consecutiveDoubles >= 3) {
-                // Three doubles in a row → straight to jail
+                // Three doubles in a row → notice, then jail
                 consecutiveDoubles = 0;
+                await NoticeModal.show({
+                    icon: '🚓',
+                    title: `${player.name} едет в тюрьму!`,
+                    body: 'Три дубля подряд — полиция уже здесь. Ход переходит к следующему игроку.',
+                    btnText: 'В тюрьму',
+                    accent: 'orange',
+                });
                 await Players.movePlayerTo(player.id, 10, /*awardGo*/ false);
                 GameState.sendToJail(player.id);
                 let next = Players.advanceTurn();
@@ -555,7 +564,7 @@
         MortgageModal.show(cur.id);
     });
     if (dockMenuBtn) dockMenuBtn.addEventListener('click', () => {
-        showComingSoon('Меню игры появится в следующем обновлении');
+        MenuModal.show();
     });
 
     function showComingSoon(text) {
