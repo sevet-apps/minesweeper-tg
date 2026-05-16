@@ -2209,8 +2209,8 @@
     <div id="view-games" class="screen active"> 
         <div class="header"> <div class="app-title" data-i18n="games">Игры</div> </div> 
         
-        <!-- Single banner (carousel auto-disables when only 1 slide) -->
-        <div class="banner-carousel" id="bannerCarousel">
+        <!-- Single banner (hidden by default; JS shows it only when an active BB tournament + feature is enabled) -->
+        <div class="banner-carousel" id="bannerCarousel" style="display: none;">
             <div class="banner-track" id="bannerTrack">
                 <div class="banner-slide-wrap" onclick="openBannerLink('https://t.me/spark_game_news/4')">
                     <img class="banner-slide" src="Banner_IPhone_17.png" alt="Tournament">
@@ -3773,17 +3773,28 @@
                 }
             }
 
-            // Single tournament banner — hide if no active BB tournament OR feature disabled
-            document.querySelectorAll('.banner-slide-wrap').forEach(wrap => {
+            // Decide visibility for each banner slide
+            const slideWraps = document.querySelectorAll('.banner-slide-wrap');
+            let anyVisible = false;
+            slideWraps.forEach(wrap => {
                 const img = wrap.querySelector('img.banner-slide');
                 if (!img) return;
                 const src = img.getAttribute('src') || '';
+                let visible = false;
                 if (src.includes('Banner_IPhone_17') || src.includes('tournament-banner')) {
-                    wrap.style.display = (BB_TOURNAMENT_ENABLED && state.bb) ? '' : 'none';
+                    visible = !!(BB_TOURNAMENT_ENABLED && state.bb);
                 } else if (src.includes('referral-banner')) {
-                    wrap.style.display = state.referral ? '' : 'none';
+                    visible = !!state.referral;
+                } else {
+                    visible = true; // unknown banner — keep visible
                 }
+                wrap.style.display = visible ? '' : 'none';
+                if (visible) anyVisible = true;
             });
+            // Show the carousel container itself only if at least one slide is visible.
+            // This prevents the brief flash of the empty banner on initial load.
+            const carousel = document.getElementById('bannerCarousel');
+            if (carousel) carousel.style.display = anyVisible ? '' : 'none';
         }
 
         updateTournamentTimers();
