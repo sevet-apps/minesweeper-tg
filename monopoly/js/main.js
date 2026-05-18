@@ -540,6 +540,8 @@
         rollBtn.classList.remove('rolling');
         rollBtn.disabled = false;
     }
+    // Expose so other modules (menu/surrender) can advance turn
+    window.advanceTurnSkippingBankrupt = advanceTurnSkippingBankrupt;
 
     rollBtn.addEventListener('click', () => doRoll());
 

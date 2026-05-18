@@ -329,7 +329,6 @@
     function showAcceptModal(initiator, partner, give, get, cash) {
         return new Promise((resolve) => {
             const wrap = document.createElement('div');
-            // Note: NO backdrop here - we want to keep the board visible
             wrap.innerHTML = `
                 <div class="trade-accept-modal visible" id="tradeAcceptModal">
                     <div class="trade-accept-content">
@@ -364,13 +363,38 @@
                         </div>
                     </div>
                 </div>
+
+                <button class="trade-show-toggle" id="tradeShowToggleBtn">
+                    Показать предложение
+                </button>
+
+                <div class="trade-arrows-layer" id="tradeArrowsLayer"></div>
             `;
             while (wrap.firstElementChild) {
                 document.body.appendChild(wrap.firstElementChild);
             }
 
-            // Highlight tiles on board with colored outlines
-            const allTiles = [...give, ...get];
+            const modalDiv = document.getElementById('tradeAcceptModal');
+            const toggleBtn = document.getElementById('tradeShowToggleBtn');
+            const arrowsLayer = document.getElementById('tradeArrowsLayer');
+
+            // Toggle: modal visible <-> arrows + floating toggle button visible
+            let arrowsVisible = false;
+            function setMode(showArrows) {
+                arrowsVisible = showArrows;
+                if (showArrows) {
+                    modalDiv.classList.add('is-hidden');
+                    toggleBtn.classList.add('visible');
+                    drawArrows();
+                    highlightTiles(true);
+                } else {
+                    modalDiv.classList.remove('is-hidden');
+                    toggleBtn.classList.remove('visible');
+                    clearArrows();
+                    highlightTiles(false);
+                }
+            }
+
             function highlightTiles(on) {
                 for (const idx of give) {
                     const el = document.querySelector(`.tile[data-idx="${idx}"]`);
@@ -382,19 +406,71 @@
                 }
             }
 
-            let isHighlighted = false;
+            function drawArrows() {
+                const board = document.getElementById('board');
+                if (!board) return;
+                const boardRect = board.getBoundingClientRect();
+                // Center of the board
+                const cx = boardRect.left + boardRect.width / 2;
+                const cy = boardRect.top + boardRect.height / 2;
+
+                const allTargets = [
+                    ...give.map(idx => ({ idx, color: '#5ac8fa', kind: 'give' })),
+                    ...get .map(idx => ({ idx, color: '#ffd700', kind: 'get'  })),
+                ];
+
+                arrowsLayer.innerHTML = `
+                    <svg class="trade-arrows-svg" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="ah-blue" viewBox="0 0 10 10" refX="9" refY="5"
+                                markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 Z" fill="#5ac8fa"/>
+                            </marker>
+                            <marker id="ah-gold" viewBox="0 0 10 10" refX="9" refY="5"
+                                markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 Z" fill="#ffd700"/>
+                            </marker>
+                        </defs>
+                        ${allTargets.map(t => {
+                            const tileEl = document.querySelector(`.tile[data-idx="${t.idx}"]`);
+                            if (!tileEl) return '';
+                            const r = tileEl.getBoundingClientRect();
+                            const tx = r.left + r.width / 2;
+                            const ty = r.top + r.height / 2;
+                            // Pull arrow tip back slightly so the head sits ON the tile border
+                            const dx = tx - cx;
+                            const dy = ty - cy;
+                            const len = Math.sqrt(dx*dx + dy*dy);
+                            const pullback = Math.min(r.width, r.height) * 0.35;
+                            const ex = tx - (dx / len) * pullback;
+                            const ey = ty - (dy / len) * pullback;
+                            return `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}"
+                                stroke="${t.color}" stroke-width="3" stroke-linecap="round"
+                                marker-end="url(#${t.kind === 'give' ? 'ah-blue' : 'ah-gold'})"
+                                class="trade-arrow-line"/>`;
+                        }).join('')}
+                    </svg>
+                `;
+            }
+
+            function clearArrows() {
+                arrowsLayer.innerHTML = '';
+            }
+
             const showBtn = document.getElementById('tradeShowBtn');
-            const modalDiv = document.getElementById('tradeAcceptModal');
-            showBtn.addEventListener('click', () => {
-                isHighlighted = !isHighlighted;
-                highlightTiles(isHighlighted);
-                showBtn.classList.toggle('is-active', isHighlighted);
-                modalDiv.classList.toggle('is-minimized', isHighlighted);
-            });
+            showBtn.addEventListener('click', () => setMode(true));
+            toggleBtn.addEventListener('click', () => setMode(false));
+
+            // Redraw arrows on window resize if currently visible
+            const onResize = () => { if (arrowsVisible) drawArrows(); };
+            window.addEventListener('resize', onResize);
 
             function cleanup(result) {
                 highlightTiles(false);
+                window.removeEventListener('resize', onResize);
                 document.getElementById('tradeAcceptModal')?.remove();
+                document.getElementById('tradeShowToggleBtn')?.remove();
+                document.getElementById('tradeArrowsLayer')?.remove();
                 resolve(result);
             }
             document.getElementById('tradeAcceptBtn').addEventListener('click', () => cleanup(true));

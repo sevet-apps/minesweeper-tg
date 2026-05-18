@@ -258,22 +258,29 @@
             title: `${cur.name}, сдаться?`,
             body: 'Все ваши карточки и деньги передадутся банку. Вернуться в игру будет нельзя.',
             btnText: 'Подтвердить',
+            cancelText: 'Отменить',
             accent: 'orange',
         });
-        // NoticeModal has only one button - assume confirmation if reached here
+        if (!confirmed) return;
         GameState.declareBankrupt(cur.id, null);
+        // Pass turn to the next non-bankrupt player
+        if (typeof window.advanceTurnSkippingBankrupt === 'function') {
+            window.advanceTurnSkippingBankrupt();
+        }
     }
 
     // ---- New game ----
     async function confirmNewGame() {
         close();
-        await NoticeModal.show({
+        const confirmed = await NoticeModal.show({
             icon: '🔄',
             title: 'Начать новую игру?',
             body: 'Текущая партия будет сброшена.',
             btnText: 'Начать заново',
+            cancelText: 'Отменить',
             accent: 'red',
         });
+        if (!confirmed) return;
         window.location.reload();
     }
 
