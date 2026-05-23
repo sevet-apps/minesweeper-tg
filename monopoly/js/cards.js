@@ -25,7 +25,7 @@
             async effect(ctx) { GameState.changeMoney(ctx.playerId, 50, 'Дивиденд'); }
         },
         {
-            id: 'c3', title: 'Штраф ГАИ',
+            id: 'c3', title: 'Штраф от полиции',
             description: 'Превысили скорость в жилой зоне. $15 в казну.',
             async effect(ctx) { GameState.changeMoney(ctx.playerId, -15, 'Штраф'); }
         },

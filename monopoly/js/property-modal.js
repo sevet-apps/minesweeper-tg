@@ -360,7 +360,14 @@
 
         const btn = document.createElement('button');
         btn.className = 'prop-modal-build-btn';
-        btn.textContent = 'Построить дом / отель';
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"/>
+                <path d="M5 21V10l7-5 7 5v11"/>
+                <path d="M10 21v-5h4v5"/>
+            </svg>
+            <span>Построить дом / отель</span>
+        `;
         btn.addEventListener('click', () => {
             close();
             // Open BuildModal for this group

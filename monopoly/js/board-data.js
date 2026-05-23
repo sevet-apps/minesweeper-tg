@@ -11,7 +11,7 @@
     // 40 tiles in classic order, starting from GO going clockwise around
     // the board. Index 0 is bottom-right corner (GO when board is upright).
     const TILES = [
-        { i: 0,  type: 'corner',   name: 'GO',           subname: 'СТАРТ' },
+        { i: 0,  type: 'corner',   name: 'GO',           subname: 'Start' },
         { i: 1,  type: 'property', name: 'Mediterranean',group: 'brown',     price: 60 },
         { i: 2,  type: 'chest',    name: 'Community',    subname: 'Chest' },
         { i: 3,  type: 'property', name: 'Baltic',       group: 'brown',     price: 60 },

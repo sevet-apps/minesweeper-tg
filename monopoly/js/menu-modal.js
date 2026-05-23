@@ -141,7 +141,7 @@
     function renderRules() {
         contentEl.innerHTML = `
             <div class="menu-header">
-                <button class="menu-back" id="menuBackBtn">‹ Назад</button>
+                <button class="menu-back" id="menuBackBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>Назад</span></button>
                 <div class="menu-title">Правила</div>
                 <button class="panel-close" id="menuCloseBtn">
                     <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -220,7 +220,7 @@
 
         contentEl.innerHTML = `
             <div class="menu-header">
-                <button class="menu-back" id="menuBackBtn">‹ Назад</button>
+                <button class="menu-back" id="menuBackBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>Назад</span></button>
                 <div class="menu-title">Статистика</div>
                 <button class="panel-close" id="menuCloseBtn">
                     <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
