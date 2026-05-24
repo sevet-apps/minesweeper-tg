@@ -22,7 +22,7 @@
         }
     }
 
-    // ---- Bootstrap ----
+    // ---- Bootstrap modals (safe to do up front) ----
     PropertyModal.init();
     ActionModal.init();
     CardModal.init();
@@ -43,11 +43,20 @@
 
     const boardEl = document.getElementById('board');
 
-    Players.init(boardEl);
-    GameState.init(Players.PLAYERS);
-    PlayerHUD.init(Players.PLAYERS);
+    // Show setup screen first; start the game once the player confirms.
+    SetupScreen.show((configs) => {
+        Players.configure(configs);
+        startGame();
+    });
 
-    // Wire money-change events to floating toasts
+    function startGame() {
+        Players.init(boardEl);
+        GameState.init(Players.PLAYERS);
+        PlayerHUD.init(Players.PLAYERS);
+        wireGame();
+    }
+
+    function wireGame() {
     GameState.on('moneyChange', ({ playerId, delta }) => {
         if (delta !== 0) MoneyToast.showOverPlayer(playerId, delta);
     });
@@ -632,4 +641,5 @@
     });
 
     console.log('[monopoly] Phase 3 ready: economy + actions + HUD.');
+    } // end wireGame
 })();

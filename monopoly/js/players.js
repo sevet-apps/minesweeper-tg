@@ -11,12 +11,37 @@
     // ---- Player roster ----
     // For local single-device testing all 4 are placeholder users.
     // In multiplayer (Phase 5) these come from the matchmaking server.
-    const PLAYERS = [
+    const ALL_PLAYERS = [
         { id: 'p1', name: 'Игрок 1', initial: 'И', color: '#0a84ff', money: 1500 },
         { id: 'p2', name: 'Игрок 2', initial: 'Y', color: '#ff2a2a', money: 1500 },
         { id: 'p3', name: 'Игрок 3', initial: 'M', color: '#29c463', money: 1500 },
         { id: 'p4', name: 'Игрок 4', initial: 'A', color: '#ffd60a', money: 1500 },
     ];
+
+    // Active player set — mutated by configure() before init().
+    const PLAYERS = ALL_PLAYERS.slice();
+
+    /**
+     * Configure the active players before the game starts.
+     * @param {Array<{name, color}>} configs - one entry per player (2-4)
+     */
+    function configure(configs) {
+        PLAYERS.length = 0;
+        configs.forEach((cfg, i) => {
+            const name = (cfg.name || `Игрок ${i + 1}`).trim() || `Игрок ${i + 1}`;
+            PLAYERS.push({
+                id: `p${i + 1}`,
+                name,
+                initial: name.charAt(0).toUpperCase(),
+                color: cfg.color,
+                money: 1500,
+            });
+        });
+        // Rebuild STATE for the new set
+        for (const k of Object.keys(STATE)) delete STATE[k];
+        for (const p of PLAYERS) STATE[p.id] = { position: 0, lap: 0 };
+        currentTurnIndex = 0;
+    }
 
     // Mutable runtime state (keyed by player id)
     const STATE = {};
@@ -351,6 +376,7 @@
 
     global.Players = {
         PLAYERS,
+        configure,
         init,
         moveSteps,
         movePlayerTo,

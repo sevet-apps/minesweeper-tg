@@ -354,27 +354,54 @@
         const ownsAll = groupTiles.every(t => GameState.getOwner(t.i) === curPlayer.id);
         if (!ownsAll) return;
 
-        // Insert button at the bottom of the modal body
         const body = contentEl.querySelector('.prop-modal-body');
         if (!body) return;
 
+        const houses = GameState.getHouses(tile.i);
+        const canBuild = GameState.canBuildHouse(curPlayer.id, tile.i);
+        // Label: building the 5th unit is a hotel, otherwise a house
+        const isNextHotel = houses === 4;
+        const label = isNextHotel ? 'Построить отель' : 'Построить дом';
+        const cost = window.MonopolyData.PROPERTY_DATA[tile.i].houseCost;
+
         const btn = document.createElement('button');
         btn.className = 'prop-modal-build-btn';
+        if (!canBuild) btn.classList.add('is-disabled');
+
+        // Determine a hint if can't build
+        let hint = '';
+        if (!canBuild) {
+            if (houses >= 5) {
+                hint = 'Уже построен отель';
+            } else if (!GameState.canAfford(curPlayer.id, cost)) {
+                hint = 'Недостаточно средств';
+            } else {
+                // Parity or per-turn-per-group limit
+                hint = 'Стройте равномерно (по одному на монополию за ход)';
+            }
+        }
+
         btn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 21h18"/>
                 <path d="M5 21V10l7-5 7 5v11"/>
                 <path d="M10 21v-5h4v5"/>
             </svg>
-            <span>Построить дом / отель</span>
+            <span>${canBuild ? `${label} · $${cost}` : hint}</span>
         `;
-        btn.addEventListener('click', () => {
-            close();
-            // Open BuildModal for this group
-            setTimeout(() => {
-                if (window.BuildModal) BuildModal.show(curPlayer.id, tile.group);
-            }, 250); // slight delay so close animation plays
-        });
+
+        if (canBuild) {
+            btn.addEventListener('click', () => {
+                const ok = GameState.buildHouse(curPlayer.id, tile.i);
+                if (ok) {
+                    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium'); } catch (_) {}
+                    // Re-render the modal so the rent highlight + button update
+                    open(tile);
+                }
+            });
+        } else {
+            btn.disabled = true;
+        }
         body.appendChild(btn);
     }
 

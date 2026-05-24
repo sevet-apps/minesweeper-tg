@@ -26,28 +26,12 @@
         const cx = r.left + r.width / 2;
         const cy = r.top  + r.height / 2;
 
-        // Decide horizontal anchoring: if the token is on the right half of
-        // the screen, anchor the toast to the right edge of the token so the
-        // wide "−$320" text grows leftward and stays on-screen. On the left
-        // half, anchor to the left edge. Otherwise center.
-        const screenW = window.innerWidth;
         const el = document.createElement('div');
         el.className = `money-toast ${amount >= 0 ? 'money-toast-gain' : 'money-toast-loss'}`;
         const sign = amount >= 0 ? '+' : '−';
         el.textContent = `${sign}$${Math.abs(amount)}`;
-
-        if (cx > screenW * 0.62) {
-            // Right side: pin right edge to token, grow left
-            el.style.left = `${cx}px`;
-            el.classList.add('money-toast-right');
-        } else if (cx < screenW * 0.38) {
-            // Left side: pin left edge to token, grow right
-            el.style.left = `${cx}px`;
-            el.classList.add('money-toast-left');
-        } else {
-            // Center
-            el.style.left = `${cx}px`;
-        }
+        // Always centered over the token; nowrap (in CSS) keeps the sign inline.
+        el.style.left = `${cx}px`;
         el.style.top = `${cy}px`;
         layerEl.appendChild(el);
 
