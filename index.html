@@ -7130,8 +7130,18 @@
         // ---- Local Monopoly (single device) ----
         function openMonopolyGame() {
             const frame = document.getElementById('monopolyFrame');
-            // Cache-bust so updates always load
-            frame.src = 'monopoly/index.html?v=' + Date.now();
+            // Compute the top inset taken up by Telegram's UI (time, Close, ...)
+            // so the game can pad its top bar out from under those buttons.
+            let safeTop = 100; // sensible default for iOS Telegram
+            try {
+                const tgw = window.Telegram?.WebApp;
+                const csa = tgw?.contentSafeAreaInset?.top;
+                const sa  = tgw?.safeAreaInset?.top;
+                const computed = (csa || 0) + (sa || 0);
+                if (computed > 0) safeTop = computed + 56; // + room for TG buttons row
+            } catch (_) {}
+            const bottom = 20;
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}`;
             document.getElementById('monopoly-game').classList.add('visible');
         }
 

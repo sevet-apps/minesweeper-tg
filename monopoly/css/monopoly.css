@@ -38,9 +38,14 @@ html, body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: calc(12px + var(--safe-top)) 16px 12px;
+    padding: calc(8px + var(--safe-top)) 16px 8px;
     background: linear-gradient(to bottom, #000 0%, transparent 100%);
+    pointer-events: none;
 }
+.top-bar > * { pointer-events: auto; }
+
+/* Telegram shows its own title bar in the app; hide our duplicate title */
+.top-title { display: none; }
 
 .back-btn {
     width: 40px;
@@ -956,7 +961,7 @@ html, body {
 
 .player-hud {
     position: fixed;
-    top: calc(58px + var(--safe-top));
+    top: calc(var(--safe-top) + 56px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 30;

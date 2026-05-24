@@ -18,6 +18,21 @@
         try { return window.self !== window.top; } catch (_) { return true; }
     })();
 
+    // The Spark app passes the real top/bottom insets (space taken by
+    // Telegram's UI buttons) as URL params. Apply them as CSS variables so
+    // the top bar / HUD clear the system buttons. env(safe-area-inset-*)
+    // returns 0 inside an iframe, so we rely on these instead.
+    (function applyInsetsFromUrl() {
+        try {
+            const p = new URLSearchParams(location.search);
+            const top = parseInt(p.get('safeTop'));
+            const bottom = parseInt(p.get('safeBottom'));
+            const root = document.documentElement;
+            if (!isNaN(top))    root.style.setProperty('--safe-top', top + 'px');
+            if (!isNaN(bottom)) root.style.setProperty('--safe-bottom', bottom + 'px');
+        } catch (_) {}
+    })();
+
     // Only init the Telegram WebApp directly when running standalone.
     // Inside the Spark app the parent already called ready()/expand().
     if (tg && !inIframe) {
