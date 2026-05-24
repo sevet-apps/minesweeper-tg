@@ -3677,3 +3677,22 @@ html, body {
 }
 
 .setup-start-btn:active { transform: scale(0.97); }
+
+/* Setup screen back-to-menu button */
+.setup-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: #0a84ff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px 4px 0;
+    font-family: inherit;
+    margin-bottom: 12px;
+    transition: opacity 0.15s;
+}
+.setup-back-btn:active { opacity: 0.5; }
+.setup-back-btn svg { flex-shrink: 0; }

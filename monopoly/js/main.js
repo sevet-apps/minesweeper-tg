@@ -12,7 +12,15 @@
     'use strict';
 
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+
+    // Are we embedded in the Spark Games app (inside an iframe)?
+    const inIframe = (() => {
+        try { return window.self !== window.top; } catch (_) { return true; }
+    })();
+
+    // Only init the Telegram WebApp directly when running standalone.
+    // Inside the Spark app the parent already called ready()/expand().
+    if (tg && !inIframe) {
         try {
             tg.ready();
             tg.expand();
@@ -20,7 +28,25 @@
         } catch (e) {
             console.warn('Telegram WebApp init failed:', e);
         }
+    } else {
+        document.body.setAttribute('data-theme', 'dark');
     }
+
+    /**
+     * Exit the game back to the Spark Games menu.
+     * When embedded, ask the parent app to close the iframe overlay.
+     * When standalone, fall back to history.back().
+     */
+    function exitToMenu() {
+        try { tg?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+        if (inIframe) {
+            try { window.parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (_) {}
+        } else {
+            history.back();
+        }
+    }
+    // Expose for setup screen and any other module
+    window.MonopolyExit = exitToMenu;
 
     // ---- Bootstrap modals (safe to do up front) ----
     PropertyModal.init();
@@ -158,9 +184,12 @@
     const swipeHintEl    = document.getElementById('swipeHint');
     const centerBrandEl  = document.getElementById('centerBrand');
 
-    const dbgFps     = document.getElementById('dbgFps');
-    const dbgDice    = document.getElementById('dbgDice');
-    const dbgRetries = document.getElementById('dbgRetries');
+    // Debug panel removed for production; keep no-op stubs so existing
+    // assignments below don't throw.
+    const noop = { set textContent(_v) {} };
+    const dbgFps     = noop;
+    const dbgDice    = noop;
+    const dbgRetries = noop;
 
     // ---- Turn indicator: highlight current player in HUD ----
     function refreshTurnIndicator() {
@@ -632,8 +661,7 @@
     })();
 
     backBtn.addEventListener('click', () => {
-        try { tg?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
-        history.back();
+        exitToMenu();
     });
 
     window.addEventListener('error', (e) => {
