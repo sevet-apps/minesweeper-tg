@@ -91,11 +91,11 @@
 
         rootEl.innerHTML = `
             <div class="setup-inner">
-                <button class="setup-back-btn" id="setupBackBtn" aria-label="В меню">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <button class="setup-back-btn" id="setupBackBtn" aria-label="Меню">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M15 18l-6-6 6-6"/>
                     </svg>
-                    <span>В меню</span>
+                    <span>Меню</span>
                 </button>
                 <div class="setup-logo">
                     <div class="setup-logo-icon">🎲</div>

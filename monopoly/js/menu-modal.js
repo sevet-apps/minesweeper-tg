@@ -120,6 +120,21 @@
                     </div>
                     <div class="menu-item-arrow">›</div>
                 </button>
+
+                <button class="menu-item" data-action="exit">
+                    <div class="menu-item-icon" style="background: rgba(10, 132, 255, 0.18)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <path d="M16 17l5-5-5-5"/>
+                            <path d="M21 12H9"/>
+                        </svg>
+                    </div>
+                    <div class="menu-item-info">
+                        <div class="menu-item-title">Выйти в меню Spark</div>
+                        <div class="menu-item-sub">Закрыть игру и вернуться</div>
+                    </div>
+                    <div class="menu-item-arrow">›</div>
+                </button>
             </div>
         `;
 
@@ -135,6 +150,7 @@
         else if (action === 'stats') { view = 'stats'; render(); }
         else if (action === 'surrender') { surrenderCurrent(); }
         else if (action === 'newgame') { confirmNewGame(); }
+        else if (action === 'exit') { close(); if (window.MonopolyExit) window.MonopolyExit(); }
     }
 
     // ---- Rules ----

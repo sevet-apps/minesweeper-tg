@@ -2017,9 +2017,181 @@
         }
         .wordle-submit-btn:active {
             transform: scale(0.98);
-            opacity: 0.9;
+        }
+        /* ===================== MONOPOLY LOBBY ===================== */
+        .mono-screen {
+            position: absolute;
+            inset: 0;
+            padding: calc(110px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
+            display: flex;
+            flex-direction: column;
+            z-index: 2;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .mono-screen-in { animation: monoScreenIn 0.42s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes monoScreenIn {
+            0% { opacity: 0; transform: translateX(24px); }
+            100% { opacity: 1; transform: translateX(0); }
         }
 
+        .mono-hero { text-align: center; margin: 8px 0 28px; }
+        .mono-hero-dice {
+            font-size: 56px; line-height: 1; margin-bottom: 10px;
+            filter: drop-shadow(0 6px 18px rgba(10,132,255,0.5));
+            animation: monoDiceFloat 3s ease-in-out infinite;
+        }
+        @keyframes monoDiceFloat {
+            0%,100% { transform: translateY(0) rotate(-4deg); }
+            50% { transform: translateY(-8px) rotate(4deg); }
+        }
+        .mono-hero-title {
+            font-size: 27px; font-weight: 900; letter-spacing: -0.02em;
+            background: linear-gradient(135deg,#5ac8fa,#0a84ff);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: #5ac8fa;
+        }
+        .mono-hero-sub { font-size: 13px; color: #8e8e93; margin-top: 4px; }
+
+        .mono-mode-list { display: flex; flex-direction: column; gap: 12px; }
+        .mono-mode-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px; border-radius: 18px;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            cursor: pointer; font-family: inherit; text-align: left;
+            transition: transform 0.16s, box-shadow 0.2s;
+            animation: monoCardIn 0.5s cubic-bezier(0.22,1,0.36,1) backwards;
+        }
+        .mono-mode-card:nth-child(1) { animation-delay: 0.05s; }
+        .mono-mode-card:nth-child(2) { animation-delay: 0.12s; }
+        .mono-mode-card:nth-child(3) { animation-delay: 0.19s; }
+        @keyframes monoCardIn {
+            0% { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .mono-mode-card:active { transform: scale(0.97); }
+        .mono-mode-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+        .mono-mode-text { flex: 1; min-width: 0; }
+        .mono-mode-title { font-size: 16px; font-weight: 700; color: var(--text-color); }
+        .mono-mode-desc { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+        .mono-mode-arrow { font-size: 26px; color: #8e8e93; font-weight: 300; }
+
+        .mono-sub-back {
+            display: flex; align-items: center; gap: 2px;
+            background: none; border: none; color: var(--accent);
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            font-family: inherit; padding: 0; margin-bottom: 8px; align-self: flex-start;
+        }
+        .mono-sub-back:active { opacity: 0.5; }
+
+        /* Join by code */
+        .mono-join-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+        .mono-join-icon { font-size: 48px; margin-bottom: 4px; }
+        .mono-join-title { font-size: 20px; font-weight: 800; color: var(--text-color); }
+        .mono-join-sub { font-size: 13px; color: #8e8e93; margin-bottom: 18px; }
+        .mono-code-boxes { display: flex; gap: 10px; cursor: text; }
+        .mono-code-cell {
+            width: 54px; height: 64px; border-radius: 14px;
+            background: var(--glass-bg); border: 2px solid var(--glass-border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px; font-weight: 800; color: var(--text-color);
+            transition: border-color 0.2s, transform 0.15s;
+        }
+        .mono-code-cell.is-filled { border-color: var(--accent); transform: scale(1.04); }
+        .mono-code-cell.is-active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+        }
+        .mono-code-hidden-input {
+            position: absolute; opacity: 0; pointer-events: none;
+            width: 1px; height: 1px;
+        }
+        .mono-primary-btn {
+            margin-top: 24px; width: 100%; max-width: 320px;
+            padding: 16px; border: none; border-radius: 16px;
+            background: linear-gradient(135deg,#0a84ff,#5ac8fa); color: #fff;
+            font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit;
+            box-shadow: 0 10px 28px rgba(10,132,255,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+            transition: transform 0.15s, opacity 0.2s;
+        }
+        .mono-primary-btn:active { transform: scale(0.97); }
+        .mono-primary-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+        .mono-secondary-btn {
+            width: 100%; max-width: 320px; padding: 14px;
+            border: 1px solid var(--glass-border); border-radius: 16px;
+            background: var(--glass-bg); color: var(--text-color);
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+
+        /* Waiting room */
+        .mono-wait-codecard {
+            text-align: center; padding: 22px;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 20px; margin-bottom: 22px;
+        }
+        .mono-wait-label {
+            font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
+            color: #8e8e93; text-transform: uppercase;
+        }
+        .mono-wait-code {
+            font-size: 44px; font-weight: 900; letter-spacing: 6px;
+            color: var(--accent); margin: 6px 0 14px;
+            font-variant-numeric: tabular-nums;
+        }
+        .mono-copy-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 16px; border-radius: 50px;
+            background: color-mix(in srgb, var(--accent) 14%, transparent);
+            border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+            color: var(--accent); font-size: 13px; font-weight: 700;
+            cursor: pointer; font-family: inherit;
+        }
+        .mono-copy-btn:active { transform: scale(0.95); }
+
+        .mono-wait-players-head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px; padding: 0 4px;
+        }
+        .mono-wait-players-head span:first-child {
+            font-size: 12px; font-weight: 800; letter-spacing: 0.1em;
+            color: #8e8e93; text-transform: uppercase;
+        }
+        .mono-wait-count { font-size: 13px; font-weight: 700; color: var(--accent); }
+        .mono-wait-list { display: flex; flex-direction: column; gap: 8px; }
+        .mono-wait-player {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px; border-radius: 14px;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+        }
+        .mono-wait-player.is-empty { opacity: 0.45; border-style: dashed; }
+        .mono-pop { animation: monoPop 0.4s cubic-bezier(0.34,1.56,0.64,1) backwards; }
+        @keyframes monoPop {
+            0% { opacity: 0; transform: scale(0.85); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .mono-wait-avatar {
+            width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 16px; font-weight: 800;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .mono-wait-avatar.is-empty {
+            background: transparent; color: #8e8e93;
+            border: 2px dashed var(--glass-border); font-weight: 400; font-size: 22px;
+        }
+        .mono-wait-name { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-color); }
+        .mono-wait-badge {
+            font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+            background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent);
+            letter-spacing: 0.06em;
+        }
+        .mono-wait-ready { color: #34c759; font-size: 12px; }
+        .mono-wait-actions { margin-top: auto; padding-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .mono-wait-hint { font-size: 13px; color: #8e8e93; text-align: center; }
 
     </style>
 </head>
@@ -2251,7 +2423,7 @@
             </div>
             <div style="color:var(--accent); font-weight:600;">Play</div>
         </div>
-        <div class="card" style="position:relative; overflow:hidden;" onclick="openMonopolyGame()">
+        <div class="card" style="position:relative; overflow:hidden;" onclick="openMonopolyLobby()">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #2d6a4f, #40916c);">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2"></rect>
@@ -2270,52 +2442,111 @@
     <!-- Monopoly Lobby -->
     <div id="monopoly-lobby" class="game-overlay">
         <div id="bgPatternMonopoly" class="game-overlay-bg"></div>
+
         <div class="game-top-bar">
-            <div class="back-btn" onclick="closeMonopolyLobby()">
+            <div class="back-btn" onclick="monoLobbyBack()">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span>
             </div>
             <div style="font-weight:700; font-size:18px;">Монополия</div>
         </div>
-        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:12px; z-index:2; position:relative;">
-            <div style="font-size:40px;">🏠</div>
-            <div style="font-size:22px; font-weight:800;">Монополия</div>
-            <div style="font-size:13px; color:#8e8e93; text-align:center; max-width:260px; line-height:1.4; margin-bottom:12px;">
-                2-4 игрока · Онлайн или с ботами
+
+        <!-- ===== Screen: mode selection ===== -->
+        <div class="mono-screen" id="monoScreenMode">
+            <div class="mono-hero">
+                <div class="mono-hero-dice">🎲</div>
+                <div class="mono-hero-title">Spark Monopoly</div>
+                <div class="mono-hero-sub">2–4 игрока · локально или онлайн</div>
             </div>
-            
-            <button class="btn-main" onclick="createMonopolyRoom()" style="width:260px; padding:14px; font-size:15px; border-radius:50px;">
-                🎲 Создать комнату
-            </button>
-            
-            <div style="display:flex; align-items:center; gap:8px; width:260px;">
-                <input type="text" id="monopolyRoomCode" placeholder="Код" maxlength="5" style="flex:1; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:50px; padding:12px 16px; color:var(--text-color); font-size:15px; font-weight:600; text-align:center; outline:none; font-family:inherit; letter-spacing:3px; -webkit-appearance:none;" inputmode="numeric">
-                <button class="btn-main" onclick="joinMonopolyRoom()" style="padding:12px 18px; border-radius:50px; font-size:14px; white-space:nowrap;">
-                    Войти
+
+            <div class="mono-mode-list">
+                <button class="mono-mode-card" onclick="monoStartLocal()">
+                    <div class="mono-mode-icon" style="background:linear-gradient(135deg,#34c759,#28a745)">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="mono-mode-text">
+                        <div class="mono-mode-title">Локальная игра</div>
+                        <div class="mono-mode-desc">На одном устройстве по очереди</div>
+                    </div>
+                    <div class="mono-mode-arrow">›</div>
+                </button>
+
+                <button class="mono-mode-card" onclick="monoGoCreate()">
+                    <div class="mono-mode-icon" style="background:linear-gradient(135deg,#0a84ff,#5ac8fa)">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </div>
+                    <div class="mono-mode-text">
+                        <div class="mono-mode-title">Создать комнату</div>
+                        <div class="mono-mode-desc">Пригласить друзей по коду</div>
+                    </div>
+                    <div class="mono-mode-arrow">›</div>
+                </button>
+
+                <button class="mono-mode-card" onclick="monoGoJoin()">
+                    <div class="mono-mode-icon" style="background:linear-gradient(135deg,#ff9f0a,#ff6b00)">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+                    </div>
+                    <div class="mono-mode-text">
+                        <div class="mono-mode-title">Войти по коду</div>
+                        <div class="mono-mode-desc">Присоединиться к комнате друга</div>
+                    </div>
+                    <div class="mono-mode-arrow">›</div>
                 </button>
             </div>
-            
-            <div style="width:240px; height:1px; background:var(--glass-border); margin:4px 0;"></div>
-            
-            <button onclick="startMonopolyVsBots()" style="width:260px; padding:12px; font-size:14px; border-radius:50px; background:var(--glass-bg); border:1px solid var(--glass-border); color:var(--text-color); font-weight:600; cursor:pointer; font-family:inherit;">
-                🤖 Играть с ботами
-            </button>
         </div>
-        
-        <!-- Waiting room (shown after creating) -->
-        <div id="monopolyWaiting" style="display:none; position:absolute; inset:0; z-index:5; background:var(--bg-color); flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:16px;">
-            <div style="font-size:14px; color:#8e8e93; text-transform:uppercase; letter-spacing:2px; font-weight:700;">Код комнаты</div>
-            <div id="monopolyDisplayCode" style="font-size:48px; font-weight:900; letter-spacing:8px; color:var(--accent);"></div>
-            <div style="font-size:14px; color:#8e8e93;">Отправьте код друзьям</div>
-            
-            <div id="monopolyPlayersList" style="width:280px; margin-top:16px;"></div>
-            
-            <button id="monopolyStartBtn" class="btn-main" onclick="startMonopolyGame()" style="width:260px; padding:16px; font-size:16px; border-radius:50px; display:none;">
-                ▶️ Начать игру
+
+        <!-- ===== Screen: join by code ===== -->
+        <div class="mono-screen" id="monoScreenJoin" style="display:none;">
+            <button class="mono-sub-back" onclick="monoBackToMode()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Назад
             </button>
-            
-            <button class="btn-main" onclick="cancelMonopolyRoom()" style="width:260px; padding:14px; font-size:14px; border-radius:50px; background:var(--glass-bg); color:var(--text-color);">
-                Отмена
+            <div class="mono-join-wrap">
+                <div class="mono-join-icon">🔑</div>
+                <div class="mono-join-title">Введите код комнаты</div>
+                <div class="mono-join-sub">Спросите код у хоста</div>
+
+                <div class="mono-code-boxes" id="monoCodeBoxes" onclick="monoFocusCode()">
+                    <div class="mono-code-cell" data-i="0"></div>
+                    <div class="mono-code-cell" data-i="1"></div>
+                    <div class="mono-code-cell" data-i="2"></div>
+                    <div class="mono-code-cell" data-i="3"></div>
+                </div>
+                <input id="monoCodeInput" inputmode="numeric" maxlength="4"
+                       autocomplete="off" class="mono-code-hidden-input"/>
+
+                <button class="mono-primary-btn" id="monoJoinBtn" onclick="monoSubmitJoin()" disabled>
+                    Присоединиться
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== Screen: waiting room ===== -->
+        <div class="mono-screen" id="monoScreenWait" style="display:none;">
+            <button class="mono-sub-back" onclick="cancelMonopolyRoom()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Выйти
             </button>
+            <div class="mono-wait-codecard">
+                <div class="mono-wait-label">Код комнаты</div>
+                <div class="mono-wait-code" id="monoWaitCode">M0000</div>
+                <button class="mono-copy-btn" id="monoCopyBtn" onclick="monoCopyCode()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span id="monoCopyLabel">Копировать</span>
+                </button>
+            </div>
+
+            <div class="mono-wait-players-head">
+                <span>Игроки</span>
+                <span id="monoWaitCount" class="mono-wait-count">1/4</span>
+            </div>
+            <div class="mono-wait-list" id="monoWaitList"></div>
+
+            <div class="mono-wait-actions">
+                <button class="mono-primary-btn" id="monoStartBtn" onclick="startMonopolyGame()" style="display:none;">
+                    Начать игру
+                </button>
+                <div class="mono-wait-hint" id="monoWaitHint">Ждём, пока хост начнёт игру…</div>
+            </div>
         </div>
     </div>
     
@@ -7149,6 +7380,12 @@
             document.getElementById('monopoly-game').classList.remove('visible');
             // Unload the iframe so the game fully resets next open
             document.getElementById('monopolyFrame').src = 'about:blank';
+            // If we were in an online room, leave it on the server
+            if (monopolyRoomCode) {
+                try { socket.emit('monopoly_leave', { roomCode: monopolyRoomCode }); } catch (_) {}
+                monopolyRoomCode = null;
+                monopolyIsHost = false;
+            }
         }
 
         // Listen for the game asking to return to the menu
@@ -7159,113 +7396,227 @@
             }
         });
         
+        // ===== Monopoly lobby navigation =====
+        function monoShowScreen(id) {
+            ['monoScreenMode','monoScreenJoin','monoScreenWait'].forEach(s => {
+                const el = document.getElementById(s);
+                if (!el) return;
+                if (s === id) {
+                    el.style.display = '';
+                    el.classList.remove('mono-screen-out');
+                    el.classList.add('mono-screen-in');
+                } else {
+                    el.style.display = 'none';
+                    el.classList.remove('mono-screen-in');
+                }
+            });
+        }
+
         function openMonopolyLobby() {
             document.getElementById('monopoly-lobby').classList.add('visible');
-            document.getElementById('monopolyWaiting').style.display = 'none';
+            monoShowScreen('monoScreenMode');
         }
-        
-        function closeMonopolyLobby() {
-            document.getElementById('monopoly-lobby').classList.remove('visible');
+
+        function monoLobbyBack() {
+            // From the mode screen, the back button returns to the app menu.
             if (monopolyRoomCode) cancelMonopolyRoom();
-        }
-        
-        function startMonopolyVsBots() {
-            document.getElementById('monopolyFrame').src = 'monopoly.html?mode=bots';
             document.getElementById('monopoly-lobby').classList.remove('visible');
-            document.getElementById('monopoly-game').classList.add('visible');
         }
-        
-        function createMonopolyRoom() {
-            const user = tg.initDataUnsafe.user || { first_name: 'Guest' };
+
+        function monoBackToMode() {
+            monoShowScreen('monoScreenMode');
+        }
+
+        // ---- Local game ----
+        function monoStartLocal() {
+            document.getElementById('monopoly-lobby').classList.remove('visible');
+            openMonopolyGame(); // existing local launcher (sets iframe src to monopoly/index.html)
+        }
+
+        // ---- Create room ----
+        function monoGoCreate() {
+            const user = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || { first_name: 'Игрок' };
+            try { tg?.HapticFeedback?.impactOccurred('light'); } catch(_) {}
             socket.emit('monopoly_create', {
-                username: user.first_name,
+                username: user.first_name || 'Игрок',
                 photo_url: user.photo_url || '',
                 userId: user.id || 0
             });
+            // monoScreenWait is shown when 'monopoly_created' arrives
         }
-        
-        function joinMonopolyRoom() {
-            const code = document.getElementById('monopolyRoomCode').value.trim();
-            if (!code || code.length < 4) { showIngameToast('Введите код комнаты'); return; }
-            const user = tg.initDataUnsafe.user || { first_name: 'Guest' };
+
+        // ---- Join flow ----
+        let monoJoinCode = '';
+        function monoGoJoin() {
+            monoJoinCode = '';
+            monoRenderCodeCells();
+            monoShowScreen('monoScreenJoin');
+            setTimeout(monoFocusCode, 250);
+        }
+
+        function monoFocusCode() {
+            const inp = document.getElementById('monoCodeInput');
+            if (inp) inp.focus();
+        }
+
+        function monoRenderCodeCells() {
+            const cells = document.querySelectorAll('#monoCodeBoxes .mono-code-cell');
+            cells.forEach((c, i) => {
+                c.textContent = monoJoinCode[i] || '';
+                c.classList.toggle('is-filled', !!monoJoinCode[i]);
+                c.classList.toggle('is-active', i === monoJoinCode.length);
+            });
+            const btn = document.getElementById('monoJoinBtn');
+            if (btn) btn.disabled = monoJoinCode.length !== 4;
+        }
+
+        function monoSubmitJoin() {
+            if (monoJoinCode.length !== 4) return;
+            const code = 'M' + monoJoinCode; // server codes look like M1234
+            const user = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || { first_name: 'Игрок' };
+            try { tg?.HapticFeedback?.impactOccurred('medium'); } catch(_) {}
             socket.emit('monopoly_join', {
                 roomCode: code,
-                username: user.first_name,
+                username: user.first_name || 'Игрок',
                 photo_url: user.photo_url || '',
                 userId: user.id || 0
             });
         }
-        
+
+        // ---- Waiting room ----
         function cancelMonopolyRoom() {
             if (monopolyRoomCode) {
                 socket.emit('monopoly_leave', { roomCode: monopolyRoomCode });
             }
             monopolyRoomCode = null;
             monopolyIsHost = false;
-            document.getElementById('monopolyWaiting').style.display = 'none';
+            monoShowScreen('monoScreenMode');
         }
-        
+
         function startMonopolyGame() {
             if (!monopolyRoomCode || !monopolyIsHost) return;
+            try { tg?.HapticFeedback?.notificationOccurred('success'); } catch(_) {}
             socket.emit('monopoly_start', { roomCode: monopolyRoomCode });
         }
-        
-        function showIngameToast(msg) {
-            showToast(msg);
+
+        function monoCopyCode() {
+            if (!monopolyRoomCode) return;
+            const done = () => {
+                const lbl = document.getElementById('monoCopyLabel');
+                if (lbl) { lbl.textContent = 'Скопировано!'; setTimeout(() => lbl.textContent = 'Копировать', 1500); }
+                try { tg?.HapticFeedback?.impactOccurred('light'); } catch(_) {}
+            };
+            if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(monopolyRoomCode).then(done).catch(done);
+            } else { done(); }
         }
-        
-        // Socket listeners for monopoly
+
+        const MONO_COLORS = ['#0a84ff','#ff2a2a','#29c463','#ffd60a'];
+        function monoRenderWaitList(players) {
+            const list = document.getElementById('monoWaitList');
+            const count = document.getElementById('monoWaitCount');
+            if (count) count.textContent = `${players.length}/4`;
+            if (!list) return;
+            // Build up to 4 slots: filled + empty placeholders
+            let html = '';
+            players.forEach((p, i) => {
+                const color = MONO_COLORS[i];
+                const initial = (p.username || '?').charAt(0).toUpperCase();
+                html += `
+                    <div class="mono-wait-player mono-pop" style="animation-delay:${i*40}ms">
+                        <div class="mono-wait-avatar" style="background:${color}">${initial}</div>
+                        <div class="mono-wait-name">${p.username || 'Игрок'}</div>
+                        ${i === 0 ? '<div class="mono-wait-badge">Хост</div>' : '<div class="mono-wait-ready">●</div>'}
+                    </div>`;
+            });
+            for (let i = players.length; i < 4; i++) {
+                html += `
+                    <div class="mono-wait-player is-empty">
+                        <div class="mono-wait-avatar is-empty">+</div>
+                        <div class="mono-wait-name">Свободно</div>
+                    </div>`;
+            }
+            list.innerHTML = html;
+
+            const startBtn = document.getElementById('monoStartBtn');
+            const hint = document.getElementById('monoWaitHint');
+            if (monopolyIsHost) {
+                const canStart = players.length >= 2;
+                startBtn.style.display = canStart ? '' : 'none';
+                hint.style.display = canStart ? 'none' : '';
+                hint.textContent = 'Нужно минимум 2 игрока';
+            } else {
+                startBtn.style.display = 'none';
+                hint.style.display = '';
+                hint.textContent = 'Ждём, пока хост начнёт игру…';
+            }
+        }
+
+        function showIngameToast(msg) { showToast(msg); }
+
+        // ===== Monopoly socket listeners =====
         if (typeof socket !== 'undefined') {
             socket.on('monopoly_created', ({ roomCode }) => {
                 monopolyRoomCode = roomCode;
                 monopolyIsHost = true;
-                document.getElementById('monopolyDisplayCode').innerText = roomCode;
-                document.getElementById('monopolyWaiting').style.display = 'flex';
+                document.getElementById('monoWaitCode').textContent = roomCode;
+                monoShowScreen('monoScreenWait');
             });
-            
+
             socket.on('monopoly_joined', ({ roomCode }) => {
                 monopolyRoomCode = roomCode;
                 monopolyIsHost = false;
-                document.getElementById('monopolyDisplayCode').innerText = roomCode;
-                document.getElementById('monopolyWaiting').style.display = 'flex';
+                document.getElementById('monoWaitCode').textContent = roomCode;
+                monoShowScreen('monoScreenWait');
             });
-            
+
             socket.on('monopoly_players', ({ players }) => {
-                const list = document.getElementById('monopolyPlayersList');
-                list.innerHTML = players.map((p, i) => `
-                    <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--glass-bg); border-radius:14px; margin-bottom:6px;">
-                        <div style="width:12px; height:12px; border-radius:50%; background:${['#e63946','#457b9d','#2a9d8f','#e9c46a'][i]}"></div>
-                        <div style="flex:1; font-weight:600; font-size:14px;">${p.username}</div>
-                        ${i === 0 ? '<div style="font-size:11px; color:#8e8e93;">Хост</div>' : ''}
-                    </div>
-                `).join('');
-                
-                // Show start button only for host with 2+ players
-                const startBtn = document.getElementById('monopolyStartBtn');
-                startBtn.style.display = (monopolyIsHost && players.length >= 2) ? '' : 'none';
+                monoRenderWaitList(players || []);
             });
-            
+
             socket.on('monopoly_game_start', ({ roomCode, players: gamePlayers, yourIndex }) => {
-                // Load monopoly game in iframe with multiplayer params
+                // Pass safe-area insets like the local launcher does
+                let safeTop = 56;
+                try {
+                    const tgw = window.Telegram?.WebApp;
+                    const csa = tgw?.contentSafeAreaInset?.top;
+                    const sa  = tgw?.safeAreaInset?.top;
+                    const computed = Math.max(csa || 0, sa || 0);
+                    if (computed > 0) safeTop = computed + 8;
+                } catch (_) {}
                 const params = new URLSearchParams({
+                    v: Date.now(),
+                    safeTop: safeTop,
+                    safeBottom: 20,
                     room: roomCode,
-                    players: JSON.stringify(gamePlayers),
-                    myIdx: yourIndex,
-                    server: API_BASE_URL.replace('/api','')
+                    players: JSON.stringify(gamePlayers || []),
+                    myIdx: (yourIndex != null ? yourIndex : 0),
+                    server: (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('/api','') : '')
                 });
-                document.getElementById('monopolyFrame').src = `monopoly.html?${params.toString()}`;
+                document.getElementById('monopolyFrame').src = `monopoly/index.html?${params.toString()}`;
                 document.getElementById('monopoly-lobby').classList.remove('visible');
                 document.getElementById('monopoly-game').classList.add('visible');
             });
-            
+
             socket.on('monopoly_error', ({ message }) => {
-                showIngameToast(message);
+                showIngameToast(message || 'Ошибка');
             });
-            
+
             socket.on('monopoly_player_left', ({ playerIndex, playerName }) => {
-                showIngameToast(`${playerName} покинул игру`);
+                showIngameToast(`${playerName || 'Игрок'} покинул комнату`);
             });
         }
+
+        // Code input wiring (numeric, 4 digits)
+        (function initMonoCodeInput() {
+            const inp = document.getElementById('monoCodeInput');
+            if (!inp) return;
+            inp.addEventListener('input', () => {
+                monoJoinCode = inp.value.replace(/\D/g, '').slice(0, 4);
+                inp.value = monoJoinCode;
+                monoRenderCodeCells();
+            });
+        })();
         
         let wordleRevealing = false; // Block input during reveal animation
         let wordleWins = 0;

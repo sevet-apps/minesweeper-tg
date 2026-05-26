@@ -675,7 +675,7 @@
         diceCanvasContainer.addEventListener('mouseup',    onEnd);
     })();
 
-    backBtn.addEventListener('click', () => {
+    if (backBtn) backBtn.addEventListener('click', () => {
         exitToMenu();
     });
 
