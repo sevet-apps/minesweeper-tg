@@ -1699,6 +1699,21 @@ io.on('connection', (socket) => {
     // =============================================
     // MONOPOLY MULTIPLAYER
     // =============================================
+    socket.on('monopoly_list', () => {
+        const rooms = [];
+        monopolyRooms.forEach((room, code) => {
+            if (room.status === 'waiting' && room.players.length < 4) {
+                rooms.push({
+                    code,
+                    host: room.players[0]?.username || 'Игрок',
+                    count: room.players.length,
+                    max: 4,
+                });
+            }
+        });
+        socket.emit('monopoly_room_list', { rooms });
+    });
+
     socket.on('monopoly_create', ({ username, photo_url, userId }) => {
         let roomCode = 'M' + Math.floor(1000 + Math.random() * 9000).toString();
         while (monopolyRooms.has(roomCode)) { roomCode = 'M' + Math.floor(1000 + Math.random() * 9000).toString(); }

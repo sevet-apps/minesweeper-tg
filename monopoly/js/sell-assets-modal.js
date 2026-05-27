@@ -73,20 +73,20 @@
         const need = amountOwed - cash;
         const hasEnough = need <= 0;
 
-        // Build list of properties with houses
         const owned = GameState.getOwnedTiles(currentPlayerId);
-        const housedTiles = owned.map(idx => {
-            const houses = GameState.getHouses(idx);
-            const data = PROPERTY_DATA[idx];
-            const tile = TILES[idx];
-            return { idx, houses, data, tile };
-        }).filter(t => t.houses > 0);
 
-        const tilesHtml = housedTiles.length === 0 ? `
-            <div class="sell-assets-empty">
-                Нет домов для продажи.
-            </div>
-        ` : housedTiles.map(t => {
+        // Section 1: properties with houses to sell
+        const housedTiles = owned.map(idx => ({
+            idx, houses: GameState.getHouses(idx),
+            data: PROPERTY_DATA[idx], tile: TILES[idx],
+        })).filter(t => t.houses > 0 && t.data);
+
+        // Section 2: unmortgaged properties that can be mortgaged
+        const mortgageable = owned.map(idx => ({
+            idx, data: PROPERTY_DATA[idx], tile: TILES[idx],
+        })).filter(t => t.data && GameState.canMortgage(currentPlayerId, t.idx));
+
+        const housesHtml = housedTiles.map(t => {
             const sellPrice = Math.floor(t.data.houseCost / 2);
             const canSell   = GameState.canSellHouse(currentPlayerId, t.idx);
             const isHotel   = t.houses === 5;
@@ -96,16 +96,41 @@
                         <div class="sell-row-name">${FULL_NAMES[t.idx] || t.tile.name}</div>
                         <div class="sell-row-sub">
                             ${isHotel ? '🏨 Отель' : `🏠 × ${t.houses}`}
-                            · продать за $${sellPrice}
+                            · дом за $${sellPrice}
                         </div>
                     </div>
-                    <button class="sell-btn" data-tile="${t.idx}"
+                    <button class="sell-btn" data-action="house" data-tile="${t.idx}"
                             ${canSell ? '' : 'disabled'}>
-                        −$${sellPrice}
+                        +$${sellPrice}
                     </button>
                 </div>
             `;
         }).join('');
+
+        const mortgageHtml = mortgageable.map(t => {
+            const m = t.data.mortgage || 0;
+            return `
+                <div class="sell-row">
+                    <div class="sell-row-info">
+                        <div class="sell-row-name">${FULL_NAMES[t.idx] || t.tile.name}</div>
+                        <div class="sell-row-sub">заложить за $${m}</div>
+                    </div>
+                    <button class="sell-btn sell-btn-mortgage" data-action="mortgage" data-tile="${t.idx}">
+                        +$${m}
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        const sections = [];
+        if (housedTiles.length) {
+            sections.push(`<div class="sell-section-label">Продать дома</div><div class="sell-tiles">${housesHtml}</div>`);
+        }
+        if (mortgageable.length) {
+            sections.push(`<div class="sell-section-label">Заложить имущество</div><div class="sell-tiles">${mortgageHtml}</div>`);
+        }
+        const bodyHtml = sections.length ? sections.join('')
+            : `<div class="sell-assets-empty">Нет имущества для продажи или залога.</div>`;
 
         contentEl.innerHTML = `
             <div class="sell-header">
@@ -129,9 +154,7 @@
                 </div>
             </div>
 
-            <div class="sell-tiles">
-                ${tilesHtml}
-            </div>
+            ${bodyHtml}
 
             <div class="sell-buttons">
                 <button class="action-btn ${hasEnough ? 'action-btn-primary' : 'action-btn-secondary'}"
@@ -144,9 +167,14 @@
         document.getElementById('sellConfirmBtn').addEventListener('click', close);
         contentEl.querySelectorAll('.sell-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const idx = parseInt(btn.dataset.tile);
                 if (btn.disabled) return;
-                GameState.sellHouse(currentPlayerId, idx);
+                const idx = parseInt(btn.dataset.tile);
+                const action = btn.dataset.action;
+                if (action === 'house') {
+                    GameState.sellHouse(currentPlayerId, idx);
+                } else if (action === 'mortgage') {
+                    GameState.mortgage(currentPlayerId, idx);
+                }
                 render();
                 try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
             });

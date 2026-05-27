@@ -91,6 +91,7 @@
     });
 
     function startGame() {
+        document.body.classList.add('game-active');
         Players.init(boardEl);
         GameState.init(Players.PLAYERS);
         PlayerHUD.init(Players.PLAYERS);
@@ -287,7 +288,7 @@
     }
 
     function calculateSellableValue(playerId) {
-        // Sum of (half house cost × current houses) across all owned properties
+        // Sum of: (half house cost × houses) + mortgage value of unmortgaged tiles.
         const owned = GameState.getOwnedTiles(playerId);
         let total = 0;
         for (const idx of owned) {
@@ -296,6 +297,10 @@
             const houses = GameState.getHouses(idx);
             if (houses > 0 && data.houseCost) {
                 total += Math.floor(data.houseCost / 2) * houses;
+            }
+            // Unmortgaged tile can be mortgaged for cash
+            if (!GameState.isMortgaged(idx)) {
+                total += data.mortgage || 0;
             }
         }
         return total;

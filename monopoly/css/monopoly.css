@@ -3696,8 +3696,32 @@ html, body {
     cursor: pointer;
     padding: 0;
     font-family: inherit;
-    margin-bottom: 16px;
+    margin: 6px 0 16px -6px;
     transition: opacity 0.15s;
 }
 .setup-back-btn:active { opacity: 0.5; }
 .setup-back-btn svg { flex-shrink: 0; }
+
+/* Hide gameplay UI until the game actually starts (prevents board flash
+   behind the setup screen). body gets .game-active when play begins. */
+body:not(.game-active) .board-wrap,
+body:not(.game-active) .player-hud,
+body:not(.game-active) .bottom-dock,
+body:not(.game-active) .action-dock {
+    visibility: hidden;
+}
+
+/* Sell-assets: section labels + mortgage button variant */
+.sell-section-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    margin: 14px 0 8px;
+}
+.sell-section-label:first-child { margin-top: 0; }
+.sell-btn-mortgage:not(:disabled) {
+    background: linear-gradient(135deg, #ff9b1f, #c25400);
+    box-shadow: 0 2px 8px rgba(255, 122, 0, 0.35);
+}
