@@ -3346,7 +3346,7 @@ if (BOT_TOKEN) {
     console.log('BOT_TOKEN not set, Telegram Bot disabled');
 }
 
-// Cleanup old activity records (older than 35 days) - runs every 24 hours
+// Cleanup old activity records (older than 35 days) - runs every 24 hours.
 async function cleanupOldActivity() {
     try {
         const cutoff = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString();
