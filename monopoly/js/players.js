@@ -41,6 +41,7 @@
         for (const k of Object.keys(STATE)) delete STATE[k];
         for (const p of PLAYERS) STATE[p.id] = { position: 0, lap: 0 };
         currentTurnIndex = 0;
+        if (window.OnlineMode) window.OnlineMode.setCurrentTurnIdx(0);
     }
 
     // Mutable runtime state (keyed by player id)
@@ -250,6 +251,8 @@
             window.GameState.resetTurnCounters(outgoing.id);
         }
         currentTurnIndex = (currentTurnIndex + 1) % PLAYERS.length;
+        // Keep online module's turn pointer in sync (drives control locking)
+        if (window.OnlineMode) window.OnlineMode.setCurrentTurnIdx(currentTurnIndex);
         return getCurrentPlayer();
     }
 

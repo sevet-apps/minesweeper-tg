@@ -2019,6 +2019,10 @@
             transform: scale(0.98);
         }
         /* ===================== MONOPOLY LOBBY ===================== */
+        #monopoly-lobby .game-top-bar {
+            position: relative;
+            z-index: 5;
+        }
         .mono-screen {
             position: absolute;
             inset: 0;
@@ -2080,6 +2084,9 @@
         .mono-mode-desc { font-size: 12px; color: #8e8e93; margin-top: 2px; }
         .mono-mode-arrow { font-size: 26px; color: #8e8e93; font-weight: 300; }
 
+        #monoScreenJoin, #monoScreenWait {
+            padding-top: calc(20px + var(--safe-top));
+        }
         .mono-sub-back {
             display: flex; align-items: center; gap: 2px;
             background: none; border: none; color: var(--accent);
@@ -2192,6 +2199,46 @@
         .mono-wait-ready { color: #34c759; font-size: 12px; }
         .mono-wait-actions { margin-top: auto; padding-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .mono-wait-hint { font-size: 13px; color: #8e8e93; text-align: center; }
+
+        /* Browse rooms */
+        .mono-browse-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .mono-browse-title { font-size: 20px; font-weight: 800; color: var(--text-color); }
+        .mono-refresh-btn {
+            width: 38px; height: 38px; border-radius: 12px;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            color: var(--accent); display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .mono-refresh-btn:active { transform: scale(0.92); }
+        .mono-refresh-btn.is-spinning svg { animation: monoSpin 0.7s linear infinite; }
+        @keyframes monoSpin { 100% { transform: rotate(360deg); } }
+        .mono-room-list { display: flex; flex-direction: column; gap: 10px; }
+        .mono-room-loading { text-align: center; color: #8e8e93; padding: 30px 0; font-size: 14px; }
+        .mono-room-card {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: 16px;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+        }
+        .mono-room-info { flex: 1; min-width: 0; }
+        .mono-room-code {
+            font-size: 18px; font-weight: 800; color: var(--text-color);
+            letter-spacing: 2px; font-variant-numeric: tabular-nums;
+        }
+        .mono-room-meta { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+        .mono-room-join {
+            padding: 10px 20px; border: none; border-radius: 50px;
+            background: linear-gradient(135deg,#0a84ff,#5ac8fa); color: #fff;
+            font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+            box-shadow: 0 4px 14px rgba(10,132,255,0.4);
+        }
+        .mono-room-join:active { transform: scale(0.95); }
+        .mono-room-empty { text-align: center; padding: 40px 20px; }
+        .mono-room-empty-icon { font-size: 44px; margin-bottom: 10px; }
+        .mono-room-empty-title { font-size: 16px; font-weight: 700; color: var(--text-color); }
+        .mono-room-empty-sub { font-size: 13px; color: #8e8e93; margin-top: 4px; }
 
     </style>
 </head>
@@ -2491,6 +2538,17 @@
                     </div>
                     <div class="mono-mode-arrow">›</div>
                 </button>
+
+                <button class="mono-mode-card" onclick="monoGoBrowse()">
+                    <div class="mono-mode-icon" style="background:linear-gradient(135deg,#bf5af2,#8e44ad)">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    </div>
+                    <div class="mono-mode-text">
+                        <div class="mono-mode-title">Найти комнату</div>
+                        <div class="mono-mode-desc">Список открытых игр</div>
+                    </div>
+                    <div class="mono-mode-arrow">›</div>
+                </button>
             </div>
         </div>
 
@@ -2518,6 +2576,21 @@
                     Присоединиться
                 </button>
             </div>
+        </div>
+
+        <!-- ===== Screen: browse open rooms ===== -->
+        <div class="mono-screen" id="monoScreenBrowse" style="display:none;">
+            <button class="mono-sub-back" onclick="monoBackToMode()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Назад
+            </button>
+            <div class="mono-browse-head">
+                <div class="mono-browse-title">Открытые комнаты</div>
+                <button class="mono-refresh-btn" id="monoRefreshBtn" onclick="monoRefreshRooms()" aria-label="Обновить">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+            </div>
+            <div class="mono-room-list" id="monoRoomList"></div>
         </div>
 
         <!-- ===== Screen: waiting room ===== -->
@@ -7388,17 +7461,50 @@
             }
         }
 
-        // Listen for the game asking to return to the menu
+        // Listen for messages from the game iframe
         window.addEventListener('message', (e) => {
             const data = e.data;
-            if (data && data.type === 'monopoly_exit') {
+            if (!data || typeof data !== 'object') return;
+            if (data.type === 'monopoly_exit') {
                 closeMonopolyGame();
+            } else if (data.type === 'monopoly_action_out') {
+                // Relay game action to other players via the server
+                if (data.roomCode && data.action && typeof socket !== 'undefined') {
+                    socket.emit('monopoly_action', {
+                        roomCode: data.roomCode,
+                        action: data.action,
+                    });
+                }
             }
         });
+
+        // Relay server-broadcast actions into the iframe
+        if (typeof socket !== 'undefined') {
+            socket.on('monopoly_action', ({ action }) => {
+                const frame = document.getElementById('monopolyFrame');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'monopoly_action_in',
+                        action,
+                    }, '*');
+                }
+            });
+
+            // Forward player-left to the iframe so the game can show a notice
+            socket.on('monopoly_player_left', ({ playerIndex, playerName }) => {
+                const frame = document.getElementById('monopolyFrame');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'monopoly_player_left',
+                        playerIndex, playerName,
+                    }, '*');
+                }
+            });
+        }
         
         // ===== Monopoly lobby navigation =====
         function monoShowScreen(id) {
-            ['monoScreenMode','monoScreenJoin','monoScreenWait'].forEach(s => {
+            ['monoScreenMode','monoScreenJoin','monoScreenBrowse','monoScreenWait'].forEach(s => {
                 const el = document.getElementById(s);
                 if (!el) return;
                 if (s === id) {
@@ -7410,6 +7516,10 @@
                     el.classList.remove('mono-screen-in');
                 }
             });
+            // The top "Меню" bar only belongs on the mode screen; sub-screens
+            // have their own back/leave buttons.
+            const topBar = document.querySelector('#monopoly-lobby .game-top-bar');
+            if (topBar) topBar.style.display = (id === 'monoScreenMode') ? '' : 'none';
         }
 
         function openMonopolyLobby() {
@@ -7457,6 +7567,56 @@
         function monoFocusCode() {
             const inp = document.getElementById('monoCodeInput');
             if (inp) inp.focus();
+        }
+
+        // ---- Browse rooms ----
+        function monoGoBrowse() {
+            monoShowScreen('monoScreenBrowse');
+            monoRefreshRooms();
+        }
+
+        function monoRefreshRooms() {
+            const btn = document.getElementById('monoRefreshBtn');
+            if (btn) btn.classList.add('is-spinning');
+            const list = document.getElementById('monoRoomList');
+            if (list) list.innerHTML = `<div class="mono-room-loading">Загрузка…</div>`;
+            socket.emit('monopoly_list');
+        }
+
+        function monoJoinRoomByCode(code) {
+            const user = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || { first_name: 'Игрок' };
+            try { tg?.HapticFeedback?.impactOccurred('medium'); } catch(_) {}
+            socket.emit('monopoly_join', {
+                roomCode: code,
+                username: user.first_name || 'Игрок',
+                photo_url: user.photo_url || '',
+                userId: user.id || 0
+            });
+        }
+
+        function monoRenderRoomList(rooms) {
+            const btn = document.getElementById('monoRefreshBtn');
+            if (btn) btn.classList.remove('is-spinning');
+            const list = document.getElementById('monoRoomList');
+            if (!list) return;
+            if (!rooms || rooms.length === 0) {
+                list.innerHTML = `
+                    <div class="mono-room-empty">
+                        <div class="mono-room-empty-icon">🏚️</div>
+                        <div class="mono-room-empty-title">Пока нет открытых комнат</div>
+                        <div class="mono-room-empty-sub">Создайте свою или обновите список</div>
+                    </div>`;
+                return;
+            }
+            list.innerHTML = rooms.map((r, i) => `
+                <div class="mono-room-card mono-pop" style="animation-delay:${i*40}ms">
+                    <div class="mono-room-info">
+                        <div class="mono-room-code">${r.code}</div>
+                        <div class="mono-room-meta">Хост: ${r.host} · ${r.count}/${r.max}</div>
+                    </div>
+                    <button class="mono-room-join" onclick="monoJoinRoomByCode('${r.code}')">Вступить</button>
+                </div>
+            `).join('');
         }
 
         function monoRenderCodeCells() {
@@ -7596,6 +7756,10 @@
                 document.getElementById('monopolyFrame').src = `monopoly/index.html?${params.toString()}`;
                 document.getElementById('monopoly-lobby').classList.remove('visible');
                 document.getElementById('monopoly-game').classList.add('visible');
+            });
+
+            socket.on('monopoly_room_list', ({ rooms }) => {
+                monoRenderRoomList(rooms || []);
             });
 
             socket.on('monopoly_error', ({ message }) => {

@@ -84,11 +84,19 @@
 
     const boardEl = document.getElementById('board');
 
-    // Show setup screen first; start the game once the player confirms.
-    SetupScreen.show((configs) => {
-        Players.configure(configs);
+    // Check for online mode (room param in URL). If yes, skip setup and use
+    // the player list provided by the server.
+    const onlineInit = OnlineMode.initFromUrl();
+    if (onlineInit) {
+        Players.configure(onlineInit.players);
         startGame();
-    });
+    } else {
+        // Local mode: show setup screen first.
+        SetupScreen.show((configs) => {
+            Players.configure(configs);
+            startGame();
+        });
+    }
 
     function startGame() {
         document.body.classList.add('game-active');
@@ -376,9 +384,13 @@
             return;
         }
 
-        // Free purchasable tile → buy or auction
+        // Free purchasable tile → buy or skip
         if ((tile.type === 'property' || tile.type === 'railroad' || tile.type === 'utility')
             && !ownerId) {
+            // In online mode, only the active player sees the buy modal.
+            // Remote clients apply the outcome through the broadcast.
+            if (OnlineMode.enabled && !OnlineMode.isMyTurn()) return;
+
             const choice = await ActionModal.showForLanding({
                 tile,
                 playerId: player.id,
@@ -388,25 +400,21 @@
 
             if (choice === 'buy') {
                 GameState.buyTile(player.id, tile.i);
-            } else {
-                // Skipped → auction among other players
+                OnlineMode.send({ type: 'tile_bought', playerId: player.id, tileIdx: tile.i });
+            } else if (!OnlineMode.enabled) {
+                // Local: skipped → auction among other players
                 const eligible = Players.PLAYERS.filter(p =>
                     p.id !== player.id && !GameState.isBankrupt(p.id)
                 );
                 if (eligible.length > 0) {
                     const result = await Auction.start(tile, eligible);
                     if (result.winnerId && result.price > 0) {
-                        // Charge winner, transfer ownership
                         GameState.changeMoney(result.winnerId, -result.price, 'Выиграл аукцион');
-                        // Manually flip ownership (buyTile assumes base price)
-                        const tileEconRef = window.MonopolyData.TILES[tile.i];
-                        // Use buyTile-style state mutation: re-emit tileBought
-                        const winner = Players.PLAYERS.find(p => p.id === result.winnerId);
-                        // Mark owned by manipulating game state directly via the buy event chain
                         directAssignOwnership(result.winnerId, tile.i, result.price);
                     }
                 }
             }
+            // Online + skip: tile stays free for now (no auction in MVP)
             return;
         }
 
@@ -551,31 +559,14 @@
         };
     }
 
-    async function doRoll(throwParams = {}) {
+    /**
+     * Apply a specific dice roll. Called by both the local "I roll" path
+     * (with locally generated a/b) and the remote "received from peer" path.
+     * In online mode, jail logic + dice animation are kept identical on
+     * every client so all state mutations stay in sync.
+     */
+    async function applyRoll(a, b, throwParams = {}) {
         if (dice.isRolling) return;
-
-        // Jail check: if current player is in jail, show jail modal first
-        const cur = Players.getCurrentPlayer();
-        if (GameState.isInJail(cur.id)) {
-            const result = await JailModal.show(cur);
-            if (result.action === 'pay') {
-                // Pay $50 fine and exit jail
-                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
-                if (GameState.isBankrupt(cur.id)) {
-                    advanceTurnSkippingBankrupt();
-                    return;
-                }
-                GameState.releaseFromJail(cur.id);
-                // Fall through to normal roll
-            } else if (result.action === 'cant_pay') {
-                // Forced bankruptcy
-                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
-                advanceTurnSkippingBankrupt();
-                return;
-            }
-            // For 'roll' just continue to dice roll. After roll, we'll check
-            // if it was doubles in the result handler.
-        }
 
         diceResultEl.classList.remove('visible');
         swipeHintEl.classList.add('hidden');
@@ -584,9 +575,48 @@
 
         try { tg?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
 
-        const { a, b } = fakeServerRoll();
         await dice.rollTo(a, b, throwParams);
     }
+
+    async function doRoll(throwParams = {}) {
+        if (dice.isRolling) return;
+
+        // Online: only the active player can roll
+        if (OnlineMode.enabled && !OnlineMode.isMyTurn()) return;
+
+        // Jail check: if current player is in jail, show jail modal first.
+        // In online mode the jail UI is local (only the active player sees it);
+        // its outcome is folded into the roll/turn flow.
+        const cur = Players.getCurrentPlayer();
+        if (GameState.isInJail(cur.id)) {
+            const result = await JailModal.show(cur);
+            if (result.action === 'pay') {
+                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
+                if (GameState.isBankrupt(cur.id)) {
+                    advanceTurnSkippingBankrupt();
+                    return;
+                }
+                GameState.releaseFromJail(cur.id);
+            } else if (result.action === 'cant_pay') {
+                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
+                advanceTurnSkippingBankrupt();
+                return;
+            }
+        }
+
+        const { a, b } = fakeServerRoll();
+
+        // Broadcast my roll BEFORE animating, so peers start their animation
+        // in lockstep with us. Throw params are local-only (look/feel of swipe).
+        OnlineMode.send({ type: 'dice_rolled', a, b });
+
+        await applyRoll(a, b, throwParams);
+    }
+
+    // Apply rolls coming in from other players
+    OnlineMode.on('dice_rolled', ({ a, b }) => {
+        applyRoll(a, b);
+    });
 
     function advanceTurnSkippingBankrupt() {
         let next = Players.advanceTurn();
