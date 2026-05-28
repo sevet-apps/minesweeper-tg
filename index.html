@@ -2085,7 +2085,7 @@
         .mono-mode-arrow { font-size: 26px; color: #8e8e93; font-weight: 300; }
 
         #monoScreenJoin, #monoScreenWait {
-            padding-top: calc(20px + var(--safe-top));
+            overflow: hidden;
         }
         .mono-sub-back {
             display: flex; align-items: center; gap: 2px;
@@ -2553,7 +2553,7 @@
         </div>
 
         <!-- ===== Screen: join by code ===== -->
-        <div class="mono-screen" id="monoScreenJoin" style="display:none;">
+        <div class="mono-screen" id="monoScreenJoin" style="display:none;" onclick="monoBlurCode(event)">
             <button class="mono-sub-back" onclick="monoBackToMode()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 Назад
@@ -2563,7 +2563,7 @@
                 <div class="mono-join-title">Введите код комнаты</div>
                 <div class="mono-join-sub">Спросите код у хоста</div>
 
-                <div class="mono-code-boxes" id="monoCodeBoxes" onclick="monoFocusCode()">
+                <div class="mono-code-boxes" id="monoCodeBoxes" onclick="monoFocusCode(event)">
                     <div class="mono-code-cell" data-i="0"></div>
                     <div class="mono-code-cell" data-i="1"></div>
                     <div class="mono-code-cell" data-i="2"></div>
@@ -7459,6 +7459,11 @@
                 monopolyRoomCode = null;
                 monopolyIsHost = false;
             }
+            // Local game → return to the Monopoly mode-select lobby (not the app home)
+            if (monopolyWasLocal) {
+                monopolyWasLocal = false;
+                openMonopolyLobby();
+            }
         }
 
         // Listen for messages from the game iframe
@@ -7538,7 +7543,9 @@
         }
 
         // ---- Local game ----
+        let monopolyWasLocal = false;
         function monoStartLocal() {
+            monopolyWasLocal = true;
             document.getElementById('monopoly-lobby').classList.remove('visible');
             openMonopolyGame(); // existing local launcher (sets iframe src to monopoly/index.html)
         }
@@ -7564,9 +7571,18 @@
             setTimeout(monoFocusCode, 250);
         }
 
-        function monoFocusCode() {
+        function monoFocusCode(ev) {
+            if (ev) ev.stopPropagation();
             const inp = document.getElementById('monoCodeInput');
             if (inp) inp.focus();
+        }
+
+        // Tap outside the code cells dismisses the numeric keyboard
+        function monoBlurCode(ev) {
+            const boxes = document.getElementById('monoCodeBoxes');
+            if (boxes && ev && boxes.contains(ev.target)) return; // tap was on cells
+            const inp = document.getElementById('monoCodeInput');
+            if (inp) inp.blur();
         }
 
         // ---- Browse rooms ----
@@ -7611,7 +7627,7 @@
             list.innerHTML = rooms.map((r, i) => `
                 <div class="mono-room-card mono-pop" style="animation-delay:${i*40}ms">
                     <div class="mono-room-info">
-                        <div class="mono-room-code">${r.code}</div>
+                        <div class="mono-room-code">${monoCodeDigits(r.code)}</div>
                         <div class="mono-room-meta">Хост: ${r.host} · ${r.count}/${r.max}</div>
                     </div>
                     <button class="mono-room-join" onclick="monoJoinRoomByCode('${r.code}')">Вступить</button>
@@ -7659,6 +7675,11 @@
             socket.emit('monopoly_start', { roomCode: monopolyRoomCode });
         }
 
+        // Strip the internal "M" prefix for anything the user sees/copies
+        function monoCodeDigits(code) {
+            return (code || '').replace(/^M/i, '');
+        }
+
         function monoCopyCode() {
             if (!monopolyRoomCode) return;
             const done = () => {
@@ -7666,8 +7687,9 @@
                 if (lbl) { lbl.textContent = 'Скопировано!'; setTimeout(() => lbl.textContent = 'Копировать', 1500); }
                 try { tg?.HapticFeedback?.impactOccurred('light'); } catch(_) {}
             };
+            const text = monoCodeDigits(monopolyRoomCode);
             if (navigator.clipboard?.writeText) {
-                navigator.clipboard.writeText(monopolyRoomCode).then(done).catch(done);
+                navigator.clipboard.writeText(text).then(done).catch(done);
             } else { done(); }
         }
 
@@ -7719,14 +7741,14 @@
             socket.on('monopoly_created', ({ roomCode }) => {
                 monopolyRoomCode = roomCode;
                 monopolyIsHost = true;
-                document.getElementById('monoWaitCode').textContent = roomCode;
+                document.getElementById('monoWaitCode').textContent = monoCodeDigits(roomCode);
                 monoShowScreen('monoScreenWait');
             });
 
             socket.on('monopoly_joined', ({ roomCode }) => {
                 monopolyRoomCode = roomCode;
                 monopolyIsHost = false;
-                document.getElementById('monoWaitCode').textContent = roomCode;
+                document.getElementById('monoWaitCode').textContent = monoCodeDigits(roomCode);
                 monoShowScreen('monoScreenWait');
             });
 
