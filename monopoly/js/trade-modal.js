@@ -56,6 +56,23 @@
         contentEl  = document.getElementById('tradeContent');
 
         backdropEl.addEventListener('click', close);
+
+        // Online listeners for incoming trade proposals and responses
+        if (global.OnlineMode) {
+            OnlineMode.on('trade_proposed', (action) => {
+                const initiator = Players.PLAYERS.find(p => p.id === action.fromId);
+                const partner   = Players.PLAYERS.find(p => p.id === action.toId);
+                if (!initiator || !partner) return;
+                openAcceptModal({
+                    initiator, partner,
+                    give: action.give, get: action.get, cash: action.cash,
+                    fromId: action.fromId, toId: action.toId,
+                });
+            });
+            OnlineMode.on('trade_response', (action) => {
+                applyTradeResponse(action.accepted);
+            });
+        }
     }
 
     function close() {
@@ -316,7 +333,20 @@
 
         close();
 
-        // Show accept/reject modal for partner
+        // ONLINE: broadcast the offer so every client opens the same accept
+        // modal. Only the partner's buttons will be active.
+        if (global.OnlineMode?.enabled) {
+            OnlineMode.send({
+                type: 'trade_proposed',
+                fromId, toId, give, get, cash,
+            });
+            // Open the accept modal locally too (we, the initiator, see it
+            // read-only). The partner sees it with active buttons.
+            openAcceptModal({ initiator: me, partner, give, get, cash, fromId, toId });
+            return;
+        }
+
+        // Local: show accept/reject modal for partner (same device)
         const accepted = await showAcceptModal(me, partner, give, get, cash);
         if (!accepted) return;
 
@@ -326,25 +356,171 @@
         try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success'); } catch (_) {}
     }
 
+    // ---- Online: pending trade offer state ----
+    let pendingTrade = null; // { fromId, toId, give, get, cash }
+
+    function openAcceptModal({ initiator, partner, give, get, cash, fromId, toId }) {
+        pendingTrade = { fromId, toId, give, get, cash };
+        // Reuse the same DOM but with read-only / active variants per role
+        return showAcceptModal(initiator, partner, give, get, cash);
+    }
+
+    function applyTradeResponse(accepted) {
+        const t = pendingTrade;
+        pendingTrade = null;
+
+        // Close any open accept modal on every client
+        document.getElementById('tradeAcceptModal')?.remove();
+        document.getElementById('tradeShowToggleBtn')?.remove();
+        document.getElementById('tradeArrowsLayer')?.remove();
+        // Clear board highlights
+        document.querySelectorAll('.tile-trade-give, .tile-trade-get').forEach(el => {
+            el.classList.remove('tile-trade-give', 'tile-trade-get');
+        });
+
+        // Notify everyone about the partner's decision
+        if (t) {
+            const initiator = Players.PLAYERS.find(p => p.id === t.fromId);
+            const partner   = Players.PLAYERS.find(p => p.id === t.toId);
+            if (initiator && partner) {
+                showTradeToast({ initiator, partner, accepted });
+            }
+        }
+
+        if (!accepted || !t) return;
+
+        // Only the initiator mutates state and broadcasts the snapshot;
+        // everyone else will receive the interim_snapshot and converge.
+        const myPid = OnlineMode.enabled
+            ? Players.PLAYERS[OnlineMode.myIdx]?.id
+            : null;
+        if (myPid === t.fromId) {
+            executeTrade(t.fromId, t.toId, t.give, t.get, t.cash);
+            OnlineMode.send({
+                type: 'interim_snapshot',
+                snapshot: GameState.serialize(),
+                positions: Players.serializePositions(),
+            });
+        }
+    }
+
+    // Lightweight floating top toast — non-blocking, auto-dismisses
+    function showTradeToast({ initiator, partner, accepted }) {
+        const myPid = global.OnlineMode?.enabled
+            ? Players.PLAYERS[OnlineMode.myIdx]?.id
+            : null;
+
+        // Per-role messaging
+        let title, sub;
+        if (accepted) {
+            if (myPid === initiator.id) {
+                title = 'Обмен принят';
+                sub   = `${partner.name} принял ваше предложение`;
+            } else if (myPid === partner.id) {
+                title = 'Вы приняли обмен';
+                sub   = `Сделка с ${initiator.name} завершена`;
+            } else {
+                title = 'Обмен состоялся';
+                sub   = `${partner.name} принял предложение от ${initiator.name}`;
+            }
+        } else {
+            if (myPid === initiator.id) {
+                title = 'Обмен отклонён';
+                sub   = `${partner.name} отказался от сделки`;
+            } else if (myPid === partner.id) {
+                title = 'Вы отклонили обмен';
+                sub   = `Предложение от ${initiator.name} отклонено`;
+            } else {
+                title = 'Обмен отклонён';
+                sub   = `${partner.name} отказался от предложения ${initiator.name}`;
+            }
+        }
+
+        const accent = accepted ? '#29c463' : '#ff5f5f';
+        const icon = accepted
+            ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`
+            : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+
+        // Remove any previous toast first
+        document.getElementById('tradeToast')?.remove();
+
+        const toast = document.createElement('div');
+        toast.id = 'tradeToast';
+        toast.className = 'trade-toast';
+        toast.style.setProperty('--toast-accent', accent);
+        toast.innerHTML = `
+            <div class="trade-toast-icon">${icon}</div>
+            <div class="trade-toast-text">
+                <div class="trade-toast-title">${title}</div>
+                <div class="trade-toast-sub">${sub}</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+
+        try {
+            window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred(accepted ? 'success' : 'warning');
+        } catch (_) {}
+
+        // Auto-remove
+        setTimeout(() => {
+            toast.classList.add('is-leaving');
+            setTimeout(() => toast.remove(), 280);
+        }, 2800);
+    }
+
     function showAcceptModal(initiator, partner, give, get, cash) {
         return new Promise((resolve) => {
+            // Determine my role for this offer (online only)
+            const myPid = global.OnlineMode?.enabled
+                ? Players.PLAYERS[OnlineMode.myIdx]?.id
+                : null;
+            const isOnline = !!global.OnlineMode?.enabled;
+            const isPartner = !isOnline || (myPid === partner.id);
+            const isInitiator = isOnline && (myPid === initiator.id);
+
+            // Header text + button labels adapt to role
+            const headerHtml = isOnline && !isPartner
+                ? (isInitiator
+                    ? `Ваше предложение для <span style="color: ${partner.color}">${partner.name}</span>`
+                    : `<span style="color: ${initiator.color}">${initiator.name}</span> предлагает обмен <span style="color: ${partner.color}">${partner.name}</span>`)
+                : `${partner.name}, рассмотрите предложение от <span style="color: ${initiator.color}">${initiator.name}</span>`;
+
+            // Column labels: read-only viewers see neutral perspective; the partner sees the original "you get / you give" framing
+            const youGetLabel    = isPartner ? 'Вы получите:' : `${initiator.name} получит:`;
+            const youGiveLabel   = isPartner ? 'Вы отдадите:' : `${partner.name} отдаст:`;
+            const youGetColor    = isPartner ? initiator.color : initiator.color;
+            const youGiveColor   = isPartner ? partner.color   : partner.color;
+
+            const partnerOwes = cash < 0 ? -cash : 0;
+            const partnerCanAfford = GameState.getMoney(partner.id) >= partnerOwes;
+            const buttonsHtml = isPartner
+                ? `
+                    <div class="trade-accept-buttons">
+                        <button class="action-btn action-btn-secondary" id="tradeRejectBtn">Отклонить</button>
+                        <button class="action-btn action-btn-primary" id="tradeAcceptBtn" ${partnerCanAfford ? '' : 'disabled'}>
+                            ${partnerCanAfford ? 'Принять' : 'Недостаточно средств'}
+                        </button>
+                    </div>
+                `
+                : `<div class="trade-accept-waiting">Ожидание ответа ${partner.name}…</div>`;
+
             const wrap = document.createElement('div');
             wrap.innerHTML = `
                 <div class="trade-accept-modal visible" id="tradeAcceptModal">
                     <div class="trade-accept-content">
                         <div class="trade-accept-eyebrow">ПРЕДЛОЖЕНИЕ ОБМЕНА</div>
                         <div class="trade-accept-title">
-                            ${partner.name}, рассмотрите предложение от <span style="color: ${initiator.color}">${initiator.name}</span>
+                            ${headerHtml}
                         </div>
 
                         <div class="trade-accept-cols">
                             <div class="trade-accept-col">
-                                <div class="trade-accept-col-title" style="color: ${initiator.color}">Вы получите:</div>
+                                <div class="trade-accept-col-title" style="color: ${youGetColor}">${youGetLabel}</div>
                                 ${give.map(idx => `<div class="trade-accept-line">${FULL_NAMES[idx] || TILES[idx].name}</div>`).join('') || '<div class="trade-accept-line muted">—</div>'}
                                 ${cash > 0 ? `<div class="trade-accept-line trade-accept-cash">+$${cash}</div>` : ''}
                             </div>
                             <div class="trade-accept-col">
-                                <div class="trade-accept-col-title" style="color: ${partner.color}">Вы отдадите:</div>
+                                <div class="trade-accept-col-title" style="color: ${youGiveColor}">${youGiveLabel}</div>
                                 ${get.map(idx => `<div class="trade-accept-line">${FULL_NAMES[idx] || TILES[idx].name}</div>`).join('') || '<div class="trade-accept-line muted">—</div>'}
                                 ${cash < 0 ? `<div class="trade-accept-line trade-accept-cash">−$${-cash}</div>` : ''}
                             </div>
@@ -357,10 +533,7 @@
                             Показать карточки на поле
                         </button>
 
-                        <div class="trade-accept-buttons">
-                            <button class="action-btn action-btn-secondary" id="tradeRejectBtn">Отклонить</button>
-                            <button class="action-btn action-btn-primary" id="tradeAcceptBtn">Принять</button>
-                        </div>
+                        ${buttonsHtml}
                     </div>
                 </div>
 
@@ -410,7 +583,6 @@
                 const board = document.getElementById('board');
                 if (!board) return;
                 const boardRect = board.getBoundingClientRect();
-                // Center of the board
                 const cx = boardRect.left + boardRect.width / 2;
                 const cy = boardRect.top + boardRect.height / 2;
 
@@ -437,7 +609,6 @@
                             const r = tileEl.getBoundingClientRect();
                             const tx = r.left + r.width / 2;
                             const ty = r.top + r.height / 2;
-                            // Pull arrow tip back slightly so the head sits ON the tile border
                             const dx = tx - cx;
                             const dy = ty - cy;
                             const len = Math.sqrt(dx*dx + dy*dy);
@@ -453,15 +624,12 @@
                 `;
             }
 
-            function clearArrows() {
-                arrowsLayer.innerHTML = '';
-            }
+            function clearArrows() { arrowsLayer.innerHTML = ''; }
 
             const showBtn = document.getElementById('tradeShowBtn');
             showBtn.addEventListener('click', () => setMode(true));
             toggleBtn.addEventListener('click', () => setMode(false));
 
-            // Redraw arrows on window resize if currently visible
             const onResize = () => { if (arrowsVisible) drawArrows(); };
             window.addEventListener('resize', onResize);
 
@@ -473,8 +641,25 @@
                 document.getElementById('tradeArrowsLayer')?.remove();
                 resolve(result);
             }
-            document.getElementById('tradeAcceptBtn').addEventListener('click', () => cleanup(true));
-            document.getElementById('tradeRejectBtn').addEventListener('click', () => cleanup(false));
+
+            // Buttons only exist for the partner. For others, the modal is
+            // closed by an incoming `trade_response` event (handled centrally
+            // in applyTradeResponse).
+            if (isPartner) {
+                document.getElementById('tradeAcceptBtn').addEventListener('click', () => {
+                    if (isOnline) OnlineMode.send({ type: 'trade_response', accepted: true });
+                    cleanup(true);
+                    if (isOnline) applyTradeResponse(true);
+                });
+                document.getElementById('tradeRejectBtn').addEventListener('click', () => {
+                    if (isOnline) OnlineMode.send({ type: 'trade_response', accepted: false });
+                    cleanup(false);
+                    if (isOnline) applyTradeResponse(false);
+                });
+            }
+            // For online observers/initiator, the promise resolves when
+            // `applyTradeResponse` removes the modal; we don't strictly need
+            // the value (no one awaits it for those roles).
         });
     }
 
