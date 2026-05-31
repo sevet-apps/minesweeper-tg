@@ -90,6 +90,20 @@
     if (onlineInit) {
         Players.configure(onlineInit.players);
         startGame();
+        // If we're reconnecting (resume=1 in URL), apply the snapshot the
+        // parent app will push via postMessage soon.
+        if (onlineInit.isResume) {
+            OnlineMode.onResume((payload) => {
+                try {
+                    if (payload.snapshot) GameState.applySnapshot(payload.snapshot);
+                    if (payload.positions) Players.applyPositions(payload.positions);
+                    if (payload.turnIdx != null) Players.setTurnIndex(payload.turnIdx);
+                    if (typeof window.refreshTurnIndicator === 'function') {
+                        window.refreshTurnIndicator();
+                    }
+                } catch (e) { console.error('[resume] failed to apply snapshot:', e); }
+            });
+        }
     } else {
         // Local mode: show setup screen first.
         SetupScreen.show((configs) => {
@@ -279,6 +293,7 @@
             try { TurnTimer.start(); } catch (_) {}
         }
     }
+    window.refreshTurnIndicator = refreshTurnIndicator;
     refreshTurnIndicator();
 
     // When the local player's clock runs out, auto-pass the turn.

@@ -1433,7 +1433,21 @@ io.on('connection', (socket) => {
         if (oderId) {
             onlineUsers.set(socket.id, { oderId, odername, connectedAt: Date.now() });
             console.log(`User ${oderId} online. Total online: ${onlineUsers.size}`);
-            
+
+            // If this user is a disconnected slot in an active monopoly room,
+            // offer them a chance to rejoin.
+            monopolyRooms.forEach((room, code) => {
+                if (room.status !== 'playing') return;
+                const slot = room.players.find(p =>
+                    String(p.oderId) === String(oderId) && p.id === null);
+                if (slot) {
+                    socket.emit('monopoly_rejoin_available', {
+                        roomCode: code,
+                        playerName: slot.username,
+                    });
+                }
+            });
+
             // Log activity to database
             try {
                 await supabase.from('user_activity').insert({
@@ -1790,9 +1804,59 @@ io.on('connection', (socket) => {
         }
     });
     
-    // Relay monopoly game actions between players
+    // Relay monopoly game actions between players. Also keep the latest
+    // full snapshot so reconnecting players can resume.
     socket.on('monopoly_action', ({ roomCode, action }) => {
+        const room = monopolyRooms.get(roomCode);
+        if (room && action && (action.type === 'turn_complete' || action.type === 'interim_snapshot')) {
+            room.lastSnapshot = {
+                snapshot: action.snapshot,
+                positions: action.positions,
+                turnIdx: action.turnIdx, // undefined for interim, that's ok
+            };
+        }
         socket.to(roomCode).emit('monopoly_action', { action });
+    });
+
+    // Rejoin an in-progress monopoly room after a disconnect.
+    socket.on('monopoly_rejoin', ({ roomCode, userId }) => {
+        const room = monopolyRooms.get(roomCode);
+        if (!room || room.status !== 'playing') {
+            socket.emit('monopoly_error', { message: 'Партия не найдена' });
+            return;
+        }
+        const slotIdx = room.players.findIndex(p => String(p.oderId) === String(userId));
+        if (slotIdx === -1) {
+            socket.emit('monopoly_error', { message: 'Вас нет в этой партии' });
+            return;
+        }
+        // Re-bind socket to the slot
+        room.players[slotIdx].id = socket.id;
+        room.players[slotIdx].disconnectedAt = null;
+        if (room.graceTimers && room.graceTimers[userId]) {
+            clearTimeout(room.graceTimers[userId]);
+            delete room.graceTimers[userId];
+        }
+        socket.join(roomCode);
+
+        // Send the game-start payload + last known snapshot so the client
+        // can spin up the iframe and apply state.
+        const gamePlayers = room.players.map(p => ({
+            username: p.username,
+            photo_url: p.photo_url,
+            oderId: p.oderId,
+        }));
+        socket.emit('monopoly_rejoin_ok', {
+            roomCode,
+            players: gamePlayers,
+            yourIndex: slotIdx,
+            lastSnapshot: room.lastSnapshot || null,
+        });
+        socket.to(roomCode).emit('monopoly_player_reconnected', {
+            playerIndex: slotIdx,
+            playerName: room.players[slotIdx].username,
+        });
+        console.log(`Monopoly: ${room.players[slotIdx].username} rejoined ${roomCode}`);
     });
 
     // Отключение
@@ -1832,15 +1896,47 @@ io.on('connection', (socket) => {
             }
         });
         
-        // Cleanup monopoly rooms
+        // Cleanup monopoly rooms — with grace period for active games
         monopolyRooms.forEach((room, code) => {
             const idx = room.players.findIndex(p => p.id === socket.id);
-            if (idx !== -1) {
-                const leftPlayer = room.players[idx];
-                room.players.splice(idx, 1);
-                if (room.status === 'playing') {
-                    io.to(code).emit('monopoly_player_left', { playerIndex: idx, playerName: leftPlayer.username });
+            if (idx === -1) return;
+            const leftPlayer = room.players[idx];
+
+            if (room.status === 'playing') {
+                // Mark slot as disconnected; keep it for 90 seconds so the
+                // player can rejoin. Their socket.id becomes null.
+                room.players[idx].id = null;
+                room.players[idx].disconnectedAt = Date.now();
+                io.to(code).emit('monopoly_player_disconnected', {
+                    playerIndex: idx, playerName: leftPlayer.username,
+                });
+
+                // Reassign host if needed
+                if (room.hostId === socket.id) {
+                    const fallback = room.players.find(p => p.id);
+                    if (fallback) room.hostId = fallback.id;
                 }
+
+                // Schedule final removal after grace period
+                if (room.graceTimers) clearTimeout(room.graceTimers[leftPlayer.oderId]);
+                else room.graceTimers = {};
+                room.graceTimers[leftPlayer.oderId] = setTimeout(() => {
+                    const r = monopolyRooms.get(code);
+                    if (!r) return;
+                    const stillIdx = r.players.findIndex(p =>
+                        p.oderId === leftPlayer.oderId && p.id === null);
+                    if (stillIdx === -1) return; // already rejoined
+                    r.players.splice(stillIdx, 1);
+                    io.to(code).emit('monopoly_player_left', {
+                        playerIndex: stillIdx, playerName: leftPlayer.username,
+                    });
+                    if (r.players.filter(p => p.id).length === 0) {
+                        monopolyRooms.delete(code);
+                    }
+                }, 90000);
+            } else {
+                // Lobby (waiting): remove immediately as before
+                room.players.splice(idx, 1);
                 if (room.players.length === 0) {
                     monopolyRooms.delete(code);
                 } else {
@@ -3346,7 +3442,7 @@ if (BOT_TOKEN) {
     console.log('BOT_TOKEN not set, Telegram Bot disabled');
 }
 
-// Cleanup old activity records (older than 35 days) - runs every 24 hours.
+// Cleanup old activity records (older than 35 days) - runs every 24 hours
 async function cleanupOldActivity() {
     try {
         const cutoff = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString();

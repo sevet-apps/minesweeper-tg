@@ -2240,6 +2240,93 @@
         .mono-room-empty-title { font-size: 16px; font-weight: 700; color: var(--text-color); }
         .mono-room-empty-sub { font-size: 13px; color: #8e8e93; margin-top: 4px; }
 
+        /* ============================================================
+           Reconnect banner (Monopoly): sticky bottom card with
+           Продолжить / Позже actions.
+           ============================================================ */
+        .mono-rejoin-banner {
+            position: fixed;
+            left: 50%;
+            bottom: calc(20px + var(--safe-bottom));
+            transform: translateX(-50%) translateY(20px);
+            z-index: 250;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            width: min(440px, 92vw);
+            background: rgba(28, 28, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            color: #fff;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow:
+                0 12px 36px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(255, 255, 255, 0.04);
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .mono-rejoin-banner.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .mono-rejoin-banner.is-leaving {
+            opacity: 0;
+            transform: translateX(-50%) translateY(8px);
+        }
+        .mono-rejoin-icon {
+            flex-shrink: 0;
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0a84ff, #5ac8fa);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 6px 16px rgba(10, 132, 255, 0.45);
+        }
+        .mono-rejoin-text {
+            flex: 1; min-width: 0;
+        }
+        .mono-rejoin-title {
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        .mono-rejoin-sub {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.65);
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+        .mono-rejoin-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .mono-rejoin-resume,
+        .mono-rejoin-dismiss {
+            border: none;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.15s;
+        }
+        .mono-rejoin-resume {
+            background: linear-gradient(135deg, #0a84ff, #5ac8fa);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+        }
+        .mono-rejoin-dismiss {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .mono-rejoin-resume:active,
+        .mono-rejoin-dismiss:active { transform: scale(0.95); }
+
     </style>
 </head>
 <body>
@@ -7790,6 +7877,111 @@
 
             socket.on('monopoly_player_left', ({ playerIndex, playerName }) => {
                 showIngameToast(`${playerName || 'Игрок'} покинул комнату`);
+            });
+
+            // --- Reconnect / resume support ---
+            let pendingRejoin = null;
+            socket.on('monopoly_rejoin_available', ({ roomCode, playerName }) => {
+                pendingRejoin = { roomCode, playerName };
+                showMonoRejoinBanner(roomCode);
+            });
+
+            socket.on('monopoly_player_disconnected', ({ playerName }) => {
+                showIngameToast(`${playerName || 'Игрок'} отключился, ждём…`);
+            });
+            socket.on('monopoly_player_reconnected', ({ playerName }) => {
+                showIngameToast(`${playerName || 'Игрок'} снова в игре`);
+            });
+
+            socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot }) => {
+                // Open the iframe just like game_start, but flag it as resume
+                // and pipe the snapshot through postMessage once the iframe is ready.
+                let safeTop = 56;
+                try {
+                    const tgw = window.Telegram?.WebApp;
+                    const csa = tgw?.contentSafeAreaInset?.top;
+                    const sa  = tgw?.safeAreaInset?.top;
+                    const computed = Math.max(csa || 0, sa || 0);
+                    if (computed > 0) safeTop = computed + 8;
+                } catch (_) {}
+                const params = new URLSearchParams({
+                    v: Date.now(),
+                    safeTop, safeBottom: 20,
+                    room: roomCode,
+                    players: JSON.stringify(gamePlayers || []),
+                    myIdx: yourIndex != null ? yourIndex : 0,
+                    resume: '1',
+                });
+                monopolyRoomCode = roomCode;
+                monopolyIsHost = false; // doesn't matter after game start
+                const frame = document.getElementById('monopolyFrame');
+                frame.src = `monopoly/index.html?${params.toString()}`;
+                // Wait for the iframe to be ready, then push the snapshot
+                if (lastSnapshot) {
+                    const tryPush = () => {
+                        try {
+                            frame.contentWindow.postMessage({
+                                type: 'monopoly_resume_snapshot',
+                                snapshot: lastSnapshot,
+                            }, '*');
+                        } catch (_) {}
+                    };
+                    // First push when iframe finishes loading; also a fallback
+                    // resend in case the game registers its listener later.
+                    frame.addEventListener('load', () => {
+                        setTimeout(tryPush, 200);
+                        setTimeout(tryPush, 800);
+                    }, { once: true });
+                }
+                document.getElementById('monopoly-lobby').classList.remove('visible');
+                document.getElementById('monopoly-game').classList.add('visible');
+                hideMonoRejoinBanner();
+            });
+        }
+
+        function showMonoRejoinBanner(roomCode) {
+            hideMonoRejoinBanner();
+            const banner = document.createElement('div');
+            banner.id = 'monoRejoinBanner';
+            banner.className = 'mono-rejoin-banner';
+            banner.innerHTML = `
+                <div class="mono-rejoin-icon">🎲</div>
+                <div class="mono-rejoin-text">
+                    <div class="mono-rejoin-title">У вас есть незавершённая партия</div>
+                    <div class="mono-rejoin-sub">Комната ${monoCodeDigits(roomCode)} ждёт вашего возвращения</div>
+                </div>
+                <div class="mono-rejoin-actions">
+                    <button class="mono-rejoin-dismiss" onclick="dismissMonoRejoin()">Позже</button>
+                    <button class="mono-rejoin-resume" onclick="resumeMonopoly()">Продолжить</button>
+                </div>
+            `;
+            document.body.appendChild(banner);
+            requestAnimationFrame(() => banner.classList.add('visible'));
+        }
+        function hideMonoRejoinBanner() {
+            const b = document.getElementById('monoRejoinBanner');
+            if (b) {
+                b.classList.add('is-leaving');
+                setTimeout(() => b.remove(), 280);
+            }
+        }
+        function dismissMonoRejoin() {
+            hideMonoRejoinBanner();
+        }
+        function resumeMonopoly() {
+            const user = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
+            // Find the pending rejoin code from the banner DOM (in case it
+            // survived a page reload of state)
+            const banner = document.getElementById('monoRejoinBanner');
+            // We saved roomCode in the closure above; use the latest pendingRejoin
+            // via a known socket event. Simplest: read from text.
+            const sub = banner?.querySelector('.mono-rejoin-sub')?.textContent || '';
+            const digits = (sub.match(/(\d{4})/) || [])[1];
+            const roomCode = digits ? 'M' + digits : null;
+            if (!roomCode) return;
+            socket.emit('monopoly_rejoin', {
+                roomCode,
+                userId: user.id || 0,
             });
         }
 

@@ -28,6 +28,7 @@
         roomCode = room;
         enabled = true;
         myIdx = parseInt(p.get('myIdx')) || 0;
+        const isResume = p.get('resume') === '1';
 
         try {
             const rawPlayers = JSON.parse(p.get('players') || '[]');
@@ -46,7 +47,12 @@
         // Listen for messages from the parent app
         window.addEventListener('message', onParentMessage);
 
-        return { players: playerConfigs, myIdx, roomCode };
+        return { players: playerConfigs, myIdx, roomCode, isResume };
+    }
+
+    function onResume(fn) {
+        if (!listeners['_resume']) listeners['_resume'] = [];
+        listeners['_resume'].push(fn);
     }
 
     function onParentMessage(e) {
@@ -58,8 +64,12 @@
             const handlers = listeners[a.type] || [];
             handlers.forEach(fn => { try { fn(a); } catch (err) { console.error(err); } });
         } else if (data.type === 'monopoly_player_left') {
-            // Forward to game listeners
             (listeners['_player_left'] || []).forEach(fn => fn(data));
+        } else if (data.type === 'monopoly_resume_snapshot' && data.snapshot) {
+            // Resume the game from a server-stored snapshot after a reconnect
+            (listeners['_resume'] || []).forEach(fn => {
+                try { fn(data.snapshot); } catch (err) { console.error(err); }
+            });
         }
     }
 
@@ -100,7 +110,7 @@
 
     global.OnlineMode = {
         initFromUrl,
-        send, on,
+        send, on, onResume,
         isMyTurn, setCurrentTurnIdx,
         get enabled() { return enabled; },
         get myIdx() { return myIdx; },
