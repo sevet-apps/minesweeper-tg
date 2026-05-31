@@ -402,12 +402,45 @@
         await flyTo(playerId, targetIdx, awardGo, passedGoCallback);
     }
 
+    // ---------- Online-synced movement wrappers ----------
+    // Use these for movement that is NOT derived from a dice roll: card
+    // effects, "Go to jail" landings, etc. They broadcast the movement so
+    // passive clients animate the same tween. The active player invokes
+    // these; passives receive them via the 'token_animate' event handler
+    // wired up in main.js.
+    async function movePlayerToSync(playerId, targetIdx, awardGo, passedGoCallback) {
+        if (window.OnlineMode?.enabled && window.OnlineMode.isMyTurn()) {
+            window.OnlineMode.send({
+                type: 'token_animate',
+                kind: 'flyTo',
+                playerId,
+                targetIdx,
+                awardGo: !!awardGo,
+            });
+        }
+        return movePlayerTo(playerId, targetIdx, awardGo, passedGoCallback);
+    }
+
+    async function moveStepsSync(playerId, steps, passedGoCallback) {
+        if (window.OnlineMode?.enabled && window.OnlineMode.isMyTurn()) {
+            window.OnlineMode.send({
+                type: 'token_animate',
+                kind: 'steps',
+                playerId,
+                steps,
+            });
+        }
+        return moveSteps(playerId, steps, passedGoCallback);
+    }
+
     global.Players = {
         PLAYERS,
         configure,
         init,
         moveSteps,
         movePlayerTo,
+        moveStepsSync,
+        movePlayerToSync,
         relayoutAll,
         getCurrentPlayer,
         advanceTurn,

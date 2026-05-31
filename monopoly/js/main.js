@@ -274,8 +274,21 @@
     function refreshTurnIndicator() {
         const cur = Players.getCurrentPlayer();
         PlayerHUD.setCurrentTurn(cur.id);
+        // Online: kick off the 2-min countdown for the new active turn
+        if (window.OnlineMode?.enabled) {
+            try { TurnTimer.start(); } catch (_) {}
+        }
     }
     refreshTurnIndicator();
+
+    // When the local player's clock runs out, auto-pass the turn.
+    // We just advance and broadcast; no penalty for first offense.
+    window.__onTurnTimeout = function () {
+        if (!OnlineMode.isMyTurn()) return;
+        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('warning'); } catch (_) {}
+        advanceTurnSkippingBankrupt();
+        finishTurnOnline(false);
+    };
 
     // ---- Scene + dice ----
     const sm = new SceneManager(diceCanvasContainer);
@@ -379,7 +392,7 @@
             players: Players.PLAYERS,
             lastDiceSum: 0,
             movePlayerTo: async (idx, awardGo) => {
-                await Players.movePlayerTo(playerId, idx, awardGo, (pid) => {
+                await Players.movePlayerToSync(playerId, idx, awardGo, (pid) => {
                     GameState.awardGoBonus(pid);
                 });
                 // Re-resolve landing on the new tile (excluding card tiles to avoid loop)
@@ -403,7 +416,7 @@
 
         // GO TO JAIL → fly to JAIL tile and set in-jail state
         if (tile.type === 'corner' && tile.i === 30) {
-            await Players.movePlayerTo(player.id, 10, /*awardGo*/ false);
+            await Players.movePlayerToSync(player.id, 10, /*awardGo*/ false);
             GameState.sendToJail(player.id);
             return;
         }
@@ -549,7 +562,13 @@
         // the dice). Then exit and wait for the snapshot.
         // ============================================================
         if (OnlineMode.enabled && !OnlineMode.isMyTurn()) {
-            if (!GameState.isInJail(player.id)) {
+            // Animate the token move if:
+            //   - the active player is not in jail (normal roll), OR
+            //   - they ARE in jail but rolled doubles (escape → move)
+            // Otherwise (jail + non-doubles) the token stays put.
+            const activeInJail = GameState.isInJail(player.id);
+            const willMove = !activeInJail || result.doubles;
+            if (willMove) {
                 try {
                     await Players.moveSteps(player.id, result.sum, () => {});
                 } catch (_) {}
@@ -576,16 +595,16 @@
                     // 3 failed attempts: must pay $50 and move
                     await payOrBust(player.id, 50, 'Принудительный выход');
                     if (GameState.isBankrupt(player.id)) {
-                        finishTurnOnline(true);
                         advanceTurnSkippingBankrupt();
+                        finishTurnOnline(false);
                         return;
                     }
                     GameState.releaseFromJail(player.id);
                     // Fall through to move
                 } else {
-                    // Stay in jail, turn ends
-                    finishTurnOnline(true);
+                    // Stay in jail, turn ends — pass control to the next player
                     advanceTurnSkippingBankrupt();
+                    finishTurnOnline(false);
                     return;
                 }
             }
@@ -624,7 +643,7 @@
                     btnText: 'В тюрьму',
                     accent: 'orange',
                 });
-                await Players.movePlayerTo(player.id, 10, /*awardGo*/ false);
+                await Players.movePlayerToSync(player.id, 10, /*awardGo*/ false);
                 GameState.sendToJail(player.id);
                 let next = Players.advanceTurn();
                 let safety = 0;
@@ -682,6 +701,18 @@
         rollBtn.disabled = false;
     });
 
+    // Passives replay token animations triggered by the active player's
+    // card effects, jail dispatch, etc.
+    OnlineMode.on('token_animate', async (action) => {
+        try {
+            if (action.kind === 'flyTo') {
+                await Players.movePlayerTo(action.playerId, action.targetIdx, action.awardGo);
+            } else if (action.kind === 'steps') {
+                await Players.moveSteps(action.playerId, action.steps, null);
+            }
+        } catch (_) {}
+    });
+
     // ---- Server stub ----
     function fakeServerRoll() {
         return {
@@ -725,12 +756,14 @@
                 await payOrBust(cur.id, 50, 'Выход из тюрьмы');
                 if (GameState.isBankrupt(cur.id)) {
                     advanceTurnSkippingBankrupt();
+                    finishTurnOnline(false);
                     return;
                 }
                 GameState.releaseFromJail(cur.id);
             } else if (result.action === 'cant_pay') {
                 await payOrBust(cur.id, 50, 'Выход из тюрьмы');
                 advanceTurnSkippingBankrupt();
+                finishTurnOnline(false);
                 return;
             }
         }

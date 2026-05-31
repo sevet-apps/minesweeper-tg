@@ -3853,3 +3853,45 @@ body.online-not-my-turn .roll-btn::after {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* ============================================================
+   Turn timer badge (online only) — shows under the player HUD
+   ============================================================ */
+.turn-timer {
+    position: fixed;
+    top: calc(var(--safe-top) + 102px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px) scale(0.92);
+    z-index: 25;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: rgba(28, 28, 30, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.turn-timer.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+.turn-timer.is-warning {
+    background: rgba(255, 59, 48, 0.92);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    animation: turnTimerPulse 1s ease-in-out infinite;
+}
+@keyframes turnTimerPulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(255, 59, 48, 0.5); }
+    50%      { box-shadow: 0 6px 22px rgba(255, 59, 48, 0.8); }
+}

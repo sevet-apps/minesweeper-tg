@@ -54,7 +54,7 @@
             description: 'Передумали? Возвращайтесь.',
             async effect(ctx) {
                 // Walk backwards 3 tiles (not a flight). No GO award.
-                await Players.moveSteps(ctx.playerId, -3, null);
+                await Players.moveStepsSync(ctx.playerId, -3, null);
             }
         },
         {
