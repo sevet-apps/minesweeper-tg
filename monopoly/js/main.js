@@ -111,6 +111,37 @@
         if (delta !== 0) MoneyToast.showOverPlayer(playerId, delta);
     });
 
+    // ---- Online: fully redraw board + HUD from a freshly applied snapshot ----
+    GameState.on('snapshotApplied', () => {
+        for (const t of window.MonopolyData.TILES) {
+            const tileEl = document.querySelector(`.tile[data-idx="${t.i}"]`);
+            if (!tileEl) continue;
+            const ownerId = GameState.getOwner(t.i);
+            if (ownerId) {
+                const owner = Players.PLAYERS.find(p => p.id === ownerId);
+                tileEl.classList.add('tile-owned');
+                if (owner) tileEl.style.setProperty('--owner-color', owner.color);
+            } else {
+                tileEl.classList.remove('tile-owned');
+                tileEl.style.removeProperty('--owner-color');
+            }
+            // Mortgage state
+            tileEl.classList.toggle('tile-mortgaged', GameState.isMortgaged(t.i));
+            // Houses
+            renderHouseMarkers(t.i, GameState.getHouses(t.i));
+        }
+        // Refresh HUD bankrupt flags (HUD balances refresh via its own
+        // 'snapshotApplied' listener -> renderHud)
+        for (const p of Players.PLAYERS) {
+            if (GameState.isBankrupt(p.id)) {
+                const hudCard = document.querySelector(`.hud-player[data-player-id="${p.id}"]`);
+                if (hudCard) hudCard.classList.add('hud-player-bankrupt');
+                const tokenEl = document.getElementById(`token-${p.id}`);
+                if (tokenEl) tokenEl.classList.add('player-token-bankrupt');
+            }
+        }
+    });
+
     // Tint owned tiles with their owner's color
     GameState.on('tileBought', ({ playerId, tileIdx }) => {
         const tileEl = document.querySelector(`.tile[data-idx="${tileIdx}"]`);
@@ -400,7 +431,6 @@
 
             if (choice === 'buy') {
                 GameState.buyTile(player.id, tile.i);
-                OnlineMode.send({ type: 'tile_bought', playerId: player.id, tileIdx: tile.i });
             } else if (!OnlineMode.enabled) {
                 // Local: skipped → auction among other players
                 const eligible = Players.PLAYERS.filter(p =>
@@ -470,6 +500,16 @@
 
         const player = Players.getCurrentPlayer();
 
+        // In online mode, only the ACTIVE player runs landing logic, draws
+        // cards, shows modals and advances the turn. Passive clients only
+        // animated the dice + token move above; they wait for the active
+        // player's snapshot (sent below) to sync money/ownership/positions.
+        if (OnlineMode.enabled && !OnlineMode.isMyTurn()) {
+            rollBtn.classList.remove('rolling');
+            rollBtn.disabled = false;
+            return;
+        }
+
         // Jail roll: trying to escape via doubles
         if (GameState.isInJail(player.id)) {
             if (result.doubles) {
@@ -483,6 +523,7 @@
                     // 3 failed attempts: must pay $50 and move
                     await payOrBust(player.id, 50, 'Принудительный выход');
                     if (GameState.isBankrupt(player.id)) {
+                        finishTurnOnline(true);
                         advanceTurnSkippingBankrupt();
                         return;
                     }
@@ -490,6 +531,7 @@
                     // Fall through to move
                 } else {
                     // Stay in jail, turn ends
+                    finishTurnOnline(true);
                     advanceTurnSkippingBankrupt();
                     return;
                 }
@@ -516,6 +558,7 @@
                 next = Players.advanceTurn();
             }
             refreshTurnIndicator();
+            finishTurnOnline(false);
         } else {
             consecutiveDoubles++;
             if (consecutiveDoubles >= 3) {
@@ -536,6 +579,7 @@
                     next = Players.advanceTurn();
                 }
                 refreshTurnIndicator();
+                finishTurnOnline(false);
             } else {
                 const curEl = document.querySelector('.hud-player.current');
                 if (curEl) {
@@ -544,9 +588,43 @@
                         { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
                     );
                 }
+                // Doubles: same player goes again. Still broadcast the snapshot
+                // so peers see the result of this sub-move, but keep the turn.
+                finishTurnOnline(true);
             }
         }
 
+        rollBtn.classList.remove('rolling');
+        rollBtn.disabled = false;
+    });
+
+    /**
+     * Active player only: broadcast the full game state + whose turn it is
+     * so passive clients sync. `sameTurn` true means the active player keeps
+     * the turn (jail stay / doubles).
+     */
+    function finishTurnOnline(sameTurn) {
+        if (!OnlineMode.enabled) return;
+        OnlineMode.send({
+            type: 'turn_complete',
+            snapshot: GameState.serialize(),
+            positions: Players.serializePositions(),
+            turnIdx: getCurrentTurnIdx(),
+        });
+    }
+
+    function getCurrentTurnIdx() {
+        // Derive current turn index from Players
+        const cur = Players.getCurrentPlayer();
+        return Players.PLAYERS.findIndex(p => p.id === cur.id);
+    }
+
+    // Passive clients: apply the active player's end-of-turn snapshot
+    OnlineMode.on('turn_complete', ({ snapshot, positions, turnIdx }) => {
+        GameState.applySnapshot(snapshot);
+        Players.applyPositions(positions);
+        Players.setTurnIndex(turnIdx);
+        refreshTurnIndicator();
         rollBtn.classList.remove('rolling');
         rollBtn.disabled = false;
     });

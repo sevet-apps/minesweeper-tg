@@ -52,6 +52,7 @@
         renderHud();
 
         GameState.on('moneyChanged', () => renderHud());
+        GameState.on('snapshotApplied', () => renderHud());
         GameState.on('tileBought',   () => {
             renderHud();
             if (currentPanelPlayer) renderPanel(currentPanelPlayer);

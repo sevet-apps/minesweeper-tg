@@ -419,6 +419,54 @@
         return 0;
     };
 
+    // ---------- Online snapshot (full economic state) ----------
+    function serialize() {
+        const players = {};
+        for (const pid of Object.keys(playerEcon)) {
+            const e = playerEcon[pid];
+            players[pid] = {
+                money: e.money,
+                ownedTiles: Array.from(e.ownedTiles),
+                mortgaged: Array.from(e.mortgaged),
+                bankrupt: e.bankrupt,
+                inJail: e.inJail,
+                jailTurns: e.jailTurns,
+                houses: { ...e.houses },
+            };
+        }
+        const tiles = {};
+        for (const i of Object.keys(tileEcon)) {
+            tiles[i] = { ownedBy: tileEcon[i].ownedBy };
+        }
+        return { players, tiles };
+    }
+
+    /**
+     * Replace local economic state with a snapshot from the active player,
+     * then emit refresh events so HUD / board redraw to match.
+     */
+    function applySnapshot(snap) {
+        if (!snap || !snap.players) return;
+        for (const pid of Object.keys(snap.players)) {
+            const s = snap.players[pid];
+            if (!playerEcon[pid]) continue;
+            playerEcon[pid].money       = s.money;
+            playerEcon[pid].ownedTiles  = new Set(s.ownedTiles || []);
+            playerEcon[pid].mortgaged   = new Set(s.mortgaged || []);
+            playerEcon[pid].bankrupt    = s.bankrupt;
+            playerEcon[pid].inJail      = s.inJail;
+            playerEcon[pid].jailTurns   = s.jailTurns;
+            playerEcon[pid].houses      = { ...(s.houses || {}) };
+        }
+        if (snap.tiles) {
+            for (const i of Object.keys(snap.tiles)) {
+                if (tileEcon[i]) tileEcon[i].ownedBy = snap.tiles[i].ownedBy;
+            }
+        }
+        // Tell the UI layer to fully re-render from the new state
+        emit('snapshotApplied', {});
+    }
+
     global.GameState = {
         init,
         on,
@@ -435,5 +483,7 @@
         resetTurnCounters,
         // mortgage
         canMortgage, mortgage, canUnmortgage, unmortgage, unmortgageCost,
+        // online sync
+        serialize, applySnapshot,
     };
 })(window);

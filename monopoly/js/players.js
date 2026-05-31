@@ -241,6 +241,31 @@
         }
     }
 
+    // ---- Online position snapshot ----
+    function serializePositions() {
+        const pos = {};
+        for (const p of PLAYERS) {
+            pos[p.id] = { position: STATE[p.id].position, lap: STATE[p.id].lap };
+        }
+        return pos;
+    }
+
+    function applyPositions(pos) {
+        if (!pos) return;
+        for (const pid of Object.keys(pos)) {
+            if (STATE[pid]) {
+                STATE[pid].position = pos[pid].position;
+                STATE[pid].lap = pos[pid].lap;
+            }
+        }
+        relayoutAll();
+    }
+
+    function setTurnIndex(idx) {
+        currentTurnIndex = idx % PLAYERS.length;
+        if (window.OnlineMode) window.OnlineMode.setCurrentTurnIdx(currentTurnIndex);
+    }
+
     // ---- Turn management ----
     function getCurrentPlayer() { return PLAYERS[currentTurnIndex]; }
 
@@ -387,5 +412,6 @@
         getCurrentPlayer,
         advanceTurn,
         getPlayerState,
+        serializePositions, applyPositions, setTurnIndex,
     };
 })(window);
