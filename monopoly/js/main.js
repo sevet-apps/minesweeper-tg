@@ -765,6 +765,7 @@
         // In online mode the jail UI is local (only the active player sees it);
         // its outcome is folded into the roll/turn flow.
         const cur = Players.getCurrentPlayer();
+        let releasedFromJail = false;
         if (GameState.isInJail(cur.id)) {
             const result = await JailModal.show(cur);
             if (result.action === 'pay') {
@@ -775,6 +776,7 @@
                     return;
                 }
                 GameState.releaseFromJail(cur.id);
+                releasedFromJail = true;
             } else if (result.action === 'cant_pay') {
                 await payOrBust(cur.id, 50, 'Выход из тюрьмы');
                 advanceTurnSkippingBankrupt();
@@ -787,13 +789,22 @@
 
         // Broadcast my roll BEFORE animating, so peers start their animation
         // in lockstep with us. Throw params are local-only (look/feel of swipe).
-        OnlineMode.send({ type: 'dice_rolled', a, b });
+        OnlineMode.send({ type: 'dice_rolled', a, b, releasedFromJail });
 
         await applyRoll(a, b, throwParams);
     }
 
     // Apply rolls coming in from other players
-    OnlineMode.on('dice_rolled', ({ a, b }) => {
+    OnlineMode.on('dice_rolled', ({ a, b, releasedFromJail }) => {
+        // If the active player paid to leave jail, locally clear their jail
+        // flag BEFORE the dice resolves so the passive-player movement gate
+        // (which checks GameState.isInJail) permits the token to walk.
+        if (releasedFromJail) {
+            const cur = Players.getCurrentPlayer();
+            if (cur && GameState.isInJail(cur.id)) {
+                GameState.releaseFromJail(cur.id);
+            }
+        }
         applyRoll(a, b);
     });
 

@@ -1436,6 +1436,7 @@ io.on('connection', (socket) => {
 
             // If this user is a disconnected slot in an active monopoly room,
             // offer them a chance to rejoin.
+            let rejoinOffered = 0;
             monopolyRooms.forEach((room, code) => {
                 if (room.status !== 'playing') return;
                 const slot = room.players.find(p =>
@@ -1445,8 +1446,13 @@ io.on('connection', (socket) => {
                         roomCode: code,
                         playerName: slot.username,
                     });
+                    console.log(`[monopoly] Offering rejoin for user ${oderId} → room ${code}`);
+                    rejoinOffered++;
                 }
             });
+            if (rejoinOffered === 0) {
+                console.log(`[monopoly] No rejoin slots for user ${oderId} (rooms scanned: ${monopolyRooms.size})`);
+            }
 
             // Log activity to database
             try {
@@ -1907,6 +1913,7 @@ io.on('connection', (socket) => {
                 // player can rejoin. Their socket.id becomes null.
                 room.players[idx].id = null;
                 room.players[idx].disconnectedAt = Date.now();
+                console.log(`[monopoly] ${leftPlayer.username} (oderId=${leftPlayer.oderId}) disconnected from ${code}; grace 90s`);
                 io.to(code).emit('monopoly_player_disconnected', {
                     playerIndex: idx, playerName: leftPlayer.username,
                 });
