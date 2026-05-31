@@ -220,6 +220,30 @@
         if (tileEl) tileEl.classList.remove('tile-mortgaged');
     });
 
+    // ---- Online: between-turn state changes (build / sell / mortgage / unmortgage)
+    // Only the active player initiates these (UI blocks others). Push an
+    // interim snapshot so the other clients see houses, mortgage state and
+    // balances update immediately instead of waiting for turn end.
+    function pushInterimSnapshot() {
+        if (!OnlineMode.enabled) return;
+        if (!OnlineMode.isMyTurn()) return;
+        OnlineMode.send({
+            type: 'interim_snapshot',
+            snapshot: GameState.serialize(),
+            positions: Players.serializePositions(),
+        });
+    }
+    GameState.on('houseBuilt',     pushInterimSnapshot);
+    GameState.on('houseSold',      pushInterimSnapshot);
+    GameState.on('tileMortgaged',  pushInterimSnapshot);
+    GameState.on('tileUnmortgaged', pushInterimSnapshot);
+
+    // Passive clients apply interim snapshots without changing whose turn it is
+    OnlineMode.on('interim_snapshot', ({ snapshot, positions }) => {
+        GameState.applySnapshot(snapshot);
+        Players.applyPositions(positions);
+    });
+
     // Re-layout tokens on resize
     window.addEventListener('resize', () => {
         requestAnimationFrame(() => Players.relayoutAll());
@@ -431,20 +455,36 @@
 
             if (choice === 'buy') {
                 GameState.buyTile(player.id, tile.i);
-            } else if (!OnlineMode.enabled) {
-                // Local: skipped → auction among other players
+            } else {
+                // Declined → auction among other players (works both
+                // locally and online).
                 const eligible = Players.PLAYERS.filter(p =>
                     p.id !== player.id && !GameState.isBankrupt(p.id)
                 );
                 if (eligible.length > 0) {
-                    const result = await Auction.start(tile, eligible);
+                    const result = await Auction.start(tile, eligible, {
+                        online: OnlineMode.enabled,
+                        initiator: true,
+                        myPlayerId: OnlineMode.enabled
+                            ? Players.PLAYERS[OnlineMode.myIdx]?.id
+                            : null,
+                    });
                     if (result.winnerId && result.price > 0) {
                         GameState.changeMoney(result.winnerId, -result.price, 'Выиграл аукцион');
                         directAssignOwnership(result.winnerId, tile.i, result.price);
+                        // Active player pushes interim snapshot so all clients
+                        // see the new owner immediately (auction_end already
+                        // closes the modal everywhere)
+                        if (OnlineMode.enabled) {
+                            OnlineMode.send({
+                                type: 'interim_snapshot',
+                                snapshot: GameState.serialize(),
+                                positions: Players.serializePositions(),
+                            });
+                        }
                     }
                 }
             }
-            // Online + skip: tile stays free for now (no auction in MVP)
             return;
         }
 
@@ -500,15 +540,28 @@
 
         const player = Players.getCurrentPlayer();
 
-        // In online mode, only the ACTIVE player runs landing logic, draws
-        // cards, shows modals and advances the turn. Passive clients only
-        // animated the dice + token move above; they wait for the active
-        // player's snapshot (sent below) to sync money/ownership/positions.
+        // ============================================================
+        // ONLINE / PASSIVE PLAYER PATH
+        // Passives never run jail logic, landing, payOrBust or modal
+        // prompts (those belong to the active player). To still look
+        // alive on their screen, animate the token movement when the
+        // active player is NOT in jail (movement is deterministic from
+        // the dice). Then exit and wait for the snapshot.
+        // ============================================================
         if (OnlineMode.enabled && !OnlineMode.isMyTurn()) {
+            if (!GameState.isInJail(player.id)) {
+                try {
+                    await Players.moveSteps(player.id, result.sum, () => {});
+                } catch (_) {}
+            }
             rollBtn.classList.remove('rolling');
             rollBtn.disabled = false;
             return;
         }
+
+        // ============================================================
+        // ACTIVE PLAYER PATH
+        // ============================================================
 
         // Jail roll: trying to escape via doubles
         if (GameState.isInJail(player.id)) {

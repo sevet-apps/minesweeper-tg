@@ -6,6 +6,12 @@
    - Each bid raises by $10 minimum
    - Player can pass (no longer participates this round)
    - Last remaining bidder wins at their bid price
+
+   ONLINE MODE
+   - Same modal opens on every client
+   - Only the player whose turn it is to bid has active buttons
+   - Bid / Pass actions are broadcast as `auction_bid` / `auction_pass`
+   - All clients advance the state machine deterministically
    ============================================================ */
 
 (function (global) {
@@ -22,6 +28,8 @@
     let currentBidder = null; // playerId of leading bidder
     let bidderIndex = 0;     // whose turn to bid/pass
     let tile = null;
+    let isOnline = false;
+    let myPlayerId = null;   // local player's id (online only)
 
     function init() {
         const wrap = document.createElement('div');
@@ -37,6 +45,21 @@
         backdropEl = document.getElementById('auctionBackdrop');
         modalEl    = document.getElementById('auctionModal');
         contentEl  = document.getElementById('auctionContent');
+
+        // Online listeners — bids/passes from other clients
+        if (global.OnlineMode) {
+            OnlineMode.on('auction_bid', (action) => applyBid(action.byId));
+            OnlineMode.on('auction_pass', (action) => applyPass(action.byId));
+            OnlineMode.on('auction_start', (action) => {
+                // Other clients (non-initiator) open the auction modal
+                openFromRemote(action.tileIdx);
+            });
+            OnlineMode.on('auction_end', (action) => {
+                // Local close happens via state-machine convergence; this is a
+                // safety net if some clients drift.
+                close({ winnerId: action.winnerId, price: action.price }, /*broadcast*/false);
+            });
+        }
     }
 
     /**
@@ -44,8 +67,12 @@
      * Returns a promise resolving to { winnerId, price } or { winnerId: null }
      * if everyone passed.
      */
-    function start(auctionTile, allPlayers) {
+    function start(auctionTile, allPlayers, opts = {}) {
         tile = auctionTile;
+        isOnline = !!(opts.online && global.OnlineMode?.enabled);
+        myPlayerId = opts.myPlayerId || null;
+        isInitiator = !!opts.initiator;
+
         // Snapshot players that have enough to start bidding ($10 minimum)
         participants = allPlayers
             .filter(p => GameState.getMoney(p.id) >= 10)
@@ -58,6 +85,11 @@
             return Promise.resolve({ winnerId: null, price: 0 });
         }
 
+        // In online mode, the initiator tells everyone else to open up
+        if (isOnline && opts.initiator) {
+            OnlineMode.send({ type: 'auction_start', tileIdx: tile.i });
+        }
+
         return new Promise((resolve) => {
             pendingResolve = resolve;
             render();
@@ -67,16 +99,94 @@
         });
     }
 
-    function close(result) {
+    /**
+     * Open the auction modal on a non-initiator client when receiving an
+     * auction_start broadcast.
+     */
+    function openFromRemote(tileIdx) {
+        // Already open?
+        if (modalEl.classList.contains('visible')) return;
+        const allTiles = window.MonopolyData?.TILES || [];
+        const remoteTile = allTiles[tileIdx];
+        if (!remoteTile) return;
+
+        // Eligible = everyone with >= $10 EXCEPT the player who declined.
+        // The initiator broadcast came from the active player; we exclude them.
+        const currentPlayer = global.Players.getCurrentPlayer();
+        const eligible = global.Players.PLAYERS.filter(p =>
+            p.id !== currentPlayer.id && !GameState.isBankrupt(p.id)
+        );
+
+        tile = remoteTile;
+        isOnline = true;
+        isInitiator = false;
+        myPlayerId = OnlineMode.enabled
+            ? global.Players.PLAYERS[OnlineMode.myIdx]?.id
+            : null;
+        participants = eligible
+            .filter(p => GameState.getMoney(p.id) >= 10)
+            .map(p => ({ ...p }));
+        currentBid = 0;
+        currentBidder = null;
+        bidderIndex = 0;
+
+        if (participants.length === 0) return;
+
+        return new Promise((resolve) => {
+            pendingResolve = resolve;
+            render();
+            modalEl.classList.add('visible');
+            backdropEl.classList.add('visible');
+            modalEl.setAttribute('aria-hidden', 'false');
+        });
+    }
+
+    let isInitiator = false;
+
+    function close(result, broadcast = true) {
         modalEl.classList.remove('visible');
         backdropEl.classList.remove('visible');
         modalEl.setAttribute('aria-hidden', 'true');
+        // Only the initiator broadcasts auction_end (state has already
+        // converged on every client, but this is a safety net).
+        if (isOnline && broadcast && isInitiator) {
+            OnlineMode.send({
+                type: 'auction_end',
+                winnerId: result.winnerId,
+                price: result.price,
+            });
+        }
         if (pendingResolve) {
             const r = pendingResolve;
             pendingResolve = null;
             // Small delay so close animation plays
             setTimeout(() => r(result), 300);
         }
+        isOnline = false;
+        isInitiator = false;
+    }
+
+    // ---------- State-machine helpers (used by both local and remote actions)
+    function applyBid(byId) {
+        // Find the bidder in current participants
+        const idx = participants.findIndex(p => p.id === byId);
+        if (idx === -1) return;
+        currentBid = currentBid + 10;
+        currentBidder = byId;
+        // Advance to next bidder
+        bidderIndex = (idx + 1) % participants.length;
+        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium'); } catch (_) {}
+        render();
+    }
+
+    function applyPass(byId) {
+        const idx = participants.findIndex(p => p.id === byId);
+        if (idx === -1) return;
+        participants.splice(idx, 1);
+        // Next player slides into this slot — don't increment.
+        if (bidderIndex >= participants.length) bidderIndex = 0;
+        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+        render();
     }
 
     function render() {
@@ -96,6 +206,10 @@
         const playerMoney = GameState.getMoney(bidder.id);
         const minBid = currentBid + 10;
         const canBid = playerMoney >= minBid;
+
+        // Online: only the player whose turn it is can press buttons,
+        // and only if they're the local player.
+        const isLocalsBidTurn = !isOnline || (myPlayerId && bidder.id === myPlayerId);
 
         // Build participant list
         const participantsList = participants.map(p => {
@@ -119,6 +233,10 @@
             })()
             : `Стартовая ставка: <strong>$10</strong>`;
 
+        const turnLine = isLocalsBidTurn
+            ? `<strong>Ваш ход</strong> — баланс $${playerMoney}`
+            : `Ходит <strong>${bidder.name}</strong> — баланс $${playerMoney}`;
+
         contentEl.innerHTML = `
             <div class="auction-header">
                 <div class="auction-eyebrow">АУКЦИОН</div>
@@ -135,35 +253,34 @@
             </div>
 
             <div class="auction-current-turn">
-                Ходит <strong>${bidder.name}</strong> — баланс $${playerMoney}
+                ${turnLine}
             </div>
 
             <div class="auction-buttons">
                 <button class="action-btn action-btn-primary" id="auctionBidBtn"
-                        ${canBid ? '' : 'disabled'}>
-                    ${canBid ? `Поднять до $${minBid}` : 'Недостаточно средств'}
+                        ${(canBid && isLocalsBidTurn) ? '' : 'disabled'}>
+                    ${isLocalsBidTurn
+                        ? (canBid ? `Поднять до $${minBid}` : 'Недостаточно средств')
+                        : 'Ожидание соперника…'}
                 </button>
-                <button class="action-btn action-btn-secondary" id="auctionPassBtn">
+                <button class="action-btn action-btn-secondary" id="auctionPassBtn"
+                        ${isLocalsBidTurn ? '' : 'disabled'}>
                     Пропустить
                 </button>
             </div>
         `;
 
         document.getElementById('auctionBidBtn').addEventListener('click', () => {
-            if (!canBid) return;
-            currentBid = minBid;
-            currentBidder = bidder.id;
-            bidderIndex++;
-            try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium'); } catch (_) {}
-            render();
+            if (!canBid || !isLocalsBidTurn) return;
+            // Broadcast first so peers apply the same state in lockstep
+            if (isOnline) OnlineMode.send({ type: 'auction_bid', byId: bidder.id });
+            applyBid(bidder.id);
         });
 
         document.getElementById('auctionPassBtn').addEventListener('click', () => {
-            // Remove from participants
-            participants.splice(bidderIndex, 1);
-            // Don't increment bidderIndex - next player slides into this slot
-            try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
-            render();
+            if (!isLocalsBidTurn) return;
+            if (isOnline) OnlineMode.send({ type: 'auction_pass', byId: bidder.id });
+            applyPass(bidder.id);
         });
     }
 
