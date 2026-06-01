@@ -291,5 +291,11 @@
             () => resolve('continue'));
     }
 
-    global.ActionModal = { init, showForLanding };
+    // Programmatically resolve the open modal (used by the turn timer to
+    // auto-pick a default when the active player stalls).
+    function forceResolve(value) {
+        if (pendingResolve) resolve(value);
+    }
+
+    global.ActionModal = { init, showForLanding, forceResolve };
 })(window);

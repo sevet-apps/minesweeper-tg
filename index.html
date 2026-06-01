@@ -7595,6 +7595,15 @@
             if (!data || typeof data !== 'object') return;
             if (data.type === 'monopoly_exit') {
                 closeMonopolyGame();
+            } else if (data.type === 'monopoly_exit_to_browse') {
+                // Close the game and jump straight to the room-browser screen
+                // in the Monopoly lobby (used by the "Список комнат" button on
+                // the win screen).
+                closeMonopolyGame();
+                openMonopolyLobby();
+                // Tiny defer so the lobby DOM is laid out before switching
+                // screens (animation looks cleaner this way).
+                setTimeout(() => { try { monoGoBrowse(); } catch (_) {} }, 50);
             } else if (data.type === 'monopoly_action_out') {
                 // Relay game action to other players via the server
                 if (data.roomCode && data.action && typeof socket !== 'undefined') {
@@ -7931,7 +7940,7 @@
                 showIngameToast(`${playerName || 'Игрок'} снова в игре`);
             });
 
-            socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot }) => {
+            socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot, turnEndsAt }) => {
                 // Open the iframe just like game_start, but flag it as resume
                 // and pipe the snapshot through postMessage once the iframe is ready.
                 let safeTop = 56;
@@ -7961,11 +7970,10 @@
                             frame.contentWindow.postMessage({
                                 type: 'monopoly_resume_snapshot',
                                 snapshot: lastSnapshot,
+                                turnEndsAt: turnEndsAt || null,
                             }, '*');
                         } catch (_) {}
                     };
-                    // First push when iframe finishes loading; also a fallback
-                    // resend in case the game registers its listener later.
                     frame.addEventListener('load', () => {
                         setTimeout(tryPush, 200);
                         setTimeout(tryPush, 800);

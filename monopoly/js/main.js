@@ -93,13 +93,24 @@
         // If we're reconnecting (resume=1 in URL), apply the snapshot the
         // parent app will push via postMessage soon.
         if (onlineInit.isResume) {
-            OnlineMode.onResume((payload) => {
+            OnlineMode.onResume((payload, meta) => {
                 try {
                     if (payload.snapshot) GameState.applySnapshot(payload.snapshot);
                     if (payload.positions) Players.applyPositions(payload.positions);
                     if (payload.turnIdx != null) Players.setTurnIndex(payload.turnIdx);
                     if (typeof window.refreshTurnIndicator === 'function') {
                         window.refreshTurnIndicator();
+                    }
+                    // If the server knows when the current turn ends, sync to it
+                    if (meta?.turnEndsAt && meta.turnEndsAt > Date.now()) {
+                        try { TurnTimer.start(meta.turnEndsAt); } catch (_) {}
+                    } else {
+                        // No active timer when we left, or it expired —
+                        // refreshTurnIndicator already restarted a fresh one,
+                        // stop if not our turn.
+                        if (!OnlineMode.isMyTurn()) {
+                            try { TurnTimer.stop(); } catch (_) {}
+                        }
                     }
                 } catch (e) { console.error('[resume] failed to apply snapshot:', e); }
             });
@@ -154,6 +165,13 @@
                 if (tokenEl) tokenEl.classList.add('player-token-bankrupt');
             }
         }
+        // Game over check — a snapshot can carry the moment of victory
+        // (e.g. opponent surrendered). Show the win screen exactly once.
+        const survivors = Players.PLAYERS.filter(p => !GameState.isBankrupt(p.id));
+        if (survivors.length === 1 && !window.__gameOverShown) {
+            window.__gameOverShown = true;
+            setTimeout(() => GameOverModal.show(survivors[0]), 600);
+        }
     });
 
     // Tint owned tiles with their owner's color
@@ -185,7 +203,8 @@
 
         // Check for game over: only one non-bankrupt left
         const survivors = Players.PLAYERS.filter(p => !GameState.isBankrupt(p.id));
-        if (survivors.length === 1) {
+        if (survivors.length === 1 && !window.__gameOverShown) {
+            window.__gameOverShown = true;
             // Slight delay so the bankrupt animation has time to play
             setTimeout(() => {
                 GameOverModal.show(survivors[0]);
@@ -290,17 +309,62 @@
         PlayerHUD.setCurrentTurn(cur.id);
         // Online: kick off the 2-min countdown for the new active turn
         if (window.OnlineMode?.enabled) {
-            try { TurnTimer.start(); } catch (_) {}
+            // Only the active player decides the endsAt and broadcasts it,
+            // so every client's countdown is in lockstep. Passive clients
+            // will receive `turn_timer_started` and start their own ticker
+            // with the same target time.
+            if (OnlineMode.isMyTurn()) {
+                const endsAt = Date.now() + TurnTimer.DURATION_MS;
+                OnlineMode.send({ type: 'turn_timer_started', endsAt });
+                try { TurnTimer.start(endsAt); } catch (_) {}
+            } else {
+                // Passive — TurnTimer will be started via the broadcast handler
+                // below. Stop any stale one in the meantime.
+                try { TurnTimer.stop(); } catch (_) {}
+            }
         }
     }
     window.refreshTurnIndicator = refreshTurnIndicator;
     refreshTurnIndicator();
 
-    // When the local player's clock runs out, auto-pass the turn.
-    // We just advance and broadcast; no penalty for first offense.
+    // Passives sync their timer to the active player's endsAt
+    OnlineMode.on('turn_timer_started', ({ endsAt }) => {
+        try { TurnTimer.start(endsAt); } catch (_) {}
+    });
+    // The active player broadcasts a stop when they roll dice (turn-time
+    // expense ends; further thinking inside modals isn't penalized).
+    OnlineMode.on('turn_timer_stopped', () => {
+        try { TurnTimer.stop(); } catch (_) {}
+    });
+
+    // When the local player's clock runs out:
+    //   - If the buy/landing modal is open, auto-pick 'skip' (so the tile
+    //     goes to auction instead of being silently lost) or 'continue' for
+    //     informational modals like tax/rent.
+    //   - If no modal is open, just advance the turn.
+    // Aim is: never let one player stall the whole table by sitting in a
+    // modal indefinitely.
     window.__onTurnTimeout = function () {
         if (!OnlineMode.isMyTurn()) return;
         try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('warning'); } catch (_) {}
+
+        // Try to close any open action modal with a sensible default. The
+        // post-roll dice.onResult flow will then continue and naturally call
+        // finishTurnOnline. If no modal is open, advance the turn ourselves.
+        const actionVisible = document.getElementById('actionModal')?.classList.contains('visible');
+        const jailVisible = document.getElementById('jailModal')?.classList.contains('visible');
+        if (actionVisible && typeof ActionModal.forceResolve === 'function') {
+            // 'skip' is the safest default — for purchasable tiles it triggers
+            // an auction; for rent/tax modals (which only accept 'continue')
+            // the open await ignores unknown values and proceeds.
+            ActionModal.forceResolve('skip');
+            return;
+        }
+        if (jailVisible && typeof JailModal.forceResolve === 'function') {
+            // Default: roll dice (least costly, doesn't drain money)
+            JailModal.forceResolve({ action: 'roll' });
+            return;
+        }
         advanceTurnSkippingBankrupt();
         finishTurnOnline(false);
     };
@@ -807,6 +871,13 @@
         // Broadcast my roll BEFORE animating, so peers start their animation
         // in lockstep with us. Throw params are local-only (look/feel of swipe).
         OnlineMode.send({ type: 'dice_rolled', a, b, releasedFromJail, playerId: rollingPlayerId });
+
+        // Start a SECOND 2-min window for post-roll actions (buy modal,
+        // auction, trade response). If the player stalls in a modal past
+        // this, defaults are auto-chosen for them.
+        const postRollEndsAt = Date.now() + TurnTimer.DURATION_MS;
+        OnlineMode.send({ type: 'turn_timer_started', endsAt: postRollEndsAt });
+        try { TurnTimer.start(postRollEndsAt); } catch (_) {}
 
         await applyRoll(a, b, throwParams);
     }

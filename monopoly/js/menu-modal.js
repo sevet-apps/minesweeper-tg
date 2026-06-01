@@ -283,6 +283,16 @@
         if (typeof window.advanceTurnSkippingBankrupt === 'function') {
             window.advanceTurnSkippingBankrupt();
         }
+        // ONLINE: broadcast the new state (bankrupt + turn change) so the
+        // opponent sees the win screen and the bankrupt flags update.
+        if (window.OnlineMode?.enabled) {
+            window.OnlineMode.send({
+                type: 'turn_complete',
+                snapshot: GameState.serialize(),
+                positions: Players.serializePositions(),
+                turnIdx: Players.PLAYERS.findIndex(p => p.id === Players.getCurrentPlayer().id),
+            });
+        }
     }
 
     // ---- New game ----

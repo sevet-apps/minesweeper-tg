@@ -1801,6 +1801,10 @@ io.on('connection', (socket) => {
         if (room.players.length < 2) { socket.emit('monopoly_error', { message: 'Нужно минимум 2 игрока' }); return; }
         
         room.status = 'playing';
+        room.currentTurnIdx = 0;
+        room.lastSnapshot = null;
+        room.turnEndsAt = null;
+        room.actionTimes = new Map();
         
         const gamePlayers = room.players.map((p, i) => ({
             username: p.username,
@@ -1844,15 +1848,106 @@ io.on('connection', (socket) => {
     
     // Relay monopoly game actions between players. Also keep the latest
     // full snapshot so reconnecting players can resume.
+    //
+    // ANTI-CHEAT: every action is validated before relay:
+    //   - sender must be a real participant of the room
+    //   - room must be in 'playing' status
+    //   - rate limit: max 20 actions / second per socket
+    //   - dice rolls must be 1..6
+    //   - turn-affecting actions must come from the current active player
+    //   - snapshot money values are sanity-checked (no negative impossible
+    //     values, no insane jumps)
     socket.on('monopoly_action', ({ roomCode, action }) => {
         const room = monopolyRooms.get(roomCode);
-        if (room && action && (action.type === 'turn_complete' || action.type === 'interim_snapshot')) {
+        if (!room || room.status !== 'playing') return;
+        if (!action || typeof action !== 'object') return;
+
+        // Sender must be a slot in this room (and currently connected)
+        const senderSlot = room.players.findIndex(p => p.id === socket.id);
+        if (senderSlot === -1) {
+            console.log(`[monopoly] DROP action from non-participant ${socket.id} in ${roomCode}`);
+            return;
+        }
+
+        // Rate limit
+        if (!room.actionTimes) room.actionTimes = new Map();
+        const now = Date.now();
+        const arr = room.actionTimes.get(socket.id) || [];
+        const recent = arr.filter(t => now - t < 1000);
+        if (recent.length >= 20) {
+            console.log(`[monopoly] RATE LIMIT for ${socket.id} in ${roomCode}`);
+            return;
+        }
+        recent.push(now);
+        room.actionTimes.set(socket.id, recent);
+
+        // Per-action validation
+        const turnSensitiveTypes = new Set([
+            'dice_rolled', 'turn_complete', 'interim_snapshot',
+            'turn_timer_started', 'turn_timer_stopped',
+            'auction_start', 'auction_end',
+            'trade_proposed',
+            'token_animate',
+        ]);
+        if (turnSensitiveTypes.has(action.type)) {
+            // The sender must be the current active player
+            const activeSlot = room.currentTurnIdx ?? 0;
+            if (senderSlot !== activeSlot) {
+                console.log(`[monopoly] DROP ${action.type}: sender slot ${senderSlot} ≠ active ${activeSlot} in ${roomCode}`);
+                return;
+            }
+        }
+
+        // Dice values
+        if (action.type === 'dice_rolled') {
+            const ok = Number.isInteger(action.a) && action.a >= 1 && action.a <= 6
+                    && Number.isInteger(action.b) && action.b >= 1 && action.b <= 6;
+            if (!ok) {
+                console.log(`[monopoly] DROP dice_rolled with invalid values from ${socket.id}`);
+                return;
+            }
+        }
+
+        // Snapshot sanity: money must be a number; sum of all balances
+        // can't impossibly exceed the bank seeding (1500 * n + bonuses).
+        // We cap at a generous upper bound to catch the most obvious cheats.
+        if (action.type === 'turn_complete' || action.type === 'interim_snapshot') {
+            if (!action.snapshot || typeof action.snapshot !== 'object') return;
+            const players = action.snapshot.players || {};
+            for (const pid of Object.keys(players)) {
+                const m = players[pid]?.money;
+                if (typeof m !== 'number' || !isFinite(m) || m > 1_000_000 || m < -100_000) {
+                    console.log(`[monopoly] DROP snapshot with bogus money for ${pid}: ${m}`);
+                    return;
+                }
+            }
+        }
+
+        // Auction bid amount: server doesn't track auction state in detail,
+        // but at least the value must be a positive small integer.
+        if (action.type === 'auction_bid' && action.amount != null) {
+            if (!Number.isInteger(action.amount) || action.amount < 0 || action.amount > 100_000) {
+                console.log(`[monopoly] DROP auction_bid with bogus amount: ${action.amount}`);
+                return;
+            }
+        }
+
+        // Persist for reconnect resume
+        if (action.type === 'turn_complete' || action.type === 'interim_snapshot') {
             room.lastSnapshot = {
                 snapshot: action.snapshot,
                 positions: action.positions,
-                turnIdx: action.turnIdx, // undefined for interim, that's ok
+                turnIdx: action.turnIdx,
             };
+            if (action.type === 'turn_complete' && typeof action.turnIdx === 'number') {
+                room.currentTurnIdx = action.turnIdx;
+            }
+        } else if (action.type === 'turn_timer_started' && action.endsAt) {
+            room.turnEndsAt = action.endsAt;
+        } else if (action.type === 'turn_timer_stopped') {
+            room.turnEndsAt = null;
         }
+
         socket.to(roomCode).emit('monopoly_action', { action });
     });
 
@@ -1893,6 +1988,7 @@ io.on('connection', (socket) => {
             players: gamePlayers,
             yourIndex: slotIdx,
             lastSnapshot: room.lastSnapshot || null,
+            turnEndsAt: room.turnEndsAt || null,
         });
         socket.to(roomCode).emit('monopoly_player_reconnected', {
             playerIndex: slotIdx,

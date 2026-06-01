@@ -68,7 +68,8 @@
         } else if (data.type === 'monopoly_resume_snapshot' && data.snapshot) {
             // Resume the game from a server-stored snapshot after a reconnect
             (listeners['_resume'] || []).forEach(fn => {
-                try { fn(data.snapshot); } catch (err) { console.error(err); }
+                try { fn(data.snapshot, { turnEndsAt: data.turnEndsAt }); }
+                catch (err) { console.error(err); }
             });
         }
     }

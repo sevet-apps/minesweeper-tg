@@ -76,6 +76,9 @@
             </div>
         `).join('');
 
+        const isOnline = !!window.OnlineMode?.enabled;
+        const btnLabel = isOnline ? 'Список комнат' : 'Начать заново';
+
         contentEl.innerHTML = `
             <div class="game-over-trophy">🏆</div>
             <div class="game-over-eyebrow">ПОБЕДИТЕЛЬ</div>
@@ -96,13 +99,24 @@
 
             <div class="game-over-buttons">
                 <button class="action-btn action-btn-primary" id="gameOverRestartBtn">
-                    Начать заново
+                    ${btnLabel}
                 </button>
             </div>
         `;
 
         document.getElementById('gameOverRestartBtn').addEventListener('click', () => {
-            window.location.reload();
+            if (isOnline) {
+                // Ask the parent app to close the iframe and open the
+                // room browser in the lobby instead of reloading.
+                try {
+                    window.parent.postMessage({ type: 'monopoly_exit_to_browse' }, '*');
+                } catch (_) {
+                    // Fallback if parent messaging fails
+                    window.parent.postMessage({ type: 'monopoly_exit' }, '*');
+                }
+            } else {
+                window.location.reload();
+            }
         });
 
         modalEl.classList.add('visible');

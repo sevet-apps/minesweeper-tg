@@ -94,5 +94,9 @@
         return new Promise((resolve) => { pendingResolve = resolve; });
     }
 
-    global.JailModal = { init, show };
+    function forceResolve(result) {
+        if (pendingResolve) close(result);
+    }
+
+    global.JailModal = { init, show, forceResolve };
 })(window);

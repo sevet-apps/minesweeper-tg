@@ -189,13 +189,52 @@
         render();
     }
 
+    let auctionTimerInterval = null;
+    let auctionTimerEndsAt = 0;
+    const AUCTION_TURN_MS = 30_000;
+
+    function clearAuctionTimer() {
+        if (auctionTimerInterval) {
+            clearInterval(auctionTimerInterval);
+            auctionTimerInterval = null;
+        }
+    }
+
+    function startAuctionTimer(bidder) {
+        clearAuctionTimer();
+        auctionTimerEndsAt = Date.now() + AUCTION_TURN_MS;
+        const tickAuc = () => {
+            const remaining = Math.max(0, Math.round((auctionTimerEndsAt - Date.now()) / 1000));
+            const el = document.getElementById('auctionTimerTime');
+            if (el) el.textContent = `0:${remaining.toString().padStart(2, '0')}`;
+            const wrap = document.getElementById('auctionTimer');
+            if (wrap) wrap.classList.toggle('is-warning', remaining <= 10);
+            if (remaining <= 0) {
+                clearAuctionTimer();
+                // Only the local player whose turn it is auto-passes (sends
+                // the broadcast); other clients converge via the same event.
+                const myPid = isOnline
+                    ? Players.PLAYERS[OnlineMode.myIdx]?.id
+                    : null;
+                if (!isOnline || (myPid && bidder && bidder.id === myPid)) {
+                    if (isOnline) OnlineMode.send({ type: 'auction_pass', byId: bidder.id });
+                    applyPass(bidder.id);
+                }
+            }
+        };
+        tickAuc();
+        auctionTimerInterval = setInterval(tickAuc, 500);
+    }
+
     function render() {
         // Auction ends if only one bidder left and they have current bid
         if (participants.length === 1 && currentBidder === participants[0].id) {
+            clearAuctionTimer();
             close({ winnerId: currentBidder, price: currentBid });
             return;
         }
         if (participants.length === 0) {
+            clearAuctionTimer();
             close({ winnerId: null, price: 0 });
             return;
         }
@@ -256,6 +295,15 @@
                 ${turnLine}
             </div>
 
+            ${isOnline ? `
+                <div class="auction-timer" id="auctionTimer">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span id="auctionTimerTime">0:30</span>
+                </div>
+            ` : ''}
+
             <div class="auction-buttons">
                 <button class="action-btn action-btn-primary" id="auctionBidBtn"
                         ${(canBid && isLocalsBidTurn) ? '' : 'disabled'}>
@@ -282,6 +330,11 @@
             if (isOnline) OnlineMode.send({ type: 'auction_pass', byId: bidder.id });
             applyPass(bidder.id);
         });
+
+        // Restart the 30s bid timer at the bottom of every render. The timer
+        // is purely visual on observer clients; the player whose turn it is
+        // auto-passes on expiry.
+        if (isOnline) startAuctionTimer(bidder);
     }
 
     global.Auction = { init, start };

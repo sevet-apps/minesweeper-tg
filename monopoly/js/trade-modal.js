@@ -636,10 +636,52 @@
             function cleanup(result) {
                 highlightTiles(false);
                 window.removeEventListener('resize', onResize);
+                if (tradeTimerInterval) clearInterval(tradeTimerInterval);
                 document.getElementById('tradeAcceptModal')?.remove();
                 document.getElementById('tradeShowToggleBtn')?.remove();
                 document.getElementById('tradeArrowsLayer')?.remove();
                 resolve(result);
+            }
+
+            // ----- Online response timer (60s) -----
+            // Partner has 60 seconds to accept/reject. If they don't, an
+            // automatic rejection is broadcast so the table can move on.
+            let tradeTimerInterval = null;
+            if (isOnline) {
+                const TRADE_TIMEOUT_MS = 60_000;
+                const tradeEndsAt = Date.now() + TRADE_TIMEOUT_MS;
+                const timerWrap = document.createElement('div');
+                timerWrap.className = 'trade-timer';
+                timerWrap.innerHTML = `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span class="trade-timer-time">1:00</span>
+                `;
+                const accContent = document.querySelector('#tradeAcceptModal .trade-accept-content');
+                accContent?.prepend(timerWrap);
+                const timeEl = timerWrap.querySelector('.trade-timer-time');
+
+                const tickTrade = () => {
+                    const remaining = Math.max(0, Math.round((tradeEndsAt - Date.now()) / 1000));
+                    const mm = Math.floor(remaining / 60);
+                    const ss = remaining % 60;
+                    timeEl.textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+                    timerWrap.classList.toggle('is-warning', remaining <= 15);
+                    if (remaining <= 0) {
+                        clearInterval(tradeTimerInterval);
+                        tradeTimerInterval = null;
+                        // Only the partner auto-rejects (broadcasts the result);
+                        // observers just close their modal when the broadcast arrives.
+                        if (isPartner) {
+                            OnlineMode.send({ type: 'trade_response', accepted: false });
+                            cleanup(false);
+                            applyTradeResponse(false);
+                        }
+                    }
+                };
+                tickTrade();
+                tradeTimerInterval = setInterval(tickTrade, 500);
             }
 
             // Buttons only exist for the partner. For others, the modal is

@@ -60,10 +60,18 @@
         }
     }
 
-    function start() {
+    /**
+     * Start the countdown.
+     * @param {number=} customEndsAt — absolute Date.now() target. If omitted,
+     *   uses now + TURN_SECONDS. Pass a server-provided value to keep all
+     *   clients in lockstep (active and passive).
+     */
+    function start(customEndsAt) {
         if (!window.OnlineMode?.enabled) return; // local game: no timer
         init();
-        endsAt = Date.now() + TURN_SECONDS * 1000;
+        endsAt = customEndsAt && customEndsAt > Date.now()
+            ? customEndsAt
+            : Date.now() + TURN_SECONDS * 1000;
         if (intervalId) clearInterval(intervalId);
         tick();
         intervalId = setInterval(tick, 500);
@@ -75,5 +83,5 @@
         hide();
     }
 
-    global.TurnTimer = { init, start, stop };
+    global.TurnTimer = { init, start, stop, get DURATION_MS() { return TURN_SECONDS * 1000; } };
 })(window);
