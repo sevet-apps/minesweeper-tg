@@ -1719,6 +1719,24 @@ io.on('connection', (socket) => {
     // =============================================
     // MONOPOLY MULTIPLAYER
     // =============================================
+    // Explicit client-initiated check (called after the iframe finishes
+    // loading or whenever the client wants to refresh availability).
+    socket.on('monopoly_check_rejoin', ({ userId }) => {
+        if (!userId) return;
+        monopolyRooms.forEach((room, code) => {
+            if (room.status !== 'playing') return;
+            const slot = room.players.find(p =>
+                String(p.oderId) === String(userId) && p.id === null);
+            if (slot) {
+                socket.emit('monopoly_rejoin_available', {
+                    roomCode: code,
+                    playerName: slot.username,
+                });
+                console.log(`[monopoly] check_rejoin → offer for user ${userId} room ${code}`);
+            }
+        });
+    });
+
     socket.on('monopoly_list', () => {
         const rooms = [];
         monopolyRooms.forEach((room, code) => {

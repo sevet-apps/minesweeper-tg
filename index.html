@@ -2247,69 +2247,70 @@
         .mono-rejoin-banner {
             position: fixed;
             left: 50%;
-            bottom: calc(20px + var(--safe-bottom));
-            transform: translateX(-50%) translateY(20px);
-            z-index: 250;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.94);
+            z-index: 99999;
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            width: min(440px, 92vw);
-            background: rgba(28, 28, 30, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 18px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 14px;
+            padding: 22px 22px 18px;
+            width: min(360px, 88vw);
+            background: rgba(28, 28, 30, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 22px;
             color: #fff;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             box-shadow:
-                0 12px 36px rgba(0, 0, 0, 0.55),
-                0 0 0 1px rgba(255, 255, 255, 0.04);
+                0 24px 64px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
             opacity: 0;
             transition: opacity 0.3s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .mono-rejoin-banner.visible {
             opacity: 1;
-            transform: translateX(-50%) translateY(0);
+            transform: translate(-50%, -50%) scale(1);
         }
         .mono-rejoin-banner.is-leaving {
             opacity: 0;
-            transform: translateX(-50%) translateY(8px);
+            transform: translate(-50%, -50%) scale(0.96);
+        }
+        .mono-rejoin-banner-top {
+            display: flex; align-items: center; gap: 14px;
         }
         .mono-rejoin-icon {
             flex-shrink: 0;
-            width: 44px; height: 44px;
-            border-radius: 12px;
+            width: 52px; height: 52px;
+            border-radius: 14px;
             background: linear-gradient(135deg, #0a84ff, #5ac8fa);
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-            box-shadow: 0 6px 16px rgba(10, 132, 255, 0.45);
+            font-size: 26px;
+            box-shadow: 0 8px 20px rgba(10, 132, 255, 0.5);
         }
-        .mono-rejoin-text {
-            flex: 1; min-width: 0;
-        }
+        .mono-rejoin-text { flex: 1; min-width: 0; }
         .mono-rejoin-title {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 800;
-            line-height: 1.2;
+            line-height: 1.25;
         }
         .mono-rejoin-sub {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.65);
-            margin-top: 2px;
-            line-height: 1.3;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.68);
+            margin-top: 4px;
+            line-height: 1.35;
         }
         .mono-rejoin-actions {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex-shrink: 0;
+            gap: 8px;
         }
         .mono-rejoin-resume,
         .mono-rejoin-dismiss {
+            flex: 1;
             border: none;
-            border-radius: 10px;
-            padding: 8px 14px;
-            font-size: 13px;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             font-family: inherit;
@@ -2318,14 +2319,27 @@
         .mono-rejoin-resume {
             background: linear-gradient(135deg, #0a84ff, #5ac8fa);
             color: #fff;
-            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+            box-shadow: 0 4px 14px rgba(10, 132, 255, 0.45);
         }
         .mono-rejoin-dismiss {
             background: rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.75);
         }
         .mono-rejoin-resume:active,
         .mono-rejoin-dismiss:active { transform: scale(0.95); }
+
+        /* Backdrop behind the centered banner */
+        .mono-rejoin-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            z-index: 99998;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .mono-rejoin-backdrop.visible { opacity: 1; }
 
     </style>
 </head>
@@ -3183,11 +3197,19 @@
         // Register user as online when socket connects
         socket.on('connect', () => {
             const user = tg.initDataUnsafe.user;
+            console.log('[socket] connected, sid=', socket.id, 'user=', user?.id);
             if (user) {
                 socket.emit('register_online', {
                     oderId: user.id,
                     odername: (user.first_name + ' ' + (user.last_name || '')).trim()
                 });
+                // Belt-and-suspenders: also explicitly poll for rejoin in case
+                // the server-side listener registration on register_online is
+                // out of order during cold starts.
+                setTimeout(() => {
+                    socket.emit('monopoly_check_rejoin', { userId: user.id });
+                    console.log('[monopoly] sent check_rejoin for', user.id);
+                }, 1500);
             }
         });
         
@@ -7630,6 +7652,8 @@
         }
 
         // ---- Local game ----
+        // Reconnect / resume state (accessible from action handlers)
+        let pendingRejoinData = null;
         let monopolyWasLocal = false;
         function monoStartLocal() {
             monopolyWasLocal = true;
@@ -7880,9 +7904,9 @@
             });
 
             // --- Reconnect / resume support ---
-            let pendingRejoin = null;
             socket.on('monopoly_rejoin_available', ({ roomCode, playerName }) => {
-                pendingRejoin = { roomCode, playerName };
+                console.log('[monopoly] rejoin_available received for', roomCode, 'player:', playerName);
+                pendingRejoinData = { roomCode, playerName };
                 showMonoRejoinBanner(roomCode);
             });
 
@@ -7940,15 +7964,23 @@
         }
 
         function showMonoRejoinBanner(roomCode) {
+            console.log('[monopoly] showing rejoin banner for', roomCode);
             hideMonoRejoinBanner();
+            const backdrop = document.createElement('div');
+            backdrop.id = 'monoRejoinBackdrop';
+            backdrop.className = 'mono-rejoin-backdrop';
+            document.body.appendChild(backdrop);
+
             const banner = document.createElement('div');
             banner.id = 'monoRejoinBanner';
             banner.className = 'mono-rejoin-banner';
             banner.innerHTML = `
-                <div class="mono-rejoin-icon">🎲</div>
-                <div class="mono-rejoin-text">
-                    <div class="mono-rejoin-title">У вас есть незавершённая партия</div>
-                    <div class="mono-rejoin-sub">Комната ${monoCodeDigits(roomCode)} ждёт вашего возвращения</div>
+                <div class="mono-rejoin-banner-top">
+                    <div class="mono-rejoin-icon">🎲</div>
+                    <div class="mono-rejoin-text">
+                        <div class="mono-rejoin-title">У вас есть незавершённая партия</div>
+                        <div class="mono-rejoin-sub">Комната ${monoCodeDigits(roomCode)} ждёт вашего возвращения</div>
+                    </div>
                 </div>
                 <div class="mono-rejoin-actions">
                     <button class="mono-rejoin-dismiss" onclick="dismissMonoRejoin()">Позже</button>
@@ -7956,13 +7988,21 @@
                 </div>
             `;
             document.body.appendChild(banner);
-            requestAnimationFrame(() => banner.classList.add('visible'));
+            requestAnimationFrame(() => {
+                banner.classList.add('visible');
+                backdrop.classList.add('visible');
+            });
         }
         function hideMonoRejoinBanner() {
             const b = document.getElementById('monoRejoinBanner');
+            const bd = document.getElementById('monoRejoinBackdrop');
             if (b) {
                 b.classList.add('is-leaving');
                 setTimeout(() => b.remove(), 280);
+            }
+            if (bd) {
+                bd.classList.remove('visible');
+                setTimeout(() => bd.remove(), 280);
             }
         }
         function dismissMonoRejoin() {
@@ -7970,15 +8010,12 @@
         }
         function resumeMonopoly() {
             const user = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
-            // Find the pending rejoin code from the banner DOM (in case it
-            // survived a page reload of state)
-            const banner = document.getElementById('monoRejoinBanner');
-            // We saved roomCode in the closure above; use the latest pendingRejoin
-            // via a known socket event. Simplest: read from text.
-            const sub = banner?.querySelector('.mono-rejoin-sub')?.textContent || '';
-            const digits = (sub.match(/(\d{4})/) || [])[1];
-            const roomCode = digits ? 'M' + digits : null;
-            if (!roomCode) return;
+            const roomCode = pendingRejoinData?.roomCode;
+            if (!roomCode) {
+                console.warn('[monopoly] resumeMonopoly without pendingRejoinData');
+                return;
+            }
+            console.log('[monopoly] sending monopoly_rejoin for', roomCode);
             socket.emit('monopoly_rejoin', {
                 roomCode,
                 userId: user.id || 0,
