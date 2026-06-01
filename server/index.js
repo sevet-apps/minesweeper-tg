@@ -1722,6 +1722,10 @@ io.on('connection', (socket) => {
     // Explicit client-initiated check (called after the iframe finishes
     // loading or whenever the client wants to refresh availability).
     socket.on('monopoly_check_rejoin', ({ userId }) => {
+        if (!userId) {
+            const cached = onlineUsers.get(socket.id);
+            if (cached?.oderId) userId = cached.oderId;
+        }
         if (!userId) return;
         monopolyRooms.forEach((room, code) => {
             if (room.status !== 'playing') return;
@@ -1753,6 +1757,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('monopoly_create', ({ username, photo_url, userId }) => {
+        // Fallback: if the client failed to read user.id from initDataUnsafe
+        // (cold start race), use the one we cached during register_online.
+        if (!userId) {
+            const cached = onlineUsers.get(socket.id);
+            if (cached?.oderId) userId = cached.oderId;
+        }
         let roomCode = 'M' + Math.floor(1000 + Math.random() * 9000).toString();
         while (monopolyRooms.has(roomCode)) { roomCode = 'M' + Math.floor(1000 + Math.random() * 9000).toString(); }
         
@@ -1765,10 +1775,14 @@ io.on('connection', (socket) => {
         socket.join(roomCode);
         socket.emit('monopoly_created', { roomCode });
         io.to(roomCode).emit('monopoly_players', { players: monopolyRooms.get(roomCode).players });
-        console.log(`Monopoly room ${roomCode} created by ${username}`);
+        console.log(`Monopoly room ${roomCode} created by ${username} (oderId=${userId})`);
     });
     
     socket.on('monopoly_join', ({ roomCode, username, photo_url, userId }) => {
+        if (!userId) {
+            const cached = onlineUsers.get(socket.id);
+            if (cached?.oderId) userId = cached.oderId;
+        }
         const room = monopolyRooms.get(roomCode);
         if (!room) { socket.emit('monopoly_error', { message: 'Комната не найдена' }); return; }
         if (room.status !== 'waiting') { socket.emit('monopoly_error', { message: 'Игра уже началась' }); return; }
@@ -1778,7 +1792,7 @@ io.on('connection', (socket) => {
         socket.join(roomCode);
         socket.emit('monopoly_joined', { roomCode });
         io.to(roomCode).emit('monopoly_players', { players: room.players });
-        console.log(`${username} joined Monopoly room ${roomCode} (${room.players.length}/4)`);
+        console.log(`${username} joined Monopoly room ${roomCode} (${room.players.length}/4) oderId=${userId}`);
     });
     
     socket.on('monopoly_start', ({ roomCode }) => {
@@ -1844,6 +1858,10 @@ io.on('connection', (socket) => {
 
     // Rejoin an in-progress monopoly room after a disconnect.
     socket.on('monopoly_rejoin', ({ roomCode, userId }) => {
+        if (!userId) {
+            const cached = onlineUsers.get(socket.id);
+            if (cached?.oderId) userId = cached.oderId;
+        }
         const room = monopolyRooms.get(roomCode);
         if (!room || room.status !== 'playing') {
             socket.emit('monopoly_error', { message: 'Партия не найдена' });

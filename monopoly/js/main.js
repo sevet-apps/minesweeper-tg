@@ -566,7 +566,17 @@
             else                tg?.HapticFeedback?.impactOccurred('medium');
         } catch (_) {}
 
-        const player = Players.getCurrentPlayer();
+        // Determine who actually rolled. In online mode we use the player
+        // id carried inside the broadcast (set in the dice_rolled handler);
+        // this is the source of truth and avoids race conditions with
+        // turn_complete arriving mid-animation. Fallback: local pointer.
+        let player;
+        if (OnlineMode.enabled && !OnlineMode.isMyTurn() && window.__remoteRollingPlayerId) {
+            player = Players.PLAYERS.find(p => p.id === window.__remoteRollingPlayerId)
+                     || Players.getCurrentPlayer();
+        } else {
+            player = Players.getCurrentPlayer();
+        }
 
         // ============================================================
         // ONLINE / PASSIVE PLAYER PATH
@@ -588,6 +598,7 @@
                     await Players.moveSteps(player.id, result.sum, () => {});
                 } catch (_) {}
             }
+            window.__remoteRollingPlayerId = null;
             rollBtn.classList.remove('rolling');
             rollBtn.disabled = false;
             return;
@@ -787,24 +798,28 @@
 
         const { a, b } = fakeServerRoll();
 
+        // Capture who is rolling NOW. We include this in the broadcast so
+        // passive clients don't accidentally use a stale getCurrentPlayer()
+        // by the time their dice.onResult fires (turn_complete from a
+        // previous broadcast might have advanced their pointer mid-animation).
+        const rollingPlayerId = cur.id;
+
         // Broadcast my roll BEFORE animating, so peers start their animation
         // in lockstep with us. Throw params are local-only (look/feel of swipe).
-        OnlineMode.send({ type: 'dice_rolled', a, b, releasedFromJail });
+        OnlineMode.send({ type: 'dice_rolled', a, b, releasedFromJail, playerId: rollingPlayerId });
 
         await applyRoll(a, b, throwParams);
     }
 
     // Apply rolls coming in from other players
-    OnlineMode.on('dice_rolled', ({ a, b, releasedFromJail }) => {
-        // If the active player paid to leave jail, locally clear their jail
-        // flag BEFORE the dice resolves so the passive-player movement gate
-        // (which checks GameState.isInJail) permits the token to walk.
-        if (releasedFromJail) {
-            const cur = Players.getCurrentPlayer();
-            if (cur && GameState.isInJail(cur.id)) {
-                GameState.releaseFromJail(cur.id);
+    OnlineMode.on('dice_rolled', ({ a, b, releasedFromJail, playerId }) => {
+        if (releasedFromJail && playerId) {
+            if (GameState.isInJail(playerId)) {
+                GameState.releaseFromJail(playerId);
             }
         }
+        // Stash the active rolling player so dice.onResult uses the right one
+        window.__remoteRollingPlayerId = playerId || null;
         applyRoll(a, b);
     });
 

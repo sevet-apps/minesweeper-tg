@@ -3194,11 +3194,25 @@
         // --- SOCKET.IO INIT ---
         const socket = io(API_BASE_URL);
         
+        // Stable Telegram user id, captured at first successful read. Some
+        // calls happen before tg.initDataUnsafe.user is populated (cold start
+        // in certain TG clients), so we cache and reuse the first valid value.
+        let telegramUserId = 0;
+        function getTelegramUserId() {
+            if (telegramUserId) return telegramUserId;
+            try {
+                const u = window.tg?.initDataUnsafe?.user;
+                if (u?.id) telegramUserId = u.id;
+            } catch (_) {}
+            return telegramUserId;
+        }
+
         // Register user as online when socket connects
         socket.on('connect', () => {
             const user = tg.initDataUnsafe.user;
             console.log('[socket] connected, sid=', socket.id, 'user=', user?.id);
             if (user) {
+                if (user.id) telegramUserId = user.id;
                 socket.emit('register_online', {
                     oderId: user.id,
                     odername: (user.first_name + ' ' + (user.last_name || '')).trim()
@@ -7668,7 +7682,7 @@
             socket.emit('monopoly_create', {
                 username: user.first_name || 'Игрок',
                 photo_url: user.photo_url || '',
-                userId: user.id || 0
+                userId: getTelegramUserId() || user.id || 0
             });
             // monoScreenWait is shown when 'monopoly_created' arrives
         }
@@ -7717,7 +7731,7 @@
                 roomCode: code,
                 username: user.first_name || 'Игрок',
                 photo_url: user.photo_url || '',
-                userId: user.id || 0
+                userId: getTelegramUserId() || user.id || 0
             });
         }
 
@@ -7766,7 +7780,7 @@
                 roomCode: code,
                 username: user.first_name || 'Игрок',
                 photo_url: user.photo_url || '',
-                userId: user.id || 0
+                userId: getTelegramUserId() || user.id || 0
             });
         }
 
@@ -8009,7 +8023,6 @@
             hideMonoRejoinBanner();
         }
         function resumeMonopoly() {
-            const user = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
             const roomCode = pendingRejoinData?.roomCode;
             if (!roomCode) {
                 console.warn('[monopoly] resumeMonopoly without pendingRejoinData');
@@ -8018,7 +8031,7 @@
             console.log('[monopoly] sending monopoly_rejoin for', roomCode);
             socket.emit('monopoly_rejoin', {
                 roomCode,
-                userId: user.id || 0,
+                userId: getTelegramUserId(),
             });
         }
 
