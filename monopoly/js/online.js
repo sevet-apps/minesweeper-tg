@@ -71,6 +71,27 @@
                 try { fn(data.snapshot, { turnEndsAt: data.turnEndsAt }); }
                 catch (err) { console.error(err); }
             });
+        } else if (data.type === 'monopoly_engine_event_in') {
+            // Server-authoritative event burst from the engine. Apply state
+            // snapshot first (so handlers see updated turnIdx/money), then
+            // dispatch each typed event.
+            const payload = data.payload || {};
+            if (payload.state) {
+                (listeners['_engine_state'] || []).forEach(fn => {
+                    try { fn(payload.state); } catch (e) { console.error(e); }
+                });
+            }
+            const events = Array.isArray(payload.events) ? payload.events : [];
+            for (const ev of events) {
+                const key = '_engine_' + ev.type;
+                (listeners[key] || []).forEach(fn => {
+                    try { fn(ev); } catch (e) { console.error(e); }
+                });
+            }
+        } else if (data.type === 'monopoly_engine_reject_in') {
+            (listeners['_engine_reject'] || []).forEach(fn => {
+                try { fn(data.payload || {}); } catch (e) { console.error(e); }
+            });
         }
     }
 
@@ -109,9 +130,44 @@
         } catch (_) {}
     }
 
+    /**
+     * Send a server-authoritative intent. The server validates with its
+     * engine and broadcasts canonical events that everyone (including us)
+     * applies. Used for actions migrated to Phase 2+ (dice, buy, etc).
+     */
+    function sendIntent(intent) {
+        if (!enabled) return;
+        try {
+            window.parent.postMessage({
+                type: 'monopoly_intent_out',
+                roomCode,
+                intent,
+            }, '*');
+        } catch (e) { console.error('[online] sendIntent failed:', e); }
+    }
+
+    /**
+     * Subscribe to a server engine event type (e.g. 'DICE_ROLLED').
+     */
+    function onEngineEvent(type, fn) {
+        const key = '_engine_' + type;
+        if (!listeners[key]) listeners[key] = [];
+        listeners[key].push(fn);
+    }
+
+    /**
+     * Subscribe to the latest authoritative state slice that arrives with
+     * every engine event burst. fn(state).
+     */
+    function onEngineState(fn) {
+        if (!listeners['_engine_state']) listeners['_engine_state'] = [];
+        listeners['_engine_state'].push(fn);
+    }
+
     global.OnlineMode = {
         initFromUrl,
         send, on, onResume,
+        sendIntent, onEngineEvent, onEngineState,
         isMyTurn, setCurrentTurnIdx,
         get enabled() { return enabled; },
         get myIdx() { return myIdx; },

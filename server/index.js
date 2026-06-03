@@ -1873,6 +1873,81 @@ io.on('connection', (socket) => {
     //   - turn-affecting actions must come from the current active player
     //   - snapshot money values are sanity-checked (no negative impossible
     //     values, no insane jumps)
+    // ============================================================
+    // SERVER-AUTHORITATIVE PATH (Phase 2+)
+    // Clients send INTENTS — the engine validates, applies, and
+    // broadcasts canonical events. The legacy snapshot relay
+    // (monopoly_action) still runs in parallel for actions not
+    // yet migrated.
+    // ============================================================
+    socket.on('monopoly_intent', ({ roomCode, intent }) => {
+        const room = monopolyRooms.get(roomCode);
+        if (!room || room.status !== 'playing') return;
+        if (!room.engineState) {
+            console.warn(`[engine] intent ${intent?.type} ignored — no engineState in ${roomCode}`);
+            return;
+        }
+        const slotIdx = room.players.findIndex(p => p.id === socket.id);
+        if (slotIdx === -1) {
+            console.log(`[engine] DROP intent from non-participant in ${roomCode}`);
+            return;
+        }
+
+        // Rate limit shared with monopoly_action
+        if (!room.actionTimes) room.actionTimes = new Map();
+        const now = Date.now();
+        const arr = room.actionTimes.get(socket.id) || [];
+        const recent = arr.filter(t => now - t < 1000);
+        if (recent.length >= 20) {
+            console.log(`[engine] RATE LIMIT (intent) for ${socket.id}`);
+            return;
+        }
+        recent.push(now);
+        room.actionTimes.set(socket.id, recent);
+
+        const result = MonopolyEngine.applyAction(room.engineState, slotIdx, intent);
+        if (!result.ok) {
+            console.log(`[engine] REJECT intent ${intent?.type} from slot ${slotIdx} in ${roomCode}: ${result.error}`);
+            socket.emit('monopoly_engine_reject', { intent: intent?.type, error: result.error });
+            return;
+        }
+
+        // Phase 2 helper: until the client sends END_TURN/BUY/DECLINE intents,
+        // automatically advance the engine's turn so the next ROLL_DICE
+        // intent isn't blocked. This is a no-op in later phases where the
+        // client drives the engine all the way through the turn.
+        const autoEnd = MonopolyEngine.autoEndTurnIfStuck(room.engineState);
+        if (autoEnd) result.events.push(autoEnd);
+
+        // Broadcast canonical events to EVERYONE (including sender) so all
+        // clients animate from the same source of truth.
+        io.to(roomCode).emit('monopoly_engine_event', {
+            events: result.events,
+            // Send a slim authoritative snapshot of fields clients need now.
+            // (Full state migration happens phase-by-phase.)
+            state: {
+                turnIdx: room.engineState.turnIdx,
+                phase: room.engineState.phase,
+                players: room.engineState.players.map(p => ({
+                    idx: p.idx,
+                    money: p.money,
+                    position: p.position,
+                    inJail: p.inJail,
+                    jailTurns: p.jailTurns,
+                    bankrupt: p.bankrupt,
+                })),
+                consecutiveDoubles: room.engineState.consecutiveDoubles,
+                currentDecision: room.engineState.currentDecision,
+            },
+        });
+        // NOTE: do NOT sync room.currentTurnIdx from the engine in Phase 2 —
+        // the engine auto-advances its pointer right after each ROLL_DICE
+        // intent, while the client's legacy code still drives its own
+        // turn pointer through turn_complete messages. They are intentionally
+        // out of sync until later phases. Keep the legacy turn pointer for
+        // monopoly_action validation.
+    });
+
     socket.on('monopoly_action', ({ roomCode, action }) => {
         const room = monopolyRooms.get(roomCode);
         if (!room || room.status !== 'playing') return;

@@ -860,26 +860,32 @@
             }
         }
 
-        const { a, b } = fakeServerRoll();
-
-        // Capture who is rolling NOW. We include this in the broadcast so
-        // passive clients don't accidentally use a stale getCurrentPlayer()
-        // by the time their dice.onResult fires (turn_complete from a
-        // previous broadcast might have advanced their pointer mid-animation).
         const rollingPlayerId = cur.id;
 
-        // Broadcast my roll BEFORE animating, so peers start their animation
-        // in lockstep with us. Throw params are local-only (look/feel of swipe).
-        OnlineMode.send({ type: 'dice_rolled', a, b, releasedFromJail, playerId: rollingPlayerId });
-
-        // Start a SECOND 2-min window for post-roll actions (buy modal,
-        // auction, trade response). If the player stalls in a modal past
-        // this, defaults are auto-chosen for them.
+        // Start the post-roll countdown immediately for all clients (server
+        // hasn't yet taken over the timer; that lives in phase 6).
         const postRollEndsAt = Date.now() + TurnTimer.DURATION_MS;
         OnlineMode.send({ type: 'turn_timer_started', endsAt: postRollEndsAt });
         try { TurnTimer.start(postRollEndsAt); } catch (_) {}
 
-        await applyRoll(a, b, throwParams);
+        if (OnlineMode.enabled) {
+            // SERVER-AUTHORITATIVE roll. The server generates a, b and
+            // broadcasts DICE_ROLLED to everyone. The handler below
+            // (OnlineMode.onEngineEvent('DICE_ROLLED', ...)) runs applyRoll
+            // for every client — including us — so we don't roll locally.
+            OnlineMode.sendIntent({ type: 'ROLL_DICE' });
+            // Note: we still need to remember "I just released from jail
+            // and I'm the roller", so passive movement gate works during
+            // the brief window before the server's snapshot arrives.
+            if (releasedFromJail) {
+                window.__remoteRollingPlayerId = rollingPlayerId;
+            }
+        } else {
+            // OFFLINE: legacy local roll
+            const { a, b } = fakeServerRoll();
+            OnlineMode.send({ type: 'dice_rolled', a, b, releasedFromJail, playerId: rollingPlayerId });
+            await applyRoll(a, b, throwParams);
+        }
     }
 
     // Apply rolls coming in from other players
@@ -892,6 +898,24 @@
         // Stash the active rolling player so dice.onResult uses the right one
         window.__remoteRollingPlayerId = playerId || null;
         applyRoll(a, b);
+    });
+
+    // ---------- SERVER-AUTHORITATIVE ENGINE EVENTS (Phase 2+) ----------
+    // The server tells everyone the dice values; we just animate. In Phase 2
+    // we only consume DICE_ROLLED — the rest of the gameplay (movement,
+    // landing, money, jail, turn advance) is still handled by the legacy
+    // client-side flow to avoid double mutation. Later phases will switch
+    // the remaining events.
+    OnlineMode.onEngineEvent('DICE_ROLLED', (ev) => {
+        const p = Players.PLAYERS[ev.playerIdx];
+        window.__remoteRollingPlayerId = p ? p.id : null;
+        applyRoll(ev.a, ev.b);
+    });
+
+    // Engine pushed a server reject (e.g. you tried to roll out of turn) —
+    // log and reset the dice button so the UI isn't stuck.
+    OnlineMode.on('_engine_reject', (rej) => {
+        console.warn('[engine] rejected', rej.intent, '→', rej.error);
     });
 
     function advanceTurnSkippingBankrupt() {

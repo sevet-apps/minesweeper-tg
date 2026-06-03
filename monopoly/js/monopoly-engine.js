@@ -484,6 +484,32 @@ function handleEndTurn(state, senderIdx) {
     return { ok: true, events: [{ type: 'TURN_ENDED', nextIdx: state.turnIdx }] };
 }
 
+/**
+ * Phase 2 helper: until the client sends END_TURN intents, the server
+ * auto-advances the turn pointer whenever the engine is sitting in
+ * post_roll. This keeps the engine ready to validate the NEXT player's
+ * ROLL_DICE without blocking on a missing END_TURN.
+ *
+ * Once Phase 3+ migrates buy/decline/build flows, this auto-advance is
+ * still safe because those phases pause the engine in dedicated phases
+ * (awaiting_buy_decision, awaiting_house_choice, etc.) and only return
+ * to post_roll once the player has fully resolved them.
+ */
+function autoEndTurnIfStuck(state) {
+    if (!state) return null;
+    // If the engine is parked waiting for a buy decision (Phase 3 territory),
+    // clear it without affecting state — the client will run its own buy
+    // flow in parallel until that gets migrated.
+    if (state.phase === 'awaiting_buy_decision') {
+        state.currentDecision = null;
+        state.phase = state.lastRoll?.doubles ? 'awaiting_roll' : 'post_roll';
+    }
+    if (state.phase !== 'post_roll') return null;
+    advanceTurn(state);
+    state.phase = 'awaiting_roll';
+    return { type: 'TURN_ENDED', nextIdx: state.turnIdx };
+}
+
 // ---------- Mutation helpers ----------
 function sendToJail(player) {
     player.position = 10;
@@ -554,6 +580,7 @@ module.exports = {
     createGame,
     applyAction,
     serialize,
+    autoEndTurnIfStuck,
     // Exported for tests / debugging
     _TILES: TILES,
     _PROPERTY_DATA: PROPERTY_DATA,

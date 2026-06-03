@@ -7612,6 +7612,14 @@
                         action: data.action,
                     });
                 }
+            } else if (data.type === 'monopoly_intent_out') {
+                // Server-authoritative intent (Phase 2+)
+                if (data.roomCode && data.intent && typeof socket !== 'undefined') {
+                    socket.emit('monopoly_intent', {
+                        roomCode: data.roomCode,
+                        intent: data.intent,
+                    });
+                }
             }
         });
 
@@ -7623,6 +7631,26 @@
                     frame.contentWindow.postMessage({
                         type: 'monopoly_action_in',
                         action,
+                    }, '*');
+                }
+            });
+
+            // Authoritative engine event burst from the server
+            socket.on('monopoly_engine_event', (payload) => {
+                const frame = document.getElementById('monopolyFrame');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'monopoly_engine_event_in',
+                        payload,
+                    }, '*');
+                }
+            });
+            socket.on('monopoly_engine_reject', (payload) => {
+                const frame = document.getElementById('monopolyFrame');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'monopoly_engine_reject_in',
+                        payload,
                     }, '*');
                 }
             });
