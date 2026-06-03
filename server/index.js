@@ -5,6 +5,7 @@ const http = require('http');
 const { Server } = require("socket.io"); 
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const MonopolyEngine = require('./monopoly-engine');
 
 const app = express();
 app.use(cors());
@@ -1805,6 +1806,21 @@ io.on('connection', (socket) => {
         room.lastSnapshot = null;
         room.turnEndsAt = null;
         room.actionTimes = new Map();
+
+        // Server-authoritative engine — runs in shadow mode for now (does
+        // not yet authoritatively control the clients). Every action is
+        // validated against it; mismatches are logged so we can confirm
+        // before flipping the switch.
+        try {
+            room.engineState = MonopolyEngine.createGame(room.players.map(p => ({
+                oderId: p.oderId,
+                username: p.username,
+                photo_url: p.photo_url,
+            })));
+            console.log(`[engine] shadow game created for ${roomCode}, players=${room.engineState.players.length}`);
+        } catch (e) {
+            console.error('[engine] createGame failed:', e);
+        }
         
         const gamePlayers = room.players.map((p, i) => ({
             username: p.username,
