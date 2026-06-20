@@ -156,6 +156,14 @@
     }
 
     /**
+     * Subscribe to engine rejections (server said no to our intent).
+     */
+    function onEngineReject(fn) {
+        if (!listeners['_engine_reject']) listeners['_engine_reject'] = [];
+        listeners['_engine_reject'].push(fn);
+    }
+
+    /**
      * Subscribe to the latest authoritative state slice that arrives with
      * every engine event burst. fn(state).
      */
@@ -167,7 +175,7 @@
     global.OnlineMode = {
         initFromUrl,
         send, on, onResume,
-        sendIntent, onEngineEvent, onEngineState,
+        sendIntent, onEngineEvent, onEngineState, onEngineReject,
         isMyTurn, setCurrentTurnIdx,
         get enabled() { return enabled; },
         get myIdx() { return myIdx; },

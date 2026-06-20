@@ -3928,3 +3928,40 @@ body.online-not-my-turn .roll-btn::after {
 }
 .trade-timer { display: flex; }
 .auction-timer { display: flex; margin: 6px auto 10px; }
+
+/* Server-offline / rejected-intent toast */
+.server-offline-toast {
+    position: fixed;
+    top: calc(var(--safe-top) + 18px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    z-index: 220;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    max-width: min(440px, 92vw);
+    background: rgba(28, 28, 30, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #ff5f5f;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    opacity: 0;
+    animation: serverOfflineIn 0.3s ease-out forwards;
+    pointer-events: none;
+}
+.server-offline-toast.is-leaving { animation: serverOfflineOut 0.3s ease-in forwards; }
+@keyframes serverOfflineIn {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes serverOfflineOut {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-14px); }
+}
+.server-offline-toast svg { flex-shrink: 0; color: #ff5f5f; }

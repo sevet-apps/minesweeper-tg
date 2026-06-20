@@ -1882,14 +1882,30 @@ io.on('connection', (socket) => {
     // ============================================================
     socket.on('monopoly_intent', ({ roomCode, intent }) => {
         const room = monopolyRooms.get(roomCode);
-        if (!room || room.status !== 'playing') return;
-        if (!room.engineState) {
-            console.warn(`[engine] intent ${intent?.type} ignored — no engineState in ${roomCode}`);
+        if (!room || room.status !== 'playing') {
+            socket.emit('monopoly_engine_reject', { intent: intent?.type, error: 'room_not_playing' });
             return;
+        }
+        // Self-heal: if this room predates the engine (started before deploy),
+        // create the engine state on the fly using the current player list.
+        if (!room.engineState) {
+            try {
+                room.engineState = MonopolyEngine.createGame(room.players.map(p => ({
+                    oderId: p.oderId,
+                    username: p.username,
+                    photo_url: p.photo_url,
+                })));
+                console.log(`[engine] late-init for legacy room ${roomCode}, players=${room.engineState.players.length}`);
+            } catch (e) {
+                console.error('[engine] late-init failed:', e);
+                socket.emit('monopoly_engine_reject', { intent: intent?.type, error: 'engine_unavailable' });
+                return;
+            }
         }
         const slotIdx = room.players.findIndex(p => p.id === socket.id);
         if (slotIdx === -1) {
             console.log(`[engine] DROP intent from non-participant in ${roomCode}`);
+            socket.emit('monopoly_engine_reject', { intent: intent?.type, error: 'not_in_room' });
             return;
         }
 
@@ -1900,6 +1916,7 @@ io.on('connection', (socket) => {
         const recent = arr.filter(t => now - t < 1000);
         if (recent.length >= 20) {
             console.log(`[engine] RATE LIMIT (intent) for ${socket.id}`);
+            socket.emit('monopoly_engine_reject', { intent: intent?.type, error: 'rate_limited' });
             return;
         }
         recent.push(now);

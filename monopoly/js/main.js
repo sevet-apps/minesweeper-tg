@@ -873,13 +873,28 @@
             // broadcasts DICE_ROLLED to everyone. The handler below
             // (OnlineMode.onEngineEvent('DICE_ROLLED', ...)) runs applyRoll
             // for every client — including us — so we don't roll locally.
-            OnlineMode.sendIntent({ type: 'ROLL_DICE' });
-            // Note: we still need to remember "I just released from jail
-            // and I'm the roller", so passive movement gate works during
-            // the brief window before the server's snapshot arrives.
+            //
+            // NO FALLBACK: if the server doesn't respond, we surface a
+            // connection error instead of generating a local roll. Letting
+            // the client roll locally on timeout would be a cheat vector —
+            // an attacker could pretend the server didn't respond and
+            // submit arbitrary values. Bad UX > cheating.
             if (releasedFromJail) {
                 window.__remoteRollingPlayerId = rollingPlayerId;
             }
+            // Remember the swipe params for MY roll so the engine-event
+            // handler can apply the directional throw animation. Cleared
+            // once consumed.
+            window.__myThrowParams = throwParams || {};
+            window.__diceServerResponded = false;
+            window.__diceTimeoutTimer = setTimeout(() => {
+                if (window.__diceServerResponded) return;
+                console.warn('[dice] no response from server after 6s');
+                rollBtn.classList.remove('rolling');
+                rollBtn.disabled = false;
+                try { showServerOfflineToast(); } catch (_) {}
+            }, 6000);
+            OnlineMode.sendIntent({ type: 'ROLL_DICE' });
         } else {
             // OFFLINE: legacy local roll
             const { a, b } = fakeServerRoll();
@@ -888,34 +903,73 @@
         }
     }
 
-    // Apply rolls coming in from other players
+    function showServerOfflineToast() {
+        if (document.getElementById('serverOfflineToast')) return;
+        const t = document.createElement('div');
+        t.id = 'serverOfflineToast';
+        t.className = 'server-offline-toast';
+        t.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></svg>
+            <span>Нет ответа от сервера. Попробуйте ещё раз.</span>
+        `;
+        document.body.appendChild(t);
+        setTimeout(() => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 300); }, 3500);
+    }
+
+    // Apply rolls coming in from other players (legacy client-authoritative).
+    // Kept for the OFFLINE path only — in online mode this listener also
+    // fires because the bridge still relays old-style dice_rolled events
+    // from the engine path (when phase 2 hadn't switched the canonical path
+    // over), but the if(dice.isRolling) guard prevents double animation.
     OnlineMode.on('dice_rolled', ({ a, b, releasedFromJail, playerId }) => {
+        if (dice.isRolling) return;
         if (releasedFromJail && playerId) {
             if (GameState.isInJail(playerId)) {
                 GameState.releaseFromJail(playerId);
             }
         }
-        // Stash the active rolling player so dice.onResult uses the right one
         window.__remoteRollingPlayerId = playerId || null;
         applyRoll(a, b);
     });
 
     // ---------- SERVER-AUTHORITATIVE ENGINE EVENTS (Phase 2+) ----------
-    // The server tells everyone the dice values; we just animate. In Phase 2
-    // we only consume DICE_ROLLED — the rest of the gameplay (movement,
-    // landing, money, jail, turn advance) is still handled by the legacy
-    // client-side flow to avoid double mutation. Later phases will switch
-    // the remaining events.
     OnlineMode.onEngineEvent('DICE_ROLLED', (ev) => {
+        window.__diceServerResponded = true;
+        if (window.__diceTimeoutTimer) {
+            clearTimeout(window.__diceTimeoutTimer);
+            window.__diceTimeoutTimer = null;
+        }
         const p = Players.PLAYERS[ev.playerIdx];
         window.__remoteRollingPlayerId = p ? p.id : null;
-        applyRoll(ev.a, ev.b);
+        // If this is MY roll, use the swipe throw params I stashed so the
+        // directional throw animation matches my gesture. Others get default.
+        const isMine = OnlineMode.enabled && ev.playerIdx === OnlineMode.myIdx;
+        const tp = isMine ? (window.__myThrowParams || {}) : {};
+        window.__myThrowParams = null;
+        applyRoll(ev.a, ev.b, tp);
     });
 
-    // Engine pushed a server reject (e.g. you tried to roll out of turn) —
-    // log and reset the dice button so the UI isn't stuck.
-    OnlineMode.on('_engine_reject', (rej) => {
+    OnlineMode.onEngineReject((rej) => {
         console.warn('[engine] rejected', rej.intent, '→', rej.error);
+        // Server explicitly refused our intent — release the dice UI but
+        // do NOT fall back to a local roll (that would let an attacker
+        // force a local-only outcome by spoofing rejections).
+        if (rej.intent === 'ROLL_DICE') {
+            window.__diceServerResponded = true;
+            if (window.__diceTimeoutTimer) {
+                clearTimeout(window.__diceTimeoutTimer);
+                window.__diceTimeoutTimer = null;
+            }
+            rollBtn.classList.remove('rolling');
+            rollBtn.disabled = false;
+            try {
+                const t = document.createElement('div');
+                t.className = 'server-offline-toast';
+                t.innerHTML = `<span>Сервер отклонил действие${rej.error ? ': ' + rej.error : ''}</span>`;
+                document.body.appendChild(t);
+                setTimeout(() => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 300); }, 3500);
+            } catch (_) {}
+        }
     });
 
     function advanceTurnSkippingBankrupt() {
