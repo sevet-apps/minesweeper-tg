@@ -576,10 +576,41 @@ function serialize(state) {
     return JSON.parse(JSON.stringify(state));
 }
 
+/**
+ * Compact state snapshot the clients apply on every event burst. Contains
+ * everything the UI needs to render: balances, positions, ownership,
+ * mortgages, houses, jail, bankruptcy, whose turn, current phase/decision.
+ */
+function publicState(state) {
+    return {
+        turnIdx: state.turnIdx,
+        phase: state.phase,
+        consecutiveDoubles: state.consecutiveDoubles,
+        currentDecision: state.currentDecision,
+        lastRoll: state.lastRoll,
+        winnerIdx: state.winnerIdx,
+        players: state.players.map(p => ({
+            idx: p.idx,
+            oderId: p.oderId,
+            username: p.username,
+            money: p.money,
+            position: p.position,
+            lap: p.lap,
+            inJail: p.inJail,
+            jailTurns: p.jailTurns,
+            bankrupt: p.bankrupt,
+            ownedTiles: p.ownedTiles.slice(),
+            mortgaged: p.mortgaged.slice(),
+            houses: { ...p.houses },
+        })),
+    };
+}
+
 module.exports = {
     createGame,
     applyAction,
     serialize,
+    publicState,
     autoEndTurnIfStuck,
     // Exported for tests / debugging
     _TILES: TILES,

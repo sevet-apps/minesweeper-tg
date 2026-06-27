@@ -487,100 +487,102 @@
 
     // ---- Resolve landing on a tile ----
     async function handleLanding(player, tile, lastDiceSum, skipCards = false) {
-        // Chance / Chest → draw card
+        const online = OnlineMode.enabled;
+
+        // Chance / Chest → draw card.
+        // PHASE 3: cards are temporarily disabled online (they return in
+        // Phase 4 as server-side draws) to avoid client/server balance
+        // divergence. Offline still draws normally.
         if (!skipCards && (tile.type === 'chance' || tile.type === 'chest')) {
+            if (online) return; // server treats card tiles as no-op for now
             await drawAndApplyCard(player.id, tile.type);
             return;
         }
 
-        // GO TO JAIL → fly to JAIL tile and set in-jail state
+        // GO TO JAIL → fly to JAIL tile and set in-jail state.
+        // Online: the server already set jail state; we just animate + sync
+        // via the engine snapshot. Move the token visually.
         if (tile.type === 'corner' && tile.i === 30) {
             await Players.movePlayerToSync(player.id, 10, /*awardGo*/ false);
-            GameState.sendToJail(player.id);
+            if (!online) GameState.sendToJail(player.id);
             return;
         }
 
-        // For chuжая property → pay rent or bankrupt
+        // Someone else's property → pay rent.
+        // Online: the SERVER already deducted rent during ROLL_DICE; we only
+        // show the informational modal and let the engine snapshot update the
+        // balances. We must NOT call payOrBust again (double charge).
         const ownerId = GameState.getOwner(tile.i);
         if (ownerId && ownerId !== player.id) {
             const rent = GameState.calcRent(tile.i, lastDiceSum);
             if (rent > 0) {
-                // Show rent modal first (informational)
                 const choice = await ActionModal.showForLanding({
                     tile,
                     playerId: player.id,
                     players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
                     lastDiceSum,
                 });
-                // Regardless of choice (user can't really decline), settle the rent
-                await payOrBust(player.id, rent, `Аренда ${tile.name}`, ownerId);
-            }
-            return;
-        }
-
-        // Tax tile → must pay
-        if (tile.type === 'tax') {
-            const amount = tile.name === 'Income Tax' ? 200 : 100;
-            const choice = await ActionModal.showForLanding({
-                tile,
-                playerId: player.id,
-                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
-                lastDiceSum,
-            });
-            await payOrBust(player.id, amount, tile.name);
-            return;
-        }
-
-        // Free purchasable tile → buy or skip
-        if ((tile.type === 'property' || tile.type === 'railroad' || tile.type === 'utility')
-            && !ownerId) {
-            // In online mode, only the active player sees the buy modal.
-            // Remote clients apply the outcome through the broadcast.
-            if (OnlineMode.enabled && !OnlineMode.isMyTurn()) return;
-
-            const choice = await ActionModal.showForLanding({
-                tile,
-                playerId: player.id,
-                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
-                lastDiceSum,
-            });
-
-            if (choice === 'buy') {
-                GameState.buyTile(player.id, tile.i);
-            } else {
-                // Declined → auction among other players (works both
-                // locally and online).
-                const eligible = Players.PLAYERS.filter(p =>
-                    p.id !== player.id && !GameState.isBankrupt(p.id)
-                );
-                if (eligible.length > 0) {
-                    const result = await Auction.start(tile, eligible, {
-                        online: OnlineMode.enabled,
-                        initiator: true,
-                        myPlayerId: OnlineMode.enabled
-                            ? Players.PLAYERS[OnlineMode.myIdx]?.id
-                            : null,
-                    });
-                    if (result.winnerId && result.price > 0) {
-                        GameState.changeMoney(result.winnerId, -result.price, 'Выиграл аукцион');
-                        directAssignOwnership(result.winnerId, tile.i, result.price);
-                        // Active player pushes interim snapshot so all clients
-                        // see the new owner immediately (auction_end already
-                        // closes the modal everywhere)
-                        if (OnlineMode.enabled) {
-                            OnlineMode.send({
-                                type: 'interim_snapshot',
-                                snapshot: GameState.serialize(),
-                                positions: Players.serializePositions(),
-                            });
-                        }
-                    }
+                if (!online) {
+                    await payOrBust(player.id, rent, `Аренда ${tile.name}`, ownerId);
                 }
             }
             return;
         }
 
-        // Owned by self → show informational modal
+        // Tax tile → must pay.
+        // Online: server already deducted; just show the modal.
+        if (tile.type === 'tax') {
+            const amount = tile.name === 'Income Tax' ? 200 : 100;
+            await ActionModal.showForLanding({
+                tile,
+                playerId: player.id,
+                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
+                lastDiceSum,
+            });
+            if (!online) {
+                await payOrBust(player.id, amount, tile.name);
+            }
+            return;
+        }
+
+        // Free purchasable tile → buy or skip.
+        if ((tile.type === 'property' || tile.type === 'railroad' || tile.type === 'utility')
+            && !ownerId) {
+            // In online mode, only the active player sees the buy modal.
+            if (online && !OnlineMode.isMyTurn()) return;
+
+            const choice = await ActionModal.showForLanding({
+                tile,
+                playerId: player.id,
+                players: Players.PLAYERS.map(p => ({ ...p, money: GameState.getMoney(p.id) })),
+                lastDiceSum,
+            });
+
+            if (online) {
+                // PHASE 3: send the intent — the server validates funds,
+                // deducts money, assigns ownership and broadcasts the new
+                // state. We do NOT mutate locally.
+                if (choice === 'buy') {
+                    OnlineMode.sendIntent({ type: 'BUY' });
+                } else {
+                    OnlineMode.sendIntent({ type: 'DECLINE' });
+                    // Auction still runs through the legacy client flow for
+                    // now (migrated in Phase 5). Kick it off locally.
+                    await runDeclineAuction(player, tile);
+                }
+                return;
+            }
+
+            // OFFLINE path
+            if (choice === 'buy') {
+                GameState.buyTile(player.id, tile.i);
+            } else {
+                await runDeclineAuction(player, tile);
+            }
+            return;
+        }
+
+        // Owned by self → show informational modal (no money change)
         if (ownerId && ownerId === player.id) {
             await ActionModal.showForLanding({
                 tile,
@@ -589,6 +591,33 @@
                 lastDiceSum,
             });
             return;
+        }
+    }
+
+    // Auction helper extracted so both online-decline and offline-decline can
+    // reuse it. (Phase 5 will move the auction money flow to the server too.)
+    async function runDeclineAuction(player, tile) {
+        const eligible = Players.PLAYERS.filter(p =>
+            p.id !== player.id && !GameState.isBankrupt(p.id)
+        );
+        if (eligible.length === 0) return;
+        const result = await Auction.start(tile, eligible, {
+            online: OnlineMode.enabled,
+            initiator: true,
+            myPlayerId: OnlineMode.enabled
+                ? Players.PLAYERS[OnlineMode.myIdx]?.id
+                : null,
+        });
+        if (result.winnerId && result.price > 0) {
+            GameState.changeMoney(result.winnerId, -result.price, 'Выиграл аукцион');
+            directAssignOwnership(result.winnerId, tile.i, result.price);
+            if (OnlineMode.enabled) {
+                OnlineMode.send({
+                    type: 'interim_snapshot',
+                    snapshot: GameState.serialize(),
+                    positions: Players.serializePositions(),
+                });
+            }
         }
     }
 
@@ -767,11 +796,21 @@
      */
     function finishTurnOnline(sameTurn) {
         if (!OnlineMode.enabled) return;
+        // PHASE 3: the engine owns money/ownership. We still send positions +
+        // turn pointer through the legacy channel so passives sync token
+        // placement and whose-turn, but the snapshot is no longer the source
+        // of truth for balances (the engine state overrides it). We also send
+        // END_TURN to the engine so the server advances its authoritative
+        // turn pointer.
+        if (!sameTurn) {
+            OnlineMode.sendIntent({ type: 'END_TURN' });
+        }
         OnlineMode.send({
             type: 'turn_complete',
             snapshot: GameState.serialize(),
             positions: Players.serializePositions(),
             turnIdx: getCurrentTurnIdx(),
+            phase3: true, // marker: snapshot is advisory, engine is authoritative
         });
     }
 
@@ -781,7 +820,10 @@
         return Players.PLAYERS.findIndex(p => p.id === cur.id);
     }
 
-    // Passive clients: apply the active player's end-of-turn snapshot
+    // Passive clients: apply the active player's end-of-turn snapshot.
+    // In Phase 3 the engine state (applied via onEngineState) is authoritative
+    // for money/ownership; this snapshot still syncs positions and turn, and
+    // its money values are immediately corrected by the next engine burst.
     OnlineMode.on('turn_complete', ({ snapshot, positions, turnIdx }) => {
         GameState.applySnapshot(snapshot);
         Players.applyPositions(positions);
@@ -789,6 +831,11 @@
         refreshTurnIndicator();
         rollBtn.classList.remove('rolling');
         rollBtn.disabled = false;
+        // Re-apply the latest engine state on top so any stale/tampered
+        // snapshot money is overwritten by the server's truth.
+        if (window.__lastEngineState) {
+            try { applyEngineState(window.__lastEngineState); } catch (_) {}
+        }
     });
 
     // Passives replay token animations triggered by the active player's
@@ -933,6 +980,44 @@
     });
 
     // ---------- SERVER-AUTHORITATIVE ENGINE EVENTS (Phase 2+) ----------
+
+    // PHASE 3: the server's engine is authoritative for money, ownership,
+    // mortgages, houses, jail and bankruptcy. On every engine burst we apply
+    // the server's state on top of whatever the client computed locally —
+    // this silently corrects any client-side tampering. Convert the engine's
+    // slot-indexed state into the client's player-id-keyed snapshot format.
+    let __lastEngineState = null;
+    function applyEngineState(state) {
+        if (!state || !Array.isArray(state.players)) return;
+        __lastEngineState = state;
+        window.__lastEngineState = state;
+        const snap = { players: {}, tiles: {} };
+        for (const sp of state.players) {
+            const localPlayer = Players.PLAYERS[sp.idx];
+            if (!localPlayer) continue;
+            const pid = localPlayer.id;
+            snap.players[pid] = {
+                money: sp.money,
+                ownedTiles: sp.ownedTiles || [],
+                mortgaged: sp.mortgaged || [],
+                bankrupt: sp.bankrupt,
+                inJail: sp.inJail,
+                jailTurns: sp.jailTurns,
+                houses: sp.houses || {},
+            };
+            // Build tile ownership map
+            for (const tIdx of (sp.ownedTiles || [])) {
+                snap.tiles[tIdx] = { ownedBy: pid };
+            }
+        }
+        GameState.applySnapshot(snap);
+    }
+    OnlineMode.onEngineState((state) => {
+        // Defer application until any in-flight dice animation settles so we
+        // don't fight the token movement; money/ownership can update live.
+        applyEngineState(state);
+    });
+
     OnlineMode.onEngineEvent('DICE_ROLLED', (ev) => {
         window.__diceServerResponded = true;
         if (window.__diceTimeoutTimer) {

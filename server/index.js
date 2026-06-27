@@ -1929,41 +1929,72 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Phase 2 helper: until the client sends END_TURN/BUY/DECLINE intents,
-        // automatically advance the engine's turn so the next ROLL_DICE
-        // intent isn't blocked. This is a no-op in later phases where the
-        // client drives the engine all the way through the turn.
-        const autoEnd = MonopolyEngine.autoEndTurnIfStuck(room.engineState);
-        if (autoEnd) result.events.push(autoEnd);
+        // Safety net: if the engine is parked in post_roll and the client
+        // hasn't sent END_TURN within a grace window, a server-side timer
+        // auto-ends (set up below). We no longer auto-clear buy decisions —
+        // Phase 3 clients drive BUY/DECLINE/END_TURN themselves.
 
-        // Broadcast canonical events to EVERYONE (including sender) so all
-        // clients animate from the same source of truth.
+        const pub = MonopolyEngine.publicState(room.engineState);
+
+        // Broadcast canonical events + full authoritative state to EVERYONE
+        // (including sender) so all clients render from one source of truth.
         io.to(roomCode).emit('monopoly_engine_event', {
             events: result.events,
-            // Send a slim authoritative snapshot of fields clients need now.
-            // (Full state migration happens phase-by-phase.)
-            state: {
-                turnIdx: room.engineState.turnIdx,
-                phase: room.engineState.phase,
-                players: room.engineState.players.map(p => ({
-                    idx: p.idx,
-                    money: p.money,
-                    position: p.position,
-                    inJail: p.inJail,
-                    jailTurns: p.jailTurns,
-                    bankrupt: p.bankrupt,
-                })),
-                consecutiveDoubles: room.engineState.consecutiveDoubles,
-                currentDecision: room.engineState.currentDecision,
-            },
+            state: pub,
         });
-        // NOTE: do NOT sync room.currentTurnIdx from the engine in Phase 2 —
-        // the engine auto-advances its pointer right after each ROLL_DICE
-        // intent, while the client's legacy code still drives its own
-        // turn pointer through turn_complete messages. They are intentionally
-        // out of sync until later phases. Keep the legacy turn pointer for
-        // monopoly_action validation.
+
+        // Keep the room's authoritative turn pointer in sync for validation
+        room.currentTurnIdx = room.engineState.turnIdx;
+
+        // Persist for reconnect resume (engine is now the source of truth)
+        room.engineSnapshot = pub;
+
+        // If the game just ended, record the winner for the wager payout layer
+        if (room.engineState.phase === 'game_over') {
+            room.winnerIdx = room.engineState.winnerIdx;
+            console.log(`[engine] game over in ${roomCode}, winner slot=${room.winnerIdx}`);
+        }
+
+        // Arm an auto-end timer: if the active player goes idle in post_roll,
+        // the server ends their turn after the turn timeout so the table
+        // isn't stuck. Cleared whenever a new intent arrives.
+        armEngineTurnTimeout(roomCode);
     });
+
+    function armEngineTurnTimeout(roomCode) {
+        const room = monopolyRooms.get(roomCode);
+        if (!room || !room.engineState) return;
+        if (room.engineTurnTimer) clearTimeout(room.engineTurnTimer);
+        // Only arm when waiting for the active player to end their turn
+        if (room.engineState.phase !== 'post_roll' &&
+            room.engineState.phase !== 'awaiting_buy_decision') return;
+        room.engineTurnTimer = setTimeout(() => {
+            const r = monopolyRooms.get(roomCode);
+            if (!r || !r.engineState) return;
+            // Force-resolve: decline any pending buy, then end the turn
+            const st = r.engineState;
+            const events = [];
+            if (st.phase === 'awaiting_buy_decision') {
+                const dec = st.currentDecision;
+                st.currentDecision = null;
+                st.phase = st.lastRoll?.doubles ? 'awaiting_roll' : 'post_roll';
+                if (dec) events.push({ type: 'TILE_DECLINED', playerIdx: st.turnIdx, tileIdx: dec.tileIdx, auto: true });
+            }
+            if (st.phase === 'post_roll') {
+                const before = st.turnIdx;
+                // reuse engine END_TURN logic
+                const r2 = MonopolyEngine.applyAction(st, before, { type: 'END_TURN' });
+                if (r2.ok) events.push(...r2.events);
+            }
+            if (events.length) {
+                const pub = MonopolyEngine.publicState(st);
+                io.to(roomCode).emit('monopoly_engine_event', { events, state: pub });
+                r.currentTurnIdx = st.turnIdx;
+                r.engineSnapshot = pub;
+                console.log(`[engine] auto-ended idle turn in ${roomCode}`);
+            }
+        }, 125000); // 125s — slightly longer than the client's 2-min UI timer
+    }
 
     socket.on('monopoly_action', ({ roomCode, action }) => {
         const room = monopolyRooms.get(roomCode);
