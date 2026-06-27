@@ -7972,7 +7972,7 @@
                 showIngameToast(`${playerName || 'Игрок'} снова в игре`);
             });
 
-            socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot, turnEndsAt }) => {
+            socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot, engineSnapshot, turnEndsAt }) => {
                 // Open the iframe just like game_start, but flag it as resume
                 // and pipe the snapshot through postMessage once the iframe is ready.
                 let safeTop = 56;
@@ -7995,13 +7995,16 @@
                 monopolyIsHost = false; // doesn't matter after game start
                 const frame = document.getElementById('monopolyFrame');
                 frame.src = `monopoly/index.html?${params.toString()}`;
-                // Wait for the iframe to be ready, then push the snapshot
-                if (lastSnapshot) {
+                // Wait for the iframe to be ready, then push the snapshot.
+                // Phase 3: prefer the authoritative engineSnapshot (has money,
+                // ownership, positions, turnIdx); fall back to legacy snapshot.
+                if (lastSnapshot || engineSnapshot) {
                     const tryPush = () => {
                         try {
                             frame.contentWindow.postMessage({
                                 type: 'monopoly_resume_snapshot',
                                 snapshot: lastSnapshot,
+                                engineSnapshot: engineSnapshot || null,
                                 turnEndsAt: turnEndsAt || null,
                             }, '*');
                         } catch (_) {}

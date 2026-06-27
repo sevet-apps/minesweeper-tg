@@ -95,22 +95,37 @@
         if (onlineInit.isResume) {
             OnlineMode.onResume((payload, meta) => {
                 try {
-                    if (payload.snapshot) GameState.applySnapshot(payload.snapshot);
-                    if (payload.positions) Players.applyPositions(payload.positions);
-                    if (payload.turnIdx != null) Players.setTurnIndex(payload.turnIdx);
-                    if (typeof window.refreshTurnIndicator === 'function') {
-                        window.refreshTurnIndicator();
+                    const eng = meta?.engineSnapshot;
+                    if (eng && Array.isArray(eng.players)) {
+                        // PHASE 3 authoritative resume: apply money/ownership via
+                        // the engine-state path, and positions/jail directly.
+                        applyEngineState(eng);
+                        for (const sp of eng.players) {
+                            const lp = Players.PLAYERS[sp.idx];
+                            if (!lp) continue;
+                            // Place the token at the server-known position
+                            try { Players.movePlayerToSync(lp.id, sp.position, false); } catch (_) {}
+                        }
+                        if (typeof eng.turnIdx === 'number') {
+                            Players.setTurnIndex(eng.turnIdx);
+                        }
+                        if (typeof window.refreshTurnIndicator === 'function') {
+                            window.refreshTurnIndicator();
+                        }
+                    } else {
+                        // Legacy resume fallback
+                        if (payload && payload.snapshot) GameState.applySnapshot(payload.snapshot);
+                        if (payload && payload.positions) Players.applyPositions(payload.positions);
+                        if (payload && payload.turnIdx != null) Players.setTurnIndex(payload.turnIdx);
+                        if (typeof window.refreshTurnIndicator === 'function') {
+                            window.refreshTurnIndicator();
+                        }
                     }
-                    // If the server knows when the current turn ends, sync to it
+                    // Turn timer sync
                     if (meta?.turnEndsAt && meta.turnEndsAt > Date.now()) {
                         try { TurnTimer.start(meta.turnEndsAt); } catch (_) {}
-                    } else {
-                        // No active timer when we left, or it expired —
-                        // refreshTurnIndicator already restarted a fresh one,
-                        // stop if not our turn.
-                        if (!OnlineMode.isMyTurn()) {
-                            try { TurnTimer.stop(); } catch (_) {}
-                        }
+                    } else if (!OnlineMode.isMyTurn()) {
+                        try { TurnTimer.stop(); } catch (_) {}
                     }
                 } catch (e) { console.error('[resume] failed to apply snapshot:', e); }
             });
@@ -740,16 +755,23 @@
         const landedTile = window.MonopolyData.TILES[landedIdx];
         await handleLanding(player, landedTile, result.sum);
 
-        // Advance turn (unless doubles), skipping bankrupt players
+        // Advance turn (unless doubles), skipping bankrupt players.
+        // PHASE 3 ONLINE: we do NOT advance the turn locally — the server's
+        // engine owns the turn pointer and will broadcast the new turnIdx via
+        // publicState after our END_TURN intent. We only send the intent here.
+        const online = OnlineMode.enabled;
         if (!result.doubles) {
             consecutiveDoubles = 0;
-            let next = Players.advanceTurn();
-            let safety = 0;
-            while (GameState.isBankrupt(next.id) && safety++ < 4) {
-                next = Players.advanceTurn();
+            if (online) {
+                finishTurnOnline(false); // sends END_TURN + advisory snapshot
+            } else {
+                let next = Players.advanceTurn();
+                let safety = 0;
+                while (GameState.isBankrupt(next.id) && safety++ < 4) {
+                    next = Players.advanceTurn();
+                }
+                refreshTurnIndicator();
             }
-            refreshTurnIndicator();
-            finishTurnOnline(false);
         } else {
             consecutiveDoubles++;
             if (consecutiveDoubles >= 3) {
@@ -763,14 +785,20 @@
                     accent: 'orange',
                 });
                 await Players.movePlayerToSync(player.id, 10, /*awardGo*/ false);
-                GameState.sendToJail(player.id);
-                let next = Players.advanceTurn();
-                let safety = 0;
-                while (GameState.isBankrupt(next.id) && safety++ < 4) {
-                    next = Players.advanceTurn();
+                if (!online) GameState.sendToJail(player.id);
+                if (online) {
+                    // Server already jailed + advanced on its side during the
+                    // 3rd ROLL_DICE; just sync positions, the turnIdx comes
+                    // from publicState.
+                    finishTurnOnline(false);
+                } else {
+                    let next = Players.advanceTurn();
+                    let safety = 0;
+                    while (GameState.isBankrupt(next.id) && safety++ < 4) {
+                        next = Players.advanceTurn();
+                    }
+                    refreshTurnIndicator();
                 }
-                refreshTurnIndicator();
-                finishTurnOnline(false);
             } else {
                 const curEl = document.querySelector('.hud-player.current');
                 if (curEl) {
@@ -779,8 +807,8 @@
                         { duration: 350, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
                     );
                 }
-                // Doubles: same player goes again. Still broadcast the snapshot
-                // so peers see the result of this sub-move, but keep the turn.
+                // Doubles: same player goes again. Broadcast positions so peers
+                // see this sub-move; keep the turn (no END_TURN).
                 finishTurnOnline(true);
             }
         }
@@ -1005,12 +1033,26 @@
                 jailTurns: sp.jailTurns,
                 houses: sp.houses || {},
             };
-            // Build tile ownership map
             for (const tIdx of (sp.ownedTiles || [])) {
                 snap.tiles[tIdx] = { ownedBy: pid };
             }
         }
         GameState.applySnapshot(snap);
+
+        // TURN POINTER is server-authoritative in Phase 3. Apply the server's
+        // turnIdx so the client never drives the turn on its own (this was the
+        // cause of the "turn doesn't pass" desync). Only update if changed to
+        // avoid redundant UI churn.
+        if (typeof state.turnIdx === 'number') {
+            const curIdx = Players.PLAYERS.findIndex(p => p.id === Players.getCurrentPlayer().id);
+            if (curIdx !== state.turnIdx) {
+                Players.setTurnIndex(state.turnIdx);
+                try { refreshTurnIndicator(); } catch (_) {}
+                // Re-enable / disable the dice button for the new active player
+                rollBtn.classList.remove('rolling');
+                rollBtn.disabled = false;
+            }
+        }
     }
     OnlineMode.onEngineState((state) => {
         // Defer application until any in-flight dice animation settles so we

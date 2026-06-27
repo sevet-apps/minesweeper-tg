@@ -65,10 +65,10 @@
             handlers.forEach(fn => { try { fn(a); } catch (err) { console.error(err); } });
         } else if (data.type === 'monopoly_player_left') {
             (listeners['_player_left'] || []).forEach(fn => fn(data));
-        } else if (data.type === 'monopoly_resume_snapshot' && data.snapshot) {
+        } else if (data.type === 'monopoly_resume_snapshot' && (data.snapshot || data.engineSnapshot)) {
             // Resume the game from a server-stored snapshot after a reconnect
             (listeners['_resume'] || []).forEach(fn => {
-                try { fn(data.snapshot, { turnEndsAt: data.turnEndsAt }); }
+                try { fn(data.snapshot, { turnEndsAt: data.turnEndsAt, engineSnapshot: data.engineSnapshot }); }
                 catch (err) { console.error(err); }
             });
         } else if (data.type === 'monopoly_engine_event_in') {

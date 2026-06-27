@@ -2127,6 +2127,7 @@ io.on('connection', (socket) => {
             players: gamePlayers,
             yourIndex: slotIdx,
             lastSnapshot: room.lastSnapshot || null,
+            engineSnapshot: room.engineSnapshot || null,
             turnEndsAt: room.turnEndsAt || null,
         });
         socket.to(roomCode).emit('monopoly_player_reconnected', {
