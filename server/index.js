@@ -181,9 +181,9 @@ setInterval(() => {
 // SECURITY: Score validation limits
 // ============================
 const SCORE_LIMITS = {
-    'bb_best_score':      { min: 1, max: 10000000 },
+    'bb_best_score':      { min: 1, max: 1000000000 },
     'bb_total_games':     { min: 1, max: 10000000 },
-    'bb_tournament_score':{ min: 1, max: 15000000 },
+    'bb_tournament_score':{ min: 1, max: 1500000000 },
     'saper_wins':         { min: 1, max: 10000000 },
     'saper_best_6':       { min: 1, max: 86400 },   // seconds, max 24h
     'saper_best_8':       { min: 1, max: 86400 },
@@ -289,6 +289,32 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
 // ============================
 const BB_ROWS = 8, BB_COLS = 8;
 
+// ===================== BLOCK BLAST SCORING CONFIG (server) =====================
+// ДОЛЖНО совпадать с BB_SCORING на клиенте (index.html).
+const BB_SCORING = {
+    BASE_LINE_POINTS: 20,
+    COMBO_TIER_1_MAX: 5,
+    COMBO_TIER_2_MAX: 10,
+    COMBO_MULT_TIER_1: 1.0,
+    COMBO_MULT_TIER_2: 1.5,
+    COMBO_MULT_CAP: 2.0,
+    SIMULTANEOUS_MULT: { 1: 1.0, 2: 1.5, 3: 2.2, 4: 3.0, 5: 4.0 },
+    SIMULTANEOUS_MULT_DEFAULT: 4.0,
+    COMBO_BUFFER_MOVES: 3
+};
+function bbComboMultiplier(N) {
+    if (N <= BB_SCORING.COMBO_TIER_1_MAX) return BB_SCORING.COMBO_MULT_TIER_1;
+    if (N <= BB_SCORING.COMBO_TIER_2_MAX) return BB_SCORING.COMBO_MULT_TIER_2;
+    return BB_SCORING.COMBO_MULT_CAP;
+}
+function bbSimultaneousMultiplier(k) {
+    return BB_SCORING.SIMULTANEOUS_MULT[k] || BB_SCORING.SIMULTANEOUS_MULT_DEFAULT;
+}
+function bbLineScore(k, N) {
+    return Math.round(k * BB_SCORING.BASE_LINE_POINTS * N * bbComboMultiplier(N) * bbSimultaneousMultiplier(k));
+}
+// ==============================================================================
+
 // All valid shapes (serialized for fast lookup)
 const BB_VALID_SHAPES = new Set();
 function initValidShapes() {
@@ -355,18 +381,16 @@ function bbPlaceAndScore(session, matrix, r, c) {
     const totalCleared = rowsToClear.length + colsToClear.length;
     
     if (totalCleared > 0) {
-        session.bbCombo++;
-        session.bbComboBuffer = 3;
+        // Комбо растёт на число закрытых линий за ход; буфер держит серию 3 хода
+        session.bbCombo += totalCleared;
+        session.bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES;
         
         // Clear lines
         rowsToClear.forEach(row => { for (let c2 = 0; c2 < BB_COLS; c2++) grid[row][c2] = 0; });
         colsToClear.forEach(col => { for (let r2 = 0; r2 < BB_ROWS; r2++) grid[r2][col] = 0; });
         
-        // Score: base 10 per line, multi-line multiplier, combo multiplier
-        let points = totalCleared * 20;
-        if (totalCleared >= 2) points = points * totalCleared;
-        if (session.bbCombo > 1) points = points * session.bbCombo;
-        session.bbScore += points;
+        // Score: round( k * BASE * N * M(N) * S(k) ), N = combo после увеличения
+        session.bbScore += bbLineScore(totalCleared, session.bbCombo);
         
         // Check all-clear bonus
         let allClear = true;
@@ -380,6 +404,7 @@ function bbPlaceAndScore(session, matrix, r, c) {
             session.bbScore += bonus;
         }
     } else {
+        // Серия держится буфером: комбо гаснет через COMBO_BUFFER_MOVES ходов без линий
         if (session.bbCombo > 0) {
             session.bbComboBuffer--;
             if (session.bbComboBuffer <= 0) session.bbCombo = 0;
@@ -843,9 +868,12 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
                 }
                 console.log(`BB save [synced]: client=${req.body.score}, saved=${score}, server=${session.bbScore}, user=${user_id}`);
             } else {
-                // Not synced (server restarted mid-game) — cap by generous per-move estimate
-                // Max realistic score per move: ~100 points (place 5 cells + clear 2 lines with combo)
-                const maxReasonable = Math.max(500, session.moveCount * 120);
+                // Not synced (server restarted mid-game) — cap by generous per-move estimate.
+                // С комбо-формулой средний темп даже отличной партии ~760 очков/ход,
+                // с редкими пиками. 5000/ход даёт ~7x запас — честных не режет, но
+                // ловит абсурд (напр. 100k очков/ход невозможно). Флор 5000 на случай
+                // очень короткой удачной игры.
+                const maxReasonable = Math.max(5000, session.moveCount * 5000);
                 if (score > maxReasonable) {
                     console.log(`BB save [unsynced]: capped ${score} -> ${maxReasonable}, moves=${session.moveCount}, user=${user_id}`);
                     score = maxReasonable;
