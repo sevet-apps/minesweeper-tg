@@ -1646,6 +1646,124 @@
         .bb-shadow { background: rgba(0,0,0,0.15) !important; box-shadow: none !important; }
         
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
+
+        /* ===== BB JUICY FX ===== */
+        /* Вспышка окантовки поля в цвет фигуры (позиция задаётся из JS) */
+        .bb-border-flash {
+            position: absolute;
+            border-radius: 14px;
+            pointer-events: none;
+            z-index: 6;
+            opacity: 0;
+            border: 3px solid var(--flash-color, #fff);
+            box-shadow: 0 0 18px var(--flash-color, #fff), inset 0 0 14px var(--flash-color, #fff);
+        }
+        .bb-border-flash.on { animation: bbBorderFlash 0.45s ease-out forwards; }
+        @keyframes bbBorderFlash {
+            0%   { opacity: 0; }
+            18%  { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        /* Осколки при рассыпании линии */
+        .bb-shard {
+            position: absolute;
+            width: var(--sz, 10px);
+            height: var(--sz, 10px);
+            border-radius: 3px;
+            background: var(--shard-color, #fff);
+            pointer-events: none;
+            z-index: 7;
+            opacity: 1;
+            transform: translate3d(0,0,0) scale(1);
+            animation: bbShardFly 0.55s cubic-bezier(0.25, 0.8, 0.5, 1) forwards;
+        }
+        @keyframes bbShardFly {
+            0%   { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity: 1; }
+            100% { transform: translate3d(var(--dx, 0px), var(--dy, -40px), 0) rotate(var(--rot, 180deg)) scale(0.3); opacity: 0; }
+        }
+        /* Сочные слова по буквам (Good! / Super! / Unbelievable!) */
+        .bb-juicy-word {
+            position: absolute;
+            left: 50%;
+            top: 38%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 1px;
+            pointer-events: none;
+            z-index: 1001;
+            white-space: nowrap;
+        }
+        .bb-juicy-letter {
+            display: inline-block;
+            font-size: 40px;
+            font-weight: 900;
+            color: #fff;
+            -webkit-text-stroke: 1.5px rgba(30, 80, 200, 0.9);
+            text-shadow: 0 3px 0 rgba(30, 80, 200, 0.85), 0 6px 14px rgba(0,0,0,0.35);
+            opacity: 0;
+            transform: translateY(18px) scale(0.2);
+            animation: bbLetterPop 0.85s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+        }
+        @keyframes bbLetterPop {
+            0%   { opacity: 0; transform: translateY(22px) scale(0.2); }
+            35%  { opacity: 1; transform: translateY(-8px) scale(1.25); }
+            55%  { transform: translateY(2px) scale(0.96); }
+            70%  { transform: translateY(0) scale(1); }
+            84%  { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-14px) scale(1.05); }
+        }
+        /* Очки возле закрытой линии */
+        .bb-line-points {
+            position: absolute;
+            font-size: 30px;
+            font-weight: 900;
+            color: #ffd23e;
+            -webkit-text-stroke: 1px rgba(160, 70, 0, 0.85);
+            text-shadow: 0 2px 0 rgba(160, 70, 0, 0.8), 0 0 16px rgba(255, 180, 40, 0.65);
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            transform: translate(-50%, -50%) scale(0.4);
+            opacity: 0;
+            animation: bbPointsPop 1.05s cubic-bezier(0.2, 1.3, 0.4, 1) forwards;
+        }
+        @keyframes bbPointsPop {
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+            22%  { opacity: 1; transform: translate(-50%, -55%) scale(1.18); }
+            38%  { transform: translate(-50%, -52%) scale(1); }
+            75%  { opacity: 1; transform: translate(-50%, -78%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -110%) scale(0.95); }
+        }
+        /* Комбо возле линии — буквы из маленьких в большие друг за другом */
+        .bb-combo-line {
+            position: absolute;
+            display: flex;
+            gap: 0;
+            pointer-events: none;
+            z-index: 1001;
+            white-space: nowrap;
+            transform: translate(-50%, -50%);
+        }
+        .bb-combo-letter {
+            display: inline-block;
+            font-size: 26px;
+            font-weight: 900;
+            color: #7ec8ff;
+            -webkit-text-stroke: 1.2px rgba(20, 60, 160, 0.95);
+            text-shadow: 0 2px 0 rgba(20, 60, 160, 0.9), 0 0 14px rgba(90, 170, 255, 0.7);
+            opacity: 0;
+            transform: scale(0.1);
+            animation: bbComboLetter 0.8s cubic-bezier(0.2, 1.5, 0.4, 1) forwards;
+        }
+        @keyframes bbComboLetter {
+            0%   { opacity: 0; transform: scale(0.1); }
+            40%  { opacity: 1; transform: scale(1.35); }
+            60%  { transform: scale(0.95); }
+            75%  { transform: scale(1); opacity: 1; }
+            100% { opacity: 0; transform: scale(1.08) translateY(-8px); }
+        }
+        /* ===== END BB JUICY FX ===== */
+
         .all-clear-popup { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; z-index: 1002; pointer-events: none; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .ac-text { font-size: 42px; font-weight: 900; background: linear-gradient(135deg, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 10px 30px rgba(255, 165, 0, 0.5); letter-spacing: -1px; }
         .ac-score { font-size: 24px; font-weight: 700; color: var(--text-color); margin-top: 10px; background: var(--glass-bg); padding: 5px 15px; border-radius: 12px; }
@@ -6022,19 +6140,24 @@
             } catch(e) {}
         }
         
-        // Satisfying whoosh + shimmer when clearing lines (fixed tone)
-        function bbPlayClear() {
+        // Satisfying whoosh + shimmer when clearing lines.
+        // Pitch rises with combo (Peggle-style) — the higher the streak, the sweeter it sounds.
+        function bbPlayClear(comboN) {
             try {
                 const ctx = getBBAudioCtx();
                 const t = ctx.currentTime;
+                // Комбо-питч: каждая ступень комбо поднимает тон на полтона (мажорная гамма),
+                // потолок +12 полутонов (октава), чтобы не уйти в писк.
+                const steps = Math.min(12, Math.max(0, (comboN || 1) - 1));
+                const pitch = Math.pow(2, steps / 12); // множитель частоты
                 
                 // Layer 1: deep sweep up
                 const osc1 = ctx.createOscillator();
                 const g1 = ctx.createGain();
                 osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(80, t);
-                osc1.frequency.exponentialRampToValueAtTime(300, t + 0.2);
-                osc1.frequency.exponentialRampToValueAtTime(150, t + 0.4);
+                osc1.frequency.setValueAtTime(80 * pitch, t);
+                osc1.frequency.exponentialRampToValueAtTime(300 * pitch, t + 0.2);
+                osc1.frequency.exponentialRampToValueAtTime(150 * pitch, t + 0.4);
                 g1.gain.setValueAtTime(0.25, t);
                 g1.gain.linearRampToValueAtTime(0.3, t + 0.1);
                 g1.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
@@ -6046,7 +6169,7 @@
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'sine';
-                    const f = 500 * mult;
+                    const f = 500 * mult * pitch;
                     osc.frequency.setValueAtTime(f, t + 0.05);
                     osc.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.3);
                     g.gain.setValueAtTime(0.07, t + 0.05);
@@ -6065,13 +6188,34 @@
                 const nGain = ctx.createGain();
                 const nFilter = ctx.createBiquadFilter();
                 nFilter.type = 'bandpass';
-                nFilter.frequency.setValueAtTime(500, t);
-                nFilter.frequency.exponentialRampToValueAtTime(2500, t + 0.12);
+                nFilter.frequency.setValueAtTime(500 * pitch, t);
+                nFilter.frequency.exponentialRampToValueAtTime(Math.min(6000, 2500 * pitch), t + 0.12);
                 nFilter.Q.value = 1.5;
                 nGain.gain.setValueAtTime(0.05, t);
                 nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
                 noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(ctx.destination);
                 noise.start(t); noise.stop(t + 0.15);
+            } catch(e) {}
+        }
+
+        // Sparkle fanfare for juicy words (Good! / Super! / Unbelievable!)
+        function bbPlayWord() {
+            try {
+                const ctx = getBBAudioCtx();
+                const t = ctx.currentTime;
+                // Быстрое мажорное арпеджио вверх — C5 E5 G5 C6
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'triangle';
+                    const st = t + i * 0.06;
+                    osc.frequency.setValueAtTime(f, st);
+                    g.gain.setValueAtTime(0.0001, st);
+                    g.gain.exponentialRampToValueAtTime(0.12, st + 0.015);
+                    g.gain.exponentialRampToValueAtTime(0.001, st + 0.22);
+                    osc.connect(g); g.connect(ctx.destination);
+                    osc.start(st); osc.stop(st + 0.24);
+                });
             } catch(e) {}
         }
 
@@ -6489,12 +6633,18 @@
             if(totalCleared > 0) { 
                 // Комбо растёт на число закрытых линий за ход; буфер держит серию 3 хода
                 bbCombo += totalCleared; bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES; updateBBScoreUI(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); 
-                bbPlayClear();
+                bbPlayClear(bbCombo);
                 if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
                 
                 // Снапшот значений на момент этого хода (для отложенного начисления)
                 const kThisMove = totalCleared;
                 const nThisMove = bbCombo; // N уже после увеличения
+                const anchor = bbLineAnchor(rowsToClear, colsToClear);
+                const flashHex = COLOR_MAP[triggerColor] || '#ffffff';
+                
+                // Сочный визуал: вспышка рамки + осколки
+                bbFlashBorder(flashHex);
+                bbSpawnLineShards(rowsToClear, colsToClear, flashHex);
                 
                 // All cells in line clear at once
                 rowsToClear.forEach(r => { 
@@ -6517,11 +6667,20 @@
                     document.querySelector('.bb-game-container').classList.remove('shake-screen'); 
                     // Очки за закрытые линии: round( k * 20 * N * M(N) * S(k) )
                     const points = bbLineScore(kThisMove, nThisMove);
+                    
+                    // Очки возле закрытой линии
+                    bbShowLinePoints(points, anchor);
+                    // Комбо возле линии (если серия набралась)
                     if (nThisMove > kThisMove) {
-                        showComboPopup(`COMBO x${nThisMove}!`);
-                    } else if (kThisMove >= 2) {
-                        showComboPopup(`X${kThisMove} LINES!`);
+                        bbShowComboAtLine(nThisMove, anchor);
                     }
+                    // Сочное слово по центру при хорошем ходе
+                    const word = bbJuicyWordFor(points);
+                    if (word) {
+                        bbShowJuicyWord(word);
+                        bbPlayWord();
+                    }
+                    
                     addScore(points); 
                     saveBBState(); 
                     setTimeout(checkAllClear, 50); 
@@ -6556,6 +6715,167 @@
             setTimeout(() => flash.remove(), 350);
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
+
+        // ===================== BB JUICY FX =====================
+        // NOTE: .bb-grid has `contain: paint` which clips children — so all FX
+        // elements are appended to .bb-game-container with grid-offset coords.
+        function _bbFxBase() {
+            const grid = document.getElementById('bbGrid');
+            const container = document.querySelector('.bb-game-container');
+            if (!grid || !container) return null;
+            const g = grid.getBoundingClientRect();
+            const cont = container.getBoundingClientRect();
+            return {
+                container,
+                offX: g.left - cont.left,
+                offY: g.top - cont.top,
+                w: g.width, h: g.height,
+                cellW: g.width / BB_COLS,
+                cellH: g.height / BB_ROWS,
+            };
+        }
+
+        // Вспышка окантовки поля в цвет поставленной фигуры
+        let _bbBorderFlashEl = null;
+        function bbFlashBorder(hex) {
+            if (isLiteMode) return;
+            const base = _bbFxBase();
+            if (!base) return;
+            if (!_bbBorderFlashEl || !_bbBorderFlashEl.isConnected) {
+                _bbBorderFlashEl = document.createElement('div');
+                _bbBorderFlashEl.className = 'bb-border-flash';
+                base.container.appendChild(_bbBorderFlashEl);
+            }
+            const el = _bbBorderFlashEl;
+            el.style.left = (base.offX - 4) + 'px';
+            el.style.top = (base.offY - 4) + 'px';
+            el.style.width = (base.w + 8) + 'px';
+            el.style.height = (base.h + 8) + 'px';
+            el.style.setProperty('--flash-color', hex);
+            el.classList.remove('on');
+            void el.offsetWidth; // reflow to restart animation
+            el.classList.add('on');
+        }
+
+        // Осколки: рассыпание клеток закрытой линии. Бюджет частиц ограничен.
+        function bbSpawnLineShards(rowsToClear, colsToClear, hex) {
+            if (isLiteMode) return;
+            const base = _bbFxBase();
+            if (!base) return;
+
+            const cells = [];
+            rowsToClear.forEach(r => { for (let c = 0; c < BB_COLS; c++) cells.push([r, c]); });
+            colsToClear.forEach(c => { for (let r = 0; r < BB_ROWS; r++) cells.push([r, c]); });
+
+            // Бюджет: максимум 40 осколков на очистку (слабые устройства)
+            const budget = 40;
+            const perCell = Math.max(1, Math.floor(budget / cells.length));
+            const frag = document.createDocumentFragment();
+
+            cells.forEach(([r, c]) => {
+                const cx = base.offX + c * base.cellW + base.cellW / 2;
+                const cy = base.offY + r * base.cellH + base.cellH / 2;
+                for (let i = 0; i < perCell; i++) {
+                    const s = document.createElement('div');
+                    s.className = 'bb-shard';
+                    const sz = 6 + Math.random() * 8;
+                    const dx = (Math.random() - 0.5) * 90;
+                    const dy = -20 - Math.random() * 70;
+                    const rot = (Math.random() - 0.5) * 540;
+                    s.style.cssText = `left:${cx - sz / 2}px;top:${cy - sz / 2}px;--sz:${sz}px;--dx:${dx}px;--dy:${dy}px;--rot:${rot}deg;--shard-color:${hex};`;
+                    s.addEventListener('animationend', () => s.remove(), { once: true });
+                    frag.appendChild(s);
+                }
+            });
+            base.container.appendChild(frag);
+            // Фолбэк-очистка
+            setTimeout(() => {
+                base.container.querySelectorAll('.bb-shard').forEach(s => s.remove());
+            }, 800);
+        }
+
+        // Сочное слово по буквам (Good! Great! Amazing! Super! Unbelievable!)
+        function bbJuicyWordFor(points) {
+            if (points >= 4000) return 'UNBELIEVABLE';
+            if (points >= 2000) return 'SUPER!';
+            if (points >= 1000) return 'AMAZING!';
+            if (points >= 500)  return 'GREAT!';
+            if (points >= 200)  return 'GOOD!';
+            return null;
+        }
+        function bbShowJuicyWord(text) {
+            const container = document.querySelector('.bb-game-container');
+            if (!container) return;
+            if (isLiteMode) { showComboPopup(text); return; }
+            const wrap = document.createElement('div');
+            wrap.className = 'bb-juicy-word';
+            // Для длинных слов уменьшаем буквы, чтобы влезло
+            const fontSize = text.length > 9 ? 30 : 40;
+            [...text].forEach((ch, i) => {
+                const l = document.createElement('span');
+                l.className = 'bb-juicy-letter';
+                l.textContent = ch === ' ' ? '\u00A0' : ch;
+                l.style.animationDelay = `${i * 45}ms`;
+                l.style.fontSize = fontSize + 'px';
+                wrap.appendChild(l);
+            });
+            container.appendChild(wrap);
+            setTimeout(() => wrap.remove(), 1000 + text.length * 45);
+        }
+
+        // Позиция "у линии" в координатах bb-game-container
+        function bbLineAnchor(rowsToClear, colsToClear) {
+            const base = _bbFxBase();
+            if (!base) return { x: 0, y: 0 };
+            let x, y;
+            if (rowsToClear.length > 0) {
+                // якорь на первой закрытой строке, чуть левее центра
+                const r = rowsToClear[0];
+                x = base.offX + base.w * 0.3;
+                y = base.offY + r * base.cellH + base.cellH / 2;
+            } else {
+                const c = colsToClear[0];
+                x = base.offX + c * base.cellW + base.cellW / 2;
+                y = base.offY + base.h * 0.4;
+            }
+            return { x, y };
+        }
+
+        // Очки возле закрытой линии
+        function bbShowLinePoints(points, anchor) {
+            const container = document.querySelector('.bb-game-container');
+            if (!container) return;
+            const el = document.createElement('div');
+            el.className = 'bb-line-points';
+            el.textContent = points;
+            el.style.left = anchor.x + 'px';
+            el.style.top = anchor.y + 'px';
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1100);
+        }
+
+        // Комбо возле линии — буквы из маленьких в большие друг за другом
+        function bbShowComboAtLine(comboN, anchor) {
+            const container = document.querySelector('.bb-game-container');
+            if (!container) return;
+            if (isLiteMode) { showComboPopup(`COMBO x${comboN}`); return; }
+            const text = `Combo x${comboN}`;
+            const wrap = document.createElement('div');
+            wrap.className = 'bb-combo-line';
+            wrap.style.left = anchor.x + 'px';
+            wrap.style.top = (anchor.y + 34) + 'px'; // чуть ниже очков
+            [...text].forEach((ch, i) => {
+                const l = document.createElement('span');
+                l.className = 'bb-combo-letter';
+                l.textContent = ch === ' ' ? '\u00A0' : ch;
+                l.style.animationDelay = `${i * 35}ms`;
+                wrap.appendChild(l);
+            });
+            container.appendChild(wrap);
+            setTimeout(() => wrap.remove(), 950 + text.length * 35);
+        }
+        // ===================== END BB JUICY FX =====================
+
         function animateClear(r, c, color, delay, lineCenter) { 
             const cell = getCellFast(r, c); 
             if(!cell) return;
