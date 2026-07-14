@@ -8,9 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&display=swap" rel="stylesheet">
     <style>
         :root { 
             --bg-color: #f2f2f7; 
@@ -1650,8 +1647,8 @@
         
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
 
-        /* ===== BB JUICY FX v2 ===== */
-        /* Вспышка окантовки — прямо на гриде, идеально совпадает с контуром */
+        /* ===== BB LINE SHATTER FX ===== */
+        /* Вспышка окантовки поля в цвет фигуры (класс прямо на гриде) */
         .bb-grid.grid-flash {
             animation: bbGridFlash 0.5s ease-out;
         }
@@ -1685,78 +1682,7 @@
             35%  { transform: translate3d(0, var(--up, -30px), 0) rotate(calc(var(--rot, 360deg) * 0.4)) scale(0.9); }
             100% { transform: translate3d(0, var(--down, 70px), 0) rotate(var(--rot, 360deg)) scale(0.45); }
         }
-        /* Мультяшный двухслойный текст: нижний слой — толстая обводка, верхний — заливка */
-        .bb-cartoon-text {
-            position: absolute;
-            pointer-events: none;
-            white-space: nowrap;
-            font-family: 'Baloo 2', -apple-system, sans-serif;
-            font-weight: 800;
-            line-height: 1;
-        }
-        .bb-cartoon-text .ct-layer {
-            display: flex;
-            gap: 0;
-        }
-        .bb-cartoon-text .ct-stroke {
-            position: absolute;
-            inset: 0;
-            -webkit-text-stroke: 8px rgba(35, 80, 175, 0.95);
-            filter: drop-shadow(0 4px 0 rgba(25, 55, 130, 0.9)) drop-shadow(0 6px 12px rgba(0,0,0,0.35));
-        }
-        .bb-cartoon-text .ct-fill {
-            position: relative;
-            background: linear-gradient(180deg, #ffffff 30%, #cfe6ff 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .bb-cartoon-text.gold .ct-stroke {
-            -webkit-text-stroke: 7px rgba(175, 85, 10, 0.95);
-            filter: drop-shadow(0 4px 0 rgba(130, 60, 5, 0.9)) drop-shadow(0 5px 10px rgba(0,0,0,0.35));
-        }
-        .bb-cartoon-text.gold .ct-fill {
-            background: linear-gradient(180deg, #fff3b0 15%, #ffd23e 55%, #ff9d00 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        /* Буквы: единый упругий bounce с маленьким stagger — цельно, не рвано */
-        .bb-cartoon-text .ct-ch {
-            display: inline-block;
-            opacity: 0;
-            transform: translateY(30px) scale(0.3);
-            animation: bbChPop var(--dur, 1.3s) cubic-bezier(0.18, 1.25, 0.35, 1) forwards;
-            animation-delay: var(--d, 0ms);
-        }
-        @keyframes bbChPop {
-            0%   { opacity: 0; transform: translateY(30px) scale(0.3); }
-            18%  { opacity: 1; transform: translateY(-6px) scale(1.12); }
-            30%  { transform: translateY(0) scale(1); }
-            78%  { opacity: 1; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(-20px) scale(1.04); }
-        }
-        /* Очки у линии — золотое число, крупное */
-        .bb-line-points {
-            position: absolute;
-            pointer-events: none;
-            z-index: 1000;
-            white-space: nowrap;
-            font-family: 'Baloo 2', -apple-system, sans-serif;
-            font-weight: 800;
-            font-size: 42px;
-            transform: translate(-50%, -50%) scale(0.3);
-            opacity: 0;
-            animation: bbPointsPop 1.1s cubic-bezier(0.18, 1.25, 0.35, 1) forwards;
-        }
-        @keyframes bbPointsPop {
-            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
-            18%  { opacity: 1; transform: translate(-50%, -54%) scale(1.12); }
-            32%  { transform: translate(-50%, -52%) scale(1); }
-            72%  { opacity: 1; transform: translate(-50%, -74%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -108%) scale(0.96); }
-        }
-        /* ===== END BB JUICY FX v2 ===== */
+        /* ===== END BB LINE SHATTER FX ===== */
 
         .all-clear-popup { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; z-index: 1002; pointer-events: none; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .ac-text { font-size: 42px; font-weight: 900; background: linear-gradient(135deg, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 10px 30px rgba(255, 165, 0, 0.5); letter-spacing: -1px; }
@@ -5768,8 +5694,6 @@
         // When BB_TOURNAMENT_ENABLED is false, behaves like before: prompts to
         // resume if a save exists, otherwise starts a new game directly.
         function startBlockBlastCheck() {
-            // Прогрев шрифта для сочных надписей (чтобы первое слово не мигнуло системным)
-            try { if (document.fonts && document.fonts.load) document.fonts.load('800 20px "Baloo 2"'); } catch(e) {}
             if (!BB_TOURNAMENT_ENABLED) {
                 bbMode = 'original'; // force original mode so saves go to bb_state_original
                 if (hasBBSave('original')) {
@@ -6092,67 +6016,31 @@
             startGameSession('bb_best_score');
         }
         
-        // === BB SOUND SYSTEM (Web Audio API — rich layered sounds) ===
+        // === BB SOUND SYSTEM (Web Audio API) ===
         let bbAudioCtx = null;
         function getBBAudioCtx() {
             if (!bbAudioCtx) bbAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (bbAudioCtx.state === 'suspended') bbAudioCtx.resume();
             return bbAudioCtx;
         }
-        // Мастер-шина с компрессором: склеивает слои, звук плотнее и "дороже"
-        let _bbMaster = null;
-        function getBBMaster() {
-            const ctx = getBBAudioCtx();
-            if (!_bbMaster || _bbMaster.context !== ctx) {
-                const comp = ctx.createDynamicsCompressor();
-                comp.threshold.value = -18;
-                comp.knee.value = 12;
-                comp.ratio.value = 4;
-                comp.attack.value = 0.003;
-                comp.release.value = 0.25;
-                const gain = ctx.createGain();
-                gain.gain.value = 0.9;
-                comp.connect(gain);
-                gain.connect(ctx.destination);
-                _bbMaster = comp;
-            }
-            return _bbMaster;
-        }
-        // Колокольный тон: основная + негармоническая частичка (стеклянный звон)
-        function bbBellTone(ctx, out, freq, startT, dur, vol) {
-            [[1, 1], [2.76, 0.35], [5.4, 0.12]].forEach(([mult, amp]) => {
-                const o = ctx.createOscillator();
-                const g = ctx.createGain();
-                o.type = 'sine';
-                o.frequency.setValueAtTime(freq * mult, startT);
-                g.gain.setValueAtTime(0.0001, startT);
-                g.gain.exponentialRampToValueAtTime(vol * amp, startT + 0.008);
-                g.gain.exponentialRampToValueAtTime(0.0001, startT + dur);
-                o.connect(g); g.connect(out);
-                o.start(startT); o.stop(startT + dur + 0.02);
-            });
-        }
         
         // Soft bubble pop when placing a piece
         function bbPlayPlace() {
             try {
                 const ctx = getBBAudioCtx();
-                const out = getBBMaster();
                 const t = ctx.currentTime;
-                
-                // Плотный "ток": тело (sine вниз) + деревянный щелчок (короткий шум)
                 const osc = ctx.createOscillator();
                 const g = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(320, t);
-                osc.frequency.exponentialRampToValueAtTime(95, t + 0.09);
-                g.gain.setValueAtTime(0.35, t);
-                g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
-                osc.connect(g); g.connect(out);
-                osc.start(t); osc.stop(t + 0.12);
+                osc.frequency.setValueAtTime(400, t);
+                osc.frequency.exponentialRampToValueAtTime(150, t + 0.08);
+                g.gain.setValueAtTime(0.2, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                osc.connect(g); g.connect(ctx.destination);
+                osc.start(t); osc.stop(t + 0.1);
                 
-                // Щелчок: очень короткий фильтрованный шум (даёт "тактильность")
-                const bufSize = Math.floor(ctx.sampleRate * 0.03);
+                // Air puff
+                const bufSize = ctx.sampleRate * 0.05;
                 const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
                 const data = buf.getChannelData(0);
                 for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
@@ -6161,77 +6049,67 @@
                 const nG = ctx.createGain();
                 const nF = ctx.createBiquadFilter();
                 nF.type = 'highpass';
-                nF.frequency.value = 2000;
-                nG.gain.setValueAtTime(0.18, t);
-                nG.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-                noise.connect(nF); nF.connect(nG); nG.connect(out);
-                noise.start(t); noise.stop(t + 0.03);
+                nF.frequency.value = 1000;
+                nG.gain.setValueAtTime(0.08, t);
+                nG.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                noise.connect(nF); nF.connect(nG); nG.connect(ctx.destination);
+                noise.start(t); noise.stop(t + 0.05);
             } catch(e) {}
         }
         
-        // Очистка линии: колокольный "дзынь" по пентатонике — нота растёт с комбо.
-        // Чем длиннее серия, тем выше и слаще звук (Peggle-механика).
-        const BB_PENTA = [523.25, 587.33, 659.25, 783.99, 880.0]; // C5 D5 E5 G5 A5
-        function bbPlayClear(comboN) {
+        // Satisfying whoosh + shimmer when clearing lines
+        function bbPlayClear() {
             try {
                 const ctx = getBBAudioCtx();
-                const out = getBBMaster();
                 const t = ctx.currentTime;
-                const n = Math.max(1, comboN || 1);
-                // Нота по пентатонике, каждые 5 ступеней комбо — октавой выше (потолок 2 октавы)
-                const octave = Math.min(2, Math.floor((n - 1) / BB_PENTA.length));
-                const freq = BB_PENTA[(n - 1) % BB_PENTA.length] * Math.pow(2, octave);
                 
-                // Слой 1: стеклянный колокольчик (главный голос)
-                bbBellTone(ctx, out, freq, t, 0.55, 0.38);
-                // Слой 2: тот же тон октавой ниже — тело
-                bbBellTone(ctx, out, freq / 2, t, 0.4, 0.16);
-                // Слой 3: терция сверху с задержкой — искра
-                bbBellTone(ctx, out, freq * 1.25, t + 0.05, 0.4, 0.14);
+                // Layer 1: deep sweep up
+                const osc1 = ctx.createOscillator();
+                const g1 = ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(80, t);
+                osc1.frequency.exponentialRampToValueAtTime(300, t + 0.2);
+                osc1.frequency.exponentialRampToValueAtTime(150, t + 0.4);
+                g1.gain.setValueAtTime(0.25, t);
+                g1.gain.linearRampToValueAtTime(0.3, t + 0.1);
+                g1.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+                osc1.connect(g1); g1.connect(ctx.destination);
+                osc1.start(t); osc1.stop(t + 0.45);
                 
-                // Слой 4: восходящий swoosh (шум)
-                const dur = 0.22;
-                const bufSize = Math.floor(ctx.sampleRate * dur);
+                // Layer 2: shimmer chord
+                [1, 1.25, 1.5].forEach((mult, i) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    const f = 500 * mult;
+                    osc.frequency.setValueAtTime(f, t + 0.05);
+                    osc.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.3);
+                    g.gain.setValueAtTime(0.07, t + 0.05);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+                    osc.connect(g); g.connect(ctx.destination);
+                    osc.start(t + 0.05 + i * 0.02); osc.stop(t + 0.35);
+                });
+                
+                // Layer 3: noise swoosh
+                const bufSize = ctx.sampleRate * 0.15;
                 const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
                 const data = buf.getChannelData(0);
                 for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
                 const noise = ctx.createBufferSource();
                 noise.buffer = buf;
-                const nF = ctx.createBiquadFilter();
-                nF.type = 'bandpass';
-                nF.frequency.setValueAtTime(700, t);
-                nF.frequency.exponentialRampToValueAtTime(4500, t + dur);
-                nF.Q.value = 1.2;
-                const nG = ctx.createGain();
-                nG.gain.setValueAtTime(0.09, t);
-                nG.gain.exponentialRampToValueAtTime(0.001, t + dur);
-                noise.connect(nF); nF.connect(nG); nG.connect(out);
-                noise.start(t); noise.stop(t + dur);
-                
-                // Слой 5: мягкий саб-удар для веса
-                const sub = ctx.createOscillator();
-                const sG = ctx.createGain();
-                sub.type = 'sine';
-                sub.frequency.setValueAtTime(90, t);
-                sub.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-                sG.gain.setValueAtTime(0.3, t);
-                sG.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-                sub.connect(sG); sG.connect(out);
-                sub.start(t); sub.stop(t + 0.15);
+                const nGain = ctx.createGain();
+                const nFilter = ctx.createBiquadFilter();
+                nFilter.type = 'bandpass';
+                nFilter.frequency.setValueAtTime(500, t);
+                nFilter.frequency.exponentialRampToValueAtTime(2500, t + 0.12);
+                nFilter.Q.value = 1.5;
+                nGain.gain.setValueAtTime(0.05, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(ctx.destination);
+                noise.start(t); noise.stop(t + 0.15);
             } catch(e) {}
         }
 
-        // Фанфары для сочного слова: арфа-глиссандо вверх по пентатонике
-        function bbPlayWord() {
-            try {
-                const ctx = getBBAudioCtx();
-                const out = getBBMaster();
-                const t = ctx.currentTime;
-                [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568.0].forEach((f, i) => {
-                    bbBellTone(ctx, out, f, t + i * 0.045, 0.5, 0.16);
-                });
-            } catch(e) {}
-        }
 
         let bbCellCache = [];
         function renderBBGrid() { const el = document.getElementById('bbGrid'); el.innerHTML = ''; bbCellCache = []; for(let r=0; r<BB_ROWS; r++) { bbCellCache[r] = []; for(let c=0; c<BB_COLS; c++) { const cell = document.createElement('div'); cell.className = 'bb-cell'; cell.dataset.r = r; cell.dataset.c = c; if(bbGrid[r][c] !== 0) { cell.classList.add('filled', bbGrid[r][c]); } el.appendChild(cell); bbCellCache[r][c] = cell; } } }
@@ -6647,27 +6525,17 @@
             if(totalCleared > 0) { 
                 // Комбо растёт на число закрытых линий за ход; буфер держит серию 3 хода
                 bbCombo += totalCleared; bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES; updateBBScoreUI(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); 
-                bbPlayClear(bbCombo);
+                bbPlayClear();
                 if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
                 
                 // Снапшот значений на момент этого хода
                 const kThisMove = totalCleared;
                 const nThisMove = bbCombo; // N уже после увеличения
-                const anchor = bbLineAnchor(rowsToClear, colsToClear);
                 const flashHex = COLOR_MAP[triggerColor] || '#ffffff';
-                const points = bbLineScore(kThisMove, nThisMove);
                 
-                // === Хореография: рамка + осколки сразу, очки/комбо/слово волной ===
+                // Вспышка рамки в цвет фигуры + рассыпание линий (осколки)
                 bbFlashBorder(flashHex);
                 bbSpawnLineShards(rowsToClear, colsToClear, flashHex);
-                setTimeout(() => bbShowLinePoints(points, anchor), 90);
-                if (nThisMove > kThisMove) {
-                    setTimeout(() => bbShowComboAtLine(nThisMove, anchor), 170);
-                }
-                const word = bbJuicyWordFor(points);
-                if (word) {
-                    setTimeout(() => { bbShowJuicyWord(word); bbPlayWord(); }, 240);
-                }
                 
                 // All cells in line clear at once
                 rowsToClear.forEach(r => { 
@@ -6688,6 +6556,14 @@
                 }); 
                 setTimeout(() => { 
                     document.querySelector('.bb-game-container').classList.remove('shake-screen'); 
+                    // Очки за закрытые линии: round( k * 20 * N * M(N) * S(k) )
+                    const points = bbLineScore(kThisMove, nThisMove);
+                    // Простой попап по центру (как было до сочной версии)
+                    if (nThisMove > 1) {
+                        showComboPopup(`COMBO x${nThisMove}!`);
+                    } else if (kThisMove >= 2) {
+                        showComboPopup(`X${kThisMove} LINES!`);
+                    }
                     addScore(points); 
                     saveBBState(); 
                     setTimeout(checkAllClear, 50); 
@@ -6723,7 +6599,8 @@
         }
         function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
 
-        // ===================== BB JUICY FX v2 =====================
+        // ===================== BB LINE SHATTER FX =====================
+        // Оставлено только рассыпание линий на осколки (по просьбе).
         function _bbFxBase() {
             const grid = document.getElementById('bbGrid');
             const container = document.querySelector('.bb-game-container');
@@ -6791,110 +6668,7 @@
                 base.container.querySelectorAll('.bb-shard').forEach(s => s.remove());
             }, 900);
         }
-
-        // Двухслойный мультяшный текст: stroke-слой снизу + градиентный fill сверху.
-        // Буквы обоих слоёв анимируются синхронно (одинаковые задержки).
-        function bbMakeCartoonText(text, { gold = false, fontSize = 56, stagger = 28, dur = 1300 } = {}) {
-            const wrap = document.createElement('div');
-            wrap.className = 'bb-cartoon-text' + (gold ? ' gold' : '');
-            wrap.style.fontSize = fontSize + 'px';
-
-            const mkLayer = (cls) => {
-                const layer = document.createElement('div');
-                layer.className = 'ct-layer ' + cls;
-                [...text].forEach((ch, i) => {
-                    const s = document.createElement('span');
-                    s.className = 'ct-ch';
-                    s.textContent = ch === ' ' ? '\u00A0' : ch;
-                    s.style.setProperty('--d', (i * stagger) + 'ms');
-                    s.style.setProperty('--dur', dur + 'ms');
-                    layer.appendChild(s);
-                });
-                return layer;
-            };
-            wrap.appendChild(mkLayer('ct-stroke'));
-            wrap.appendChild(mkLayer('ct-fill'));
-            return wrap;
-        }
-
-        // Слово по центру поля (Good! / Great! / Amazing! / Super! / Unbelievable!)
-        function bbJuicyWordFor(points) {
-            if (points >= 4000) return 'Unbelievable!';
-            if (points >= 2000) return 'Super!';
-            if (points >= 1000) return 'Amazing!';
-            if (points >= 500)  return 'Great!';
-            if (points >= 200)  return 'Good!';
-            return null;
-        }
-        function bbShowJuicyWord(text) {
-            const container = document.querySelector('.bb-game-container');
-            if (!container) return;
-            if (isLiteMode) { showComboPopup(text); return; }
-            const fontSize = text.length > 10 ? 44 : (text.length > 6 ? 54 : 62);
-            const el = bbMakeCartoonText(text, { fontSize, stagger: 26, dur: 1250 });
-            el.style.left = '50%';
-            el.style.top = '36%';
-            el.style.transform = 'translate(-50%, -50%) rotate(-3deg)';
-            el.style.zIndex = '1002';
-            container.appendChild(el);
-            setTimeout(() => el.remove(), 1350 + text.length * 26);
-        }
-
-        // Позиция "у линии"
-        function bbLineAnchor(rowsToClear, colsToClear) {
-            const base = _bbFxBase();
-            if (!base) return { x: 0, y: 0 };
-            let x, y;
-            if (rowsToClear.length > 0) {
-                const r = rowsToClear[0];
-                x = base.offX + base.w * 0.5;
-                y = base.offY + r * base.cellH + base.cellH / 2;
-            } else {
-                const c = colsToClear[0];
-                x = base.offX + c * base.cellW + base.cellW / 2;
-                y = base.offY + base.h * 0.42;
-            }
-            return { x, y };
-        }
-
-        // Очки у линии — золотое мультяшное число
-        function bbShowLinePoints(points, anchor) {
-            const container = document.querySelector('.bb-game-container');
-            if (!container) return;
-            if (isLiteMode) {
-                const el = document.createElement('div');
-                el.className = 'bb-line-points';
-                el.textContent = points;
-                el.style.left = anchor.x + 'px';
-                el.style.top = anchor.y + 'px';
-                el.style.color = '#ffd23e';
-                container.appendChild(el);
-                setTimeout(() => el.remove(), 1150);
-                return;
-            }
-            const el = bbMakeCartoonText(String(points), { gold: true, fontSize: 46, stagger: 20, dur: 1100 });
-            el.style.left = anchor.x + 'px';
-            el.style.top = anchor.y + 'px';
-            el.style.transform = 'translate(-50%, -50%)';
-            el.style.zIndex = '1001';
-            container.appendChild(el);
-            setTimeout(() => el.remove(), 1250);
-        }
-
-        // Комбо у линии — синее мультяшное, буквы из маленьких в большие
-        function bbShowComboAtLine(comboN, anchor) {
-            const container = document.querySelector('.bb-game-container');
-            if (!container) return;
-            if (isLiteMode) { showComboPopup(`COMBO x${comboN}`); return; }
-            const el = bbMakeCartoonText(`Combo x${comboN}`, { fontSize: 34, stagger: 30, dur: 1150 });
-            el.style.left = anchor.x + 'px';
-            el.style.top = (anchor.y + 44) + 'px';
-            el.style.transform = 'translate(-50%, -50%) rotate(-2deg)';
-            el.style.zIndex = '1001';
-            container.appendChild(el);
-            setTimeout(() => el.remove(), 1300 + comboN.toString().length * 30);
-        }
-        // ===================== END BB JUICY FX v2 =====================
+        // ===================== END BB LINE SHATTER FX =====================
 
         function animateClear(r, c, color, delay, lineCenter) { 
             const cell = getCellFast(r, c); 
