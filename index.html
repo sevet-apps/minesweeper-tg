@@ -2076,6 +2076,13 @@
             0% { opacity: 0; transform: translateX(24px); }
             100% { opacity: 1; transform: translateX(0); }
         }
+        /* Desktop: no phone chrome to clear — pull the lobby content up.
+           The mode screen keeps room for its top bar; sub-screens (join,
+           browse, wait) have their own back buttons and need no headroom. */
+        body.desktop .mono-screen { padding-top: 72px; }
+        body.desktop #monoScreenJoin,
+        body.desktop #monoScreenBrowse,
+        body.desktop #monoScreenWait { padding-top: 24px; }
 
         .mono-hero { text-align: center; margin: 8px 0 28px; }
         .mono-hero-dice {
@@ -2213,10 +2220,10 @@
             background: var(--glass-bg); border: 1px solid var(--glass-border);
         }
         .mono-wait-player.is-empty { opacity: 0.45; border-style: dashed; }
-        .mono-pop { animation: monoPop 0.4s cubic-bezier(0.34,1.56,0.64,1) backwards; }
+        .mono-pop { animation: monoPop 0.5s cubic-bezier(0.22,1,0.36,1) backwards; }
         @keyframes monoPop {
-            0% { opacity: 0; transform: scale(0.85); }
-            100% { opacity: 1; transform: scale(1); }
+            0% { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
         .mono-wait-avatar {
             width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
@@ -7702,10 +7709,10 @@
         let monopolyIsHost = false;
 
         // ---- Local Monopoly (single device) ----
-        function openMonopolyGame() {
-            const frame = document.getElementById('monopolyFrame');
-            // Compute the top inset taken up by Telegram's UI (time, Close, ...)
-            // so the game can pad its top bar out from under those buttons.
+        // Compute the top inset taken up by Telegram's UI (time, Close, ...).
+        // On desktop there is no phone chrome at all, so use a minimal inset.
+        function monoSafeTop() {
+            if (document.body.classList.contains('desktop')) return 12;
             let safeTop = 56; // sensible default for iOS Telegram
             try {
                 const tgw = window.Telegram?.WebApp;
@@ -7714,6 +7721,12 @@
                 const computed = Math.max(csa || 0, sa || 0);
                 if (computed > 0) safeTop = computed + 8;
             } catch (_) {}
+            return safeTop;
+        }
+
+        function openMonopolyGame() {
+            const frame = document.getElementById('monopolyFrame');
+            const safeTop = monoSafeTop();
             const bottom = 20;
             frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}`;
             document.getElementById('monopoly-game').classList.add('visible');
@@ -8082,14 +8095,7 @@
                 // Fresh game — make sure no stale resume payload can leak in
                 window.__monoResumePayload = null;
                 // Pass safe-area insets like the local launcher does
-                let safeTop = 56;
-                try {
-                    const tgw = window.Telegram?.WebApp;
-                    const csa = tgw?.contentSafeAreaInset?.top;
-                    const sa  = tgw?.safeAreaInset?.top;
-                    const computed = Math.max(csa || 0, sa || 0);
-                    if (computed > 0) safeTop = computed + 8;
-                } catch (_) {}
+                const safeTop = monoSafeTop();
                 const params = new URLSearchParams({
                     v: Date.now(),
                     safeTop: safeTop,
@@ -8133,14 +8139,7 @@
             socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot, engineSnapshot, turnEndsAt }) => {
                 // Open the iframe just like game_start, but flag it as resume
                 // and pipe the snapshot through postMessage once the iframe is ready.
-                let safeTop = 56;
-                try {
-                    const tgw = window.Telegram?.WebApp;
-                    const csa = tgw?.contentSafeAreaInset?.top;
-                    const sa  = tgw?.safeAreaInset?.top;
-                    const computed = Math.max(csa || 0, sa || 0);
-                    if (computed > 0) safeTop = computed + 8;
-                } catch (_) {}
+                const safeTop = monoSafeTop();
                 const params = new URLSearchParams({
                     v: Date.now(),
                     safeTop, safeBottom: 20,

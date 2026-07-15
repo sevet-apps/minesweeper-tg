@@ -52,13 +52,84 @@
     }
 
     function render() {
-        const countBtns = [2, 3, 4].map(n => `
-            <button class="setup-count-btn ${count === n ? 'is-active' : ''}" data-count="${n}">
-                ${n}
-            </button>
-        `).join('');
+        const playerCards = renderPlayersHTML();
 
-        const playerCards = slots.slice(0, count).map((s, i) => {
+        rootEl.innerHTML = `
+            <div class="setup-inner">
+                <button class="setup-back-btn" id="setupBackBtn" aria-label="Меню">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    <span>Меню</span>
+                </button>
+                <div class="setup-logo">
+                    <div class="setup-logo-icon">🎲</div>
+                    <div class="setup-logo-text">Spark Monopoly</div>
+                </div>
+
+                <div class="setup-section-label">Количество игроков</div>
+                <div class="setup-count-segment" id="setupCountSegment">
+                    <div class="setup-count-glider" id="setupCountGlider"
+                         style="transform: translateX(${(count - 2) * 100}%)"></div>
+                    ${[2, 3, 4].map(n => `
+                        <button class="setup-count-item ${count === n ? 'is-active' : ''}" data-count="${n}">
+                            ${n}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <div class="setup-section-label">Игроки</div>
+                <div class="setup-players" id="setupPlayers">
+                    ${playerCards}
+                </div>
+
+                <button class="setup-start-btn" id="setupStartBtn">
+                    Начать игру
+                </button>
+            </div>
+        `;
+
+        // Count segment: springy glider slides to the picked value; only the
+        // player list re-renders so the glider animation stays visible.
+        rootEl.querySelectorAll('.setup-count-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const n = parseInt(btn.dataset.count);
+                if (n === count) return;
+                count = n;
+                ensureUniqueColors();
+                const glider = document.getElementById('setupCountGlider');
+                if (glider) glider.style.transform = `translateX(${(count - 2) * 100}%)`;
+                rootEl.querySelectorAll('.setup-count-item').forEach(b => {
+                    b.classList.toggle('is-active', parseInt(b.dataset.count) === count);
+                });
+                renderPlayersInto();
+                try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+            });
+        });
+
+        bindPlayerEvents();
+
+        // Start
+        document.getElementById('setupStartBtn').addEventListener('click', () => {
+            const configs = slots.slice(0, count).map((s, i) => ({
+                name: (s.name || '').trim() || `Игрок ${i + 1}`,
+                color: s.color,
+            }));
+            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success'); } catch (_) {}
+            hide();
+            if (onStartCb) onStartCb(configs);
+        });
+
+        // Back to Spark menu
+        const backBtn = document.getElementById('setupBackBtn');
+        if (backBtn) backBtn.addEventListener('click', () => {
+            if (window.MonopolyExit) window.MonopolyExit();
+        });
+    }
+
+    // ---- Player cards: partial render + event binding ----
+    function renderPlayersHTML() {
+        return slots.slice(0, count).map((s, i) => {
             const taken = usedColors(i);
             const swatches = COLORS.map(c => {
                 const isUsed = taken.includes(c.hex);
@@ -88,46 +159,16 @@
                 </div>
             `;
         }).join('');
+    }
 
-        rootEl.innerHTML = `
-            <div class="setup-inner">
-                <button class="setup-back-btn" id="setupBackBtn" aria-label="Меню">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 18l-6-6 6-6"/>
-                    </svg>
-                    <span>Меню</span>
-                </button>
-                <div class="setup-logo">
-                    <div class="setup-logo-icon">🎲</div>
-                    <div class="setup-logo-text">Spark Monopoly</div>
-                </div>
+    function renderPlayersInto() {
+        const holder = document.getElementById('setupPlayers');
+        if (!holder) return;
+        holder.innerHTML = renderPlayersHTML();
+        bindPlayerEvents();
+    }
 
-                <div class="setup-section-label">Количество игроков</div>
-                <div class="setup-count-row">
-                    ${countBtns}
-                </div>
-
-                <div class="setup-section-label">Игроки</div>
-                <div class="setup-players">
-                    ${playerCards}
-                </div>
-
-                <button class="setup-start-btn" id="setupStartBtn">
-                    Начать игру
-                </button>
-            </div>
-        `;
-
-        // Count buttons
-        rootEl.querySelectorAll('.setup-count-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                count = parseInt(btn.dataset.count);
-                ensureUniqueColors();
-                render();
-                try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
-            });
-        });
-
+    function bindPlayerEvents() {
         // Name inputs
         rootEl.querySelectorAll('.setup-name-input').forEach(inp => {
             inp.addEventListener('input', () => {
@@ -140,32 +181,16 @@
             });
         });
 
-        // Color swatches
+        // Color swatches — re-render only the player list (keeps the count
+        // segment untouched so its glider never jumps).
         rootEl.querySelectorAll('.setup-swatch').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (btn.disabled) return;
                 const i = parseInt(btn.dataset.player);
                 slots[i].color = btn.dataset.color;
-                render();
+                renderPlayersInto();
                 try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
             });
-        });
-
-        // Start
-        document.getElementById('setupStartBtn').addEventListener('click', () => {
-            const configs = slots.slice(0, count).map((s, i) => ({
-                name: (s.name || '').trim() || `Игрок ${i + 1}`,
-                color: s.color,
-            }));
-            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success'); } catch (_) {}
-            hide();
-            if (onStartCb) onStartCb(configs);
-        });
-
-        // Back to Spark menu
-        const backBtn = document.getElementById('setupBackBtn');
-        if (backBtn) backBtn.addEventListener('click', () => {
-            if (window.MonopolyExit) window.MonopolyExit();
         });
     }
 
