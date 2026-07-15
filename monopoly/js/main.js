@@ -93,25 +93,31 @@
         // If we're reconnecting (resume=1 in URL), apply the snapshot the
         // parent app will push via postMessage soon.
         if (onlineInit.isResume) {
+            let resumeApplied = false;
             OnlineMode.onResume((payload, meta) => {
+                if (resumeApplied) return; // idempotent — apply once
+                resumeApplied = true;
                 try {
                     const eng = meta?.engineSnapshot;
                     if (eng && Array.isArray(eng.players)) {
                         // PHASE 3 authoritative resume: apply money/ownership via
-                        // the engine-state path, and positions/jail directly.
+                        // the engine-state path, and positions instantly (no
+                        // walk animation across the board).
                         applyEngineState(eng);
+                        const posMap = {};
                         for (const sp of eng.players) {
                             const lp = Players.PLAYERS[sp.idx];
                             if (!lp) continue;
-                            // Place the token at the server-known position
-                            try { Players.movePlayerToSync(lp.id, sp.position, false); } catch (_) {}
+                            posMap[lp.id] = { position: sp.position, lap: sp.lap || 0 };
                         }
+                        Players.applyPositions(posMap);
                         if (typeof eng.turnIdx === 'number') {
                             Players.setTurnIndex(eng.turnIdx);
                         }
                         if (typeof window.refreshTurnIndicator === 'function') {
                             window.refreshTurnIndicator();
                         }
+                        console.log('[resume] engine snapshot applied, turnIdx=', eng.turnIdx);
                     } else {
                         // Legacy resume fallback
                         if (payload && payload.snapshot) GameState.applySnapshot(payload.snapshot);
@@ -120,6 +126,7 @@
                         if (typeof window.refreshTurnIndicator === 'function') {
                             window.refreshTurnIndicator();
                         }
+                        console.log('[resume] legacy snapshot applied');
                     }
                     // Turn timer sync
                     if (meta?.turnEndsAt && meta.turnEndsAt > Date.now()) {
@@ -127,8 +134,22 @@
                     } else if (!OnlineMode.isMyTurn()) {
                         try { TurnTimer.stop(); } catch (_) {}
                     }
-                } catch (e) { console.error('[resume] failed to apply snapshot:', e); }
+                } catch (e) {
+                    console.error('[resume] failed to apply snapshot:', e);
+                    resumeApplied = false; // allow retry to reapply
+                }
             });
+            // PULL: actively request the snapshot from the parent now that our
+            // listener is registered. Retry a few times in case the parent is
+            // still waiting for the server's rejoin_ok round trip.
+            let attempts = 0;
+            const askResume = () => {
+                if (resumeApplied || attempts >= 5) return;
+                attempts++;
+                OnlineMode.requestResume();
+                setTimeout(askResume, 700);
+            };
+            askResume();
         }
     } else {
         // Local mode: show setup screen first.

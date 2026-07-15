@@ -50,9 +50,19 @@
         return { players: playerConfigs, myIdx, roomCode, isResume };
     }
 
+    let pendingResumePayload = null;
+
     function onResume(fn) {
         if (!listeners['_resume']) listeners['_resume'] = [];
         listeners['_resume'].push(fn);
+        // If the resume snapshot already arrived before this subscription
+        // (race between the parent's push and our init), replay it now so
+        // it isn't lost.
+        if (pendingResumePayload) {
+            const p = pendingResumePayload;
+            pendingResumePayload = null;
+            try { fn(p.snapshot, p.meta); } catch (err) { console.error(err); }
+        }
     }
 
     function onParentMessage(e) {
@@ -66,11 +76,19 @@
         } else if (data.type === 'monopoly_player_left') {
             (listeners['_player_left'] || []).forEach(fn => fn(data));
         } else if (data.type === 'monopoly_resume_snapshot' && (data.snapshot || data.engineSnapshot)) {
-            // Resume the game from a server-stored snapshot after a reconnect
-            (listeners['_resume'] || []).forEach(fn => {
-                try { fn(data.snapshot, { turnEndsAt: data.turnEndsAt, engineSnapshot: data.engineSnapshot }); }
-                catch (err) { console.error(err); }
-            });
+            // Resume the game from a server-stored snapshot after a reconnect.
+            const meta = { turnEndsAt: data.turnEndsAt, engineSnapshot: data.engineSnapshot };
+            const fns = listeners['_resume'] || [];
+            if (fns.length === 0) {
+                // Game not initialized yet — buffer for replay in onResume()
+                pendingResumePayload = { snapshot: data.snapshot, meta };
+                console.log('[online] resume snapshot buffered (game not ready yet)');
+            } else {
+                fns.forEach(fn => {
+                    try { fn(data.snapshot, meta); }
+                    catch (err) { console.error(err); }
+                });
+            }
         } else if (data.type === 'monopoly_engine_event_in') {
             // Server-authoritative event burst from the engine. Apply state
             // snapshot first (so handlers see updated turnIdx/money), then
@@ -172,9 +190,22 @@
         listeners['_engine_state'].push(fn);
     }
 
+    /**
+     * Ask the parent app to (re)send the resume snapshot. Called by the game
+     * once it has fully initialized and subscribed via onResume — this
+     * pull-based handshake removes the race where the parent's early push
+     * arrives before our listeners exist.
+     */
+    function requestResume() {
+        if (!enabled) return;
+        try {
+            window.parent.postMessage({ type: 'monopoly_resume_request', roomCode }, '*');
+        } catch (e) { console.error('[online] requestResume failed:', e); }
+    }
+
     global.OnlineMode = {
         initFromUrl,
-        send, on, onResume,
+        send, on, onResume, requestResume,
         sendIntent, onEngineEvent, onEngineState, onEngineReject,
         isMyTurn, setCurrentTurnIdx,
         get enabled() { return enabled; },

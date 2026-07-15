@@ -7723,6 +7723,8 @@
             document.getElementById('monopoly-game').classList.remove('visible');
             // Unload the iframe so the game fully resets next open
             document.getElementById('monopolyFrame').src = 'about:blank';
+            // Drop any pending resume payload — it belongs to the closed session
+            window.__monoResumePayload = null;
             // If we were in an online room, leave it on the server
             if (monopolyRoomCode) {
                 try { socket.emit('monopoly_leave', { roomCode: monopolyRoomCode }); } catch (_) {}
@@ -7766,6 +7768,17 @@
                         roomCode: data.roomCode,
                         intent: data.intent,
                     });
+                }
+            } else if (data.type === 'monopoly_resume_request') {
+                // Game finished initializing and is pulling the resume payload
+                if (window.__monoResumePayload) {
+                    const frame = document.getElementById('monopolyFrame');
+                    if (frame && frame.contentWindow) {
+                        try {
+                            frame.contentWindow.postMessage(window.__monoResumePayload, '*');
+                            console.log('[monopoly] resume payload sent on request');
+                        } catch (_) {}
+                    }
                 }
             }
         });
@@ -8066,6 +8079,8 @@
             });
 
             socket.on('monopoly_game_start', ({ roomCode, players: gamePlayers, yourIndex }) => {
+                // Fresh game — make sure no stale resume payload can leak in
+                window.__monoResumePayload = null;
                 // Pass safe-area insets like the local launcher does
                 let safeTop = 56;
                 try {
@@ -8138,23 +8153,27 @@
                 monopolyIsHost = false; // doesn't matter after game start
                 const frame = document.getElementById('monopolyFrame');
                 frame.src = `monopoly/index.html?${params.toString()}`;
-                // Wait for the iframe to be ready, then push the snapshot.
-                // Phase 3: prefer the authoritative engineSnapshot (has money,
-                // ownership, positions, turnIdx); fall back to legacy snapshot.
+                // Store the resume payload so the game can PULL it whenever
+                // it's ready (fixes the race where early pushes landed before
+                // the game registered its message listener).
+                window.__monoResumePayload = {
+                    type: 'monopoly_resume_snapshot',
+                    snapshot: lastSnapshot || null,
+                    engineSnapshot: engineSnapshot || null,
+                    turnEndsAt: turnEndsAt || null,
+                };
+                // Also keep the legacy pushes as a belt-and-suspenders (they
+                // are harmless duplicates — the game applies resume once).
                 if (lastSnapshot || engineSnapshot) {
                     const tryPush = () => {
                         try {
-                            frame.contentWindow.postMessage({
-                                type: 'monopoly_resume_snapshot',
-                                snapshot: lastSnapshot,
-                                engineSnapshot: engineSnapshot || null,
-                                turnEndsAt: turnEndsAt || null,
-                            }, '*');
+                            frame.contentWindow.postMessage(window.__monoResumePayload, '*');
                         } catch (_) {}
                     };
                     frame.addEventListener('load', () => {
-                        setTimeout(tryPush, 200);
-                        setTimeout(tryPush, 800);
+                        setTimeout(tryPush, 300);
+                        setTimeout(tryPush, 1200);
+                        setTimeout(tryPush, 2500);
                     }, { once: true });
                 }
                 document.getElementById('monopoly-lobby').classList.remove('visible');
