@@ -77,6 +77,9 @@
             (listeners['_player_left'] || []).forEach(fn => fn(data));
         } else if (data.type === 'monopoly_resume_snapshot' && (data.snapshot || data.engineSnapshot)) {
             // Resume the game from a server-stored snapshot after a reconnect.
+            console.log('[online] resume snapshot received; engineSnapshot=',
+                data.engineSnapshot ? 'yes' : 'null',
+                'listeners=', (listeners['_resume'] || []).length);
             const meta = { turnEndsAt: data.turnEndsAt, engineSnapshot: data.engineSnapshot };
             const fns = listeners['_resume'] || [];
             if (fns.length === 0) {
@@ -199,6 +202,7 @@
     function requestResume() {
         if (!enabled) return;
         try {
+            console.log('[online] sending monopoly_resume_request to parent');
             window.parent.postMessage({ type: 'monopoly_resume_request', roomCode }, '*');
         } catch (e) { console.error('[online] requestResume failed:', e); }
     }
