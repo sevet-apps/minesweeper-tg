@@ -8,6 +8,35 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script>
+        // ---- Debug console (Eruda) ----
+        // Loads only for the developer, so regular players never see it.
+        // Enabled if: the Telegram user id is in DEBUG_IDS, OR the URL has
+        // ?debug=1 (handy on desktop). Once loaded it's remembered for the
+        // session so a page reload keeps it on.
+        (function () {
+            var DEBUG_IDS = [1482228376]; // Sevet
+            var forced = false;
+            try {
+                var u = window.Telegram && window.Telegram.WebApp
+                    && window.Telegram.WebApp.initDataUnsafe
+                    && window.Telegram.WebApp.initDataUnsafe.user;
+                if (u && DEBUG_IDS.indexOf(u.id) !== -1) forced = true;
+            } catch (e) {}
+            try {
+                if (location.search.indexOf('debug=1') !== -1) forced = true;
+                if (sessionStorage.getItem('__erudaOn') === '1') forced = true;
+            } catch (e) {}
+            if (forced) {
+                try { sessionStorage.setItem('__erudaOn', '1'); } catch (e) {}
+                window.__monoDebug = true;
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                s.onload = function () { try { eruda.init(); console.log('[eruda] console ready'); } catch (e) {} };
+                document.head.appendChild(s);
+            }
+        })();
+    </script>
     <style>
         :root { 
             --bg-color: #f2f2f7; 
@@ -7728,7 +7757,7 @@
             const frame = document.getElementById('monopolyFrame');
             const safeTop = monoSafeTop();
             const bottom = 20;
-            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}`;
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
         }
 
@@ -8105,6 +8134,7 @@
                     myIdx: (yourIndex != null ? yourIndex : 0),
                     server: (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('/api','') : '')
                 });
+                if (window.__monoDebug) params.set('debug', '1');
                 document.getElementById('monopolyFrame').src = `monopoly/index.html?${params.toString()}`;
                 document.getElementById('monopoly-lobby').classList.remove('visible');
                 document.getElementById('monopoly-game').classList.add('visible');
@@ -8148,6 +8178,7 @@
                     myIdx: yourIndex != null ? yourIndex : 0,
                     resume: '1',
                 });
+                if (window.__monoDebug) params.set('debug', '1');
                 monopolyRoomCode = roomCode;
                 monopolyIsHost = false; // doesn't matter after game start
                 const frame = document.getElementById('monopolyFrame');
