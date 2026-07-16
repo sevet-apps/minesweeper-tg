@@ -737,37 +737,32 @@
             display: none;
         }
 
-        /* Combo buffer bar — shows how many no-line moves remain before the
-           combo streak resets. Segments drain right→left, fill left→right. */
+        /* Combo buffer bar — square brick segments, always visible, shows how
+           many no-line moves remain before the combo streak resets. */
         .bb-combo-bar {
             display: flex;
-            gap: 3px;
-            padding: 3px;
+            gap: 5px;
+            padding: 4px;
             background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,165,0,0.25);
-            border-radius: 8px;
-            box-shadow: 0 0 0 0 rgba(255,149,0,0);
-            transition: box-shadow 0.3s;
-        }
-        .bb-combo-bar.is-full {
-            box-shadow: 0 0 10px 1px rgba(255,149,0,0.45);
+            border: 1px solid rgba(255,165,0,0.22);
+            border-radius: 10px;
         }
         .bb-combo-seg {
-            width: 22px;
-            height: 8px;
-            border-radius: 5px;
+            width: 34px;
+            height: 20px;
+            border-radius: 6px;
             background: rgba(255,255,255,0.10);
             position: relative;
             overflow: hidden;
         }
-        /* The coloured fill sits inside each segment and scales from the left */
+        /* The coloured fill sits inside each brick and scales from the left */
         .bb-combo-seg::after {
             content: '';
             position: absolute;
             inset: 0;
-            border-radius: 5px;
+            border-radius: 6px;
             background: linear-gradient(135deg, #ffcc33, #ff9500 60%, #ff7a00);
-            box-shadow: 0 0 6px rgba(255,149,0,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 3px rgba(180,90,0,0.35);
             transform-origin: left center;
             transform: scaleX(0);
             opacity: 0;
@@ -788,7 +783,7 @@
         /* Little pulse when a segment fills */
         @keyframes bbSegPop {
             0% { transform: scaleX(1) scaleY(1); }
-            50% { transform: scaleX(1) scaleY(1.5); }
+            50% { transform: scaleX(1) scaleY(1.35); }
             100% { transform: scaleX(1) scaleY(1); }
         }
         .bb-combo-seg.just-filled::after {
@@ -3056,7 +3051,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbComboBar" class="bb-combo-bar" style="display:none;"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -3452,7 +3447,7 @@
             spark.style.setProperty('--spark-color', colorHex);
             spark.style.setProperty('--sx', Math.cos(ang) * dist + 'px');
             spark.style.setProperty('--sy', Math.sin(ang) * dist + 'px');
-            const dur = 450 + Math.random() * 350;
+            const dur = 750 + Math.random() * 500;
             spark.style.animation = `bbSparkFloat ${dur}ms ease-out forwards`;
             grid.appendChild(spark);
             setTimeout(() => spark.remove(), dur + 50);
@@ -3463,12 +3458,12 @@
             bbSparkTimer = setInterval(() => {
                 if (!bbSparkCells.length) return;
                 // Emit a few sparks per tick, spread across the glowing cells
-                const emitCount = Math.min(4, bbSparkCells.length);
+                const emitCount = Math.min(3, bbSparkCells.length);
                 for (let i = 0; i < emitCount; i++) {
                     const pick = bbSparkCells[Math.floor(Math.random() * bbSparkCells.length)];
                     if (pick && pick.cell.isConnected) bbSpawnSparkAt(pick.cell, pick.colorHex);
                 }
-            }, 90);
+            }, 120);
         }
         function bbStopSparks() {
             if (bbSparkTimer) { clearInterval(bbSparkTimer); bbSparkTimer = null; }
@@ -6891,11 +6886,9 @@
             if (!bar) return;
             const max = BB_SCORING.COMBO_BUFFER_MOVES;
             const segs = bar.querySelectorAll('.bb-combo-seg');
-            // Show the bar only while a combo streak is alive
+            // Bar is always visible. Filled bricks reflect the remaining buffer
+            // while a combo streak is alive; empty when there's no streak.
             const active = bbCombo > 0 && bbComboBuffer > 0;
-            bar.style.display = active ? 'flex' : 'none';
-            bar.classList.toggle('is-full', active && bbComboBuffer >= max);
-
             const filledCount = active ? Math.min(bbComboBuffer, max) : 0;
 
             // Collect segments that need draining so we can stagger them
