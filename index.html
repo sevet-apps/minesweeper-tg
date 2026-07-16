@@ -1633,7 +1633,41 @@
         .bb-cell.pre-clear { 
             opacity: 1; 
             transition: none; 
+            /* Glowing halo in the piece colour, driven by --pc-glow set in JS.
+               Kept tight so it only bleeds a few px past the cell edge. */
+            box-shadow:
+                inset 0 2px 0 rgba(255,255,255,0.25),
+                inset 0 -2px 0 rgba(0,0,0,0.15),
+                0 0 6px 1px var(--pc-glow, rgba(255,255,255,0.6)),
+                0 0 12px 2px var(--pc-glow, rgba(255,255,255,0.35)) !important;
+            z-index: 3;
+            animation: bbPreClearPulse 0.9s ease-in-out infinite;
         }
+        @keyframes bbPreClearPulse {
+            0%, 100% { filter: brightness(1); }
+            50%      { filter: brightness(1.18); }
+        }
+        body.lite-mode .bb-cell.pre-clear { animation: none; }
+
+        /* Tiny sparks that drift a few px off a highlighted line */
+        .bb-spark {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 6;
+            background: var(--spark-color, #fff);
+            box-shadow: 0 0 4px 1px var(--spark-color, #fff);
+            opacity: 0;
+            will-change: transform, opacity;
+        }
+        @keyframes bbSparkFloat {
+            0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+            25%  { opacity: 1; }
+            100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(1); }
+        }
+        body.lite-mode .bb-spark { display: none; }
         .bb-cell.filled {
             transition: background 0.12s ease;
         }
@@ -3313,6 +3347,64 @@
         const COLOR_MAP = { 'bb-c-1':'#ff3b30', 'bb-c-2':'#ff9500', 'bb-c-3':'#ffcc00', 'bb-c-4':'#34c759', 'bb-c-5':'#007aff', 'bb-c-6':'#5856d6', 'bb-c-7':'#af52de' };
         const GRADIENT_MAP = { 'bb-c-1':'linear-gradient(135deg, #ff5c52 0%, #ff3b30 50%, #d62d24 100%)', 'bb-c-2':'linear-gradient(135deg, #ffab30 0%, #ff9500 50%, #d67e00 100%)', 'bb-c-3':'linear-gradient(135deg, #ffe033 0%, #ffcc00 50%, #d6ab00 100%)', 'bb-c-4':'linear-gradient(135deg, #4cd964 0%, #34c759 50%, #28a745 100%)', 'bb-c-5':'linear-gradient(135deg, #339aff 0%, #007aff 50%, #0062cc 100%)', 'bb-c-6':'linear-gradient(135deg, #7472e8 0%, #5856d6 50%, #4745ab 100%)', 'bb-c-7':'linear-gradient(135deg, #c76ef0 0%, #af52de 50%, #8c42b2 100%)' };
 
+        // Softer, semi-transparent version of a colour for the pre-clear halo
+        function bbGlowColor(colorClass) {
+            const hex = COLOR_MAP[colorClass] || '#ffffff';
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            return `rgba(${r}, ${g}, ${b}, 0.85)`;
+        }
+
+        // Spark particle system for highlighted (pre-clear) lines.
+        // Sparks are tiny, drift only a few px off the cell edge, and fade.
+        let bbSparkTimer = null;
+        let bbSparkCells = []; // [{cell, color}] currently glowing
+        function bbSpawnSparkAt(cell, colorHex) {
+            const grid = document.getElementById('bbGrid');
+            if (!grid || !cell) return;
+            const gridRect = grid.getBoundingClientRect();
+            const cr = cell.getBoundingClientRect();
+            // Position relative to the grid (grid is position:relative)
+            const baseX = cr.left - gridRect.left;
+            const baseY = cr.top - gridRect.top;
+            const spark = document.createElement('div');
+            spark.className = 'bb-spark';
+            // Random spot along the cell's perimeter-ish area
+            const px = baseX + Math.random() * cr.width;
+            const py = baseY + Math.random() * cr.height;
+            // Drift only a few pixels in a random direction
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 3 + Math.random() * 4; // 3–7px
+            spark.style.left = px + 'px';
+            spark.style.top = py + 'px';
+            spark.style.setProperty('--spark-color', colorHex);
+            spark.style.setProperty('--sx', Math.cos(ang) * dist + 'px');
+            spark.style.setProperty('--sy', Math.sin(ang) * dist + 'px');
+            const dur = 450 + Math.random() * 350;
+            spark.style.animation = `bbSparkFloat ${dur}ms ease-out forwards`;
+            grid.appendChild(spark);
+            setTimeout(() => spark.remove(), dur + 50);
+        }
+        function bbStartSparks() {
+            if (bbSparkTimer) return;
+            if (document.body.classList.contains('lite-mode')) return;
+            bbSparkTimer = setInterval(() => {
+                if (!bbSparkCells.length) return;
+                // Emit a few sparks per tick, spread across the glowing cells
+                const emitCount = Math.min(4, bbSparkCells.length);
+                for (let i = 0; i < emitCount; i++) {
+                    const pick = bbSparkCells[Math.floor(Math.random() * bbSparkCells.length)];
+                    if (pick && pick.cell.isConnected) bbSpawnSparkAt(pick.cell, pick.colorHex);
+                }
+            }, 90);
+        }
+        function bbStopSparks() {
+            if (bbSparkTimer) { clearInterval(bbSparkTimer); bbSparkTimer = null; }
+            bbSparkCells = [];
+            const grid = document.getElementById('bbGrid');
+            if (grid) grid.querySelectorAll('.bb-spark').forEach(s => s.remove());
+        }
+
+
         // --- SUBSCRIPTION CHECK ---
         let subscriptionLottie = null;
         
@@ -4343,7 +4435,7 @@
         function closeGame(game) { 
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
-            if(game==='bb') { saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
+            if(game==='bb') { try { bbStopSparks(); } catch(_) {} saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
             if(game==='sudoku') saveSudokuState();
             if(game==='tower') { 
                 if(twAnimationFrameId) cancelAnimationFrame(twAnimationFrameId); 
@@ -6444,7 +6536,11 @@
             // Быстрый проход по кэшу вместо querySelectorAll
             const bgStyle = GRADIENT_MAP[dragData.color] || hexToRgba(hex, 1);
             const bsStyle = `inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.15)`;
-            
+            const glowCol = bbGlowColor(dragData.color);
+            const sparkHex = COLOR_MAP[dragData.color] || '#ffffff';
+
+            let anyPreClear = false;
+            const glowingNow = [];
             for(let rr=0; rr<BB_ROWS; rr++) { for(let cc=0; cc<BB_COLS; cc++) {
                 const cell = bbCellCache[rr] && bbCellCache[rr][cc];
                 if(!cell) continue;
@@ -6464,14 +6560,20 @@
                     if(!hasPreClear) cell.classList.add('pre-clear');
                     cell.style.transition = 'none';
                     cell.style.background = bgStyle;
-                    cell.style.boxShadow = bsStyle;
+                    cell.style.setProperty('--pc-glow', glowCol);
+                    anyPreClear = true;
+                    glowingNow.push({ cell, colorHex: sparkHex });
                 } else if(hasPreClear) {
                     cell.classList.remove('pre-clear');
                     cell.style.transition = '';
                     cell.style.background = '';
                     cell.style.boxShadow = '';
+                    cell.style.removeProperty('--pc-glow');
                 }
             } }
+            // Update spark emitters to the currently glowing cells
+            bbSparkCells = glowingNow;
+            if (anyPreClear) bbStartSparks(); else bbStopSparks();
         }
         function highlightPreClear(r, c, colorClass) { 
             const cell = getCellFast(r, c); 
@@ -6487,9 +6589,10 @@
         
         function onTouchEnd(e) { 
             lastPlacementRow = -1; lastPlacementCol = -1;
+            bbStopSparks();
             document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
             if(dragGhost) dragGhost.remove(); 
-            for(let rr=0;rr<BB_ROWS;rr++){for(let cc=0;cc<BB_COLS;cc++){const c=bbCellCache[rr]&&bbCellCache[rr][cc];if(!c)continue;if(c.classList.contains('pre-clear')){c.classList.remove('pre-clear');c.style.transition='';c.style.background='';c.style.boxShadow=''}if(c.classList.contains('bb-shadow')){c.classList.remove('bb-shadow','bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')}}} 
+            for(let rr=0;rr<BB_ROWS;rr++){for(let cc=0;cc<BB_COLS;cc++){const c=bbCellCache[rr]&&bbCellCache[rr][cc];if(!c)continue;if(c.classList.contains('pre-clear')){c.classList.remove('pre-clear');c.style.transition='';c.style.background='';c.style.boxShadow='';c.style.removeProperty('--pc-glow')}if(c.classList.contains('bb-shadow')){c.classList.remove('bb-shadow','bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7')}}} 
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
             if(dragData.validPos) { 
                 placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
