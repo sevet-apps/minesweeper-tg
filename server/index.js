@@ -2188,6 +2188,27 @@ io.on('connection', (socket) => {
             playerName: room.players[slotIdx].username,
         });
         console.log(`Monopoly: ${room.players[slotIdx].username} rejoined ${roomCode}`);
+
+        // ROBUST RESUME: besides the rejoin_ok payload (which the iframe must
+        // pull via postMessage — fragile due to load races), also push the
+        // authoritative engine state through the SAME live channel that
+        // already works mid-game (monopoly_engine_event → applyEngineState).
+        // We resend a few times so it lands after the iframe has booted and
+        // registered its handlers, regardless of how slow the reload is.
+        if (room.engineState) {
+            const pushState = () => {
+                const r = monopolyRooms.get(roomCode);
+                if (!r || !r.engineState) return;
+                const pub = MonopolyEngine.publicState(r.engineState);
+                io.to(socket.id).emit('monopoly_engine_event', {
+                    events: [{ type: 'RESUME_SYNC', turnIdx: pub.turnIdx }],
+                    state: pub,
+                });
+            };
+            setTimeout(pushState, 1500);
+            setTimeout(pushState, 3000);
+            setTimeout(pushState, 5000);
+        }
     });
 
     // Отключение

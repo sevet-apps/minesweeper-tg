@@ -1036,7 +1036,7 @@
     // this silently corrects any client-side tampering. Convert the engine's
     // slot-indexed state into the client's player-id-keyed snapshot format.
     let __lastEngineState = null;
-    function applyEngineState(state) {
+    function applyEngineState(state, applyPositionsToo) {
         if (!state || !Array.isArray(state.players)) return;
         __lastEngineState = state;
         window.__lastEngineState = state;
@@ -1060,25 +1060,43 @@
         }
         GameState.applySnapshot(snap);
 
+        // On resume we also snap tokens to their server positions instantly
+        // (no walk animation). During live play we skip this — positions are
+        // animated by moveSteps and would jump if we forced them here.
+        if (applyPositionsToo) {
+            const posMap = {};
+            for (const sp of state.players) {
+                const lp = Players.PLAYERS[sp.idx];
+                if (!lp) continue;
+                posMap[lp.id] = { position: sp.position, lap: sp.lap || 0 };
+            }
+            try { Players.applyPositions(posMap); } catch (_) {}
+        }
+
         // TURN POINTER is server-authoritative in Phase 3. Apply the server's
-        // turnIdx so the client never drives the turn on its own (this was the
-        // cause of the "turn doesn't pass" desync). Only update if changed to
-        // avoid redundant UI churn.
+        // turnIdx so the client never drives the turn on its own.
         if (typeof state.turnIdx === 'number') {
             const curIdx = Players.PLAYERS.findIndex(p => p.id === Players.getCurrentPlayer().id);
-            if (curIdx !== state.turnIdx) {
+            if (curIdx !== state.turnIdx || applyPositionsToo) {
                 Players.setTurnIndex(state.turnIdx);
                 try { refreshTurnIndicator(); } catch (_) {}
-                // Re-enable / disable the dice button for the new active player
                 rollBtn.classList.remove('rolling');
                 rollBtn.disabled = false;
             }
         }
     }
     OnlineMode.onEngineState((state) => {
-        // Defer application until any in-flight dice animation settles so we
-        // don't fight the token movement; money/ownership can update live.
-        applyEngineState(state);
+        applyEngineState(state, false);
+    });
+
+    // Server pushes this shortly after a reconnect through the live channel.
+    // It carries the full authoritative state; apply positions too so the
+    // board fully restores even if the postMessage resume path was missed.
+    OnlineMode.onEngineEvent('RESUME_SYNC', (ev) => {
+        console.log('[resume] RESUME_SYNC received via live channel, turnIdx=', ev.turnIdx);
+        if (window.__lastEngineState) {
+            applyEngineState(window.__lastEngineState, true);
+        }
     });
 
     OnlineMode.onEngineEvent('DICE_ROLLED', (ev) => {
