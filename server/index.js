@@ -2056,8 +2056,15 @@ io.on('connection', (socket) => {
             'trade_proposed',
             'token_animate',
         ]);
-        if (turnSensitiveTypes.has(action.type)) {
-            // The sender must be the current active player
+        // PHASE 3: when the engine is authoritative, the turn pointer is
+        // validated on the intent channel (monopoly_intent). The legacy
+        // relay (monopoly_action) now carries advisory data (positions,
+        // timers, animations) that can legitimately be sent by a player
+        // whose engine-turn has already advanced — so validating it against
+        // room.currentTurnIdx here wrongly DROPs valid messages and freezes
+        // the game. Skip the strict turn check when an engine exists; keep
+        // it only for legacy (engine-less) rooms.
+        if (!room.engineState && turnSensitiveTypes.has(action.type)) {
             const activeSlot = room.currentTurnIdx ?? 0;
             if (senderSlot !== activeSlot) {
                 console.log(`[monopoly] DROP ${action.type}: sender slot ${senderSlot} ≠ active ${activeSlot} in ${roomCode}`);
@@ -2106,7 +2113,10 @@ io.on('connection', (socket) => {
                 positions: action.positions,
                 turnIdx: action.turnIdx,
             };
-            if (action.type === 'turn_complete' && typeof action.turnIdx === 'number') {
+            // Only trust the legacy snapshot's turnIdx for engine-less rooms.
+            // When the engine is authoritative it owns currentTurnIdx and the
+            // legacy value is stale (client lags the engine).
+            if (!room.engineState && action.type === 'turn_complete' && typeof action.turnIdx === 'number') {
                 room.currentTurnIdx = action.turnIdx;
             }
         } else if (action.type === 'turn_timer_started' && action.endsAt) {
@@ -2150,12 +2160,27 @@ io.on('connection', (socket) => {
             photo_url: p.photo_url,
             oderId: p.oderId,
         }));
+        // Build the authoritative snapshot LIVE from the engine state at the
+        // moment of rejoin (never trust the cached copy — it may be stale or
+        // missing if the engine was late-initialized).
+        let engineSnap = null;
+        try {
+            if (room.engineState) {
+                engineSnap = MonopolyEngine.publicState(room.engineState);
+            } else {
+                engineSnap = room.engineSnapshot || null;
+            }
+        } catch (e) {
+            console.error('[engine] publicState at rejoin failed:', e);
+            engineSnap = room.engineSnapshot || null;
+        }
+        console.log(`[monopoly] rejoin_ok → ${roomCode} slot=${slotIdx}; engineSnap=${engineSnap ? 'yes (turnIdx=' + engineSnap.turnIdx + ', p0 money=' + (engineSnap.players?.[0]?.money) + ', p0 pos=' + (engineSnap.players?.[0]?.position) + ')' : 'NULL'}; lastSnapshot=${room.lastSnapshot ? 'yes' : 'null'}`);
         socket.emit('monopoly_rejoin_ok', {
             roomCode,
             players: gamePlayers,
             yourIndex: slotIdx,
             lastSnapshot: room.lastSnapshot || null,
-            engineSnapshot: room.engineSnapshot || null,
+            engineSnapshot: engineSnap,
             turnEndsAt: room.turnEndsAt || null,
         });
         socket.to(roomCode).emit('monopoly_player_reconnected', {

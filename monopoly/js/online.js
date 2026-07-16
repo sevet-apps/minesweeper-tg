@@ -68,6 +68,12 @@
     function onParentMessage(e) {
         const data = e.data;
         if (!data || typeof data !== 'object') return;
+        // Diagnostic: surface resume-related traffic so we can see whether the
+        // iframe receives the parent's snapshot at all.
+        if (data.type === 'monopoly_resume_snapshot') {
+            console.log('[online] GOT monopoly_resume_snapshot in iframe; hasEngine=',
+                !!data.engineSnapshot, 'hasLegacy=', !!data.snapshot);
+        }
         if (data.type === 'monopoly_action_in' && data.action) {
             // Apply an action received from another player
             const a = data.action;
