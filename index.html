@@ -737,6 +737,64 @@
             display: none;
         }
 
+        /* Combo buffer bar — shows how many no-line moves remain before the
+           combo streak resets. Segments drain right→left, fill left→right. */
+        .bb-combo-bar {
+            display: flex;
+            gap: 3px;
+            padding: 3px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,165,0,0.25);
+            border-radius: 8px;
+            box-shadow: 0 0 0 0 rgba(255,149,0,0);
+            transition: box-shadow 0.3s;
+        }
+        .bb-combo-bar.is-full {
+            box-shadow: 0 0 10px 1px rgba(255,149,0,0.45);
+        }
+        .bb-combo-seg {
+            width: 22px;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.10);
+            position: relative;
+            overflow: hidden;
+        }
+        /* The coloured fill sits inside each segment and scales from the left */
+        .bb-combo-seg::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #ffcc33, #ff9500 60%, #ff7a00);
+            box-shadow: 0 0 6px rgba(255,149,0,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
+            transform-origin: left center;
+            transform: scaleX(0);
+            opacity: 0;
+            transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), opacity 0.3s;
+        }
+        .bb-combo-seg.filled::after {
+            transform: scaleX(1);
+            opacity: 1;
+        }
+        /* Draining: shrink toward the LEFT edge (origin right) for a nice
+           right→left emptying feel. */
+        .bb-combo-seg.draining::after {
+            transform-origin: right center;
+            transform: scaleX(0);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.5,0,0.75,0), opacity 0.4s ease 0.1s;
+        }
+        /* Little pulse when a segment fills */
+        @keyframes bbSegPop {
+            0% { transform: scaleX(1) scaleY(1); }
+            50% { transform: scaleX(1) scaleY(1.5); }
+            100% { transform: scaleX(1) scaleY(1); }
+        }
+        .bb-combo-seg.just-filled::after {
+            animation: bbSegPop 0.4s ease-out;
+        }
+
         .dropdown-menu { 
             position: absolute; 
             top: 100%;
@@ -1638,8 +1696,8 @@
             box-shadow:
                 inset 0 2px 0 rgba(255,255,255,0.22),
                 inset 0 -2px 0 rgba(0,0,0,0.12),
-                0 0 5px 0px var(--pc-glow, rgba(255,255,255,0.5)),
-                0 0 9px 1px var(--pc-glow-soft, rgba(255,255,255,0.22)) !important;
+                0 0 9px 1px var(--pc-glow, rgba(255,255,255,0.5)),
+                0 0 18px 4px var(--pc-glow-soft, rgba(255,255,255,0.22)) !important;
             z-index: 3;
             animation: bbPreClearPulse 1.3s ease-in-out infinite;
         }
@@ -1652,13 +1710,13 @@
         /* Tiny sparks that drift a few px off a highlighted line */
         .bb-spark {
             position: absolute;
-            width: 3px;
-            height: 3px;
+            width: 4px;
+            height: 4px;
             border-radius: 50%;
             pointer-events: none;
             z-index: 6;
             background: var(--spark-color, #fff);
-            box-shadow: 0 0 3px 0px var(--spark-color, #fff);
+            box-shadow: 0 0 4px 1px var(--spark-color, #fff);
             opacity: 0;
             will-change: transform, opacity;
         }
@@ -1706,7 +1764,7 @@
         .bb-c-5 { background: linear-gradient(135deg, #339aff 0%, #007aff 50%, #0062cc 100%); color: #007aff; } 
         .bb-c-6 { background: linear-gradient(135deg, #7472e8 0%, #5856d6 50%, #4745ab 100%); color: #5856d6; } 
         .bb-c-7 { background: linear-gradient(135deg, #c76ef0 0%, #af52de 50%, #8c42b2 100%); color: #af52de; } 
-        .bb-shadow { background: var(--bb-shadow-col, rgba(0,0,0,0.15)) !important; box-shadow: inset 0 0 0 1.5px var(--bb-shadow-edge, transparent) !important; }
+        .bb-shadow { background: var(--bb-shadow-col, rgba(0,0,0,0.15)) !important; box-shadow: none !important; }
         
         .combo-popup { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; color: #ffcc00; text-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: none; z-index: 1000; animation: comboPop 1s ease-out forwards; white-space: nowrap; }
 
@@ -2998,7 +3056,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbComboBar" class="bb-combo-bar" style="display:none;"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -3388,7 +3446,7 @@
             const py = baseY + Math.random() * cr.height;
             // Drift only a few pixels in a random direction
             const ang = Math.random() * Math.PI * 2;
-            const dist = 3 + Math.random() * 4; // 3–7px
+            const dist = 10 + Math.random() * 14; // 10–24px
             spark.style.left = px + 'px';
             spark.style.top = py + 'px';
             spark.style.setProperty('--spark-color', colorHex);
@@ -5691,7 +5749,7 @@
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST (FIXED) --- */
-        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false; 
+        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false, bbLastComboFilled=-1; 
 
         // ===================== BLOCK BLAST SCORING CONFIG =====================
         // Единое место для балансировки очков. Меняй значения здесь.
@@ -6153,6 +6211,7 @@
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
             bbIsAnimating = false;
             updateBBScoreUI();
+            bbLastComboFilled = -1;
             document.getElementById('bbBestScore').innerText = getDisplayedBest();
             renderBBGrid();
             spawnShapes();
@@ -6621,7 +6680,7 @@
                 document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
                 const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
                 const linesCleared = checkLines(dragData.color); 
-                if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } 
+                if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } else { updateComboBar(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } 
                 else { if(bbShapes.every(s => s === null)) spawnShapes(); } 
             } 
         }
@@ -6823,7 +6882,50 @@
             }, waveDelay);
         }
         function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
-        function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); }
+        function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); updateComboBar(); }
+
+        // Combo buffer bar: reflects bbComboBuffer out of COMBO_BUFFER_MOVES.
+        // Segments fill left→right and drain right→left with smooth animation.
+        function updateComboBar() {
+            const bar = document.getElementById('bbComboBar');
+            if (!bar) return;
+            const max = BB_SCORING.COMBO_BUFFER_MOVES;
+            const segs = bar.querySelectorAll('.bb-combo-seg');
+            // Show the bar only while a combo streak is alive
+            const active = bbCombo > 0 && bbComboBuffer > 0;
+            bar.style.display = active ? 'flex' : 'none';
+            bar.classList.toggle('is-full', active && bbComboBuffer >= max);
+
+            const filledCount = active ? Math.min(bbComboBuffer, max) : 0;
+
+            // Collect segments that need draining so we can stagger them
+            // right→left for a cascading empty effect.
+            const toDrain = [];
+            segs.forEach((seg, i) => {
+                const shouldFill = i < filledCount;
+                const isFilled = seg.classList.contains('filled');
+                if (shouldFill && !isFilled) {
+                    seg.classList.remove('draining');
+                    seg.classList.add('filled');
+                    if (i > bbLastComboFilled) {
+                        seg.classList.add('just-filled');
+                        setTimeout(() => seg.classList.remove('just-filled'), 400);
+                    }
+                } else if (!shouldFill && isFilled) {
+                    toDrain.push({ seg, i });
+                }
+            });
+            // Drain highest index first (rightmost), each slightly delayed
+            toDrain.sort((a, b) => b.i - a.i);
+            toDrain.forEach((item, order) => {
+                setTimeout(() => {
+                    item.seg.classList.remove('filled');
+                    item.seg.classList.add('draining');
+                    setTimeout(() => item.seg.classList.remove('draining'), 550);
+                }, order * 120);
+            });
+            bbLastComboFilled = filledCount - 1;
+        }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
         async function checkGameOver() {
             if (bbIsAnimating) return;
