@@ -6342,163 +6342,144 @@
             return false;
         }
 
+        // Diagonal strip shapes (2- and 3-long) — spawned less often
+        const DIAGONAL_SHAPES = [
+            [[0, 1], [1, 0]],
+            [[1, 0], [0, 1]],
+            [[0, 0, 1], [0, 1, 0], [1, 0, 0]],
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        ];
+        function isDiagonalShape(m) {
+            return DIAGONAL_SHAPES.some(d =>
+                d.length === m.length && d[0].length === m[0].length &&
+                d.every((row, i) => row.every((v, j) => v === m[i][j]))
+            );
+        }
+
+        // HARD_SHAPES unlock progressively: first kind at 100,000,000 points,
+        // one more kind every 10,000,000 after that.
+        const HARD_UNLOCK_START = 100_000_000;
+        const HARD_UNLOCK_STEP  = 10_000_000;
+        function unlockedHardShapes(score) {
+            if (score < HARD_UNLOCK_START) return [];
+            const kinds = 1 + Math.floor((score - HARD_UNLOCK_START) / HARD_UNLOCK_STEP);
+            return HARD_SHAPES.slice(0, Math.min(kinds, HARD_SHAPES.length));
+        }
+
+        // Simulate placing `matrix` at (r,c) and count how many lines that
+        // placement would clear. Returns best over all valid positions:
+        // { lines: maxLinesCleared, fits: canPlaceSomewhere }
+        function bestPlacementResult(matrix) {
+            let best = -1;
+            const h = matrix.length, w = matrix[0]?.length || 0;
+            for (let r = 0; r <= BB_ROWS - h; r++) {
+                for (let c = 0; c <= BB_COLS - w; c++) {
+                    if (!canPlace(matrix, r, c)) continue;
+                    // simulate
+                    const rows = new Set(), cols = new Set();
+                    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) {
+                        if (matrix[i][j] === 1) { rows.add(r + i); cols.add(c + j); }
+                    }
+                    let lines = 0;
+                    for (const rr of rows) {
+                        let full = true;
+                        for (let cc = 0; cc < BB_COLS; cc++) {
+                            const filled = bbGrid[rr][cc] !== 0 ||
+                                (rr >= r && rr < r + h && cc >= c && cc < c + w && matrix[rr - r][cc - c] === 1);
+                            if (!filled) { full = false; break; }
+                        }
+                        if (full) lines++;
+                    }
+                    for (const cc of cols) {
+                        let full = true;
+                        for (let rr = 0; rr < BB_ROWS; rr++) {
+                            const filled = bbGrid[rr][cc] !== 0 ||
+                                (rr >= r && rr < r + h && cc >= c && cc < c + w && matrix[rr - r][cc - c] === 1);
+                            if (!filled) { full = false; break; }
+                        }
+                        if (full) lines++;
+                    }
+                    if (lines > best) best = lines;
+                }
+            }
+            return { fits: best >= 0, lines: Math.max(0, best) };
+        }
+
         function spawnShapes() {
             bbShapes = [];
-            const freeCells = countFreeCells();
             const score = bbScore;
-            
-            // Build full shape pool (same categorization as before)
-            const smallShapes = [];
-            const rectShapes = [];
-            const bigOther = [];
-            
-            for (let i = 0; i < SHAPES.length; i++) {
-                const m = SHAPES[i];
-                const sz = shapeSize(m);
-                if (sz <= 4) smallShapes.push(m);
-                else if (isRectShape(m)) rectShapes.push(m);
-                else bigOther.push(m);
+
+            // === POOL: uniform rules at any score (no score-based weighting).
+            // Diagonal strips get a reduced chance via thinning: they're only
+            // present in the pool ~35% of the time.
+            const includeDiagonals = Math.random() < 0.35;
+            const pool = [];
+            for (const m of SHAPES) {
+                if (isDiagonalShape(m) && !includeDiagonals) continue;
+                pool.push(m);
             }
-            
-            if (score >= 10000) {
-                for (const m of HARD_SHAPES) {
-                    const sz = shapeSize(m);
-                    if (sz <= 4) smallShapes.push(m);
-                    else bigOther.push(m);
-                }
+            for (const m of unlockedHardShapes(score)) pool.push(m);
+
+            // === RANK all pool shapes by what their BEST placement achieves.
+            // ranked: [{ m, fits, lines }]
+            const ranked = [];
+            for (const m of pool) {
+                const res = bestPlacementResult(m);
+                ranked.push({ m, fits: res.fits, lines: res.lines });
             }
-            
-            // All available shapes for smart selection
-            const allShapes = [...smallShapes, ...rectShapes, ...bigOther];
-            
-            // === SMART ANALYSIS ===
-            const opportunities = analyzeBoard();
-            
-            // Find shapes that help complete lines
-            let completers = []; // Shapes that complete an entire line
-            let helpers = [];    // Shapes that partially help
-            
-            if (opportunities.length > 0) {
-                for (const shape of allShapes) {
-                    // Skip shapes that are too big for current board state
-                    if (freeCells < 33 && shapeSize(shape) > 4) continue;
-                    if (!canPlaceAnywhere(shape)) continue;
-                    
-                    const helpLevel = shapeHelpsComplete(shape, opportunities);
-                    if (helpLevel === 2) completers.push(shape);
-                    else if (helpLevel === 1) helpers.push(shape);
-                }
-            }
-            
-            // === GENERATE 3 SHAPES ===
+            const placeable = ranked.filter(x => x.fits);
+            const lineClearers = placeable.filter(x => x.lines >= 1);
+            const multiClearers = placeable.filter(x => x.lines >= 2);
+
+            // === PICK 3 SHAPES ("max smart" mode) ===
+            // Slot 0: the strongest helper available — prefers multi-line
+            //         clearers, then single-line, then any placeable.
+            // Slot 1: a line clearer if any exist (variety pick).
+            // Slot 2: mostly random placeable ("one not-so-great is fine"),
+            //         but still guaranteed to fit the current board.
             const result = [];
-            let bigCount = 0;
-            
-            // Decide help probability per slot
-            // Slot 0: high chance, Slot 1: medium chance, Slot 2: random
-            const nearComplete = opportunities.filter(o => o.missing === 1).length;
-            const almostComplete = opportunities.filter(o => o.missing <= 2).length;
-            const helpChances = [
-                Math.min(0.85, 0.5 + nearComplete * 0.15 + almostComplete * 0.05), // Slot 0: 50-85%
-                Math.min(0.6, 0.3 + nearComplete * 0.1 + almostComplete * 0.05),   // Slot 1: 30-60%
-                0 // Slot 2: always random
-            ];
-            // If no opportunities, no boost
-            if (opportunities.length === 0) { helpChances[0] = 0; helpChances[1] = 0; }
-            
-            for (let i = 0; i < 3; i++) {
-                let chosen = null;
-                
-                // Smart pick
-                if (Math.random() < helpChances[i]) {
-                    // Prefer completers, fallback to helpers
-                    let smartPool = completers.length > 0 ? completers : helpers;
-                    // For slot 1, mix in helpers even if completers exist (variety)
-                    if (i === 1 && completers.length > 0 && helpers.length > 0) {
-                        smartPool = Math.random() < 0.5 ? completers : helpers;
-                    }
-                    if (smartPool.length > 0) {
-                        const valid = smartPool.filter(s => {
-                            const sz = shapeSize(s);
-                            if (freeCells < 33 && sz > 4) return false;
-                            return true;
-                        });
-                        if (valid.length > 0) {
-                            chosen = valid[Math.floor(Math.random() * valid.length)];
-                        }
-                    }
-                }
-                
-                // Regular pick (with existing weight system)
-                if (!chosen) {
-                    let attempts = 0;
-                    
-                    // Score-based weighting
-                    let smallWeight, rectWeight, bigOtherWeight;
-                    if (score < 1000) { smallWeight = 5; rectWeight = 4; bigOtherWeight = 1; }
-                    else if (score < 10000) { smallWeight = 3; rectWeight = 2; bigOtherWeight = 2; }
-                    else { smallWeight = 2; rectWeight = 2; bigOtherWeight = 3; }
-                    
-                    const weightedSmall = [];
-                    for (let w = 0; w < smallWeight; w++) weightedSmall.push(...smallShapes);
-                    const weightedRect = [];
-                    for (let w = 0; w < rectWeight; w++) weightedRect.push(...rectShapes);
-                    const weightedBig = [];
-                    for (let w = 0; w < bigOtherWeight; w++) weightedBig.push(...bigOther);
-                    
-                    let rectFreqMult = 1;
-                    if (freeCells >= 50) rectFreqMult = 1.5;
-                    else if (freeCells >= 33) rectFreqMult = Math.max(0.3, (freeCells - 33) / 17);
-                    else rectFreqMult = 0;
-                    
-                    const adjustedRect = [];
-                    const rectCopies = Math.round(weightedRect.length * rectFreqMult);
-                    for (let j = 0; j < rectCopies && weightedRect.length > 0; j++) {
-                        adjustedRect.push(weightedRect[j % weightedRect.length]);
-                    }
-                    
-                    while (!chosen && attempts < 50) {
-                        attempts++;
-                        let candidates = [...weightedSmall];
-                        if (freeCells >= 33) candidates.push(...adjustedRect, ...weightedBig);
-                        if (candidates.length === 0) candidates = [...smallShapes];
-                        
-                        const pick = candidates[Math.floor(Math.random() * candidates.length)];
-                        const sz = shapeSize(pick);
-                        
-                        if (freeCells < 33 && sz > 4) continue;
-                        if (freeCells >= 33 && freeCells < 50 && sz > 4 && bigCount >= 1) continue;
-                        if (freeCells >= 50 && sz > 4 && bigCount >= 1) {
-                            if (!isRectShape(pick)) continue;
-                            if (!result.every(r => shapeSize(r) <= 4 || isRectShape(r))) continue;
-                        }
-                        
-                        chosen = pick;
-                        if (sz > 4) bigCount++;
-                    }
-                    
-                    if (!chosen) chosen = smallShapes[Math.floor(Math.random() * smallShapes.length)];
-                }
-                
-                result.push(chosen);
+            const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)].m;
+
+            // Slot 0 — best possible help
+            if (multiClearers.length > 0)      result.push(pickRandom(multiClearers));
+            else if (lineClearers.length > 0)  result.push(pickRandom(lineClearers));
+            else if (placeable.length > 0)     result.push(pickRandom(placeable));
+            else                               result.push(SHAPES[0]); // 1x1 fallback
+
+            // Slot 1 — another helper (avoid exact duplicate of slot 0 when possible)
+            {
+                let candidates = lineClearers.length > 0 ? lineClearers : placeable;
+                let filtered = candidates.filter(x => x.m !== result[0]);
+                if (filtered.length === 0) filtered = candidates;
+                if (filtered.length > 0) result.push(pickRandom(filtered));
+                else result.push(SHAPES[0]);
             }
-            
-            // === SURVIVAL CHECK ===
-            // Make sure at least one shape can be placed
-            const anyPlaceable = result.some(m => canPlaceAnywhere(m));
-            if (!anyPlaceable) {
-                // Replace the largest shape with the smallest possible one
-                const singleBlock = [[1]];
-                const twoBlock = [[1, 1]];
-                if (canPlaceAnywhere(singleBlock)) {
-                    result[result.length - 1] = singleBlock;
-                } else if (canPlaceAnywhere(twoBlock)) {
-                    result[result.length - 1] = twoBlock;
-                }
-                // If even single block doesn't fit, game is truly over — let checkGameOver handle it
+
+            // Slot 2 — free pick among placeable (the "allowed to be meh" slot)
+            {
+                let candidates = placeable.length > 0 ? placeable : ranked;
+                let filtered = candidates.filter(x => x.m !== result[0] && x.m !== result[1]);
+                if (filtered.length === 0) filtered = candidates;
+                if (filtered.length > 0) result.push(pickRandom(filtered));
+                else result.push(SHAPES[0]);
             }
-            
-            // Assign colors and render
+
+            // === GUARANTEE: every shape must fit the CURRENT board. ===
+            // (Note: after placing one shape the board changes; guaranteeing
+            // sequential placement of all three is exponentially harder and
+            // gets re-checked naturally on each spawn — this pass ensures the
+            // hand at least starts fully playable.)
+            for (let i = 0; i < result.length; i++) {
+                if (!canPlaceAnywhere(result[i])) {
+                    // Swap in the smallest placeable shape available
+                    const small = [...SHAPES].sort((a, b) => shapeSize(a) - shapeSize(b));
+                    for (const s of small) {
+                        if (canPlaceAnywhere(s)) { result[i] = s; break; }
+                    }
+                }
+            }
+
+            // Assign colors and render (original mechanism)
             for (let i = 0; i < 3; i++) {
                 const color = COLORS[Math.floor(Math.random() * COLORS.length)];
                 bbShapes.push({ matrix: result[i], color: color, id: i });
