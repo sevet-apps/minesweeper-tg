@@ -144,12 +144,21 @@
             btn.addEventListener('click', () => {
                 const idx = parseInt(btn.dataset.tile);
                 if (btn.disabled) return;
-                if (GameState.isMortgaged(idx)) {
-                    GameState.unmortgage(currentPlayerId, idx);
+                const online = window.OnlineMode && window.OnlineMode.enabled;
+                if (online) {
+                    // PHASE 5: server validates and applies; state broadcast
+                    // will refresh money/mortgage flags everywhere.
+                    const isM = GameState.isMortgaged(idx);
+                    window.OnlineMode.sendIntent({ type: isM ? 'UNMORTGAGE' : 'MORTGAGE', tileIdx: idx });
+                    setTimeout(render, 350);
                 } else {
-                    GameState.mortgage(currentPlayerId, idx);
+                    if (GameState.isMortgaged(idx)) {
+                        GameState.unmortgage(currentPlayerId, idx);
+                    } else {
+                        GameState.mortgage(currentPlayerId, idx);
+                    }
+                    render();
                 }
-                render();
                 try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
             });
         });

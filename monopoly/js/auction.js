@@ -143,6 +143,66 @@
 
     let isInitiator = false;
 
+    // ---------- PHASE 5: server-authoritative auction mode ----------
+    // The engine runs the auction; this UI only displays state and sends
+    // AUCTION_BID / AUCTION_PASS intents. No local money/ownership changes.
+    let serverMode = false;
+
+    function idxToPlayer(idx) {
+        const p = global.Players.PLAYERS[idx];
+        return p ? { id: p.id, name: p.name, color: p.color, initial: (p.name || '?').charAt(0).toUpperCase(), idx } : null;
+    }
+
+    function openServer(ev) {
+        const allTiles = window.MonopolyData?.TILES || [];
+        tile = allTiles[ev.tileIdx];
+        if (!tile) return;
+        serverMode = true;
+        isOnline = true;
+        isInitiator = false;
+        myPlayerId = global.Players.PLAYERS[OnlineMode.myIdx]?.id || null;
+        participants = (ev.participants || []).map(idxToPlayer).filter(Boolean);
+        currentBid = ev.bid || 0;
+        currentBidder = null;
+        bidderIndex = Math.max(0, participants.findIndex(p => p.idx === ev.curIdx));
+        pendingResolve = null;
+        render();
+        modalEl.classList.add('visible');
+        backdropEl.classList.add('visible');
+        modalEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function serverApply(ev) {
+        if (!serverMode) return;
+        if (ev.type === 'AUCTION_BID_MADE') {
+            currentBid = ev.bid;
+            const p = participants.find(x => x.idx === ev.byIdx);
+            currentBidder = p ? p.id : null;
+            try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium'); } catch (_) {}
+        } else if (ev.type === 'AUCTION_PASSED') {
+            const i = participants.findIndex(x => x.idx === ev.byIdx);
+            if (i !== -1) participants.splice(i, 1);
+            try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+        } else if (ev.type === 'AUCTION_TURN') {
+            currentBid = ev.bid;
+            const lead = participants.find(x => x.idx === ev.bidderIdx);
+            currentBidder = lead ? lead.id : null;
+            const i = participants.findIndex(x => x.idx === ev.curIdx);
+            if (i !== -1) bidderIndex = i;
+        }
+        render();
+    }
+
+    function serverEnd(ev) {
+        if (!serverMode) return;
+        clearAuctionTimer();
+        serverMode = false;
+        modalEl.classList.remove('visible');
+        backdropEl.classList.remove('visible');
+        modalEl.setAttribute('aria-hidden', 'true');
+        isOnline = false;
+    }
+
     function close(result, broadcast = true) {
         modalEl.classList.remove('visible');
         backdropEl.classList.remove('visible');
@@ -217,8 +277,14 @@
                     ? Players.PLAYERS[OnlineMode.myIdx]?.id
                     : null;
                 if (!isOnline || (myPid && bidder && bidder.id === myPid)) {
-                    if (isOnline) OnlineMode.send({ type: 'auction_pass', byId: bidder.id });
-                    applyPass(bidder.id);
+                    if (serverMode) {
+                        OnlineMode.sendIntent({ type: 'AUCTION_PASS' });
+                    } else if (isOnline) {
+                        OnlineMode.send({ type: 'auction_pass', byId: bidder.id });
+                        applyPass(bidder.id);
+                    } else {
+                        applyPass(bidder.id);
+                    }
                 }
             }
         };
@@ -227,17 +293,21 @@
     }
 
     function render() {
-        // Auction ends if only one bidder left and they have current bid
-        if (participants.length === 1 && currentBidder === participants[0].id) {
-            clearAuctionTimer();
-            close({ winnerId: currentBidder, price: currentBid });
-            return;
+        // Local auto-close rules only apply in the client-driven flow; in
+        // serverMode the engine decides when the auction ends.
+        if (!serverMode) {
+            if (participants.length === 1 && currentBidder === participants[0].id) {
+                clearAuctionTimer();
+                close({ winnerId: currentBidder, price: currentBid });
+                return;
+            }
+            if (participants.length === 0) {
+                clearAuctionTimer();
+                close({ winnerId: null, price: 0 });
+                return;
+            }
         }
-        if (participants.length === 0) {
-            clearAuctionTimer();
-            close({ winnerId: null, price: 0 });
-            return;
-        }
+        if (participants.length === 0) return;
 
         // Whose turn is it?
         if (bidderIndex >= participants.length) bidderIndex = 0;
@@ -320,6 +390,11 @@
 
         document.getElementById('auctionBidBtn').addEventListener('click', () => {
             if (!canBid || !isLocalsBidTurn) return;
+            if (serverMode) {
+                // Engine validates and broadcasts; UI updates on its events
+                OnlineMode.sendIntent({ type: 'AUCTION_BID' });
+                return;
+            }
             // Broadcast first so peers apply the same state in lockstep
             if (isOnline) OnlineMode.send({ type: 'auction_bid', byId: bidder.id });
             applyBid(bidder.id);
@@ -327,6 +402,10 @@
 
         document.getElementById('auctionPassBtn').addEventListener('click', () => {
             if (!isLocalsBidTurn) return;
+            if (serverMode) {
+                OnlineMode.sendIntent({ type: 'AUCTION_PASS' });
+                return;
+            }
             if (isOnline) OnlineMode.send({ type: 'auction_pass', byId: bidder.id });
             applyPass(bidder.id);
         });
@@ -337,5 +416,5 @@
         if (isOnline) startAuctionTimer(bidder);
     }
 
-    global.Auction = { init, start };
+    global.Auction = { init, start, openServer, serverApply, serverEnd };
 })(window);

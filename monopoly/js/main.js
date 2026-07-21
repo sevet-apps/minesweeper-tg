@@ -602,9 +602,9 @@
                     OnlineMode.sendIntent({ type: 'BUY' });
                 } else {
                     OnlineMode.sendIntent({ type: 'DECLINE' });
-                    // Auction still runs through the legacy client flow for
-                    // now (migrated in Phase 5). Kick it off locally.
-                    await runDeclineAuction(player, tile);
+                    // PHASE 5: the server starts the auction and broadcasts
+                    // AUCTION_STARTED to everyone (including us). The UI opens
+                    // from that event — no local auction flow.
                 }
                 return;
             }
@@ -940,15 +940,30 @@
         if (GameState.isInJail(cur.id)) {
             const result = await JailModal.show(cur);
             if (result.action === 'pay') {
-                await payOrBust(cur.id, 50, 'Выход из тюрьмы');
-                if (GameState.isBankrupt(cur.id)) {
-                    advanceTurnSkippingBankrupt();
-                    finishTurnOnline(false);
+                if (OnlineMode.enabled) {
+                    // PHASE 6: server takes the $50 and releases; the state
+                    // broadcast updates money/jail flags. We optimistically
+                    // continue to the roll — the server rejects the roll if
+                    // the payment didn't go through (e.g. not enough money).
+                    OnlineMode.sendIntent({ type: 'JAIL_PAY' });
+                    releasedFromJail = true;
+                } else {
+                    await payOrBust(cur.id, 50, 'Выход из тюрьмы');
+                    if (GameState.isBankrupt(cur.id)) {
+                        advanceTurnSkippingBankrupt();
+                        finishTurnOnline(false);
+                        return;
+                    }
+                    GameState.releaseFromJail(cur.id);
+                    releasedFromJail = true;
+                }
+            } else if (result.action === 'cant_pay') {
+                if (OnlineMode.enabled) {
+                    // Server-side surrender of the turn: without money the
+                    // engine will keep them jailed; just end the attempt.
+                    OnlineMode.sendIntent({ type: 'SURRENDER' });
                     return;
                 }
-                GameState.releaseFromJail(cur.id);
-                releasedFromJail = true;
-            } else if (result.action === 'cant_pay') {
                 await payOrBust(cur.id, 50, 'Выход из тюрьмы');
                 advanceTurnSkippingBankrupt();
                 finishTurnOnline(false);
@@ -1097,6 +1112,49 @@
         if (window.__lastEngineState) {
             applyEngineState(window.__lastEngineState, true);
         }
+    });
+
+    // ---- PHASE 4: server-drawn cards ----
+    // The server draws the card, applies its effect to the authoritative
+    // state, and tells us what happened. We only present it.
+    OnlineMode.onEngineEvent('CARD_DRAWN', async (ev) => {
+        try {
+            await CardModal.show(ev.deck, { title: ev.card.title, description: ev.card.description });
+        } catch (_) {}
+    });
+    OnlineMode.onEngineEvent('MOVED_BY_CARD', async (ev) => {
+        // Animate the token to the server-decided position (no local GO
+        // bonus — money comes from the engine state).
+        const lp = Players.PLAYERS[ev.playerIdx];
+        if (!lp) return;
+        try { await Players.movePlayerToSync(lp.id, ev.to, false); } catch (_) {}
+        // Money/jail changes already arrived in the same burst's state.
+        if (window.__lastEngineState) applyEngineState(window.__lastEngineState, false);
+    });
+    OnlineMode.onEngineEvent('JAIL_PAID', (ev) => {
+        // Money change arrives with the state snapshot; nothing extra to do.
+    });
+
+    // ---- PHASE 5: server-run auction ----
+    OnlineMode.onEngineEvent('AUCTION_STARTED', (ev) => {
+        try { Auction.openServer(ev); } catch (e) { console.error(e); }
+    });
+    OnlineMode.onEngineEvent('AUCTION_TURN', (ev) => { try { Auction.serverApply(ev); } catch (_) {} });
+    OnlineMode.onEngineEvent('AUCTION_BID_MADE', (ev) => { try { Auction.serverApply(ev); } catch (_) {} });
+    OnlineMode.onEngineEvent('AUCTION_PASSED', (ev) => { try { Auction.serverApply(ev); } catch (_) {} });
+    OnlineMode.onEngineEvent('AUCTION_ENDED', (ev) => {
+        try { Auction.serverEnd(ev); } catch (_) {}
+        // Money/ownership arrive in the same burst's state snapshot.
+    });
+
+    // ---- PHASE 5: server-validated trade ----
+    OnlineMode.onEngineEvent('TRADE_PROPOSED', (ev) => {
+        // Show the incoming offer to its target only
+        if (ev.toIdx !== OnlineMode.myIdx) return;
+        try { TradeModal.showIncomingServer(ev); } catch (e) { console.error(e); }
+    });
+    OnlineMode.onEngineEvent('TRADE_RESULT', (ev) => {
+        try { TradeModal.closeAllServer(ev); } catch (_) {}
     });
 
     OnlineMode.onEngineEvent('DICE_ROLLED', (ev) => {

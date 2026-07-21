@@ -133,6 +133,11 @@ function createGame(playerSlots) {
         currentDecision: null,      // { type: 'buy'|'auction'|'rent_due'|..., tileIdx, amount, ... }
         pendingAuction: null,
         pendingTrade: null,
+        // Shuffled card decks (indices into CHANCE_CARDS / CHEST_CARDS)
+        chanceOrder: shuffledIdx(CHANCE_CARDS.length),
+        chestOrder: shuffledIdx(CHEST_CARDS.length),
+        chancePtr: 0,
+        chestPtr: 0,
         log: [],                    // recent events for the activity feed
         createdAt: Date.now(),
         finishedAt: null,
@@ -183,6 +188,50 @@ function calcRent(state, tileIdx, diceSum) {
     return 0;
 }
 
+// ---------- Card decks (server-side, mirrors client texts) ----------
+// fx: m=money delta, go={t:tile,a:awardGo}, back=N steps, jail=1, bday=1
+const CHANCE_CARDS = [
+    { id:'c1',  title:'Идите на СТАРТ', description:'Получите $200 при прохождении.', fx:{ go:{t:0,a:1} } },
+    { id:'c2',  title:'Банковский дивиденд', description:'Банк выплачивает вам $50. Не транжирьте.', fx:{ m:50 } },
+    { id:'c3',  title:'Штраф от полиции', description:'Превысили скорость в жилой зоне. $15 в казну.', fx:{ m:-15 } },
+    { id:'c4',  title:'Ремонт улиц', description:'Город ремонтирует ваши улицы. Заплатите $40 муниципалитету.', fx:{ m:-40 } },
+    { id:'c5',  title:'Идите на Boardwalk', description:'Свежий воздух у моря не повредит.', fx:{ go:{t:39,a:0} } },
+    { id:'c6',  title:'Идите на St. Charles Place', description:'Если пройдёте СТАРТ — получите $200.', fx:{ go:{t:11,a:1} } },
+    { id:'c7',  title:'Премия за красоту', description:'Вас выбрали мисс/мистер Монополия. Получите $10.', fx:{ m:10 } },
+    { id:'c8',  title:'Назад на 3 клетки', description:'Передумали? Возвращайтесь.', fx:{ back:3 } },
+    { id:'c9',  title:'Выигрыш в лотерею', description:'Вы случайно нашли в кармане билет. Получите $100.', fx:{ m:100 } },
+    { id:'c10', title:'Идите в тюрьму', description:'Не проходите СТАРТ, не получайте $200.', fx:{ jail:1 } },
+    { id:'c11', title:'Налог на роскошь', description:'Соседи завидуют вашему BMW. Заплатите $75.', fx:{ m:-75 } },
+    { id:'c12', title:'Идите на Reading Railroad', description:'Если пройдёте СТАРТ — получите $200.', fx:{ go:{t:5,a:1} } },
+    { id:'c13', title:'Инвестиции в стартап', description:'Ваш племянник занял $50 «на будущее».', fx:{ m:-50 } },
+    { id:'c14', title:'Возврат акций', description:'Брокер вернул депозит. $150 ваши.', fx:{ m:150 } },
+];
+const CHEST_CARDS = [
+    { id:'b1',  title:'Идите на СТАРТ', description:'Получите $200 при прохождении.', fx:{ go:{t:0,a:1} } },
+    { id:'b2',  title:'Возврат от банка', description:'Ошибка в вашу пользу. Получите $200.', fx:{ m:200 } },
+    { id:'b3',  title:'Доктор', description:'Простуда на пустом месте. Оплатите визит $50.', fx:{ m:-50 } },
+    { id:'b4',  title:'Дивиденды от акций', description:'Старые бумаги принесли $50.', fx:{ m:50 } },
+    { id:'b5',  title:'Возврат налога', description:'Бухгалтерия удивила. Получите $20.', fx:{ m:20 } },
+    { id:'b6',  title:'День рождения!', description:'Каждый игрок дарит вам $10.', fx:{ bday:1 } },
+    { id:'b7',  title:'Страховая выплата', description:'Соседский кот разбил вашу вазу. $100 от страховой.', fx:{ m:100 } },
+    { id:'b8',  title:'Школьный сбор', description:'На ремонт классов. $50 школе.', fx:{ m:-50 } },
+    { id:'b9',  title:'Наследство', description:'Дальний родственник вспомнил о вас. $100 ваши.', fx:{ m:100 } },
+    { id:'b10', title:'Алименты', description:'Бывшая в курсе ваших успехов. Заплатите $100.', fx:{ m:-100 } },
+    { id:'b11', title:'В тюрьму', description:'Соседи донесли. Не проходите СТАРТ.', fx:{ jail:1 } },
+    { id:'b12', title:'Книжный гонорар', description:'Мемуары неожиданно популярны. $25.', fx:{ m:25 } },
+    { id:'b13', title:'Победа в покере', description:'Партия с приятелями оказалась прибыльной. $50.', fx:{ m:50 } },
+    { id:'b14', title:'Услуги сантехника', description:'Снова прорыв в подвале. $40 мастеру.', fx:{ m:-40 } },
+];
+
+function shuffledIdx(n) {
+    const a = Array.from({ length: n }, (_, i) => i);
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
 // ---------- Action dispatcher ----------
 // Returns { ok: true, events: [...] } or { ok: false, error: 'message' }.
 // Events are { type, ...payload } objects that the server will broadcast
@@ -203,23 +252,16 @@ function applyAction(state, senderIdx, action) {
         case 'BUY':             return handleBuy(state, senderIdx);
         case 'DECLINE':         return handleDecline(state, senderIdx);
         case 'END_TURN':        return handleEndTurn(state, senderIdx);
-        // The rest are still client-authoritative pending migration. They are
-        // accepted here but only sanity-validated; the engine doesn't yet
-        // model them. The server's relay path runs in parallel until each is
-        // migrated.
-        case 'BUILD_HOUSE':
-        case 'SELL_HOUSE':
-        case 'MORTGAGE':
-        case 'UNMORTGAGE':
-        case 'AUCTION_BID':
-        case 'AUCTION_PASS':
-        case 'TRADE_PROPOSE':
-        case 'TRADE_RESPONSE':
-        case 'JAIL_PAY':
-        case 'JAIL_USE_CARD':
-        case 'DRAW_CARD':
-        case 'SURRENDER':
-            return { ok: false, error: 'not_yet_implemented' };
+        case 'BUILD_HOUSE':     return handleBuildHouse(state, senderIdx, action);
+        case 'SELL_HOUSE':      return handleSellHouse(state, senderIdx, action);
+        case 'MORTGAGE':        return handleMortgage(state, senderIdx, action);
+        case 'UNMORTGAGE':      return handleUnmortgage(state, senderIdx, action);
+        case 'JAIL_PAY':        return handleJailPay(state, senderIdx);
+        case 'SURRENDER':       return handleSurrender(state, senderIdx);
+        case 'AUCTION_BID':     return handleAuctionBid(state, senderIdx);
+        case 'AUCTION_PASS':    return handleAuctionPass(state, senderIdx);
+        case 'TRADE_PROPOSE':   return handleTradePropose(state, senderIdx, action);
+        case 'TRADE_RESPONSE':  return handleTradeResponse(state, senderIdx, action);
         default:
             return { ok: false, error: 'unknown_action' };
     }
@@ -312,7 +354,7 @@ function handleRollDice(state, senderIdx) {
     return { ok: true, events };
 }
 
-function resolveLanding(state, playerIdx) {
+function resolveLanding(state, playerIdx, depth = 0) {
     const player = state.players[playerIdx];
     const tile = TILES[player.position];
     const events = [];
@@ -349,15 +391,9 @@ function resolveLanding(state, playerIdx) {
         return events;
     }
 
-    // Chance / Chest — placeholder until card system is server-side
+    // Chance / Chest — server draws a card and applies its effect
     if (tile.type === 'chance' || tile.type === 'chest') {
-        events.push({ type: 'CARD_DRAW_NEEDED', playerIdx, deck: tile.type });
-        // Phase stays in 'resolving' until card is applied; for now we just
-        // advance turn (skip card effects until phase 4).
-        state.phase = state.lastRoll.doubles ? 'awaiting_roll' : 'post_roll';
-        if (!state.lastRoll.doubles) {
-            events.push({ type: 'TURN_READY_TO_END', playerIdx });
-        }
+        events.push(...drawAndApplyCard(state, playerIdx, tile.type, depth));
         return events;
     }
 
@@ -428,6 +464,346 @@ function resolveLanding(state, playerIdx) {
     return events;
 }
 
+// ---------- Card drawing (Phase 4) ----------
+function drawAndApplyCard(state, playerIdx, deck, depth) {
+    const events = [];
+    const player = state.players[playerIdx];
+    const cards = deck === 'chance' ? CHANCE_CARDS : CHEST_CARDS;
+    const orderKey = deck === 'chance' ? 'chanceOrder' : 'chestOrder';
+    const ptrKey = deck === 'chance' ? 'chancePtr' : 'chestPtr';
+    if (!state[orderKey]) { state[orderKey] = shuffledIdx(cards.length); state[ptrKey] = 0; }
+    const idx = state[orderKey][state[ptrKey] % state[orderKey].length];
+    state[ptrKey] = (state[ptrKey] + 1) % state[orderKey].length;
+    if (state[ptrKey] === 0) state[orderKey] = shuffledIdx(cards.length);
+    const card = cards[idx];
+
+    events.push({ type: 'CARD_DRAWN', playerIdx, deck, card: { id: card.id, title: card.title, description: card.description } });
+
+    const fx = card.fx || {};
+    const finishNormally = () => {
+        state.phase = state.lastRoll?.doubles ? 'awaiting_roll' : 'post_roll';
+        if (!state.lastRoll?.doubles) events.push({ type: 'TURN_READY_TO_END', playerIdx });
+    };
+
+    if (fx.jail) {
+        sendToJail(player);
+        events.push({ type: 'JAILED', playerIdx, reason: 'card' });
+        advanceTurn(state);
+        state.phase = 'awaiting_roll';
+        events.push({ type: 'TURN_ENDED', nextIdx: state.turnIdx });
+        return events;
+    }
+    if (typeof fx.m === 'number') {
+        if (fx.m >= 0) {
+            player.money += fx.m;
+            events.push({ type: 'CARD_MONEY', playerIdx, amount: fx.m });
+        } else {
+            const cost = -fx.m;
+            if (player.money >= cost) {
+                player.money -= cost;
+                events.push({ type: 'CARD_MONEY', playerIdx, amount: fx.m });
+            } else {
+                player.money = 0;
+                transferAllOwned(state, playerIdx, -1);
+                bankrupt(state, playerIdx);
+                events.push({ type: 'BANKRUPT', playerIdx, reason: 'card' });
+                advanceTurn(state);
+                state.phase = 'awaiting_roll';
+                events.push({ type: 'TURN_ENDED', nextIdx: state.turnIdx });
+                checkGameOver(state, events);
+                return events;
+            }
+        }
+        finishNormally();
+        return events;
+    }
+    if (fx.bday) {
+        let total = 0;
+        for (const p of state.players) {
+            if (p.idx !== playerIdx && !p.bankrupt) {
+                const give = Math.min(10, Math.max(0, p.money));
+                p.money -= give;
+                total += give;
+            }
+        }
+        player.money += total;
+        events.push({ type: 'CARD_BIRTHDAY', playerIdx, total });
+        finishNormally();
+        return events;
+    }
+    if (fx.go) {
+        const from = player.position;
+        const to = fx.go.t;
+        if (fx.go.a && to <= from) { player.money += 200; player.lap += 1; events.push({ type: 'GO_BONUS', playerIdx }); }
+        player.position = to;
+        events.push({ type: 'MOVED_BY_CARD', playerIdx, from, to });
+        if (depth < 1) {
+            events.push(...resolveLanding(state, playerIdx, depth + 1));
+        } else {
+            finishNormally();
+        }
+        return events;
+    }
+    if (fx.back) {
+        const from = player.position;
+        const to = (from - fx.back + 40) % 40;
+        player.position = to;
+        events.push({ type: 'MOVED_BY_CARD', playerIdx, from, to, back: true });
+        if (depth < 1) {
+            events.push(...resolveLanding(state, playerIdx, depth + 1));
+        } else {
+            finishNormally();
+        }
+        return events;
+    }
+    finishNormally();
+    return events;
+}
+
+// ---------- Build / Mortgage (Phase 5) ----------
+function playerOwnsWholeGroup(state, playerIdx, tileIdx) {
+    const tile = TILES[tileIdx];
+    if (!tile || tile.type !== 'property') return false;
+    const group = GROUPS[tile.group] || [];
+    const p = state.players[playerIdx];
+    return group.every(t => p.ownedTiles.includes(t));
+}
+
+function handleBuildHouse(state, senderIdx, action) {
+    const p = state.players[senderIdx];
+    if (!p || p.bankrupt) return { ok: false, error: 'bankrupt' };
+    const tileIdx = action.tileIdx;
+    const data = PROPERTY_DATA[tileIdx];
+    if (!data || !data.houseCost) return { ok: false, error: 'not_buildable' };
+    if (!p.ownedTiles.includes(tileIdx)) return { ok: false, error: 'not_owner' };
+    if (p.mortgaged.includes(tileIdx)) return { ok: false, error: 'mortgaged' };
+    if (!playerOwnsWholeGroup(state, senderIdx, tileIdx)) return { ok: false, error: 'need_full_group' };
+    const cur = p.houses[tileIdx] || 0;
+    if (cur >= 5) return { ok: false, error: 'max_houses' };
+    if (p.money < data.houseCost) return { ok: false, error: 'not_enough_money' };
+    p.money -= data.houseCost;
+    p.houses[tileIdx] = cur + 1;
+    return { ok: true, events: [{ type: 'HOUSE_BUILT', playerIdx: senderIdx, tileIdx, houses: p.houses[tileIdx], cost: data.houseCost }] };
+}
+
+function handleSellHouse(state, senderIdx, action) {
+    const p = state.players[senderIdx];
+    if (!p || p.bankrupt) return { ok: false, error: 'bankrupt' };
+    const tileIdx = action.tileIdx;
+    const data = PROPERTY_DATA[tileIdx];
+    if (!data || !data.houseCost) return { ok: false, error: 'not_buildable' };
+    const cur = p.houses[tileIdx] || 0;
+    if (!p.ownedTiles.includes(tileIdx) || cur <= 0) return { ok: false, error: 'no_houses' };
+    const refund = Math.floor(data.houseCost / 2);
+    p.money += refund;
+    p.houses[tileIdx] = cur - 1;
+    if (p.houses[tileIdx] === 0) delete p.houses[tileIdx];
+    return { ok: true, events: [{ type: 'HOUSE_SOLD', playerIdx: senderIdx, tileIdx, houses: p.houses[tileIdx] || 0, refund }] };
+}
+
+function handleMortgage(state, senderIdx, action) {
+    const p = state.players[senderIdx];
+    if (!p || p.bankrupt) return { ok: false, error: 'bankrupt' };
+    const tileIdx = action.tileIdx;
+    const data = PROPERTY_DATA[tileIdx];
+    if (!data || !data.mortgage) return { ok: false, error: 'not_mortgageable' };
+    if (!p.ownedTiles.includes(tileIdx)) return { ok: false, error: 'not_owner' };
+    if (p.mortgaged.includes(tileIdx)) return { ok: false, error: 'already_mortgaged' };
+    if ((p.houses[tileIdx] || 0) > 0) return { ok: false, error: 'has_houses' };
+    p.mortgaged.push(tileIdx);
+    p.money += data.mortgage;
+    return { ok: true, events: [{ type: 'MORTGAGED', playerIdx: senderIdx, tileIdx, amount: data.mortgage }] };
+}
+
+function handleUnmortgage(state, senderIdx, action) {
+    const p = state.players[senderIdx];
+    if (!p || p.bankrupt) return { ok: false, error: 'bankrupt' };
+    const tileIdx = action.tileIdx;
+    const data = PROPERTY_DATA[tileIdx];
+    if (!data || !data.mortgage) return { ok: false, error: 'not_mortgageable' };
+    if (!p.mortgaged.includes(tileIdx)) return { ok: false, error: 'not_mortgaged' };
+    const cost = Math.ceil(data.mortgage * 1.1);
+    if (p.money < cost) return { ok: false, error: 'not_enough_money' };
+    p.money -= cost;
+    p.mortgaged = p.mortgaged.filter(t => t !== tileIdx);
+    return { ok: true, events: [{ type: 'UNMORTGAGED', playerIdx: senderIdx, tileIdx, cost }] };
+}
+
+// ---------- Jail pay / Surrender (Phase 6) ----------
+function handleJailPay(state, senderIdx) {
+    const turn = ensureSendersTurn(state, senderIdx);
+    if (!turn.ok) return turn;
+    const p = state.players[senderIdx];
+    if (!p.inJail) return { ok: false, error: 'not_in_jail' };
+    if (state.phase !== 'awaiting_roll') return { ok: false, error: 'wrong_phase' };
+    if (p.money < 50) return { ok: false, error: 'not_enough_money' };
+    p.money -= 50;
+    p.inJail = false;
+    p.jailTurns = 0;
+    return { ok: true, events: [{ type: 'JAIL_PAID', playerIdx: senderIdx }] };
+}
+
+function handleSurrender(state, senderIdx) {
+    const p = state.players[senderIdx];
+    if (!p || p.bankrupt) return { ok: false, error: 'bankrupt' };
+    p.money = 0;
+    transferAllOwned(state, senderIdx, -1);
+    bankrupt(state, senderIdx);
+    const events = [{ type: 'SURRENDERED', playerIdx: senderIdx }];
+    if (state.turnIdx === senderIdx && state.phase !== 'game_over') {
+        advanceTurn(state);
+        state.phase = 'awaiting_roll';
+        events.push({ type: 'TURN_ENDED', nextIdx: state.turnIdx });
+    }
+    checkGameOver(state, events);
+    return { ok: true, events };
+}
+
+// ---------- Auction (Phase 5) ----------
+const AUCTION_STEP = 10;
+function startAuction(state, tileIdx, declinerIdx, events) {
+    const participants = state.players
+        .filter(p => !p.bankrupt && p.idx !== declinerIdx)
+        .map(p => p.idx);
+    if (participants.length === 0) return;
+    state.pendingAuction = {
+        tileIdx,
+        participants,
+        curPos: 0,
+        bid: 0,
+        bidderIdx: -1,
+    };
+    events.push({
+        type: 'AUCTION_STARTED',
+        tileIdx,
+        participants: participants.slice(),
+        curIdx: participants[0],
+        bid: 0,
+    });
+}
+
+function endAuction(state, events) {
+    const a = state.pendingAuction;
+    if (!a) return;
+    if (a.bidderIdx >= 0 && a.bid > 0) {
+        const winner = state.players[a.bidderIdx];
+        if (winner.money >= a.bid) {
+            winner.money -= a.bid;
+            winner.ownedTiles.push(a.tileIdx);
+        }
+        events.push({ type: 'AUCTION_ENDED', tileIdx: a.tileIdx, winnerIdx: a.bidderIdx, price: a.bid });
+    } else {
+        events.push({ type: 'AUCTION_ENDED', tileIdx: a.tileIdx, winnerIdx: -1, price: 0 });
+    }
+    state.pendingAuction = null;
+}
+
+function auctionAdvance(state, events) {
+    const a = state.pendingAuction;
+    if (!a) return;
+    if (a.participants.length === 0) { endAuction(state, events); return; }
+    if (a.participants.length === 1 && a.participants[0] === a.bidderIdx) {
+        endAuction(state, events); return;
+    }
+    a.curPos = a.curPos % a.participants.length;
+    events.push({ type: 'AUCTION_TURN', curIdx: a.participants[a.curPos], bid: a.bid, bidderIdx: a.bidderIdx, tileIdx: a.tileIdx });
+}
+
+function handleAuctionBid(state, senderIdx) {
+    const a = state.pendingAuction;
+    if (!a) return { ok: false, error: 'no_auction' };
+    if (a.participants[a.curPos] !== senderIdx) return { ok: false, error: 'not_your_bid_turn' };
+    const p = state.players[senderIdx];
+    const newBid = a.bid + AUCTION_STEP;
+    if (p.money < newBid) return { ok: false, error: 'not_enough_money' };
+    a.bid = newBid;
+    a.bidderIdx = senderIdx;
+    a.curPos = (a.curPos + 1) % a.participants.length;
+    const events = [{ type: 'AUCTION_BID_MADE', byIdx: senderIdx, bid: a.bid }];
+    auctionAdvance(state, events);
+    return { ok: true, events };
+}
+
+function handleAuctionPass(state, senderIdx) {
+    const a = state.pendingAuction;
+    if (!a) return { ok: false, error: 'no_auction' };
+    if (a.participants[a.curPos] !== senderIdx) return { ok: false, error: 'not_your_bid_turn' };
+    const pos = a.participants.indexOf(senderIdx);
+    a.participants.splice(pos, 1);
+    if (a.curPos >= a.participants.length) a.curPos = 0;
+    const events = [{ type: 'AUCTION_PASSED', byIdx: senderIdx }];
+    if (a.participants.length === 0) {
+        endAuction(state, events);
+    } else if (a.participants.length === 1 && a.participants[0] === a.bidderIdx) {
+        endAuction(state, events);
+    } else {
+        auctionAdvance(state, events);
+    }
+    return { ok: true, events };
+}
+
+// ---------- Trade (Phase 5) ----------
+function handleTradePropose(state, senderIdx, action) {
+    if (state.pendingTrade) return { ok: false, error: 'trade_in_progress' };
+    const toIdx = action.toIdx;
+    const target = state.players[toIdx];
+    const me = state.players[senderIdx];
+    if (!target || target.bankrupt || toIdx === senderIdx) return { ok: false, error: 'bad_target' };
+    const giveTiles = Array.isArray(action.giveTiles) ? action.giveTiles.filter(t => Number.isInteger(t)) : [];
+    const getTiles = Array.isArray(action.getTiles) ? action.getTiles.filter(t => Number.isInteger(t)) : [];
+    const cash = Number.isInteger(action.cash) ? action.cash : 0;
+    for (const t of giveTiles) {
+        if (!me.ownedTiles.includes(t)) return { ok: false, error: 'give_not_owned' };
+        if ((me.houses[t] || 0) > 0) return { ok: false, error: 'give_has_houses' };
+    }
+    for (const t of getTiles) {
+        if (!target.ownedTiles.includes(t)) return { ok: false, error: 'get_not_owned' };
+        if ((target.houses[t] || 0) > 0) return { ok: false, error: 'get_has_houses' };
+    }
+    if (cash > 0 && me.money < cash) return { ok: false, error: 'not_enough_money' };
+    if (cash < 0 && target.money < -cash) return { ok: false, error: 'partner_cant_pay' };
+    state.pendingTrade = { fromIdx: senderIdx, toIdx, giveTiles, getTiles, cash };
+    return { ok: true, events: [{ type: 'TRADE_PROPOSED', fromIdx: senderIdx, toIdx, giveTiles, getTiles, cash }] };
+}
+
+function handleTradeResponse(state, senderIdx, action) {
+    const tr = state.pendingTrade;
+    if (!tr) return { ok: false, error: 'no_trade' };
+    if (senderIdx !== tr.toIdx) return { ok: false, error: 'not_trade_target' };
+    const accepted = !!action.accepted;
+    const events = [];
+    if (accepted) {
+        const from = state.players[tr.fromIdx];
+        const to = state.players[tr.toIdx];
+        const stillValid =
+            tr.giveTiles.every(t => from.ownedTiles.includes(t) && !(from.houses[t] > 0)) &&
+            tr.getTiles.every(t => to.ownedTiles.includes(t) && !(to.houses[t] > 0)) &&
+            (tr.cash <= 0 || from.money >= tr.cash) &&
+            (tr.cash >= 0 || to.money >= -tr.cash);
+        if (!stillValid) {
+            state.pendingTrade = null;
+            return { ok: false, error: 'trade_invalidated' };
+        }
+        const moveTile = (owner, receiver, t) => {
+            owner.ownedTiles = owner.ownedTiles.filter(x => x !== t);
+            receiver.ownedTiles.push(t);
+            if (owner.mortgaged.includes(t)) {
+                owner.mortgaged = owner.mortgaged.filter(x => x !== t);
+                receiver.mortgaged.push(t);
+            }
+        };
+        for (const t of tr.giveTiles) moveTile(from, to, t);
+        for (const t of tr.getTiles) moveTile(to, from, t);
+        if (tr.cash > 0) { from.money -= tr.cash; to.money += tr.cash; }
+        if (tr.cash < 0) { to.money += tr.cash; from.money += -tr.cash; }
+        events.push({ type: 'TRADE_RESULT', accepted: true, fromIdx: tr.fromIdx, toIdx: tr.toIdx, giveTiles: tr.giveTiles, getTiles: tr.getTiles, cash: tr.cash });
+    } else {
+        events.push({ type: 'TRADE_RESULT', accepted: false, fromIdx: tr.fromIdx, toIdx: tr.toIdx });
+    }
+    state.pendingTrade = null;
+    return { ok: true, events };
+}
+
 function handleBuy(state, senderIdx) {
     const turn = ensureSendersTurn(state, senderIdx);
     if (!turn.ok) return turn;
@@ -462,10 +838,9 @@ function handleDecline(state, senderIdx) {
     }
     const dec = state.currentDecision;
     state.currentDecision = null;
-    // Trigger auction (phase 5 will fill this in; for now the tile just
-    // stays free in the server's mind, and the client may run a parallel
-    // auction in its own client-authoritative flow until migrated).
     const events = [{ type: 'TILE_DECLINED', playerIdx: senderIdx, tileIdx: dec.tileIdx }];
+    // Phase 5: the server runs the auction among the other players.
+    startAuction(state, dec.tileIdx, senderIdx, events);
     state.phase = state.lastRoll?.doubles ? 'awaiting_roll' : 'post_roll';
     if (!state.lastRoll?.doubles) {
         events.push({ type: 'TURN_READY_TO_END', playerIdx: senderIdx });
@@ -530,14 +905,17 @@ function bankrupt(state, playerIdx) {
 
 function transferAllOwned(state, fromIdx, toIdx) {
     const from = state.players[fromIdx];
-    const to = state.players[toIdx];
-    for (const tIdx of from.ownedTiles) {
-        if (!to.ownedTiles.includes(tIdx)) to.ownedTiles.push(tIdx);
-        if (from.mortgaged.includes(tIdx) && !to.mortgaged.includes(tIdx)) {
-            to.mortgaged.push(tIdx);
+    const to = toIdx >= 0 ? state.players[toIdx] : null;
+    if (to) {
+        for (const tIdx of from.ownedTiles) {
+            if (!to.ownedTiles.includes(tIdx)) to.ownedTiles.push(tIdx);
+            if (from.mortgaged.includes(tIdx) && !to.mortgaged.includes(tIdx)) {
+                to.mortgaged.push(tIdx);
+            }
+            if (from.houses[tIdx]) to.houses[tIdx] = from.houses[tIdx];
         }
-        if (from.houses[tIdx]) to.houses[tIdx] = from.houses[tIdx];
     }
+    // toIdx < 0 → assets return to the bank (simply cleared)
     from.ownedTiles = [];
     from.mortgaged = [];
     from.houses = {};

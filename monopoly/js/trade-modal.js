@@ -333,16 +333,17 @@
 
         close();
 
-        // ONLINE: broadcast the offer so every client opens the same accept
-        // modal. Only the partner's buttons will be active.
+        // ONLINE (PHASE 5): the engine validates and broadcasts
+        // TRADE_PROPOSED to everyone; modals open from that event.
         if (global.OnlineMode?.enabled) {
-            OnlineMode.send({
-                type: 'trade_proposed',
-                fromId, toId, give, get, cash,
+            const toIdx = Players.PLAYERS.findIndex(p => p.id === toId);
+            OnlineMode.sendIntent({
+                type: 'TRADE_PROPOSE',
+                toIdx,
+                giveTiles: give,
+                getTiles: get,
+                cash,
             });
-            // Open the accept modal locally too (we, the initiator, see it
-            // read-only). The partner sees it with active buttons.
-            openAcceptModal({ initiator: me, partner, give, get, cash, fromId, toId });
             return;
         }
 
@@ -389,19 +390,31 @@
 
         if (!accepted || !t) return;
 
-        // Only the initiator mutates state and broadcasts the snapshot;
-        // everyone else will receive the interim_snapshot and converge.
-        const myPid = OnlineMode.enabled
-            ? Players.PLAYERS[OnlineMode.myIdx]?.id
-            : null;
-        if (myPid === t.fromId) {
+        // PHASE 5: online trades are executed by the server engine; the new
+        // money/ownership arrive via the state broadcast. Only offline (same
+        // device) trades mutate locally.
+        if (!OnlineMode.enabled) {
             executeTrade(t.fromId, t.toId, t.give, t.get, t.cash);
-            OnlineMode.send({
-                type: 'interim_snapshot',
-                snapshot: GameState.serialize(),
-                positions: Players.serializePositions(),
-            });
         }
+    }
+
+    // ---- PHASE 5: server-event entry points ----
+    function showIncomingServer(ev) {
+        const initiator = Players.PLAYERS[ev.fromIdx];
+        const partner = Players.PLAYERS[ev.toIdx];
+        if (!initiator || !partner) return;
+        openAcceptModal({
+            initiator, partner,
+            give: ev.giveTiles || [],
+            get: ev.getTiles || [],
+            cash: ev.cash || 0,
+            fromId: initiator.id,
+            toId: partner.id,
+        });
+    }
+
+    function closeAllServer(ev) {
+        applyTradeResponse(!!ev.accepted);
     }
 
     // Lightweight floating top toast — non-blocking, auto-dismisses
@@ -674,9 +687,8 @@
                         // Only the partner auto-rejects (broadcasts the result);
                         // observers just close their modal when the broadcast arrives.
                         if (isPartner) {
-                            OnlineMode.send({ type: 'trade_response', accepted: false });
+                            OnlineMode.sendIntent({ type: 'TRADE_RESPONSE', accepted: false });
                             cleanup(false);
-                            applyTradeResponse(false);
                         }
                     }
                 };
@@ -689,14 +701,22 @@
             // in applyTradeResponse).
             if (isPartner) {
                 document.getElementById('tradeAcceptBtn').addEventListener('click', () => {
-                    if (isOnline) OnlineMode.send({ type: 'trade_response', accepted: true });
+                    if (isOnline) {
+                        // PHASE 5: the engine applies the trade atomically and
+                        // broadcasts TRADE_RESULT; modals close on that event.
+                        OnlineMode.sendIntent({ type: 'TRADE_RESPONSE', accepted: true });
+                        cleanup(true);
+                        return;
+                    }
                     cleanup(true);
-                    if (isOnline) applyTradeResponse(true);
                 });
                 document.getElementById('tradeRejectBtn').addEventListener('click', () => {
-                    if (isOnline) OnlineMode.send({ type: 'trade_response', accepted: false });
+                    if (isOnline) {
+                        OnlineMode.sendIntent({ type: 'TRADE_RESPONSE', accepted: false });
+                        cleanup(false);
+                        return;
+                    }
                     cleanup(false);
-                    if (isOnline) applyTradeResponse(false);
                 });
             }
             // For online observers/initiator, the promise resolves when
@@ -724,5 +744,5 @@
         }
     }
 
-    global.TradeModal = { init, show };
+    global.TradeModal = { init, show, showIncomingServer, closeAllServer };
 })(window);

@@ -144,9 +144,18 @@
                 const tileIdx = parseInt(btn.dataset.tile);
                 const action = btn.dataset.action;
                 if (btn.disabled) return;
-                if (action === 'build') GameState.buildHouse(currentPlayerId, tileIdx);
-                else if (action === 'sell') GameState.sellHouse(currentPlayerId, tileIdx);
-                render(); // re-render to update buttons
+                const online = window.OnlineMode && window.OnlineMode.enabled;
+                if (online) {
+                    // PHASE 5: server-authoritative build/sell. The engine
+                    // validates ownership/money and broadcasts new state;
+                    // re-render happens on snapshot application.
+                    window.OnlineMode.sendIntent({ type: action === 'build' ? 'BUILD_HOUSE' : 'SELL_HOUSE', tileIdx });
+                    setTimeout(render, 350); // refresh once state lands
+                } else {
+                    if (action === 'build') GameState.buildHouse(currentPlayerId, tileIdx);
+                    else if (action === 'sell') GameState.sellHouse(currentPlayerId, tileIdx);
+                    render(); // re-render to update buttons
+                }
                 try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
             });
         });

@@ -278,20 +278,17 @@
             accent: 'orange',
         });
         if (!confirmed) return;
+        // PHASE 6 ONLINE: the server executes the surrender (assets to bank,
+        // turn advance, game-over check) and broadcasts the new state. No
+        // local mutation — prevents forged surrender packets for others.
+        if (window.OnlineMode?.enabled) {
+            window.OnlineMode.sendIntent({ type: 'SURRENDER' });
+            return;
+        }
         GameState.declareBankrupt(cur.id, null);
         // Pass turn to the next non-bankrupt player
         if (typeof window.advanceTurnSkippingBankrupt === 'function') {
             window.advanceTurnSkippingBankrupt();
-        }
-        // ONLINE: broadcast the new state (bankrupt + turn change) so the
-        // opponent sees the win screen and the bankrupt flags update.
-        if (window.OnlineMode?.enabled) {
-            window.OnlineMode.send({
-                type: 'turn_complete',
-                snapshot: GameState.serialize(),
-                positions: Players.serializePositions(),
-                turnIdx: Players.PLAYERS.findIndex(p => p.id === Players.getCurrentPlayer().id),
-            });
         }
     }
 
