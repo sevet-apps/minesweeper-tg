@@ -1,157 +1,137 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#000000">
-    <title>Spark Monopoly</title>
-
-    <link rel="stylesheet" href="css/tokens.css?v=ui5">
-    <link rel="stylesheet" href="css/monopoly.css?v=ui5">
-
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-        // Debug console inside the game iframe. The parent app appends
-        // &debug=1 to the iframe URL for the developer, so resume/engine
-        // logs are visible here too.
-        (function () {
-            try {
-                if (location.search.indexOf('debug=1') === -1) return;
-            } catch (e) { return; }
-            var s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/eruda';
-            s.onload = function () { try { eruda.init(); console.log('[eruda] game console ready'); } catch (e) {} };
-            document.head.appendChild(s);
-        })();
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/schteppe/cannon.js/build/cannon.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Монополия — Spark Games</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>window.DICE_SIZE = window.innerWidth > 900 ? 1.35 : 1.0;</script>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/masks.css">
+<link rel="stylesheet" href="css/v2.css">
+<link rel="stylesheet" href="css/lobby.css">
 </head>
-<body data-theme="dark">
+<body>
 
+<!-- ==================== ЛОББИ ==================== -->
+<div id="lobby">
+  <div class="lb-wrap">
+    <div class="lb-top">
+      <div class="lb-title">Монополия<small>2–5 игроков</small></div>
+      <div id="lbMe"></div>
+    </div>
 
+    <!-- Главный экран -->
+    <div class="lb-screen on" id="lbMain">
+      <div class="lb-modes">
+        <button class="lb-mode" id="lbBots">
+          <div class="lb-mode-ico green">🤖</div>
+          <div class="lb-mode-txt"><b>Игра с ботами</b><span>Быстрый матч без ожидания</span></div>
+          <div class="lb-mode-arrow">›</div>
+        </button>
+        <button class="lb-mode" data-go="lbCreate">
+          <div class="lb-mode-ico blue">＋</div>
+          <div class="lb-mode-txt"><b>Создать комнату</b><span>Пригласить друзей по коду</span></div>
+          <div class="lb-mode-arrow">›</div>
+        </button>
+        <button class="lb-mode" data-go="lbJoin">
+          <div class="lb-mode-ico violet">🔑</div>
+          <div class="lb-mode-txt"><b>Войти по коду</b><span>Присоединиться к комнате</span></div>
+          <div class="lb-mode-arrow">›</div>
+        </button>
+      </div>
 
-    <!-- The whole board, sized as a square fitted to the viewport -->
-    <div class="board-wrap">
-        <div class="board" id="board">
-            <!-- 40 tiles will be injected here by board-ui.js -->
+      <div class="lb-sec-head">
+        <h2>Открытые комнаты</h2>
+        <small>обновляется автоматически</small>
+      </div>
+      <div id="lbRooms"></div>
+    </div>
 
-            <!-- Center area: holds 3D dice canvas + UI -->
-            <div class="board-center">
-                <div class="dice-canvas-container" id="dice-canvas-container">
-                    <!-- Three.js canvas will be appended here -->
-                </div>
+    <!-- Создание комнаты -->
+    <div class="lb-screen" id="lbCreate">
+      <button class="lb-back" data-go="lbMain">‹ Назад</button>
+      <div class="lb-card">
+        <h3>Новая комната</h3>
+        <p>Получите код и отправьте его друзьям</p>
+        <div class="lb-switch-row" id="lbPrivate">
+          <div class="t"><b>Приватная комната</b><span>Не показывать в списке открытых</span></div>
+          <div class="lb-sw"></div>
+        </div>
+        <button class="lb-btn" id="lbCreateGo">Создать</button>
+      </div>
+    </div>
 
-                <!-- Dice result readout -->
-                <div class="dice-result" id="diceResult" aria-live="polite">
-                    <div class="dice-result-die" id="dieA">—</div>
-                    <div class="dice-result-plus">+</div>
-                    <div class="dice-result-die" id="dieB">—</div>
-                    <div class="dice-result-eq">=</div>
-                    <div class="dice-result-sum" id="dieSum">—</div>
-                </div>
+    <!-- Вход по коду -->
+    <div class="lb-screen" id="lbJoin">
+      <button class="lb-back" data-go="lbMain">‹ Назад</button>
+      <div class="lb-card">
+        <h3>Вход по коду</h3>
+        <p>Введите код комнаты из шести символов</p>
+        <input class="lb-input" id="lbCode" maxlength="6" placeholder="КОД" autocomplete="off">
+        <button class="lb-btn" id="lbJoinGo">Войти</button>
+      </div>
+    </div>
 
-                <!-- Large S logo by default; replaced by dice when rolled -->
-                <div class="center-brand" id="centerBrand">
-                    <div class="brand-s">S</div>
-                </div>
+    <!-- Комната ожидания -->
+    <div class="lb-screen" id="lbWait">
+      <button class="lb-back" id="lbLeave">‹ Выйти из комнаты</button>
+      <div class="lb-card">
+        <div class="lb-code-box">
+          <small>Код комнаты</small>
+          <div id="lbWaitCode">——</div>
+          <div id="lbWaitPrivate">приватная</div>
+        </div>
+        <button class="lb-btn ghost" id="lbCopy">Скопировать код</button>
+        <div id="lbWaitPlayers"></div>
+        <button class="lb-btn" id="lbStart" disabled>Начать игру</button>
+        <div id="lbWaitHint"></div>
+      </div>
+    </div>
+  </div>
+  <div class="lb-toast" id="lbToast"></div>
+</div>
+
+<!-- ==================== ИГРА ==================== -->
+<div id="game" style="display:none">
+  <div class="app">
+    <div class="players-col" id="playersCol"></div>
+    <div class="board-zone">
+      <div class="board" id="board">
+        <div class="board-center">
+          <div class="center-panel">
+            <div class="service-bar compact" id="serviceBar"></div>
+            <div id="diceDock"></div>
+            <div class="chat-log" id="chatLog"></div>
+            <div class="chat-input-row">
+              <input class="chat-input" id="chatInput" placeholder="Сообщение в чат" maxlength="200">
             </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- Property detail modal -->
-    <div class="modal-backdrop" id="propModalBackdrop"></div>
-    <div class="prop-modal" id="propModal" role="dialog" aria-modal="true" aria-hidden="true">
-        <div class="prop-modal-content" id="propModalContent">
-            <!-- filled by JS -->
-        </div>
-    </div>
-
-
-
-    <!-- Bottom dock -->
-    <div class="bottom-dock">
-        <div class="swipe-hint" id="swipeHint">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 19V5M5 12l7-7 7 7"/>
-            </svg>
-            <span>Свайп вверх для броска</span>
-        </div>
-
-        <div class="action-dock">
-            <!-- Left action buttons -->
-            <button class="dock-btn" id="dockMyCardsBtn" title="Мои карточки">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="6" width="14" height="14" rx="2"/>
-                    <path d="M7 2h14v14"/>
-                </svg>
-                <span class="dock-btn-label">Карточки</span>
-            </button>
-
-            <button class="dock-btn" id="dockTradeBtn" title="Обмен">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M7 7h14l-3-3M21 7l-3 3M17 17H3l3 3M3 17l3-3"/>
-                </svg>
-                <span class="dock-btn-label">Обмен</span>
-            </button>
-
-            <!-- Central dice button -->
-            <button class="dice-btn" id="rollBtn" aria-label="Бросить кубики">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <circle cx="8" cy="8" r="1.5"/>
-                    <circle cx="16" cy="8" r="1.5"/>
-                    <circle cx="12" cy="12" r="1.5"/>
-                    <circle cx="8" cy="16" r="1.5"/>
-                    <circle cx="16" cy="16" r="1.5"/>
-                </svg>
-                <span class="dice-btn-shine"></span>
-            </button>
-
-            <button class="dock-btn" id="dockMortgageBtn" title="Залог">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="6" width="18" height="13" rx="2"/>
-                    <path d="M3 10h18M8 15h3"/>
-                </svg>
-                <span class="dock-btn-label">Залог</span>
-            </button>
-
-            <button class="dock-btn" id="dockMenuBtn" title="Меню">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="9"/>
-                    <path d="M12 8v4l3 2"/>
-                </svg>
-                <span class="dock-btn-label">Меню</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="js/board-data.js?v=ui5"></script>
-    <script src="js/board-ui.js?v=ui5"></script>
-    <script src="js/property-modal.js?v=ui5"></script>
-    <script src="js/players.js?v=ui5"></script>
-    <script src="js/game-state.js?v=ui5"></script>
-    <script src="js/money-toast.js?v=ui5"></script>
-    <script src="js/action-modal.js?v=ui5"></script>
-    <script src="js/auction.js?v=ui5"></script>
-    <script src="js/cards.js?v=ui5"></script>
-    <script src="js/card-modal.js?v=ui5"></script>
-    <script src="js/bankruptcy-modal.js?v=ui5"></script>
-    <script src="js/jail-modal.js?v=ui5"></script>
-    <script src="js/build-modal.js?v=ui5"></script>
-    <script src="js/sell-assets-modal.js?v=ui5"></script>
-    <script src="js/mortgage-modal.js?v=ui5"></script>
-    <script src="js/trade-modal.js?v=ui5"></script>
-    <script src="js/game-over-modal.js?v=ui5"></script>
-    <script src="js/notice-modal.js?v=ui5"></script>
-    <script src="js/menu-modal.js?v=ui5"></script>
-    <script src="js/player-hud.js?v=ui5"></script>
-    <script src="js/scene/SceneManager.js?v=ui5"></script>
-    <script src="js/scene/Dice.js?v=ui5"></script>
-    <script src="js/setup-screen.js?v=ui5"></script>
-    <script src="js/online.js?v=ui5"></script>
-    <script src="js/turn-timer.js?v=ui5"></script>
-    <script src="js/main.js?v=ui5"></script>
+<script src="libs/three.min.js"></script>
+<script src="libs/cannon.min.js"></script>
+<script src="libs/socket.io.min.js"></script>
+<script src="js/board-data-v2.js"></script>
+<script src="js/v2/icon-assets.js"></script>
+<script src="js/v2/logos.js"></script>
+<script src="js/v2/board-ui.js"></script>
+<script src="js/scene/SceneManager.js"></script>
+<script src="js/scene/Dice.js"></script>
+<script src="js/v2/engine.js"></script>
+<script src="js/v2/net.js"></script>
+<script src="js/v2/dice-dock.js"></script>
+<script src="js/v2/modals.js"></script>
+<script src="js/v2/trades.js"></script>
+<script src="js/v2/game-ui.js"></script>
+<script src="js/v2/lobby.js"></script>
+<script>
+    if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+    Lobby.init();
+</script>
 </body>
 </html>

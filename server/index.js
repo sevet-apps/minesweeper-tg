@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const MonopolyEngine = require('./monopoly-engine');
+const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
 
 const app = express();
 app.use(cors());
@@ -13,6 +14,7 @@ app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+MonopolyV2.attach(io);                        // комнаты и матчи новой монополии
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;

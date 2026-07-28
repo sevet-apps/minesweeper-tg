@@ -8073,6 +8073,13 @@
         }
 
         function openMonopolyLobby() {
+            // Новая монополия: собственное меню внутри monopoly/index.html
+            // (режимы, комнаты и список игроков живут там).
+            // Старое меню хаба оставлено ниже как запасной путь.
+            openMonopolyGame();
+        }
+
+        function openMonopolyLobbyLegacy() {
             document.getElementById('monopoly-lobby').classList.add('visible');
             monoShowScreen('monoScreenMode');
         }

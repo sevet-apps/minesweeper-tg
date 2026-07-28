@@ -1,0 +1,742 @@
+/* ============================================================
+   monopoly-v2.js — серверный движок новой монополии.
+   Авторитетная модель: ВСЯ экономика и все решения — здесь.
+   Клиент только шлёт намерения и рисует state/события.
+
+   Подключение в server/index.js:
+       const MonopolyV2 = require('./monopoly-v2');
+       MonopolyV2.attach(io);         // namespace /mono2
+
+   Протокол (клиент -> сервер):
+       m2:create {name}                -> ack {roomId}
+       m2:join   {roomId, name}       -> ack {ok, state}
+       m2:start                        (хост)
+       m2:roll | m2:buy | m2:auction  (выставить на аукцион)
+       m2:auc-raise | m2:auc-pass
+       m2:jail-pay | m2:jail-roll
+       m2:build {i} | m2:sellBranch {i}
+       m2:mortgage {i} | m2:unmortgage {i}
+       m2:trade-offer {toId, deal} | m2:trade-answer {accept}
+       m2:surrender
+       m2:chat {text, dmTo?}
+
+   Сервер -> клиент:
+       m2:state  (полный снапшот)     m2:log {pid,text}
+       m2:phase  {...}                m2:dice {a,b,pid}
+       m2:move   {pid,from,steps,to}  m2:trade-offer {fromId,toId,deal}
+       m2:chat   {pid,text,dmTo}      m2:ended {winner}
+   ============================================================ */
+'use strict';
+
+const path = require('path');
+
+/* Данные доски — общие с клиентом (тот же файл) */
+const dataModule = require(path.join(__dirname, '..', 'monopoly', 'js', 'board-data-v2.js'));
+const D = globalThis.MonopolyDataV2 || dataModule;
+const E = D.ECONOMY;
+
+const rnd = n => Math.floor(Math.random() * n);
+const fmt = n => n.toLocaleString('ru-RU');
+
+/* ============================ Игра ============================ */
+class Game {
+    constructor(roomId, io) {
+        this.roomId = roomId;
+        this.io = io;                       // namespace
+        this.players = {};                  // id -> {id,name,color,money,pos,alive,jailed,jailTries,socketId}
+        this.order = [];
+        this.turnIdx = 0;
+        this.round = 1;
+        this.owners = {}; this.branches = {}; this.mortgaged = {};
+        this.phase = 'lobby';
+        this.doubles = 0;
+        this.auction = null;
+        this.pendingBuy = null;
+        this.pendingTrades = {};            // toId -> {fromId, deal, timer}
+        this.timer = null;
+        this.startedAt = null;
+        this.chance = D.CHANCE.slice().sort(() => Math.random() - .5);
+        this.chanceIdx = 0;
+        this.lastCtx = null;
+        this.hostId = null;
+        this.isPrivate = false;
+        this.createdAt = Date.now();
+    }
+
+    /** краткая карточка комнаты для списка в лобби */
+    brief() {
+        return {
+            roomId: this.roomId,
+            phase: this.phase,
+            isPrivate: this.isPrivate,
+            createdAt: this.createdAt,
+            players: this.order.map(id => {
+                const p = this.players[id];
+                return { id, name: p.name, avatar: p.avatar, initials: p.initials, color: p.color };
+            }),
+        };
+    }
+
+    /* ---------- рассылка ---------- */
+    room() { return this.io.to(this.roomId); }
+    send(ev, data) { this.room().emit(ev, data); }
+    log(pid, text) { this.send('m2:log', { pid, text }); }
+    pushState() { this.send('m2:state', this.snapshot()); }
+    snapshot() {
+        const players = {};
+        for (const [id, p] of Object.entries(this.players))
+            players[id] = {
+                id, name: p.name, color: p.color, money: p.money, pos: p.pos,
+                alive: p.alive, jailed: p.jailed, host: id === this.hostId,
+                avatar: p.avatar, initials: p.initials, online: p.online !== false,
+            };
+        return {
+            players, order: this.order, turnIdx: this.turnIdx, round: this.round,
+            owners: this.owners, branches: this.branches, mortgaged: this.mortgaged,
+            phase: this.phase, startedAt: this.startedAt,
+        };
+    }
+
+    /* ---------- таймер ---------- */
+    arm(onExpire, secs = E.turnSeconds) {
+        clearTimeout(this.timer);
+        this.timerEnd = Date.now() + secs * 1000;
+        this.timer = setTimeout(onExpire, secs * 1000);
+        this.send('m2:timer', { secs, end: this.timerEnd });
+    }
+
+    /* ---------- жизненный цикл ---------- */
+    addPlayer(id, profile, socketId) {
+        const COLORS = ['#e8534a', '#3aa5e8', '#43b34c', '#a06ee0', '#e8a33a'];
+        const pr = typeof profile === 'string' ? { name: profile } : (profile || {});
+        if (this.players[id]) {                       // реконнект
+            this.players[id].socketId = socketId;
+            this.players[id].online = true;
+            this.pushState();
+            return true;
+        }
+        if (this.phase !== 'lobby' || this.order.length >= 5) return false;
+        this.players[id] = {
+            id, name: String(pr.name || 'Игрок').slice(0, 24), socketId, online: true,
+            avatar: pr.avatar || null, initials: String(pr.initials || '').slice(0, 2).toUpperCase(),
+            color: COLORS[this.order.length % COLORS.length],
+            money: E.startingCash, pos: 0, alive: true, jailed: false, jailTries: 0,
+        };
+        this.order.push(id);
+        if (!this.hostId) this.hostId = id;
+        this.pushState();
+        return true;
+    }
+
+    start(byId) {
+        if (this.phase !== 'lobby' || byId !== this.hostId || this.order.length < 2) return;
+        this.phase = 'idle';
+        this.startedAt = Date.now();
+        this.send('m2:started', { roomId: this.roomId });
+        this.pushState();
+        this.beginTurn();
+    }
+
+    cur() { return this.players[this.order[this.turnIdx]]; }
+    alive() { return this.order.filter(id => this.players[id].alive); }
+
+    beginTurn() {
+        const p = this.cur();
+        if (!p.alive) return this.nextTurn();
+        this.doubles = 0;
+        this.builtGroups = {};
+        if (p.jailed) return this.jailPrompt();
+        this.phase = 'await-roll';
+        this.send('m2:phase', { phase: 'await-roll', pid: p.id });
+        this.arm(() => this.roll(p.id));
+        this.pushState();
+    }
+
+    /* ---------- бросок и движение ---------- */
+    roll(byId) {
+        if (this.phase !== 'await-roll' || byId !== this.cur().id) return;
+        // если текущий игрок сам ждёт ответа на свой договор — ход на паузе
+        if (Object.values(this.pendingTrades).some(t => t.fromId === byId)) return;
+        const p = this.cur();
+        clearTimeout(this.timer);
+        this.phase = 'rolling';
+        const a = 1 + rnd(6), b = 1 + rnd(6);
+        this.send('m2:dice', { a, b, pid: p.id });
+        const dbl = a === b;
+        if (dbl) this.doubles++;
+        setTimeout(() => {                        // время на анимацию у клиентов
+            if (this.doubles >= 3) {
+                this.log(p.id, `выбрасывает ${a}:${b} третий дубль подряд и отправляется в тюрьму`);
+                return this.sendToJail(p);
+            }
+            this.log(p.id, `выбрасывает ${a}:${b}` + (dbl ? ' и получает ещё один ход, так как выпал дубль' : ''));
+            this.moveBy(p, a + b, { diceSum: a + b, wasDouble: dbl });
+        }, 2300);
+    }
+
+    moveBy(p, steps, ctx) {
+        const from = p.pos;
+        const to = ((p.pos + steps) % 40 + 40) % 40;
+        this.send('m2:move', { pid: p.id, from, steps, to });
+        const animMs = Math.min(1800, Math.abs(steps) * 140) + 200;
+        setTimeout(() => {
+            p.pos = to;
+            if (steps > 0 && to < from) {
+                p.money += E.lapBonus;
+                this.log(p.id, `проходит очередной круг и получает $${fmt(E.lapBonus)}`);
+            }
+            this.pushState();
+            this.landOn(p, ctx || {});
+        }, animMs);
+    }
+    moveTo(p, idx, ctx) {
+        const steps = ((idx - p.pos) % 40 + 40) % 40;
+        this.moveBy(p, steps || 40, ctx || {});
+    }
+
+    /* ---------- клетки ---------- */
+    myBranchCount(pid) {
+        return Object.entries(this.branches)
+            .filter(([i]) => this.owners[i] === pid)
+            .reduce((s, [, b]) => s + b, 0);
+    }
+    groupTiles(g) { return D.TILES.filter(x => x.group === g); }
+    ownsFullGroup(pid, g) {
+        return this.groupTiles(g).every(x => this.owners[x.i] === pid && this.mortgaged[x.i] == null);
+    }
+    rentFor(i, ctx) {
+        const t = D.TILES[i], pr = D.PROP[i], owner = this.owners[i];
+        if (this.mortgaged[i] != null) return 0;
+        if (pr.diceMult) {
+            const n = this.groupTiles('gamedev').filter(x => this.owners[x.i] === owner).length;
+            return (ctx.diceSum || 7) * pr.diceMult[Math.min(n, 2) - 1];
+        }
+        if (pr.carRent) {
+            const n = this.groupTiles('cars').filter(x => this.owners[x.i] === owner).length;
+            return pr.carRent[Math.min(n, 4) - 1];
+        }
+        const b = this.branches[i] || 0;
+        let r = pr.rent[b];
+        if (b === 0 && this.ownsFullGroup(owner, t.group)) r *= 2;
+        return r;
+    }
+
+    landOn(p, ctx) {
+        const t = D.TILES[p.pos];
+        switch (t.type) {
+            case 'start':
+                p.money += E.landOnStartBonus;
+                this.log(p.id, `останавливается на поле «Старт» и получает бонус в размере $${fmt(E.landOnStartBonus)}`);
+                this.pushState(); return this.endStep(ctx);
+            case 'jail': return this.endStep(ctx);
+            case 'gotojail':
+                this.log(p.id, `арестован полицией и отправляется в тюрьму`);
+                return this.sendToJail(p);
+            case 'casino':
+                this.log(p.id, `попадает на поле «Казино»`);
+                return this.endStep(ctx);
+            case 'tax': {
+                const amount = t.taxKind === 'branches'
+                    ? E.incomeTaxPerBranch * this.myBranchCount(p.id) : E.luxuryTax;
+                if (!amount) return this.endStep(ctx);
+                this.log(p.id, `попадает на поле «${t.name}» и должен заплатить Банку $${fmt(amount)}`);
+                return this.charge(p, amount, null, () => { this.log(p.id, 'оплачивает расходы'); this.endStep(ctx); });
+            }
+            case 'chance': return this.drawChance(p, ctx);
+            case 'prop': return this.landOnProp(p, t, ctx);
+        }
+    }
+
+    landOnProp(p, t, ctx) {
+        const owner = this.owners[t.i];
+        if (!owner) {
+            this.log(p.id, `попадает на **${t.name}** и задумывается о покупке`);
+            this.phase = 'await-buy'; this.pendingBuy = t.i; this.lastCtx = ctx;
+            this.send('m2:phase', { phase: 'await-buy', pid: p.id, tile: t.i, price: t.price, canBuy: p.money >= t.price });
+            this.arm(() => this.toAuction(p.id));
+            return;
+        }
+        if (owner === p.id || this.mortgaged[t.i] != null) return this.endStep(ctx);
+        const rent = this.rentFor(t.i, ctx);
+        this.log(p.id, `попадает на **${t.name}** и должен заплатить игроку @${this.players[owner].name} аренду в размере $${fmt(rent)}`);
+        this.charge(p, rent, owner, () => { this.log(p.id, `заплатил $${fmt(rent)} аренды`); this.endStep(ctx); });
+    }
+
+    buy(byId) {
+        if (this.phase !== 'await-buy' || byId !== this.cur().id) return;
+        const p = this.cur(), i = this.pendingBuy, t = D.TILES[i];
+        if (p.money < t.price) return;
+        clearTimeout(this.timer);
+        this.pendingBuy = null;
+        p.money -= t.price;
+        this.owners[i] = p.id;
+        this.log(p.id, `покупает **${t.name}** за $${fmt(t.price)}`);
+        this.pushState();
+        this.endStep(this.lastCtx);
+    }
+    toAuction(byId) {
+        if (this.phase !== 'await-buy' || byId !== this.cur().id) return;
+        const i = this.pendingBuy;
+        clearTimeout(this.timer);
+        this.pendingBuy = null;
+        this.log(this.cur().id, `выставляет **${D.TILES[i].name}** на аукцион. Стартовая цена $${fmt(D.TILES[i].price)}`);
+        this.startAuction(i);
+    }
+
+    /* ---------- аукцион ---------- */
+    startAuction(i) {
+        this.auction = { tile: i, price: D.TILES[i].price, queue: this.alive().slice(), idx: this.turnIdx % this.alive().length, active: {}, leader: null };
+        this.auction.queue.forEach(id => this.auction.active[id] = true);
+        this.phase = 'auction';
+        this.aucNext();
+    }
+    aucNext() {
+        const A = this.auction;
+        const act = A.queue.filter(id => A.active[id]);
+        if ((act.length === 1 && A.leader) || act.length === 0) return this.aucFinish(A.leader);
+        do { A.idx = (A.idx + 1) % A.queue.length; } while (!A.active[A.queue[A.idx]]);
+        const pid = A.queue[A.idx];
+        if (pid === A.leader) return this.aucFinish(pid);
+        this.send('m2:phase', { phase: 'auction', pid, tile: A.tile, price: A.price, next: A.price + 100 });
+        this.arm(() => this.aucPass(pid), 20);
+    }
+    aucRaise(pid) {
+        const A = this.auction;
+        if (!A || this.phase !== 'auction' || A.queue[A.idx] !== pid) return;
+        if (this.players[pid].money < A.price + 100) return;
+        clearTimeout(this.timer);
+        A.price += 100; A.leader = pid;
+        this.log(pid, `поднимает цену до $${fmt(A.price)}`);
+        this.aucNext();
+    }
+    aucPass(pid) {
+        const A = this.auction;
+        if (!A || this.phase !== 'auction' || A.queue[A.idx] !== pid) return;
+        clearTimeout(this.timer);
+        A.active[pid] = false;
+        this.log(pid, `отказывается от участия в аукционе`);
+        this.aucNext();
+    }
+    aucFinish(winner) {
+        const A = this.auction, t = D.TILES[A.tile];
+        this.auction = null;
+        if (winner) {
+            this.players[winner].money -= A.price;
+            this.owners[A.tile] = winner;
+            this.log(winner, `побеждает в аукционе и покупает **${t.name}** за $${fmt(A.price)}`);
+        } else this.log(null, `**${t.name}** никого не заинтересовал — остаётся у Банка`);
+        this.pushState();
+        this.endStep(this.lastCtx);
+    }
+
+    /* ---------- тюрьма ---------- */
+    sendToJail(p) {
+        p.pos = 10; p.jailed = true; p.jailTries = 0; this.doubles = 0;
+        this.pushState();
+        this.nextTurn();
+    }
+    jailPrompt() {
+        const p = this.cur();
+        this.phase = 'await-jail';
+        this.send('m2:phase', { phase: 'await-jail', pid: p.id, fine: E.jailFine, canPay: p.money >= E.jailFine });
+        this.arm(() => this.jailChoose(p.id, p.money >= E.jailFine ? 'pay' : 'roll'));
+    }
+    jailChoose(byId, mode) {
+        if (this.phase !== 'await-jail' || byId !== this.cur().id) return;
+        const p = this.cur();
+        clearTimeout(this.timer);
+        if (mode === 'pay' && p.money >= E.jailFine) {
+            p.money -= E.jailFine; p.jailed = false;
+            this.log(p.id, `заплатил $${fmt(E.jailFine)} и вышел из тюрьмы`);
+            this.pushState();
+            this.phase = 'await-roll';
+            return this.roll(p.id);          // сразу бросаем
+        }
+        this.phase = 'rolling';
+        const a = 1 + rnd(6), b = 1 + rnd(6);
+        this.send('m2:dice', { a, b, pid: p.id });
+        setTimeout(() => {
+            if (a === b) {
+                p.jailed = false;
+                this.log(p.id, `выбрасывает ${a}:${b} — дубль! Выходит из тюрьмы`);
+                return this.moveBy(p, a + b, { diceSum: a + b });
+            }
+            p.jailTries++;
+            this.log(p.id, `выбрасывает ${a}:${b} — не смог выбросить дубль и остаётся в тюрьме`);
+            if (p.jailTries >= 3 && p.money >= E.jailFine) {
+                p.money -= E.jailFine; p.jailed = false;
+                this.log(p.id, `платит $${fmt(E.jailFine)} после трёх неудач и выходит`);
+                this.pushState();
+            }
+            this.nextTurn();
+        }, 2300);
+    }
+
+    /* ---------- сюрприз ---------- */
+    drawChance(p, ctx) {
+        const card = this.chance[this.chanceIdx++ % this.chance.length];
+        this.log(p.id, `тянет карточку «Сюрприз»: ${card.text}`);
+        const ef = card.effect;
+        if (ef.money > 0) { p.money += ef.money; this.pushState(); return this.endStep(ctx); }
+        if (ef.money < 0) return this.charge(p, -ef.money, null, () => this.endStep(ctx));
+        if (ef.jail) return this.sendToJail(p);
+        if (ef.moveTo != null) return this.moveTo(p, ef.moveTo, ctx);
+        if (ef.moveBy) return this.moveBy(p, ef.moveBy, ctx);
+        if (ef.perBranch) {
+            const amt = -ef.perBranch * this.myBranchCount(p.id);
+            if (!amt) return this.endStep(ctx);
+            return this.charge(p, amt, null, () => this.endStep(ctx));
+        }
+        if (ef.fromEach) {
+            this.alive().filter(id => id !== p.id).forEach(id => {
+                const q = this.players[id];
+                const pay = Math.min(ef.fromEach, q.money);
+                q.money -= pay; p.money += pay;
+            });
+            this.pushState(); return this.endStep(ctx);
+        }
+        this.endStep(ctx);
+    }
+
+    /* ---------- платежи / банкротство (оплата вручную) ---------- */
+    liquidValue(pid) {
+        let v = this.players[pid].money;
+        for (const [i, o] of Object.entries(this.owners)) {
+            if (o !== pid) continue;
+            v += (this.branches[i] || 0) * Math.floor((D.PROP[i].branch || 0) / 2);
+            if (this.mortgaged[i] == null) v += D.PROP[i].mortgage;
+        }
+        return v;
+    }
+    payPayload() {
+        const pp = this.pendingPay; if (!pp) return null;
+        const p = this.players[pp.pid];
+        const liq = this.liquidValue(pp.pid);
+        return {
+            phase: 'await-pay', pid: pp.pid, amount: pp.amount,
+            toId: pp.toId, toName: pp.toId ? this.players[pp.toId].name : null,
+            canPay: p.money >= pp.amount, enough: liq >= pp.amount,
+            percent: Math.min(100, Math.round(pp.amount / Math.max(1, liq) * 100)),
+        };
+    }
+    charge(p, amount, toId, done) {
+        this.phase = 'await-pay';
+        this.pendingPay = { pid: p.id, amount, toId, done };
+        this.send('m2:phase', this.payPayload());
+        this.arm(() => this.forceResolvePay());
+    }
+    pay(byId) {
+        const pp = this.pendingPay;
+        if (!pp || this.phase !== 'await-pay' || byId !== pp.pid) return;
+        const p = this.players[pp.pid];
+        if (p.money < pp.amount) return;
+        clearTimeout(this.timer);
+        p.money -= pp.amount;
+        if (pp.toId) this.players[pp.toId].money += pp.amount;
+        this.pendingPay = null;
+        this.pushState();
+        pp.done();
+    }
+    forceResolvePay() {
+        const pp = this.pendingPay; if (!pp) return;
+        const p = this.players[pp.pid];
+        for (const i of Object.keys(this.owners)) {
+            if (p.money >= pp.amount) break;
+            if (this.owners[i] === pp.pid && (this.branches[i] > 0))
+                while (this.branches[i] > 0 && p.money < pp.amount) this.sellBranch(pp.pid, +i);
+        }
+        for (const i of Object.keys(this.owners)) {
+            if (p.money >= pp.amount) break;
+            if (this.owners[i] === pp.pid && this.mortgaged[i] == null && !(this.branches[i] > 0))
+                this.mortgage(pp.pid, +i, true);
+        }
+        if (p.money >= pp.amount) return this.pay(pp.pid);
+        if (pp.toId) this.players[pp.toId].money += Math.max(0, p.money);
+        p.money = 0;
+        const pid = pp.pid, toId = pp.toId;
+        this.pendingPay = null;
+        this.eliminate(pid, toId);
+    }
+    eliminate(pid, toId) {
+        const p = this.players[pid];
+        p.alive = false;
+        Object.keys(this.owners).forEach(i => {
+            if (this.owners[i] === pid) {
+                if (toId) this.owners[i] = toId;
+                else { delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i]; }
+            }
+        });
+        this.log(pid, toId ? `банкрот — активы переходят игроку @${this.players[toId].name}` : `банкрот — активы возвращаются Банку`);
+        this.pushState();
+        if (!this.checkWin() && this.cur().id === pid) this.nextTurn();
+    }
+    surrender(pid) {
+        const p = this.players[pid];
+        if (!p || !p.alive) return;
+        this.log(pid, `сдаётся`);
+        p.alive = false;
+        Object.keys(this.owners).forEach(i => {
+            if (this.owners[i] === pid) { delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i]; }
+        });
+        this.pushState();
+        if (!this.checkWin() && this.cur().id === pid) { clearTimeout(this.timer); this.nextTurn(); }
+    }
+    checkWin() {
+        const a = this.alive();
+        if (a.length <= 1) {
+            this.phase = 'ended';
+            clearTimeout(this.timer);
+            this.log(null, 'Игра завершена.');
+            this.send('m2:ended', { winner: a[0] || null });
+            this.pushState();
+            return true;
+        }
+        return false;
+    }
+
+    /* ---------- залог / филиалы ---------- */
+    mortgage(pid, i, silent) {
+        const pr = D.PROP[i];
+        if (!pr || this.owners[i] !== pid || this.mortgaged[i] != null || (this.branches[i] > 0)) return false;
+        this.players[pid].money += pr.mortgage;
+        this.mortgaged[i] = E.mortgageRounds;
+        this.log(pid, `закладывает **${D.TILES[i].name}**`);
+        if (!silent) this.pushState();
+        this.reemitPhase();
+        return true;
+    }
+    unmortgage(pid, i) {
+        const pr = D.PROP[i];
+        if (!pr || this.owners[i] !== pid || this.mortgaged[i] == null || this.players[pid].money < pr.unmortgage) return false;
+        this.players[pid].money -= pr.unmortgage;
+        delete this.mortgaged[i];
+        this.log(pid, `выкупает **${D.TILES[i].name}** из залога`);
+        this.pushState();
+        this.reemitPhase();
+        return true;
+    }
+    canBuild(pid, i) {
+        const t = D.TILES[i], pr = D.PROP[i];
+        if (!(pr && pr.branch && this.owners[i] === pid && this.mortgaged[i] == null
+            && this.ownsFullGroup(pid, t.group) && (this.branches[i] || 0) < 5
+            && this.players[pid].money >= pr.branch
+            && this.cur().id === pid)) return false;
+        if (this.builtGroups && this.builtGroups[t.group]) return false;
+        const min = Math.min(...this.groupTiles(t.group).map(x => this.branches[x.i] || 0));
+        return (this.branches[i] || 0) === min;
+    }
+    build(pid, i) {
+        if (!this.canBuild(pid, i)) return false;
+        this.players[pid].money -= D.PROP[i].branch;
+        this.branches[i] = (this.branches[i] || 0) + 1;
+        (this.builtGroups = this.builtGroups || {})[D.TILES[i].group] = true;
+        this.log(pid, `строит филиал компании **${D.TILES[i].name}**. Аренда возрастает`);
+        this.pushState();
+        return true;
+    }
+    sellBranch(pid, i) {
+        if (this.owners[i] !== pid || !(this.branches[i] > 0)) return false;
+        this.players[pid].money += Math.floor(D.PROP[i].branch / 2);
+        this.branches[i]--;
+        this.log(pid, `продаёт филиал **${D.TILES[i].name}**`);
+        this.pushState();
+        this.reemitPhase();
+        return true;
+    }
+
+    reemitPhase() {
+        if (this.phase === 'await-pay') this.send('m2:phase', this.payPayload());
+        else if (this.phase === 'await-buy' && this.pendingBuy != null) {
+            const p = this.cur(), t = D.TILES[this.pendingBuy];
+            this.send('m2:phase', { phase: 'await-buy', pid: p.id, tile: t.i, price: t.price, canBuy: p.money >= t.price });
+        } else if (this.phase === 'auction' && this.auction) {
+            const A = this.auction, pid = A.queue[A.idx];
+            this.send('m2:phase', { phase: 'auction', pid, tile: A.tile, price: A.price, next: A.price + 100 });
+        }
+    }
+
+    /* ---------- договоры ---------- */
+    canTrade(pid) {
+        return this.phase !== 'ended' && this.phase !== 'lobby'
+            && this.cur() && this.cur().id === pid && this.players[pid] && this.players[pid].alive;
+    }
+    validTrade(fromId, toId, deal) {
+        const f = this.players[fromId], t = this.players[toId];
+        if (!f || !t || !f.alive || !t.alive) return false;
+        if (!this.canTrade(fromId)) return false;      // договор только в свой ход
+        if (!Array.isArray(deal.giveTiles) || !Array.isArray(deal.takeTiles)) return false;
+        if ((deal.giveMoney || 0) < 0 || (deal.takeMoney || 0) < 0) return false;
+        if ((deal.giveMoney || 0) > f.money || (deal.takeMoney || 0) > t.money) return false;
+        return deal.giveTiles.every(i => this.owners[i] === fromId)
+            && deal.takeTiles.every(i => this.owners[i] === toId);
+    }
+    tradeOffer(fromId, toId, deal) {
+        if (!this.validTrade(fromId, toId, deal)) return;
+        clearTimeout(this.pendingTrades[toId]?.timer);
+        const timer = setTimeout(() => {
+            this.log(toId, `не успевает ответить на предложение`);
+            delete this.pendingTrades[toId];
+        }, E.turnSeconds * 1000);
+        this.pendingTrades[toId] = { fromId, deal, timer };
+        this.log(fromId, `предлагает игроку @${this.players[toId].name} подписать договор`);
+        this.send('m2:trade-offer', { fromId, toId, deal });
+    }
+    tradeAnswer(toId, accept) {
+        const pt = this.pendingTrades[toId];
+        if (!pt) return;
+        clearTimeout(pt.timer);
+        delete this.pendingTrades[toId];
+        if (!accept) return this.log(toId, `отклоняет договор`);
+        if (!this.validTrade(pt.fromId, toId, pt.deal)) return this.log(toId, `договор больше не действителен`);
+        const { deal, fromId } = pt;
+        deal.giveTiles.forEach(i => this.owners[i] = toId);
+        deal.takeTiles.forEach(i => this.owners[i] = fromId);
+        this.players[fromId].money += (deal.takeMoney || 0) - (deal.giveMoney || 0);
+        this.players[toId].money += (deal.giveMoney || 0) - (deal.takeMoney || 0);
+        this.log(toId, `принимает договор игрока @${this.players[fromId].name}`);
+        this.pushState();
+    }
+
+    /* ---------- ход дальше ---------- */
+    endStep(ctx) {
+        if (this.phase === 'ended') return;
+        this.lastCtx = null;
+        if (ctx && ctx.wasDouble && this.cur().alive && !this.cur().jailed) {
+            this.phase = 'await-roll';
+            this.send('m2:phase', { phase: 'await-roll', pid: this.cur().id });
+            this.arm(() => this.roll(this.cur().id));
+            return;
+        }
+        this.nextTurn();
+    }
+    nextTurn() {
+        if (this.phase === 'ended') return;
+        clearTimeout(this.timer);
+        const prev = this.turnIdx;
+        do { this.turnIdx = (this.turnIdx + 1) % this.order.length; } while (!this.cur().alive);
+        if (this.turnIdx <= prev) {
+            this.round++;
+            for (const i of Object.keys(this.mortgaged)) {
+                if (--this.mortgaged[i] <= 0) {
+                    this.log(this.owners[i], `залог **${D.TILES[i].name}** истёк — поле возвращается Банку`);
+                    delete this.mortgaged[i]; delete this.owners[i]; delete this.branches[i];
+                }
+            }
+        }
+        this.pushState();
+        this.beginTurn();
+    }
+}
+
+/* ============================ Комнаты + сокеты ============================ */
+const rooms = new Map();
+let broadcastRooms = () => {};
+function makeRoomId() {
+    let id;
+    do { id = Math.random().toString(36).slice(2, 8).toUpperCase(); } while (rooms.has(id));
+    return id;
+}
+
+function publicRooms() {
+    const out = [];
+    for (const g of rooms.values()) {
+        if (g.isPrivate || g.phase !== 'lobby') continue;
+        if (Date.now() - g.createdAt > 2 * 60 * 60 * 1000) continue;
+        out.push(g.brief());
+    }
+    return out.sort((a, b) => b.players.length - a.players.length || b.createdAt - a.createdAt);
+}
+
+function attach(io) {
+    const nsp = io.of('/mono2');
+    broadcastRooms = () => nsp.emit('m2:rooms', publicRooms());
+    nsp.on('connection', socket => {
+        let roomId = null;
+        const uid = String(socket.handshake.auth?.uid || socket.id);
+
+        socket.on('m2:create', ({ profile, isPrivate }, ack) => {
+            roomId = makeRoomId();
+            const g = new Game(roomId, nsp);
+            g.isPrivate = !!isPrivate;
+            rooms.set(roomId, g);
+            socket.join(roomId);
+            g.addPlayer(uid, profile, socket.id);
+            broadcastRooms();
+            ack && ack({ roomId, state: g.snapshot(), you: uid, isPrivate: g.isPrivate });
+        });
+
+        socket.on('m2:join', ({ roomId: rid, profile }, ack) => {
+            const g = rooms.get(String(rid || '').toUpperCase());
+            if (!g) return ack && ack({ ok: false, error: 'no-room' });
+            if (g.phase !== 'lobby' && !g.players[uid])
+                return ack && ack({ ok: false, error: 'started' });
+            if (g.order.length >= 5 && !g.players[uid])
+                return ack && ack({ ok: false, error: 'full' });
+            roomId = g.roomId;
+            socket.join(roomId);
+            const ok = g.addPlayer(uid, profile, socket.id) !== false;
+            broadcastRooms();
+            ack && ack({ ok, roomId, state: g.snapshot(), you: uid });
+        });
+
+        /* список открытых комнат для лобби */
+        socket.on('m2:rooms', (_, ack) => ack && ack(publicRooms()));
+        socket.on('m2:leave', () => {
+            const g = rooms.get(roomId);
+            if (!g) return;
+            if (g.phase === 'lobby') {
+                delete g.players[uid];
+                g.order = g.order.filter(x => x !== uid);
+                if (g.hostId === uid) g.hostId = g.order[0] || null;
+                if (!g.order.length) rooms.delete(roomId);
+                else g.pushState();
+            }
+            socket.leave(roomId);
+            roomId = null;
+            broadcastRooms();
+        });
+
+        const withGame = fn => (...a) => {
+            const g = rooms.get(roomId);
+            if (g) fn(g, ...a);
+        };
+
+        socket.on('m2:start',       withGame(g => g.start(uid)));
+        socket.on('m2:roll',        withGame(g => g.roll(uid)));
+        socket.on('m2:buy',         withGame(g => g.buy(uid)));
+        socket.on('m2:auction',     withGame(g => g.toAuction(uid)));
+        socket.on('m2:auc-raise',   withGame(g => g.aucRaise(uid)));
+        socket.on('m2:auc-pass',    withGame(g => g.aucPass(uid)));
+        socket.on('m2:jail-pay',    withGame(g => g.jailChoose(uid, 'pay')));
+        socket.on('m2:jail-roll',   withGame(g => g.jailChoose(uid, 'roll')));
+        socket.on('m2:build',       withGame((g, d) => g.build(uid, d?.i)));
+        socket.on('m2:sellBranch',  withGame((g, d) => g.sellBranch(uid, d?.i)));
+        socket.on('m2:mortgage',    withGame((g, d) => g.mortgage(uid, d?.i)));
+        socket.on('m2:unmortgage',  withGame((g, d) => g.unmortgage(uid, d?.i)));
+        socket.on('m2:trade-offer', withGame((g, d) => g.tradeOffer(uid, d?.toId, d?.deal || {})));
+        socket.on('m2:trade-answer',withGame((g, d) => g.tradeAnswer(uid, !!d?.accept)));
+        socket.on('m2:pay',         withGame(g => g.pay(uid)));
+        socket.on('m2:surrender',   withGame(g => g.surrender(uid)));
+        socket.on('m2:chat',        withGame((g, d) => {
+            const text = String(d?.text || '').slice(0, 200);
+            if (!text) return;
+            g.send('m2:chat', { pid: uid, text, dmTo: d?.dmTo || null });
+        }));
+        socket.on('disconnect', () => {
+            const g = rooms.get(roomId);
+            if (!g) return;
+            if (g.players[uid]) g.players[uid].online = false;
+            if (g.phase === 'lobby') {                 // из лобби выходим сразу
+                delete g.players[uid];
+                g.order = g.order.filter(x => x !== uid);
+                if (g.hostId === uid) g.hostId = g.order[0] || null;
+                if (!g.order.length) rooms.delete(roomId);
+                else g.pushState();
+            } else g.pushState();
+            broadcastRooms();
+        });
+    });
+    return { rooms };
+}
+
+module.exports = { attach, Game, rooms, publicRooms };
