@@ -539,7 +539,7 @@ img.qmark-img,
 /* ---------- Адаптив (телефон) ---------- */
 @media (max-width: 900px) {
     .app { flex-direction: column;
-           padding: calc(8px + var(--safe-top)) 8px calc(8px + var(--safe-bottom));
+           padding: calc(10px + var(--safe-top)) 8px calc(10px + var(--safe-bottom));
            gap: 8px; }
     .players-col {
         width: 100%;
@@ -842,7 +842,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 
 /* ================= Мобильная адаптация (доработка) ================= */
 @media (max-width: 900px) {
-    .app { padding: calc(6px + var(--safe-top)) 6px calc(6px + var(--safe-bottom)); gap: 6px; }
+    .app { padding: calc(8px + var(--safe-top)) 6px calc(8px + var(--safe-bottom)); gap: 6px; }
     .players-col { gap: 8px; padding: 2px 2px 4px; }
     .player-card { min-width: 128px; border-radius: 14px; }
     .player-avatar { width: 44px; height: 44px; border-width: 2px; }

@@ -221,16 +221,31 @@
     /** Внутри приложения WebApp не отдаёт отступы в iframe,
         поэтому приложение передаёт их параметрами safeTop/safeBottom. */
     function applySafeInsets() {
-        const p = new URLSearchParams(location.search);
+        const q = new URLSearchParams(location.search);
         const root = document.documentElement;
-        const top = parseInt(p.get('safeTop'), 10);
-        const bottom = parseInt(p.get('safeBottom'), 10);
-        if (!isNaN(top)) root.style.setProperty('--safe-top', top + 'px');
-        else if (global.Telegram && Telegram.WebApp) {
-            const sa = Telegram.WebApp.contentSafeAreaInset || Telegram.WebApp.safeAreaInset || {};
-            if (sa.top) root.style.setProperty('--safe-top', (sa.top + 8) + 'px');
+        const isPhone = innerWidth <= 900;      // тот же порог, что и в стилях
+
+        let top = parseInt(q.get('safeTop'), 10);
+        let bottom = parseInt(q.get('safeBottom'), 10);
+
+        if (isNaN(top) && global.Telegram && Telegram.WebApp) {
+            const w = Telegram.WebApp;
+            const csa = (w.contentSafeAreaInset || {}).top || 0;
+            const sa = (w.safeAreaInset || {}).top || 0;
+            top = Math.max(csa, sa);
         }
-        if (!isNaN(bottom)) root.style.setProperty('--safe-bottom', bottom + 'px');
+        if (isNaN(top)) top = 0;
+        if (isNaN(bottom)) bottom = 0;
+
+        /* На телефоне сверху висят кнопки Telegram — держим гарантированный
+           отступ, даже если приложение прислало маленькое значение. */
+        if (isPhone) {
+            top = Math.max(top, 72) + 8;
+            bottom = Math.max(bottom, 8);
+        }
+
+        root.style.setProperty('--safe-top', top + 'px');
+        root.style.setProperty('--safe-bottom', bottom + 'px');
     }
 
     /* ---------- инициализация ---------- */
@@ -250,6 +265,9 @@
         };
         $('#lbStart').onclick = () => net().socket().emit('m2:start');
         $('#lbLeave').onclick = () => { net().socket().emit('m2:leave'); show('lbMain'); refreshRooms(); };
+
+        addEventListener('resize', applySafeInsets);
+        addEventListener('orientationchange', () => setTimeout(applySafeInsets, 250));
 
         ensureNet().then(refreshRooms).catch(() => {
             $('#lbRooms').innerHTML = `<div class="lb-empty">
