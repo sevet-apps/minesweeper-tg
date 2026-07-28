@@ -57,9 +57,37 @@
         return holder;
     }
 
+    /* звезда-филиал: PNG из ui-icons.js, с откатом на текстовый символ */
+    function starImg(kind) {
+        const src = (global.MonopolyUIPNG || {})[kind === 'gold' ? 'starGold' : 'starWhite'];
+        if (!src) return kind === 'gold' ? '<span class="hotel">★</span>' : '<span>★</span>';
+        return `<img class="star-img${kind === 'gold' ? ' hotel' : ''}" src="${src}" alt="">`;
+    }
+
     const DS = '<i class="dsign"></i>';           // значок доллара (маска)
     function fmtMoney(n) {        // ценник: значок (постоянного размера) + число в .pnum
         return DS + '<span class="pnum">' + n + '</span>';
+    }
+
+    /* Ширина полоски ценника равна короткой стороне клетки — на телефоне это
+       ~28px. Подбираем кегль так, чтобы сумма гарантированно влезла, а если
+       места совсем нет — убираем значок доллара и отдаём его цифрам.
+       Ширины в em для Inter: цифра ≈ .58, значок доллара с отступом ≈ .61. */
+    const PILL_MAX = 15.5, PILL_MIN = 7.5, PILL_PAD = 4;
+    let pillAvail = 0;
+    function fitPill(el) {
+        if (!el.pill || !pillAvail) return;
+        const d = el.pillChars || 1;
+        const room = pillAvail - PILL_PAD;
+        let fs = room / (d * 0.58 + 0.61);
+        let nodollar = false;
+        if (fs < 9.5) {                         // без значка цифры получаются крупнее
+            const alt = room / (d * 0.58);
+            if (alt > fs) { fs = alt; nodollar = true; }
+        }
+        fs = Math.max(PILL_MIN, Math.min(PILL_MAX, fs));
+        el.pill.style.fontSize = fs.toFixed(2) + 'px';
+        el.pill.classList.toggle('nodollar', nodollar);
     }
 
     function build(container) {
@@ -152,8 +180,13 @@
             const r = probe.getBoundingClientRect();
             const short = Math.min(r.width, r.height);
             container.style.setProperty('--qsize', Math.round(short * 0.93) + 'px');
+            pillAvail = short;                 // столько же места у ценника вдоль полоски
+            tileEls.forEach(el => el && el.pill && fitPill(el));
         }
         sizeQmarks();
+        /* если доску построили до того, как браузер посчитал раскладку,
+           размеры выйдут нулевыми — повторяем на следующем кадре */
+        if (!pillAvail) requestAnimationFrame(sizeQmarks);
         window.addEventListener('resize', sizeQmarks);
     }
 
@@ -187,23 +220,16 @@
             el.tw.classList.toggle('dimmed', !!st.dimOthers && !inDeal);
             el.tw.classList.toggle('deal-hl', !!st.dimOthers && inDeal);
 
-            /* фишки */
+            /* фишки: выстраиваются в линию вдоль клетки — на вертикальных
+               карточках столбиком, на горизонтальных в ряд (раскладку
+               задаёт CSS по data-side, здесь только количество) */
             el.chipsEl.innerHTML = '';
             const here = (st.chips && st.chips[t.i]) || [];
-            const SPREAD = [                 // раскладка по количеству фишек
-                [[0, 0]],
-                [[-9, -7], [9, 7]],
-                [[-10, -8], [10, -8], [0, 9]],
-                [[-10, -9], [10, -9], [-10, 9], [10, 9]],
-                [[-11, -10], [11, -10], [0, 0], [-11, 10], [11, 10]],
-            ];
-            const pat = SPREAD[Math.min(here.length, 5) - 1] || [];
-            here.forEach((pid, k) => {
+            el.chipsEl.dataset.n = here.length;
+            here.forEach(pid => {
                 const c = document.createElement('div');
                 c.className = 'chip';
-                c.style.setProperty('--cc', st.players[pid]?.color || '#888');
-                const [dx, dy] = pat[k] || [0, 0];
-                c.style.transform = `translate(${dx}px, ${dy}px)`;
+                c.style.setProperty('--cc', (st.players[pid] && st.players[pid].color) || '#888');
                 el.chipsEl.appendChild(c);
             });
 
@@ -214,10 +240,9 @@
 
             const label = labelFor(t, st);
             el.pill.innerHTML = '<span class="pill-in">' + label + '</span>';
-            /* длинные суммы ужимаем, значок доллара остаётся прежнего размера */
-            const digits = (label.match(/\d/g) || []).length;
-            el.pill.classList.toggle('len5', digits === 5);
-            el.pill.classList.toggle('len6', digits >= 6);
+            /* число знаков (цифры + «×» у разработчиков) определяет кегль */
+            el.pillChars = (label.replace(/<[^>]*>/g, '').trim() || ' ').length;
+            fitPill(el);
 
             el.tile.classList.toggle('owned', !!owner && mort == null);
             el.tile.classList.toggle('mortgaged', mort != null);
@@ -228,11 +253,11 @@
             el.pill.style.setProperty('--gc',
                 owner ? (st.players[owner]?.color || '#888') : D.GROUPS[t.group].color);
 
-            /* звёзды-филиалы */
+            /* звёзды-филиалы: обычные — белые, максимальный уровень — золотая */
             const b = (st.branches && st.branches[t.i]) || 0;
             el.starsEl.innerHTML = b === 5
-                ? '<span class="hotel">★</span>'
-                : '★'.repeat(b).split('').map(s => `<span>★</span>`).join('');
+                ? starImg('gold')
+                : Array.from({ length: b }, () => starImg('white')).join('');
 
             /* залог */
             if (mort != null) {

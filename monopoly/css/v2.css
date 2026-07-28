@@ -50,8 +50,10 @@
     --safe-bottom: 0px;
     --font: 'Inter Variable', Inter, 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
     --shadow: 0 2px 10px rgba(0,0,0,.35);
+    --fs-h: 0px;         /* место под кнопку «На весь экран» (только десктоп) */
     font-size: 15px;
 }
+@media (min-width: 901px) { :root { --fs-h: 52px; } }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, textarea, select {
@@ -159,19 +161,22 @@ html, body {
 /* ---------- Доска ---------- */
 .board-zone {
     flex: 1;
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     min-width: 0;
 }
 
 .board {
     --n: 11;
+    flex: 0 0 auto;
     position: relative;
     display: grid;
     grid-template-columns: 2.35fr repeat(9, 1fr) 2.35fr;
     grid-template-rows:    2.35fr repeat(9, 1fr) 2.35fr;
     gap: var(--gap);
-    width: min(calc(100vh - 28px - var(--safe-top) - var(--safe-bottom)), calc(100vw - 360px));
+    width: min(calc(100vh - 28px - var(--fs-h, 0px) - var(--safe-top) - var(--safe-bottom)), calc(100vw - 360px));
     aspect-ratio: 1;
     max-width: 1260px;
 }
@@ -210,13 +215,11 @@ html, body {
 .tw[data-side="left"]  .price-pill .pill-in { transform: rotate(-90deg); }
 .tw[data-side="right"] .price-pill .pill-in { transform: rotate(90deg); }
 
-/* длинные суммы: уменьшаем только цифры, значок доллара не трогаем.
-   --cap-c пересчитываем в той же пропорции, иначе значок съедет по вертикали */
+/* Кегль ценника подбирает board-ui.js под ширину клетки (inline font-size),
+   поэтому здесь только базовые правила. На самых узких клетках значок
+   доллара прячется — цифрам достаётся вся ширина полоски. */
 .pnum { display: inline-block; }
-.price-pill.len5 .pnum { font-size: .85em; }
-.price-pill.len5 { --cap-c: .309em; }      /* .3635 × .85 */
-.price-pill.len6 .pnum { font-size: .74em; }
-.price-pill.len6 { --cap-c: .269em; }      /* .3635 × .74 */
+.price-pill.nodollar .dsign { display: none; }
 
 /* карточка плитки */
 .tile {
@@ -330,6 +333,13 @@ img.qmark-img,
     -webkit-text-stroke: .7px #8a6d00;
     text-shadow: 0 1px 4px rgba(0,0,0,.5);
 }
+/* картинки-звёзды: обычный филиал белый, максимальный — золотой */
+.stars .star-img {
+    width: 1.15em; height: 1.15em;
+    object-fit: contain; display: block;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
+}
+.stars .star-img.hotel { width: 2em; height: 2em; }
 .tw[data-side="top"] .stars    { bottom: 3px; left: 50%; transform: translateX(-50%); }
 .tw[data-side="bottom"] .stars { top: 3px; left: 50%; transform: translateX(-50%); }
 .tw[data-side="left"] .stars   { right: 3px; top: 50%; transform: translateY(-50%); flex-direction: column; }
@@ -352,14 +362,33 @@ img.qmark-img,
 .tw[data-side="left"] .lock-badge   { right: -12px; top: 50%; transform: translateY(-50%); }
 .tw[data-side="right"] .lock-badge  { left: -12px; top: 50%; transform: translateY(-50%); }
 
-/* фишки игроков на плитке */
+/* фишки игроков на плитке: выстроены в линию вдоль длинной стороны —
+   на вертикальных карточках столбиком, на горизонтальных в ряд.
+   При четырёх и пяти фишках линия слегка «сжимается» внахлёст. */
 .chips {
     position: absolute; inset: 0;
-    display: grid; place-items: center;
+    display: flex;
+    align-items: center; justify-content: center;
     z-index: 4;
     pointer-events: none;
+    --ov: 3px;
 }
-.chips .chip { grid-area: 1 / 1; }
+.chips[data-n="3"] { --ov: 1px; }
+.chips[data-n="4"] { --ov: -5px; }
+.chips[data-n="5"] { --ov: -8px; }
+
+.tw[data-side="top"] .chips,
+.tw[data-side="bottom"] .chips { flex-direction: column; }
+.tw[data-side="left"] .chips,
+.tw[data-side="right"] .chips { flex-direction: row; }
+.tw[data-side="top"] .chip + .chip,
+.tw[data-side="bottom"] .chip + .chip { margin-top: var(--ov); }
+.tw[data-side="left"] .chip + .chip,
+.tw[data-side="right"] .chip + .chip { margin-left: var(--ov); }
+
+/* углы просторные — фишки помещаются в ряд с обычным зазором */
+.tw.corner .chips { flex-direction: row; flex-wrap: wrap; gap: 3px; --ov: 0px; }
+.tw.corner .chip + .chip { margin: 0; }
 .chip {
     width: 24px; height: 24px;
     border-radius: 50%;
@@ -452,6 +481,7 @@ img.qmark-img,
     font-size: 17px;
 }
 .gear-btn:hover { background: #f0f0f3; }
+.gear-btn .mi-ico { width: 17px; height: 17px; opacity: .85; }
 
 .service-desc { font-size: 14px; color: #3c3c44; margin: 8px 4px 10px; }
 
@@ -661,6 +691,15 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     font-size: 15px; cursor: pointer; text-align: left;
 }
 .pm-menu .mi:hover { background: #2c2c31; }
+/* PNG-значки пунктов меню и кнопок карточки поля */
+.mi-ico { width: 19px; height: 19px; object-fit: contain; flex: 0 0 auto; display: block; }
+.mi-ico-svg { width: 19px; height: 19px; flex: 0 0 auto; display: block; }
+.mi-ico-fb { width: 19px; text-align: center; flex: 0 0 auto; }
+.pc-actions .act .mi-ico,
+.pc-actions .act .mi-ico-fb { display: inline-block; vertical-align: -4px; margin-right: 6px; }
+.star-inline { width: 1.05em; height: 1.05em; object-fit: contain; vertical-align: -.15em; }
+.pc-body .stars-cell .star-inline + .star-inline { margin-left: 1px; }
+.pc-actions .act .star-inline { width: 17px; height: 17px; vertical-align: -3px; margin-right: 6px; }
 .pm-menu .mi.danger { color: #ff6b7a; }
 .pm-menu .mi.disabled { color: #6b6b73; cursor: default; flex-wrap: wrap; }
 .pm-menu .mi.disabled small { flex-basis: 100%; padding-left: 26px; font-size: 12px; }
@@ -829,6 +868,23 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .mi-set .switch.on { background: var(--green); }
 .mi-set .switch.on::after { left: 18px; }
 .match-info .dsign { --dcol: #5a5a63; }
+.mi-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.mi-tab .mi-ico { width: 16px; height: 16px; }
+
+/* ---------- «На весь экран» (десктоп) ---------- */
+.fs-btn {
+    margin: 10px auto 0;
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: var(--panel); color: var(--text-dim);
+    border-radius: 12px; padding: 9px 16px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background .16s, color .16s;
+}
+.fs-btn:hover { background: var(--panel-2); color: var(--text); }
+.fs-btn:active { transform: scale(.985); }
+.fs-btn.on { color: var(--accent-soft); border-color: rgba(90,200,250,.35); }
+.fs-btn svg { width: 17px; height: 17px; }
 
 /* фишка-призрак при перемещении */
 .move-ghost {
@@ -870,6 +926,16 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     .tp-col:first-child { border-right: none; padding-right: 0; border-bottom: 1px solid #ececf0; padding-bottom: 10px; }
 
     .match-info { top: 10%; width: min(400px, calc(100vw - 20px)); }
+
+    /* раунд уходит на вторую строку — иначе он налезает на заголовок
+       служебной плашки («Покупаем?», «Аукцион» и т. д.) */
+    .timer-pill { flex-wrap: wrap; row-gap: 1px; padding: 4px 10px; font-size: 14px; }
+    .round-pill {
+        flex-basis: 100%;
+        border-left: none; padding-left: 0;
+        font-size: 12.5px; line-height: 1.1;
+    }
+    .service-title { max-width: calc(100% - 160px); font-size: 15px; }
 
     .stars { font-size: 11px; }
     .lock-badge { font-size: 10px; padding: 2px 6px; }

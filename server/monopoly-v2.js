@@ -60,6 +60,8 @@ class Game {
         this.lastCtx = null;
         this.hostId = null;
         this.isPrivate = false;
+        this.maxPlayers = 5;                // сколько игроков пускаем в матч
+        this.turnSecs = E.turnSeconds;      // 0 = таймеры выключены
         this.createdAt = Date.now();
     }
 
@@ -69,6 +71,8 @@ class Game {
             roomId: this.roomId,
             phase: this.phase,
             isPrivate: this.isPrivate,
+            maxPlayers: this.maxPlayers,
+            turnSecs: this.turnSecs,
             createdAt: this.createdAt,
             players: this.order.map(id => {
                 const p = this.players[id];
@@ -98,11 +102,23 @@ class Game {
     }
 
     /* ---------- таймер ---------- */
-    arm(onExpire, secs = E.turnSeconds) {
+    /** Таймер хода. Комната может быть создана без таймеров (turnSecs === 0) —
+        тогда ход никто не обрывает, но событие всё равно шлём, чтобы клиент
+        убрал обратный отсчёт. Значение secs у конкретных фаз (например 20 с на
+        аукционе) масштабируется относительно базовых 70 с. */
+    arm(onExpire, secs) {
         clearTimeout(this.timer);
-        this.timerEnd = Date.now() + secs * 1000;
-        this.timer = setTimeout(onExpire, secs * 1000);
-        this.send('m2:timer', { secs, end: this.timerEnd });
+        this.timer = null;
+        if (!this.turnSecs) {
+            this.timerEnd = 0;
+            this.send('m2:timer', { secs: 0, end: 0 });
+            return;
+        }
+        const base = secs == null ? E.turnSeconds : secs;
+        const real = Math.max(5, Math.round(base * this.turnSecs / E.turnSeconds));
+        this.timerEnd = Date.now() + real * 1000;
+        this.timer = setTimeout(onExpire, real * 1000);
+        this.send('m2:timer', { secs: real, end: this.timerEnd });
     }
 
     /* ---------- жизненный цикл ---------- */
@@ -115,7 +131,7 @@ class Game {
             this.pushState();
             return true;
         }
-        if (this.phase !== 'lobby' || this.order.length >= 5) return false;
+        if (this.phase !== 'lobby' || this.order.length >= this.maxPlayers) return false;
         this.players[id] = {
             id, name: String(pr.name || 'Игрок').slice(0, 24), socketId, online: true,
             avatar: pr.avatar || null, initials: String(pr.initials || '').slice(0, 2).toUpperCase(),
@@ -576,7 +592,7 @@ class Game {
         const timer = setTimeout(() => {
             this.log(toId, `не успевает ответить на предложение`);
             delete this.pendingTrades[toId];
-        }, E.turnSeconds * 1000);
+        }, (this.turnSecs || E.turnSeconds) * 1000);
         this.pendingTrades[toId] = { fromId, deal, timer };
         this.log(fromId, `предлагает игроку @${this.players[toId].name} подписать договор`);
         this.send('m2:trade-offer', { fromId, toId, deal });
@@ -654,15 +670,24 @@ function attach(io) {
         let roomId = null;
         const uid = String(socket.handshake.auth?.uid || socket.id);
 
-        socket.on('m2:create', ({ profile, isPrivate }, ack) => {
+        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs }, ack) => {
             roomId = makeRoomId();
             const g = new Game(roomId, nsp);
             g.isPrivate = !!isPrivate;
+            /* настройки из лобби: 2–5 игроков, 0 (без таймера) либо 15…300 с */
+            const mp = parseInt(maxPlayers, 10);
+            if (mp >= 2 && mp <= 5) g.maxPlayers = mp;
+            const ts = parseInt(turnSecs, 10);
+            if (ts === 0) g.turnSecs = 0;
+            else if (ts >= 15 && ts <= 300) g.turnSecs = ts;
             rooms.set(roomId, g);
             socket.join(roomId);
             g.addPlayer(uid, profile, socket.id);
             broadcastRooms();
-            ack && ack({ roomId, state: g.snapshot(), you: uid, isPrivate: g.isPrivate });
+            ack && ack({
+                roomId, state: g.snapshot(), you: uid,
+                isPrivate: g.isPrivate, maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
+            });
         });
 
         socket.on('m2:join', ({ roomId: rid, profile }, ack) => {
@@ -670,13 +695,16 @@ function attach(io) {
             if (!g) return ack && ack({ ok: false, error: 'no-room' });
             if (g.phase !== 'lobby' && !g.players[uid])
                 return ack && ack({ ok: false, error: 'started' });
-            if (g.order.length >= 5 && !g.players[uid])
+            if (g.order.length >= g.maxPlayers && !g.players[uid])
                 return ack && ack({ ok: false, error: 'full' });
             roomId = g.roomId;
             socket.join(roomId);
             const ok = g.addPlayer(uid, profile, socket.id) !== false;
             broadcastRooms();
-            ack && ack({ ok, roomId, state: g.snapshot(), you: uid });
+            ack && ack({
+                ok, roomId, state: g.snapshot(), you: uid,
+                maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
+            });
         });
 
         /* список открытых комнат для лобби */

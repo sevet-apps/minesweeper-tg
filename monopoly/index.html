@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Монополия — Spark Games</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 <script>window.DICE_SIZE = window.innerWidth > 900 ? 1.35 : 1.0;</script>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/masks.css">
@@ -15,6 +16,7 @@
 
 <!-- ==================== ЛОББИ ==================== -->
 <div id="lobby">
+  <div class="lb-bg" id="lbBg"></div>
   <div class="lb-wrap">
     <div class="lb-top">
       <div class="lb-title">Монополия<small>2–5 игроков</small></div>
@@ -25,7 +27,7 @@
     <div class="lb-screen on" id="lbMain">
       <div class="lb-modes">
         <button class="lb-mode" id="lbBots">
-          <div class="lb-mode-ico green">🤖</div>
+          <div class="lb-mode-ico green"><img class="lb-ico-img" data-icon="robot" alt=""></div>
           <div class="lb-mode-txt"><b>Игра с ботами</b><span>Быстрый матч без ожидания</span></div>
           <div class="lb-mode-arrow">›</div>
         </button>
@@ -35,7 +37,7 @@
           <div class="lb-mode-arrow">›</div>
         </button>
         <button class="lb-mode" data-go="lbJoin">
-          <div class="lb-mode-ico violet">🔑</div>
+          <div class="lb-mode-ico violet"><img class="lb-ico-img" data-icon="key" alt=""></div>
           <div class="lb-mode-txt"><b>Войти по коду</b><span>Присоединиться к комнате</span></div>
           <div class="lb-mode-arrow">›</div>
         </button>
@@ -43,28 +45,59 @@
 
       <div class="lb-sec-head">
         <h2>Открытые комнаты</h2>
-        <small>обновляется автоматически</small>
+        <button class="lb-refresh" id="lbRefresh" title="Обновить список" aria-label="Обновить список">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/>
+            <path d="M20.5 4.2V9h-4.8"/>
+          </svg>
+        </button>
       </div>
       <div id="lbRooms"></div>
     </div>
 
     <!-- Создание комнаты -->
     <div class="lb-screen" id="lbCreate">
-      <button class="lb-back" data-go="lbMain">‹ Назад</button>
       <div class="lb-card">
         <h3>Новая комната</h3>
         <p>Получите код и отправьте его друзьям</p>
+
+        <div class="lb-field">
+          <div class="lb-field-lbl">Игроков в матче</div>
+          <div class="lb-seg" id="lbMaxPlayers">
+            <button data-v="2">2</button>
+            <button data-v="3">3</button>
+            <button data-v="4">4</button>
+            <button class="on" data-v="5">5</button>
+          </div>
+        </div>
+
+        <div class="lb-switch-row" id="lbTimers">
+          <div class="t"><b>Таймер хода</b><span>Ограничивать время на каждое действие</span></div>
+          <div class="lb-sw on"></div>
+        </div>
+
+        <div class="lb-field" id="lbTurnSecsField">
+          <div class="lb-field-lbl">Время на действие</div>
+          <div class="lb-seg" id="lbTurnSecs">
+            <button data-v="30">30 с</button>
+            <button data-v="45">45 с</button>
+            <button class="on" data-v="70">70 с</button>
+            <button data-v="120">2 мин</button>
+          </div>
+        </div>
+
         <div class="lb-switch-row" id="lbPrivate">
           <div class="t"><b>Приватная комната</b><span>Не показывать в списке открытых</span></div>
           <div class="lb-sw"></div>
         </div>
+
         <button class="lb-btn" id="lbCreateGo">Создать</button>
       </div>
     </div>
 
     <!-- Вход по коду -->
     <div class="lb-screen" id="lbJoin">
-      <button class="lb-back" data-go="lbMain">‹ Назад</button>
       <div class="lb-card">
         <h3>Вход по коду</h3>
         <p>Введите код комнаты из шести символов</p>
@@ -75,7 +108,6 @@
 
     <!-- Комната ожидания -->
     <div class="lb-screen" id="lbWait">
-      <button class="lb-back" id="lbLeave">‹ Выйти из комнаты</button>
       <div class="lb-card">
         <div class="lb-code-box">
           <small>Код комнаты</small>
@@ -86,6 +118,7 @@
         <div id="lbWaitPlayers"></div>
         <button class="lb-btn" id="lbStart" disabled>Начать игру</button>
         <div id="lbWaitHint"></div>
+        <button class="lb-leave" id="lbLeave">Выйти из комнаты</button>
       </div>
     </div>
   </div>
@@ -109,6 +142,13 @@
           </div>
         </div>
       </div>
+      <button class="fs-btn" id="fsBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+        </svg>
+        <span>На весь экран</span>
+      </button>
     </div>
   </div>
 </div>
@@ -119,6 +159,7 @@
 <script src="js/board-data-v2.js"></script>
 <script src="js/v2/brand-assets.js"></script>
 <script src="js/v2/icon-assets.js"></script>
+<script src="js/v2/ui-icons.js"></script>
 <script src="js/v2/logos.js"></script>
 <script src="js/v2/board-ui.js"></script>
 <script src="js/scene/SceneManager.js"></script>

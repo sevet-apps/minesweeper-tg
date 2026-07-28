@@ -7940,11 +7940,12 @@
             const frame = document.getElementById('monopolyFrame');
             const safeTop = monoSafeTop();
             const bottom = 20;
-            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&server=${encodeURIComponent(API_BASE_URL)}${window.__monoDebug ? '&debug=1' : ''}`;
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&server=${encodeURIComponent(API_BASE_URL)}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
         }
 
         function closeMonopolyGame() {
+            setMonopolyBackButton(false);
             document.getElementById('monopoly-game').classList.remove('visible');
             // Unload the iframe so the game fully resets next open
             document.getElementById('monopolyFrame').src = 'about:blank';
@@ -7963,11 +7964,51 @@
             }
         }
 
+        // ---- Служебная кнопка Telegram для монополии ----
+        // На внутренних экранах лобби вместо «Закрыть» показываем «Назад»;
+        // нажатие пересылаем обратно в iframe.
+        let monoBackShown = false;
+        function onMonopolyBackClick() {
+            const frame = document.getElementById('monopolyFrame');
+            try { frame?.contentWindow?.postMessage({ type: 'monopoly_back_pressed' }, '*'); } catch (_) {}
+        }
+        function setMonopolyBackButton(show) {
+            const bb = tg && tg.BackButton;
+            if (!bb || monoBackShown === show) return;
+            monoBackShown = show;
+            try {
+                if (show) { bb.onClick(onMonopolyBackClick); bb.show(); }
+                else { bb.hide(); bb.offClick(onMonopolyBackClick); }
+            } catch (_) {}
+        }
+
+        // ---- «На весь экран» из монополии (десктоп) ----
+        function setMonopolyFullscreen(on) {
+            try {
+                if (on) {
+                    if (tg.requestFullscreen) tg.requestFullscreen();
+                    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+                    tg.expand && tg.expand();
+                } else {
+                    if (tg.exitFullscreen) tg.exitFullscreen();
+                    else if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+                }
+            } catch (_) {}
+        }
+
         // Listen for messages from the game iframe
         window.addEventListener('message', (e) => {
             const data = e.data;
             if (!data || typeof data !== 'object') return;
-            if (data.type === 'monopoly_exit') {
+            if (data.type === 'monopoly_back') {
+                // Монополия просит подменить служебную кнопку «Закрыть»
+                // на «Назад» (внутренние экраны лобби). Реальной кнопкой
+                // владеет приложение — игра лежит в iframe и до Telegram
+                // достучаться не может.
+                setMonopolyBackButton(!!data.show);
+            } else if (data.type === 'monopoly_fullscreen') {
+                setMonopolyFullscreen(!!data.on);
+            } else if (data.type === 'monopoly_exit') {
                 closeMonopolyGame();
             } else if (data.type === 'monopoly_exit_to_browse') {
                 // Close the game and jump straight to the room-browser screen
@@ -8322,6 +8363,7 @@
                     room: roomCode,
                     players: JSON.stringify(gamePlayers || []),
                     myIdx: (yourIndex != null ? yourIndex : 0),
+                    theme: (isDark ? 'dark' : 'light'),
                     server: (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('/api','') : '')
                 });
                 if (window.__monoDebug) params.set('debug', '1');
@@ -8366,6 +8408,7 @@
                     room: roomCode,
                     players: JSON.stringify(gamePlayers || []),
                     myIdx: yourIndex != null ? yourIndex : 0,
+                    theme: (isDark ? 'dark' : 'light'),
                     resume: '1',
                 });
                 if (window.__monoDebug) params.set('debug', '1');

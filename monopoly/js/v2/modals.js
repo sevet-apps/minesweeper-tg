@@ -10,6 +10,19 @@
     const fmt = n => n.toLocaleString('ru-RU');
     const DS = '<i class="dsign"></i>';
 
+    /** PNG-иконка интерфейса (ui-icons.js). Если файл не загрузился —
+        подставляем прежний символ, чтобы кнопка не осталась без значка. */
+    function ico(name, fallback, cls) {
+        const src = (global.MonopolyUIPNG || {})[name];
+        if (!src) return `<span class="mi-ico-fb">${fallback || ''}</span>`;
+        return `<img class="mi-ico ${cls || ''}" src="${src}" alt="">`;
+    }
+    function star(kind) {
+        const src = (global.MonopolyUIPNG || {})[kind === 'gold' ? 'starGold' : 'starWhite'];
+        return src ? `<img class="star-inline" src="${src}" alt="">`
+                   : (kind === 'gold' ? '<span class="gold">★</span>' : '★');
+    }
+
     let layer = null;
 
     function ensureLayer() {
@@ -60,8 +73,10 @@
 
     /* ---------- карточка поля ---------- */
     function starRow(n, price) {
-        const star = n === 5 ? '<span class="gold">★</span>' : '★'.repeat(n);
-        return `<div class="row"><span class="stars-cell">${star}</span><span>${DS}${fmt(price)}</span></div>`;
+        const cell = n === 5
+            ? star('gold')
+            : Array.from({ length: n }, () => star('white')).join('');
+        return `<div class="row"><span class="stars-cell">${cell}</span><span>${DS}${fmt(price)}</span></div>`;
     }
 
     function fieldCard(i, anchorRect, anchorEl) {
@@ -104,11 +119,11 @@
                 actions += `<button class="act unmort">Выкупить поле <b>${DS}${fmt(pr.unmortgage)}</b></button>`;
             else {
                 if (pr.branch && E.canBuild(me, i))
-                    actions += `<button class="act build">★ Построить филиал <b>${DS}${fmt(pr.branch)}</b></button>`;
+                    actions += `<button class="act build">${star('gold')} Построить филиал <b>${DS}${fmt(pr.branch)}</b></button>`;
                 if (S.branches[i] > 0)
                     actions += `<button class="act sellb">Продать филиал <b>${DS}${fmt(Math.floor(pr.branch / 2))}</b></button>`;
                 if (!(S.branches[i] > 0))
-                    actions += `<button class="act mort danger">🔒 Заложить поле <b>${DS}${fmt(pr.mortgage)}</b></button>`;
+                    actions += `<button class="act mort danger">${ico('lock', '🔒')} Заложить поле <b>${DS}${fmt(pr.mortgage)}</b></button>`;
             }
         }
 
@@ -133,16 +148,19 @@
         const p = S.players[pid];
         const me = E.me();
         const self = pid === me;
-        let items = `<button class="mi profile">👤 Профиль</button>`;
+        let items = '';
         if (self) {
-            items += `<button class="mi danger giveup">✕ Сдаться</button>`;
+            /* своя карточка: профиль, сдаться и — в игре с ботами — выход */
+            items += `<button class="mi profile">${ico('user', '👤')} Профиль</button>`;
+            items += `<button class="mi danger giveup"><span class="mi-ico-fb">✕</span> Сдаться</button>`;
+            if (global.MONO_LOCAL) items += `<button class="mi quit">${EXIT_SVG} Выйти</button>`;
         } else {
+            /* чужая карточка: только договор и игнор */
             const myTurn = E.canTrade(me);
-            items += `<button class="mi trade${myTurn ? '' : ' disabled'}">📄 Договор${
+            items += `<button class="mi trade${myTurn ? '' : ' disabled'}">${ico('contract', '📄')} Договор${
                 myTurn ? '' : '<small>только в свой ход</small>'}</button>`;
-            items += `<button class="mi ignore">🚫 Игнорировать
+            items += `<button class="mi ignore">${ico('cross', '🚫')} Игнорировать
                 <span class="switch ${S.ignored[pid] ? 'on' : ''}"></span></button>`;
-            items += `<button class="mi disabled">⚑ Пожаловаться</button>`;
         }
         const card = openAt(`
             <div class="pm-card" style="--pc:${p.color}">
@@ -155,6 +173,7 @@
             <div class="pm-menu">${items}</div>`, anchorRect, 'player-menu', anchorEl);
 
         card.querySelector('.giveup')?.addEventListener('click', () => confirmSurrender());
+        card.querySelector('.quit')?.addEventListener('click', () => confirmQuit());
         card.querySelector('.ignore')?.addEventListener('click', ev => {
             S.ignored[pid] = !S.ignored[pid];
             ev.currentTarget.querySelector('.switch').classList.toggle('on', S.ignored[pid]);
@@ -163,6 +182,29 @@
         card.querySelector('.trade:not(.disabled)')?.addEventListener('click', () => {
             close();
             document.body.dispatchEvent(new CustomEvent('trade-start', { detail: { withId: pid } }));
+        });
+    }
+
+    /* стрелка из двери — выход из матча */
+    const EXIT_SVG = `<svg class="mi-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8"/><path d="M17 16l4-4-4-4"/><path d="M21 12H10"/></svg>`;
+
+    /* ---------- выйти из матча? ---------- */
+    function confirmQuit() {
+        const card = openAt(`
+            <div class="confirm">
+                <div class="c-ico">?</div>
+                <div class="c-txt"><b>Выйти из игры?</b><span>Матч с ботами не сохранится.</span></div>
+                <div class="c-btns">
+                    <button class="btn btn-secondary cancel">Отмена</button>
+                    <button class="btn btn-danger ok">Выйти</button>
+                </div>
+            </div>`, null, 'confirm-card');
+        card.querySelector('.cancel').addEventListener('click', close);
+        card.querySelector('.ok').addEventListener('click', () => {
+            close();
+            try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
         });
     }
 
@@ -184,5 +226,5 @@
         });
     }
 
-    global.Modals = { fieldCard, playerMenu, confirmSurrender, close };
+    global.Modals = { fieldCard, playerMenu, confirmSurrender, confirmQuit, close, ico };
 })(window);

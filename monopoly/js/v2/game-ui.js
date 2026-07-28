@@ -11,6 +11,10 @@
     const fmt = n => n.toLocaleString('ru-RU');
     const DS = '<i class="dsign"></i>';
     const $ = s => document.querySelector(s);
+    /* PNG-иконки интерфейса (общий помощник живёт в modals.js) */
+    const ico = (n, fb, cls) => (global.Modals && global.Modals.ico)
+        ? global.Modals.ico(n, fb, cls)
+        : `<span class="mi-ico-fb">${fb || ''}</span>`;
 
     let els = {};
     let timerTick = null, lastPhase = null;
@@ -184,7 +188,7 @@
                 <span class="round-pill">${S.round} раунд</span>
             </div>
             <div class="service-title">${title || ''}</div>
-            <button class="gear-btn" id="gearBtn" title="Настройки">⚙</button>
+            <button class="gear-btn" id="gearBtn" title="Настройки">${ico('gear', '⚙')}</button>
         </div>`;
     }
     function clock(t) { return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
@@ -327,8 +331,8 @@
         wrap.innerHTML = `
             <div class="mi-tabs">
                 <div class="mi-knob"></div>
-                <button class="mi-tab on" data-t="match">🎮 О матче</button>
-                <button class="mi-tab" data-t="settings">⚙ Настройки</button>
+                <button class="mi-tab on" data-t="match">${ico('gamepad', '🎮')} О матче</button>
+                <button class="mi-tab" data-t="settings">${ico('gear', '⚙')} Настройки</button>
                 <button class="mi-close">✕</button>
             </div>
             <div class="mi-views">
@@ -472,12 +476,19 @@
     }
 
     /* ---------- таймер ---------- */
+    /** Комната может быть создана без таймеров — тогда сервер присылает
+        timerEnd = 0, и обратный отсчёт на карточке игрока просто не рисуем. */
     function startTimer() {
         clearInterval(timerTick);
+        if (!E.S.timerEnd) {
+            const b = $('#turnBadge'); if (b) b.style.display = 'none';
+            $('#timerDot') && $('#timerDot').classList.remove('warn');
+            return;
+        }
         timerTick = setInterval(() => {
             const t = Math.max(0, Math.round((E.S.timerEnd - Date.now()) / 1000));
             $('#timerDot')?.classList.toggle('warn', t <= 15);
-            const b = $('#turnBadge'); if (b) b.textContent = t;
+            const b = $('#turnBadge'); if (b) { b.style.display = ''; b.textContent = t; }
             if (t <= 0) clearInterval(timerTick);
         }, 250);
     }

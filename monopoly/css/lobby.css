@@ -4,13 +4,24 @@
 
 #lobby {
     position: fixed; inset: 0;
-    background: var(--bg);
+    background: var(--lb-bg, #000);
     color: var(--text);
     overflow-y: auto;
     padding: calc(22px + var(--safe-top)) 16px calc(22px + var(--safe-bottom) + env(safe-area-inset-bottom));
     display: flex; justify-content: center;
 }
-.lb-wrap { width: 100%; max-width: 460px; }
+/* фон-паттерн — тот же, что на главном экране приложения */
+.lb-bg {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background-image: url('../assets/bg/pattern.svg');
+    background-repeat: repeat;
+    background-size: 395px 855px;
+    opacity: var(--lb-pattern-opacity, .10);
+}
+html[data-theme="light"] #lobby { --lb-bg: #f2f2f7; color: #000; }
+html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
+.lb-wrap { width: 100%; max-width: 460px; position: relative; z-index: 1; }
 
 /* --- шапка --- */
 .lb-top {
@@ -55,6 +66,7 @@
     display: grid; place-items: center; font-size: 19px;
     background: #2f2f37; flex: 0 0 auto;
 }
+.lb-mode-ico img.lb-ico-img { width: 24px; height: 24px; object-fit: contain; display: block; }
 .lb-mode-ico.green { background: rgba(90,200,250,.18); }
 .lb-mode-ico.blue  { background: rgba(10,132,255,.18); }
 .lb-mode-ico.violet{ background: rgba(0,198,255,.16); }
@@ -67,8 +79,20 @@
     display: flex; align-items: baseline; gap: 10px;
     margin: 0 4px 12px;
 }
+.lb-sec-head { align-items: center; }
 .lb-sec-head h2 { font-size: 15px; font-weight: 650; }
-.lb-sec-head small { color: var(--text-dim); font-size: 13px; margin-left: auto; }
+.lb-refresh {
+    margin-left: auto; width: 32px; height: 32px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    border: none; border-radius: 50%;
+    background: var(--panel); color: var(--text-dim);
+    cursor: pointer; transition: background .18s, color .18s;
+}
+.lb-refresh:hover { background: var(--panel-2); color: var(--text); }
+.lb-refresh:active { transform: scale(.94); }
+.lb-refresh svg { width: 17px; height: 17px; }
+.lb-refresh.spin svg { animation: lbSpin .6s linear infinite; }
+@keyframes lbSpin { to { transform: rotate(360deg); } }
 
 #lbRooms { display: flex; flex-direction: column; gap: 8px; }
 .lb-room {
@@ -102,6 +126,8 @@
     border-radius: 16px;
 }
 .lb-empty-ico { font-size: 30px; margin-bottom: 10px; opacity: .8; }
+.lb-duck { width: 148px; height: 148px; margin: -8px auto 4px; }
+.lb-duck svg { width: 100% !important; height: 100% !important; }
 .lb-empty small { display: block; margin-top: 6px; font-size: 12.5px; opacity: .75; }
 
 /* --- формы --- */
@@ -111,6 +137,30 @@
     font-size: 14.5px; cursor: pointer; padding: 4px 0; margin-bottom: 16px;
 }
 .lb-card { background: var(--panel); border-radius: 18px; padding: 20px 18px; }
+
+/* поле настройки + сегментированный переключатель */
+.lb-field { margin: 4px 0 6px; transition: opacity .18s; }
+.lb-field.off { opacity: .38; pointer-events: none; }
+.lb-field-lbl { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.lb-seg {
+    display: flex; gap: 6px;
+    background: #26262c; border-radius: 12px; padding: 4px;
+}
+.lb-seg button {
+    flex: 1; border: none; background: transparent; color: var(--text-dim);
+    border-radius: 9px; padding: 9px 4px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background .16s, color .16s;
+}
+.lb-seg button:hover { color: var(--text); }
+.lb-seg button.on { background: #3a3a44; color: var(--text); }
+
+/* выход из комнаты ожидания */
+.lb-leave {
+    display: block; width: 100%; margin-top: 14px;
+    background: none; border: none; color: #ff6b7a;
+    font-size: 14.5px; font-weight: 600; cursor: pointer; padding: 8px 0;
+}
 .lb-card h3 { font-size: 17px; font-weight: 650; margin-bottom: 4px; }
 .lb-card p { font-size: 13.5px; color: var(--text-dim); margin-bottom: 18px; }
 

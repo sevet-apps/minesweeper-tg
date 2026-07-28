@@ -1,14 +1,15 @@
 /* ============================================================
    lobby.js — главное меню монополии.
-   Режимы: игра с ботами, создать комнату (можно приватную),
-   войти по коду; ниже — живой список открытых комнат с
-   аватарками ожидающих игроков.
+   Режимы: игра с ботами, создать комнату (число игроков, таймер,
+   приватность), войти по коду; ниже — список открытых комнат с
+   кнопкой ручного обновления.
    ============================================================ */
 (function (global) {
     'use strict';
 
     const $ = s => document.querySelector(s);
     const TG = global.Telegram && global.Telegram.WebApp;
+    const QS = new URLSearchParams(location.search);
 
     /* ---------- профиль игрока ---------- */
     function initials(first, last, uname) {
@@ -37,6 +38,21 @@
     }
     const ME = profile();
 
+    /* ---------- фон как на главном экране приложения ---------- */
+    function applyTheme() {
+        const theme = (QS.get('theme') || 'dark').toLowerCase();
+        document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+    }
+
+    /* ---------- PNG-иконки интерфейса ---------- */
+    function paintIcons(root) {
+        const src = global.MonopolyUIPNG || {};
+        (root || document).querySelectorAll('img[data-icon]').forEach(img => {
+            const url = src[img.dataset.icon];
+            if (url) img.src = url;
+        });
+    }
+
     /* ---------- разметка аватарки ---------- */
     function ava(p, size) {
         const st = size ? `style="width:${size}px;height:${size}px"` : '';
@@ -45,27 +61,50 @@
             : `<div class="lb-ava" ${st}><span>${p.initials || (p.name || '?').slice(0, 1).toUpperCase()}</span></div>`;
     }
 
+    /* ---------- «незнающая уточка» для пустого списка ---------- */
+    let duckAnim = null;
+    function killDuck() { if (duckAnim) { try { duckAnim.destroy(); } catch (e) {} duckAnim = null; } }
+    function mountDuck(box) {
+        const holder = box.querySelector('.lb-duck');
+        if (!holder || !global.lottie) return;
+        try {
+            killDuck();
+            duckAnim = global.lottie.loadAnimation({
+                container: holder,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                path: 'assets/lottie/duck.json',
+            });
+        } catch (e) { /* без анимации — просто пустое место */ }
+    }
+
     /* ---------- список комнат ---------- */
     let rooms = [];
     function renderRooms() {
         const box = $('#lbRooms');
         if (!rooms.length) {
             box.innerHTML = `<div class="lb-empty">
-                <div class="lb-empty-ico">🎲</div>
+                <div class="lb-duck"></div>
                 <div>Сейчас открытых комнат нет</div>
                 <small>Создайте свою — друзья увидят её здесь</small>
             </div>`;
+            mountDuck(box);
             return;
         }
-        box.innerHTML = rooms.map(r => `
+        killDuck();
+        box.innerHTML = rooms.map(r => {
+            const max = r.maxPlayers || 5;
+            return `
             <button class="lb-room" data-room="${r.roomId}">
                 <div class="lb-room-avas">${r.players.slice(0, 5).map(p => ava(p, 34)).join('')}</div>
                 <div class="lb-room-info">
                     <div class="lb-room-names">${r.players.map(p => p.name).join(', ')}</div>
-                    <div class="lb-room-meta">Код <b>${r.roomId}</b> · ${r.players.length}/5</div>
+                    <div class="lb-room-meta">Код <b>${r.roomId}</b> · ${r.players.length}/${max}</div>
                 </div>
                 <div class="lb-room-go">Войти</div>
-            </button>`).join('');
+            </button>`;
+        }).join('');
         box.querySelectorAll('.lb-room').forEach(b =>
             b.onclick = () => joinRoom(b.dataset.room));
     }
@@ -73,6 +112,11 @@
     /* ---------- переходы ---------- */
     function show(id) {
         document.querySelectorAll('.lb-screen').forEach(s => s.classList.toggle('on', s.id === id));
+        syncBackButton();
+    }
+    function currentScreen() {
+        const el = document.querySelector('.lb-screen.on');
+        return el ? el.id : 'lbMain';
     }
     function toast(text, bad) {
         const t = $('#lbToast');
@@ -80,6 +124,36 @@
         t.className = 'lb-toast show' + (bad ? ' bad' : '');
         clearTimeout(toast._t);
         toast._t = setTimeout(() => t.className = 'lb-toast', 2600);
+    }
+
+    /* ---------- служебная кнопка «назад» Telegram ----------
+       Игра открыта внутри приложения (iframe), поэтому настоящей кнопкой
+       управляет приложение: мы сообщаем ему, показывать её или нет,
+       и слушаем нажатие в ответ. */
+    let backShown = null;
+    function setBackButton(on) {
+        if (backShown === on) return;
+        backShown = on;
+        try { parent.postMessage({ type: 'monopoly_back', show: on }, '*'); } catch (e) {}
+        if (TG && TG.BackButton) {                     // если игра открыта напрямую
+            try { on ? TG.BackButton.show() : TG.BackButton.hide(); } catch (e) {}
+        }
+    }
+    function syncBackButton() {
+        const inGame = $('#game').style.display !== 'none';
+        setBackButton(!inGame && currentScreen() !== 'lbMain');
+    }
+    function goBack() {
+        const s = currentScreen();
+        if (s === 'lbWait') return leaveRoom();
+        if (s !== 'lbMain') show('lbMain');
+    }
+    addEventListener('message', e => {
+        const d = e.data;
+        if (d && d.type === 'monopoly_back_pressed') goBack();
+    });
+    if (TG && TG.BackButton && TG.BackButton.onClick) {
+        try { TG.BackButton.onClick(goBack); } catch (e) {}
     }
 
     /* ---------- сеть ---------- */
@@ -96,7 +170,7 @@
     function serverCandidates() {
         const list = [];
         if (global.MONO_SERVER) list.push(global.MONO_SERVER);
-        const q = new URLSearchParams(location.search).get('server');
+        const q = QS.get('server');
         if (q) list.push(decodeURIComponent(q));
         try {
             const up = global.parent && global.parent !== global && global.parent.API_BASE_URL;
@@ -152,13 +226,62 @@
         net().socket().emit('m2:rooms', null, list => { rooms = list || []; renderRooms(); });
     }
 
+    /** Ручное обновление: иконка крутится, пока идёт запрос
+        (но не меньше одного оборота — иначе моргает). */
+    let spinning = false;
+    function manualRefresh() {
+        if (spinning) return;
+        const btn = $('#lbRefresh');
+        spinning = true;
+        btn.classList.add('spin');
+        const started = Date.now();
+        const stop = () => {
+            const wait = Math.max(0, 600 - (Date.now() - started));
+            setTimeout(() => { btn.classList.remove('spin'); spinning = false; }, wait);
+        };
+        ensureNet()
+            .then(() => new Promise(res => {
+                net().socket().emit('m2:rooms', null, list => { rooms = list || []; renderRooms(); res(); });
+                setTimeout(res, 4000);
+            }))
+            .catch(showServerDown)
+            .finally(stop);
+    }
+
+    function showServerDown() {
+        killDuck();
+        $('#lbRooms').innerHTML = `<div class="lb-empty">
+            <div class="lb-empty-ico">📡</div><div>Сервер недоступен</div>
+            <small>Игра с ботами работает без сети</small></div>`;
+    }
+
+    /* ---------- настройки новой комнаты ---------- */
+    function segValue(id, fallback) {
+        const on = document.querySelector('#' + id + ' button.on');
+        return on ? parseInt(on.dataset.v, 10) : fallback;
+    }
+    function bindSeg(id) {
+        document.querySelectorAll('#' + id + ' button').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('#' + id + ' button').forEach(x => x.classList.remove('on'));
+                b.classList.add('on');
+            };
+        });
+    }
+    function timersOn() { return $('#lbTimers .lb-sw').classList.contains('on'); }
+    function syncTimerField() {
+        $('#lbTurnSecsField').classList.toggle('off', !timersOn());
+    }
+
     async function createRoom() {
         const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
+        const maxPlayers = segValue('lbMaxPlayers', 5);
+        const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
         try {
             await ensureNet();
-            net().socket().emit('m2:create', { profile: ME, isPrivate }, res => {
+            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs }, res => {
                 net().setRoom(res.roomId);
-                openWaitRoom(res.roomId, true, isPrivate);
+                openWaitRoom(res.roomId, true, isPrivate, maxPlayers);
             });
         } catch (e) { toast(e.message, true); }
     }
@@ -173,19 +296,24 @@
                     return toast(msg[res && res.error] || 'Не удалось войти', true);
                 }
                 net().setRoom(res.roomId);
-                openWaitRoom(res.roomId, false, false);
+                openWaitRoom(res.roomId, false, false, res.maxPlayers || 5);
             });
         } catch (e) { toast(e.message, true); }
     }
+    function leaveRoom() {
+        try { net().socket().emit('m2:leave'); } catch (e) {}
+        show('lbMain');
+        refreshRooms();
+    }
 
     /* ---------- комната ожидания ---------- */
-    function openWaitRoom(roomId, isHost, isPrivate) {
+    function openWaitRoom(roomId, isHost, isPrivate, maxPlayers) {
         show('lbWait');
         $('#lbWaitCode').textContent = roomId;
         $('#lbWaitPrivate').style.display = isPrivate ? '' : 'none';
         $('#lbStart').style.display = isHost ? '' : 'none';
         $('#lbWaitHint').textContent = isHost
-            ? 'Начать можно, когда соберётся хотя бы двое'
+            ? `Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков`
             : 'Ждём, пока хост начнёт игру';
         const paint = () => {
             const S = net().S;
@@ -204,18 +332,40 @@
     function startGame(mode) {
         $('#lobby').style.display = 'none';
         $('#game').style.display = '';
+        setBackButton(false);
         if (mode === 'bots') {
+            global.MONO_LOCAL = true;             // меню игрока показывает «Выйти»
             global.GameUI.init(global.Engine);
             global.Engine.start([
                 { id: ME.uid, name: ME.name, color: 'var(--p4)', host: true,
                   avatar: ME.avatar, initials: ME.initials },
-                { id: 'b1', name: 'Сёма',   color: 'var(--p1)', bot: true, initials: 'СЁ' },
-                { id: 'b2', name: 'Никита', color: 'var(--p2)', bot: true, initials: 'НИ' },
-                { id: 'b3', name: 'Jordan', color: 'var(--p3)', bot: true, initials: 'JO' },
+                { id: 'b1', name: 'Бот 1', color: 'var(--p1)', bot: true, initials: 'Б1' },
+                { id: 'b2', name: 'Бот 2', color: 'var(--p2)', bot: true, initials: 'Б2' },
+                { id: 'b3', name: 'Бот 3', color: 'var(--p3)', bot: true, initials: 'Б3' },
             ]);
         } else {
+            global.MONO_LOCAL = false;
             global.GameUI.init(global.NetEngine);
         }
+    }
+
+    /* ---------- «На весь экран» (только десктоп) ---------- */
+    function setupFullscreen() {
+        const btn = $('#fsBtn');
+        if (!btn) return;
+        const phone = TG && ['ios', 'android', 'android_x'].includes(TG.platform);
+        if (phone || innerWidth <= 900) { btn.remove(); return; }   // на телефоне и так во весь экран
+        let on = false;
+        btn.onclick = () => {
+            on = !on;
+            btn.classList.toggle('on', on);
+            btn.querySelector('span').textContent = on ? 'Свернуть' : 'На весь экран';
+            try { parent.postMessage({ type: 'monopoly_fullscreen', on }, '*'); } catch (e) {}
+            try {
+                if (on) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+                else if (document.fullscreenElement) document.exitFullscreen && document.exitFullscreen();
+            } catch (e) {}
+        };
     }
 
     /** Внутри приложения WebApp не отдаёт отступы в iframe,
@@ -250,31 +400,43 @@
 
     /* ---------- инициализация ---------- */
     function init() {
+        applyTheme();
         applySafeInsets();
+        paintIcons();
+        setupFullscreen();
+
         $('#lbMe').innerHTML = ava(ME, 40) + `<div class="lb-me-name">${ME.name}</div>`;
         $('#lbBots').onclick = () => startGame('bots');
         $('#lbCreateGo').onclick = createRoom;
         $('#lbJoinGo').onclick = () => joinRoom();
+        $('#lbRefresh').onclick = manualRefresh;
+
+        bindSeg('lbMaxPlayers');
+        bindSeg('lbTurnSecs');
+        $('#lbTimers').onclick = () => {
+            $('#lbTimers .lb-sw').classList.toggle('on');
+            syncTimerField();
+        };
+        syncTimerField();
+
         $('#lbPrivate').onclick = () => $('#lbPrivate .lb-sw').classList.toggle('on');
         document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
         $('#lbCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
         $('#lbCopy').onclick = () => {
             const code = $('#lbWaitCode').textContent;
-            navigator.clipboard?.writeText(code);
+            navigator.clipboard && navigator.clipboard.writeText(code);
             toast('Код скопирован');
         };
         $('#lbStart').onclick = () => net().socket().emit('m2:start');
-        $('#lbLeave').onclick = () => { net().socket().emit('m2:leave'); show('lbMain'); refreshRooms(); };
+        $('#lbLeave').onclick = leaveRoom;
 
         addEventListener('resize', applySafeInsets);
         addEventListener('orientationchange', () => setTimeout(applySafeInsets, 250));
 
-        ensureNet().then(refreshRooms).catch(() => {
-            $('#lbRooms').innerHTML = `<div class="lb-empty">
-                <div class="lb-empty-ico">📡</div><div>Сервер недоступен</div>
-                <small>Игра с ботами работает без сети</small></div>`;
-        });
+        renderRooms();                       // сразу показываем уточку
+        ensureNet().then(refreshRooms).catch(showServerDown);
         setInterval(refreshRooms, 10000);
+        syncBackButton();
     }
 
     global.Lobby = { init, profile: () => ME };
