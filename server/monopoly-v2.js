@@ -196,7 +196,10 @@ class Game {
         const from = p.pos;
         const to = ((p.pos + steps) % 40 + 40) % 40;
         this.send('m2:move', { pid: p.id, from, steps, to });
-        const animMs = Math.min(1800, Math.abs(steps) * 140) + 200;
+        /* Клиент гоняет фишку по 215 мс на шаг плюс ~170 мс на посадку.
+           Ждём столько же, иначе состояние прилетает, пока фишка ещё в
+           воздухе, и деньги за аренду успевают обновиться раньше хода. */
+        const animMs = Math.min(2800, Math.abs(steps) * 215) + 260;
         setTimeout(() => {
             p.pos = to;
             if (steps > 0 && to < from) {

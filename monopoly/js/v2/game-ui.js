@@ -90,23 +90,53 @@
 
     /* ---------- анимация фишки ---------- */
     let movingPid = null;
+    const STEP_MS = 215;                 // темп шага фишки (сервер ориентируется на него)
+
     function tileCenter(i) {
         const tw = document.querySelector(`.tw[data-i="${i}"] .tile`);
+        if (!tw) return null;
         const r = tw.getBoundingClientRect();
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
+
+    /** Общий финал для обеих анимаций.
+        Пока фишка летит, её убирают с доски и рисуют призрак. В онлайне
+        состояние с сервера приходит раньше, чем призрак долетает, поэтому
+        по окончании обязательно перерисовываем доску — иначе фишка так и
+        останется скрытой до следующего события. Страховочный таймер и
+        проверки на null не дают movingPid залипнуть, если клетки не нашлось
+        или вкладка была свёрнута. */
+    function moveEnder(ghost, resolve) {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            clearTimeout(finish.guard);
+            if (ghost && ghost.parentNode) ghost.remove();
+            movingPid = null;
+            renderAll();
+            resolve();
+        };
+        finish.guard = setTimeout(finish, 8000);
+        return finish;
+    }
+
     function animateMove({ pid, from, steps }) {
         return new Promise(resolve => {
             const p = E.S.players[pid];
+            if (!p) return resolve();
             movingPid = pid;
             renderAll();
             const ghost = document.createElement('div');
             ghost.className = 'chip move-ghost';
             ghost.style.setProperty('--cc', p.color);
             document.body.appendChild(ghost);
-            const per = 215;                              // спокойный темп, не зависит от длины пути
+            const finish = moveEnder(ghost, resolve);
+
+            const per = STEP_MS;                          // спокойный темп, не зависит от длины пути
             let k = 0;
             const c0 = tileCenter(from);
+            if (!c0) return finish();
             ghost.style.left = c0.x + 'px'; ghost.style.top = c0.y + 'px';
             ghost.style.transitionDuration = per + 'ms';
             ghost.style.animationDuration = per + 'ms';
@@ -122,13 +152,15 @@
                 }
                 const idx = ((from + k * dir) % 40 + 40) % 40;
                 const c = tileCenter(idx);
+                if (!c) return finish();
                 ghost.style.left = c.x + 'px'; ghost.style.top = c.y + 'px';
                 if (k < total) setTimeout(hop, per);
                 else setTimeout(() => {
                     ghost.classList.add('land');          // мягкая посадка
-                    setTimeout(() => { ghost.remove(); movingPid = null; resolve(); }, 150);
+                    setTimeout(finish, 150);
                 }, per + 20);
             };
+            if (!total) return finish();
             requestAnimationFrame(() => setTimeout(hop, 30));
         });
     }
@@ -136,18 +168,21 @@
     function animateTeleport({ pid, from, to }) {
         return new Promise(resolve => {
             const p = E.S.players[pid];
+            if (!p) return resolve();
             movingPid = pid; renderAll();
             const ghost = document.createElement('div');
             ghost.className = 'chip move-ghost fly';
             ghost.style.setProperty('--cc', p.color);
             document.body.appendChild(ghost);
+            const finish = moveEnder(ghost, resolve);
             const c0 = tileCenter(from), c1 = tileCenter(to);
+            if (!c0 || !c1) return finish();
             ghost.animate([
                 { left: c0.x + 'px', top: c0.y + 'px', transform: 'translate(-50%,-50%) scale(1)' },
                 { transform: 'translate(-50%,-50%) translateY(-46px) scale(1.55)', offset: .5 },
                 { left: c1.x + 'px', top: c1.y + 'px', transform: 'translate(-50%,-50%) scale(1)' },
             ], { duration: 950, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
-            setTimeout(() => { ghost.remove(); movingPid = null; resolve(); }, 1000);
+            setTimeout(finish, 1000);
         });
     }
 
