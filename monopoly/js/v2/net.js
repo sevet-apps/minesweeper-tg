@@ -125,6 +125,8 @@
         auctionPass:   () => send('m2:auc-pass'),
         jailPay:       () => send('m2:jail-pay'),
         jailRoll:      () => send('m2:jail-roll'),
+        casinoBet:     nums => send('m2:casino-bet', { nums }),
+        casinoSkip:    () => send('m2:casino-skip'),
         pay:           () => send('m2:pay'),
         declareBankrupt: () => send('m2:surrender'),
         mortgage:      (pid, i) => send('m2:mortgage', { i }),

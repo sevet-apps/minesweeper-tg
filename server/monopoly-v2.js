@@ -14,6 +14,7 @@
        m2:roll | m2:buy | m2:auction  (выставить на аукцион)
        m2:auc-raise | m2:auc-pass
        m2:jail-pay | m2:jail-roll
+       m2:casino-bet {nums:[1..6]} | m2:casino-skip
        m2:build {i} | m2:sellBranch {i}
        m2:mortgage {i} | m2:unmortgage {i}
        m2:trade-offer {toId, deal} | m2:trade-answer {accept}
@@ -51,6 +52,7 @@ class Game {
         this.phase = 'lobby';
         this.doubles = 0;
         this.auction = null;
+        this.casino = null;
         this.pendingBuy = null;
         this.pendingTrades = {};            // toId -> {fromId, deal, timer}
         this.timer = null;
@@ -248,9 +250,7 @@ class Game {
             case 'gotojail':
                 this.log(p.id, `арестован полицией и отправляется в тюрьму`);
                 return this.sendToJail(p);
-            case 'casino':
-                this.log(p.id, `попадает на поле «Казино»`);
-                return this.endStep(ctx);
+            case 'casino': return this.openCasino(p, ctx);
             case 'tax': {
                 const amount = t.taxKind === 'branches'
                     ? E.incomeTaxPerBranch * this.myBranchCount(p.id) : E.luxuryTax;
@@ -261,6 +261,67 @@ class Game {
             case 'chance': return this.drawChance(p, ctx);
             case 'prop': return this.landOnProp(p, t, ctx);
         }
+    }
+
+    /* ---------- казино ----------
+       Ставка на 1–3 числа, один кубик. Угадал — ×6/N от ставки.
+       Плюс независимый шанс 1/6 на суперприз. */
+    openCasino(p, ctx) {
+        this.log(p.id, `попадает на поле «Казино»`);
+        this.phase = 'casino';
+        this.casino = null;
+        this.lastCtx = ctx;
+        this.send('m2:phase', {
+            phase: 'casino', pid: p.id,
+            bet: E.casinoBet, jackpot: E.casinoJackpot,
+            canBet: p.money >= E.casinoBet,
+        });
+        this.arm(() => this.casinoSkip(p.id));
+    }
+
+    casinoSkip(byId) {
+        if (this.phase !== 'casino' || this.cur().id !== byId) return;
+        clearTimeout(this.timer);
+        this.casino = null;
+        this.log(byId, `отказывается от игры в казино`);
+        this.endStep(this.lastCtx);
+    }
+
+    casinoPlay(byId, nums) {
+        if (this.phase !== 'casino' || this.cur().id !== byId) return;
+        const p = this.cur();
+        const picked = [...new Set((Array.isArray(nums) ? nums : []).map(Number))]
+            .filter(n => Number.isInteger(n) && n >= 1 && n <= 6).slice(0, 3);
+        if (!picked.length || p.money < E.casinoBet) return this.casinoSkip(byId);
+
+        clearTimeout(this.timer);
+        this.phase = 'casino-roll';
+        p.money -= E.casinoBet;
+        const rolled = 1 + rnd(6);
+        this.casino = { picked, rolled };
+        const list = picked.length === 1 ? String(picked[0])
+            : picked.slice(0, -1).join(', ') + ' и ' + picked[picked.length - 1];
+        this.log(p.id, `ставит $${fmt(E.casinoBet)} на ${picked.length > 1 ? 'числа' : 'число'} ${list} и бросает кубик...`);
+        this.pushState();
+        this.send('m2:phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: E.casinoBet });
+
+        setTimeout(() => {
+            if (this.phase !== 'casino-roll') return;
+            const win = picked.includes(rolled) ? Math.round(E.casinoBet * 6 / picked.length) : 0;
+            if (win) {
+                p.money += win;
+                this.log(p.id, `выбрасывает ${rolled} и выигрывает $${fmt(win)}!`);
+            } else {
+                this.log(p.id, `выбрасывает ${rolled} и теряет ставку`);
+            }
+            if (rnd(6) === 0) {
+                p.money += E.casinoJackpot;
+                this.log(p.id, `выигрывает суперприз и получает $${fmt(E.casinoJackpot)}!`);
+            }
+            this.casino = null;
+            this.pushState();
+            this.endStep(this.lastCtx);
+        }, 1500);
     }
 
     landOnProp(p, t, ctx) {
@@ -735,6 +796,8 @@ function attach(io) {
         socket.on('m2:auction',     withGame(g => g.toAuction(uid)));
         socket.on('m2:auc-raise',   withGame(g => g.aucRaise(uid)));
         socket.on('m2:auc-pass',    withGame(g => g.aucPass(uid)));
+        socket.on('m2:casino-bet',  withGame((g, d) => g.casinoPlay(uid, d && d.nums)));
+        socket.on('m2:casino-skip', withGame(g => g.casinoSkip(uid)));
         socket.on('m2:jail-pay',    withGame(g => g.jailChoose(uid, 'pay')));
         socket.on('m2:jail-roll',   withGame(g => g.jailChoose(uid, 'roll')));
         socket.on('m2:build',       withGame((g, d) => g.build(uid, d?.i)));

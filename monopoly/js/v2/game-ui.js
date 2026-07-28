@@ -18,6 +18,21 @@
 
     let els = {};
     let timerTick = null, lastPhase = null;
+    let casinoPick = [];          // выбранные числа в казино
+    let casinoTick = null;        // «прокрутка» кубика после ставки
+
+    /* грань кубика 3×3: точки на нужных позициях */
+    const DIE_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
+                       5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    function dieFace(n, selected, dim) {
+        const pips = DIE_PIPS[n] || [];
+        const cells = Array.from({ length: 9 },
+            (_, k) => `<i class="${pips.indexOf(k) >= 0 ? 'pip' : ''}"></i>`).join('');
+        return `<button type="button" class="die${selected ? ' on' : ''}${dim ? ' dim' : ''}" data-n="${n}">${cells}</button>`;
+    }
+    function casinoWin(bet) {
+        return casinoPick.length ? Math.round(bet * 6 / casinoPick.length) : 0;
+    }
 
     function init(engine) {
         E = engine || global.Engine;
@@ -205,7 +220,10 @@
     }
 
     function renderBar(ph) {
+        const prev = lastPhase;
         lastPhase = ph;
+        clearInterval(casinoTick);
+        if (ph.phase === 'casino' && (!prev || prev.phase !== 'casino')) casinoPick = [];
         const S = E.S;
         const meId = E.me();
         const mine = ph.pid === meId;
@@ -274,6 +292,39 @@
                 } else { bar.classList.add('compact'); html = head(''); }
                 break;
             }
+            case 'casino': {
+                if (mine) {
+                    html = head('Джекпот') +
+                        `<div class="service-desc">Выберите от 1 до 3 чисел и бросьте кубик.
+                            Если вы угадаете выпавшее число, то получите выигрыш.</div>
+                         <div class="service-desc">Сделав ставку, вы получаете шанс 1/6 сорвать
+                            суперприз в размере ${DS}${fmt(ph.jackpot)}, даже если не угадаете число на кубике.</div>
+                         <div class="casino-row">
+                            <div class="dice-pick">${[1, 2, 3, 4, 5, 6]
+                                .map(n => dieFace(n, casinoPick.indexOf(n) >= 0)).join('')}</div>
+                            <div class="casino-win"><small>Выигрыш</small>
+                                <b>${DS}${fmt(casinoWin(ph.bet))}</b></div>
+                         </div>
+                         <div class="service-actions">
+                            <button class="btn btn-primary" id="betBtn" ${casinoPick.length && ph.canBet ? '' : 'disabled'}>Поставить <b>${DS}${fmt(ph.bet)}</b></button>
+                            <button class="btn btn-secondary" id="casinoSkipBtn">Отказаться</button>
+                         </div>`;
+                } else { bar.classList.add('compact'); html = head(''); }
+                break;
+            }
+            case 'casino-roll': {
+                if (mine) {
+                    html = head('Джекпот') +
+                        `<div class="service-desc">Кубик брошен…</div>
+                         <div class="casino-row">
+                            <div class="dice-pick rolling">${[1, 2, 3, 4, 5, 6]
+                                .map(n => dieFace(n, ph.picked.indexOf(n) >= 0, true)).join('')}</div>
+                            <div class="casino-win"><small>Ставка</small>
+                                <b>${DS}${fmt(ph.bet)}</b></div>
+                         </div>`;
+                } else { bar.classList.add('compact'); html = head(''); }
+                break;
+            }
             case 'await-jail':
                 if (mine) {
                     html = head('Тюрьма') +
@@ -303,9 +354,42 @@
         $('#passBtn')?.addEventListener('click', () => E.auctionPass());
         $('#payBtn')?.addEventListener('click', () => E.pay());
         $('#bankruptBtn')?.addEventListener('click', () => E.declareBankrupt());
+        bar.querySelectorAll('.dice-pick:not(.rolling) .die').forEach(d => {
+            d.addEventListener('click', () => {
+                const n = +d.dataset.n;
+                const at = casinoPick.indexOf(n);
+                if (at >= 0) casinoPick.splice(at, 1);
+                else if (casinoPick.length < 3) casinoPick.push(n);
+                else return;                       // больше трёх чисел не ставим
+                casinoPick.sort((a, b) => a - b);
+                renderBar(lastPhase);
+            });
+        });
+        $('#betBtn')?.addEventListener('click', () => E.casinoBet(casinoPick.slice(), ph.ctx));
+        $('#casinoSkipBtn')?.addEventListener('click', () => E.casinoSkip(ph.ctx));
+        if (ph.phase === 'casino-roll' && mine) runCasinoRoll(ph);
         $('#jailPayBtn')?.addEventListener('click', () => E.jailPay());
         $('#jailRollBtn')?.addEventListener('click', () => E.jailRoll());
         $('#gearBtn')?.addEventListener('click', openMatchInfo);
+    }
+
+    /** Кубик «прокручивается» по граням и останавливается на выпавшей:
+        зелёная рамка — попадание, красная — мимо. */
+    function runCasinoRoll(ph) {
+        const dice = [...els.bar.querySelectorAll('.die')];
+        if (dice.length !== 6) return;
+        let step = 0;
+        casinoTick = setInterval(() => {
+            dice.forEach(d => d.classList.remove('flash'));
+            if (++step > 12) {
+                clearInterval(casinoTick);
+                const hit = ph.picked.indexOf(ph.rolled) >= 0;
+                dice[ph.rolled - 1].classList.remove('dim');
+                dice[ph.rolled - 1].classList.add(hit ? 'hit' : 'miss');
+                return;
+            }
+            dice[Math.floor(Math.random() * 6)].classList.add('flash');
+        }, 90);
     }
 
     /* ---------- О матче / Настройки ---------- */

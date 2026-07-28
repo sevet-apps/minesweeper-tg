@@ -16,6 +16,7 @@
         phase: 'idle',           // await-roll | rolling | await-buy | auction | await-jail | ended
         doubles: 0,
         auction: null,           // {tile, price, queue:[ids], idx, starter}
+        casino: null,            // {picked:[1..6], rolled}
         pendingBuy: null,        // tile idx
         timerEnd: 0, timerId: null,
         startedAt: Date.now(),
@@ -156,8 +157,7 @@
                 log(p.id, `арестован полицией и отправляется в тюрьму`);
                 return sendToJail(p);
             case 'casino':
-                log(p.id, `попадает на поле «Казино»`);   // механика позже
-                return endStep(ctx);
+                return openCasino(p, ctx);
             case 'tax': {
                 let amount = t.taxKind === 'branches'
                     ? E.incomeTaxPerBranch * myBranchCount(p.id)
@@ -174,6 +174,81 @@
             case 'prop':
                 return landOnProp(p, t, ctx);
         }
+    }
+
+    /* ---------- казино ----------
+       Игрок выбирает от одного до трёх чисел и бросает один кубик.
+       Угадал — забирает ставку, умноженную на 6 и делённую на число ставок
+       (1 число → ×6, 2 → ×3, 3 → ×2). Независимо от исхода есть шанс 1/6
+       сорвать суперприз. */
+    function numsText(a) {
+        return a.length === 1 ? String(a[0])
+             : a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1];
+    }
+    function casinoPayout(n) { return Math.round(E.casinoBet * 6 / n); }
+
+    function openCasino(p, ctx) {
+        log(p.id, `попадает на поле «Казино»`);
+        S.phase = 'casino';
+        S.casino = null;
+        emit('phase', {
+            phase: 'casino', pid: p.id,
+            bet: E.casinoBet, jackpot: E.casinoJackpot,
+            canBet: p.money >= E.casinoBet, ctx,
+        });
+        armTimer(() => casinoSkip(ctx));
+        if (p.bot) setTimeout(() => botCasino(p, ctx), 1100 + rnd(900));
+    }
+
+    function casinoSkip(ctx) {
+        if (S.phase !== 'casino') return;
+        clearTimeout(S.timerId);
+        const p = cur();
+        S.casino = null;
+        log(p.id, `отказывается от игры в казино`);
+        endStep(ctx);
+    }
+
+    function casinoPlay(nums, ctx) {
+        if (S.phase !== 'casino') return;
+        const p = cur();
+        const picked = [...new Set((nums || []).map(Number))]
+            .filter(n => n >= 1 && n <= 6).slice(0, 3);
+        if (!picked.length || p.money < E.casinoBet) return casinoSkip(ctx);
+
+        clearTimeout(S.timerId);
+        S.phase = 'casino-roll';
+        p.money -= E.casinoBet;
+        const rolled = 1 + rnd(6);
+        S.casino = { picked, rolled };
+        log(p.id, `ставит $${fmt(E.casinoBet)} на ${picked.length > 1 ? 'числа' : 'число'} ${numsText(picked)} и бросает кубик...`);
+        emit('state');
+        emit('phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: E.casinoBet, ctx });
+
+        setTimeout(() => {
+            const win = picked.includes(rolled) ? casinoPayout(picked.length) : 0;
+            if (win) {
+                p.money += win;
+                log(p.id, `выбрасывает ${rolled} и выигрывает $${fmt(win)}!`);
+            } else {
+                log(p.id, `выбрасывает ${rolled} и теряет ставку`);
+            }
+            if (rnd(6) === 0) {
+                p.money += E.casinoJackpot;
+                log(p.id, `выигрывает суперприз и получает $${fmt(E.casinoJackpot)}!`);
+            }
+            S.casino = null;
+            emit('state');
+            endStep(ctx);
+        }, 1500);
+    }
+
+    /** Бот: чаще ставит на два-три числа, иногда проходит мимо. */
+    function botCasino(p, ctx) {
+        if (S.phase !== 'casino') return;
+        if (p.money < E.casinoBet * 2 || rnd(4) === 0) return casinoSkip(ctx);
+        const pool = [1, 2, 3, 4, 5, 6].sort(() => Math.random() - .5);
+        casinoPlay(pool.slice(0, 1 + rnd(3)).sort(), ctx);
     }
 
     function myBranchCount(pid) {
@@ -680,6 +755,8 @@
         auctionPass: () => auctionPass(S.auction && S.auction.queue[S.auction.idx]),
         jailPay: () => jailChoose('pay'),
         jailRoll: () => jailChoose('roll'),
+        casinoBet: (nums, ctx) => casinoPlay(nums, ctx),
+        casinoSkip: ctx => casinoSkip(ctx),
         mortgage: doMortgage, unmortgage: doUnmortgage,
         pay, declareBankrupt, currentPhasePayload, liquidValue,
         canBuild, build, sellBranch,
