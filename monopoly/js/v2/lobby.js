@@ -88,34 +88,63 @@
 
     /** Адрес бэкенда. Игра открывается внутри приложения (iframe),
         поэтому берём тот же адрес, что использует основное приложение. */
-    function serverUrl() {
-        if (global.MONO_SERVER) return global.MONO_SERVER;
+    const FALLBACK_SERVER = 'https://spark-game-backend.onrender.com';
+
+    /** Возможные адреса бэкенда по убыванию надёжности.
+        Пробуем по очереди: статика фронта сокеты не обслуживает,
+        поэтому одного «угаданного» адреса мало. */
+    function serverCandidates() {
+        const list = [];
+        if (global.MONO_SERVER) list.push(global.MONO_SERVER);
         const q = new URLSearchParams(location.search).get('server');
-        if (q) return decodeURIComponent(q);
-        try {                                  // тот же origin — читаем напрямую
-            const parentUrl = global.parent && global.parent !== global && global.parent.API_BASE_URL;
-            if (parentUrl) return parentUrl;
-        } catch (e) { /* другой origin — идём дальше */ }
-        if (location.protocol === 'http:' || location.protocol === 'https:') {
-            if (!/^(localhost|127\.|192\.168\.)/.test(location.hostname)) return location.origin;
-        }
-        return 'https://spark-game-backend.onrender.com';   // запасной адрес
+        if (q) list.push(decodeURIComponent(q));
+        try {
+            const up = global.parent && global.parent !== global && global.parent.API_BASE_URL;
+            if (up) list.push(up);
+        } catch (e) { /* другой origin — пропускаем */ }
+        list.push(FALLBACK_SERVER);
+        if (/^https?:$/.test(location.protocol)) list.push(location.origin);
+        return [...new Set(list.filter(Boolean).map(u => String(u).replace(/\/+$/, '')))];
     }
+    let connecting = null;
     function ensureNet() {
         if (connected) return Promise.resolve();
+        if (connecting) return connecting;
+        if (!global.io) return Promise.reject(new Error('Библиотека соединения не загрузилась'));
+
+        const urls = serverCandidates();
+        connecting = (async () => {
+            for (const url of urls) {
+                try {
+                    await tryConnect(url);
+                    console.info('[lobby] сервер:', url);
+                    connected = true;
+                    net().on('rooms', list => { rooms = list; renderRooms(); });
+                    return;
+                } catch (e) {
+                    console.warn('[lobby] не отвечает:', url, '-', e.message);
+                }
+            }
+            connecting = null;
+            throw new Error('Сервер недоступен');
+        })();
+        return connecting;
+    }
+    function tryConnect(url) {
         return new Promise((resolve, reject) => {
-            if (!global.io) return reject(new Error('Нет соединения с сервером'));
-            const url = serverUrl();
             const s = net().connect(url, { uid: ME.uid });
             net().setMe(ME.uid);
-            const t = setTimeout(() => reject(new Error('Сервер не отвечает')), 12000);
-            s.on('connect', () => { clearTimeout(t); connected = true; resolve(); });
-            s.on('connect_error', err => {
+            const done = ok => {
                 clearTimeout(t);
-                console.warn('[lobby] не удалось подключиться к', url, '-', err && err.message);
-                reject(new Error('Сервер недоступен'));
-            });
-            net().on('rooms', list => { rooms = list; renderRooms(); });
+                s.off('connect', onOk); s.off('connect_error', onErr);
+                ok ? resolve() : (s.close && s.close(), reject(new Error('нет ответа')));
+            };
+            const onOk = () => done(true);
+            const onErr = e => { clearTimeout(t); s.off('connect', onOk); if (s.close) s.close();
+                                 reject(new Error((e && e.message) || 'ошибка соединения')); };
+            const t = setTimeout(() => done(false), 7000);
+            s.on('connect', onOk);
+            s.on('connect_error', onErr);
         });
     }
     function refreshRooms() {
@@ -124,7 +153,7 @@
     }
 
     async function createRoom() {
-        const isPrivate = $('#lbPrivate').classList.contains('on');
+        const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
         try {
             await ensureNet();
             net().socket().emit('m2:create', { profile: ME, isPrivate }, res => {
@@ -189,13 +218,29 @@
         }
     }
 
+    /** Внутри приложения WebApp не отдаёт отступы в iframe,
+        поэтому приложение передаёт их параметрами safeTop/safeBottom. */
+    function applySafeInsets() {
+        const p = new URLSearchParams(location.search);
+        const root = document.documentElement;
+        const top = parseInt(p.get('safeTop'), 10);
+        const bottom = parseInt(p.get('safeBottom'), 10);
+        if (!isNaN(top)) root.style.setProperty('--safe-top', top + 'px');
+        else if (global.Telegram && Telegram.WebApp) {
+            const sa = Telegram.WebApp.contentSafeAreaInset || Telegram.WebApp.safeAreaInset || {};
+            if (sa.top) root.style.setProperty('--safe-top', (sa.top + 8) + 'px');
+        }
+        if (!isNaN(bottom)) root.style.setProperty('--safe-bottom', bottom + 'px');
+    }
+
     /* ---------- инициализация ---------- */
     function init() {
+        applySafeInsets();
         $('#lbMe').innerHTML = ava(ME, 40) + `<div class="lb-me-name">${ME.name}</div>`;
         $('#lbBots').onclick = () => startGame('bots');
         $('#lbCreateGo').onclick = createRoom;
         $('#lbJoinGo').onclick = () => joinRoom();
-        $('#lbPrivate').onclick = e => e.currentTarget.classList.toggle('on');
+        $('#lbPrivate').onclick = () => $('#lbPrivate .lb-sw').classList.toggle('on');
         document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
         $('#lbCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
         $('#lbCopy').onclick = () => {

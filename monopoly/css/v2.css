@@ -46,6 +46,8 @@
     --p5: #e8a33a;  /* оранжевый */
 
     --pill-h: 26px;      /* высота ценника */
+    --safe-top: 0px;     /* отступы под интерфейс Telegram (задаёт приложение) */
+    --safe-bottom: 0px;
     --font: 'Inter Variable', Inter, 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
     --shadow: 0 2px 10px rgba(0,0,0,.35);
     font-size: 15px;
@@ -74,7 +76,7 @@ html, body {
 .app {
     display: flex;
     width: 100%; height: 100%;
-    padding: 14px;
+    padding: calc(14px + var(--safe-top)) 14px calc(14px + var(--safe-bottom));
     gap: 18px;
 }
 
@@ -169,7 +171,7 @@ html, body {
     grid-template-columns: 2.35fr repeat(9, 1fr) 2.35fr;
     grid-template-rows:    2.35fr repeat(9, 1fr) 2.35fr;
     gap: var(--gap);
-    width: min(calc(100vh - 28px), calc(100vw - 360px));
+    width: min(calc(100vh - 28px - var(--safe-top) - var(--safe-bottom)), calc(100vw - 360px));
     aspect-ratio: 1;
     max-width: 1260px;
 }
@@ -536,7 +538,9 @@ img.qmark-img,
 
 /* ---------- Адаптив (телефон) ---------- */
 @media (max-width: 900px) {
-    .app { flex-direction: column; padding: 8px; gap: 8px; }
+    .app { flex-direction: column;
+           padding: calc(8px + var(--safe-top)) 8px calc(8px + var(--safe-bottom));
+           gap: 8px; }
     .players-col {
         width: 100%;
         flex-direction: row;
@@ -546,7 +550,7 @@ img.qmark-img,
     .player-card { min-width: 150px; padding: 12px 10px 14px; }
     .player-avatar { width: 52px; height: 52px; }
     .player-money { font-size: 21px; }
-    .board { width: min(98vw, calc(100vh - 190px)); }
+    .board { width: min(98vw, calc(100vh - 190px - var(--safe-top) - var(--safe-bottom))); }
     :root { --pill-h: 20px; font-size: 13px; }
 }
 
@@ -838,7 +842,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 
 /* ================= Мобильная адаптация (доработка) ================= */
 @media (max-width: 900px) {
-    .app { padding: 6px; gap: 6px; }
+    .app { padding: calc(6px + var(--safe-top)) 6px calc(6px + var(--safe-bottom)); gap: 6px; }
     .players-col { gap: 8px; padding: 2px 2px 4px; }
     .player-card { min-width: 128px; border-radius: 14px; }
     .player-avatar { width: 44px; height: 44px; border-width: 2px; }
@@ -846,7 +850,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     .player-money { font-size: 18px; }
     .turn-badge { min-width: 32px; height: 32px; font-size: 13px; top: 8px; left: 10px; }
 
-    .board { width: min(100vw - 12px, calc(100vh - 150px)); }
+    .board { width: min(100vw - 12px, calc(100vh - 150px - var(--safe-top) - var(--safe-bottom))); }
     .center-panel { inset: -6px; border-radius: 18px; padding: 8px 8px 8px; }
     .service-bar { border-radius: 14px; padding: 8px 10px; }
     .service-bar.compact { padding: 5px 8px; }
