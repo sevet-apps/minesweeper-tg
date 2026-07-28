@@ -7940,7 +7940,7 @@
             const frame = document.getElementById('monopolyFrame');
             const safeTop = monoSafeTop();
             const bottom = 20;
-            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}${window.__monoDebug ? '&debug=1' : ''}`;
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&server=${encodeURIComponent(API_BASE_URL)}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
         }
 

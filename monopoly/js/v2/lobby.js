@@ -85,16 +85,36 @@
     /* ---------- сеть ---------- */
     let connected = false;
     function net() { return global.NetEngine; }
+
+    /** Адрес бэкенда. Игра открывается внутри приложения (iframe),
+        поэтому берём тот же адрес, что использует основное приложение. */
+    function serverUrl() {
+        if (global.MONO_SERVER) return global.MONO_SERVER;
+        const q = new URLSearchParams(location.search).get('server');
+        if (q) return decodeURIComponent(q);
+        try {                                  // тот же origin — читаем напрямую
+            const parentUrl = global.parent && global.parent !== global && global.parent.API_BASE_URL;
+            if (parentUrl) return parentUrl;
+        } catch (e) { /* другой origin — идём дальше */ }
+        if (location.protocol === 'http:' || location.protocol === 'https:') {
+            if (!/^(localhost|127\.|192\.168\.)/.test(location.hostname)) return location.origin;
+        }
+        return 'https://spark-game-backend.onrender.com';   // запасной адрес
+    }
     function ensureNet() {
         if (connected) return Promise.resolve();
         return new Promise((resolve, reject) => {
             if (!global.io) return reject(new Error('Нет соединения с сервером'));
-            const url = (global.MONO_SERVER || location.origin);
+            const url = serverUrl();
             const s = net().connect(url, { uid: ME.uid });
             net().setMe(ME.uid);
-            const t = setTimeout(() => reject(new Error('Сервер не отвечает')), 8000);
+            const t = setTimeout(() => reject(new Error('Сервер не отвечает')), 12000);
             s.on('connect', () => { clearTimeout(t); connected = true; resolve(); });
-            s.on('connect_error', () => { clearTimeout(t); reject(new Error('Сервер недоступен')); });
+            s.on('connect_error', err => {
+                clearTimeout(t);
+                console.warn('[lobby] не удалось подключиться к', url, '-', err && err.message);
+                reject(new Error('Сервер недоступен'));
+            });
             net().on('rooms', list => { rooms = list; renderRooms(); });
         });
     }
