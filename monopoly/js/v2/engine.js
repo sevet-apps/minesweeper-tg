@@ -209,7 +209,7 @@
         endStep(ctx);
     }
 
-    function casinoPlay(nums, ctx) {
+    async function casinoPlay(nums, ctx) {
         if (S.phase !== 'casino') return;
         const p = cur();
         const picked = [...new Set((nums || []).map(Number))]
@@ -225,22 +225,22 @@
         emit('state');
         emit('phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: E.casinoBet, ctx });
 
-        setTimeout(() => {
-            const win = picked.includes(rolled) ? casinoPayout(picked.length) : 0;
-            if (win) {
-                p.money += win;
-                log(p.id, `выбрасывает ${rolled} и выигрывает $${fmt(win)}!`);
-            } else {
-                log(p.id, `выбрасывает ${rolled} и теряет ставку`);
-            }
-            if (rnd(6) === 0) {
-                p.money += E.casinoJackpot;
-                log(p.id, `выигрывает суперприз и получает $${fmt(E.casinoJackpot)}!`);
-            }
-            S.casino = null;
-            emit('state');
-            endStep(ctx);
-        }, 1500);
+        await emitAsync('dice', rolled, null);        // один настоящий кубик
+
+        const win = picked.includes(rolled) ? casinoPayout(picked.length) : 0;
+        if (win) {
+            p.money += win;
+            log(p.id, `выбрасывает ${rolled} и выигрывает $${fmt(win)}!`);
+        } else {
+            log(p.id, `выбрасывает ${rolled} и теряет ставку`);
+        }
+        if (rnd(6) === 0) {
+            p.money += E.casinoJackpot;
+            log(p.id, `выигрывает суперприз и получает $${fmt(E.casinoJackpot)}!`);
+        }
+        S.casino = null;
+        emit('state');
+        endStep(ctx);
     }
 
     /** Бот: чаще ставит на два-три числа, иногда проходит мимо. */

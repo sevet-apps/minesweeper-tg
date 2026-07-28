@@ -781,7 +781,7 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
 app.post('/save-stat', authMiddleware, async (req, res) => {
     const user = req.telegramUser;
     const user_id = String(user.id);
-    const username = (user.first_name + ' ' + (user.last_name || '')).trim();
+    const username = tgDisplayName(user);
     const tgUsername = user.username || '';
     const photo_url = user.photo_url || '';
     let { game_type, score, session_token } = req.body;
@@ -1258,7 +1258,7 @@ app.get('/user-ranks', async (req, res) => {
 app.post('/register-referral', authMiddleware, async (req, res) => {
     const user = req.telegramUser;
     const user_id = String(user.id);
-    const username = (user.first_name + ' ' + (user.last_name || '')).trim();
+    const username = tgDisplayName(user);
     const photo_url = user.photo_url || '';
     const { referrer_id } = req.body;
     
@@ -2350,6 +2350,13 @@ function cleanupRoom(roomCode) {
 // --- TELEGRAM BOT INLINE MODE ---
 const TelegramBot = require('node-telegram-bot-api');
 
+
+/** Отображаемое имя игрока: имя+фамилия, иначе юзернейм, иначе «Игрок». */
+function tgDisplayName(user) {
+    if (!user) return 'Игрок';
+    const full = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+    return full || user.username || 'Игрок';
+}
 // Premium эмодзи ID
 const EMOJI = {
     first: '<tg-emoji emoji-id="5440539497383087970">🥇</tg-emoji>',
@@ -2640,7 +2647,7 @@ async function incrementCheckersGames(oderId) {
 
 function getUserDisplayName(user) {
     if (user.username) return '@' + user.username;
-    return user.first_name || 'Игрок';
+    return tgDisplayName(user);
 }
 
 // Helper function to edit inline message with play button

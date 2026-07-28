@@ -112,9 +112,11 @@
             if (done) return;
             done = true;
             clearTimeout(finish.guard);
-            if (ghost && ghost.parentNode) ghost.remove();
             movingPid = null;
-            renderAll();
+            renderAll();                       // фишка появляется ПОД призраком
+            /* призрака снимаем следующим кадром — иначе между его удалением
+               и отрисовкой фишки проскакивает пустой кадр и она «мигает» */
+            requestAnimationFrame(() => { if (ghost && ghost.parentNode) ghost.remove(); });
             resolve();
         };
         finish.guard = setTimeout(finish, 8000);
@@ -263,6 +265,10 @@
         const meId = E.me();
         const mine = ph.pid === meId;
         const bar = els.bar;
+        /* Наличные берём из актуального состояния: игрок мог заложить поля
+           или продать филиалы уже после того, как фаза была объявлена. */
+        const myMoney = (S.players[meId] && S.players[meId].money) || 0;
+        const afford = sum => myMoney >= sum;
         bar.classList.remove('compact');
         let html = '';
 
@@ -287,7 +293,7 @@
                         `<div class="service-desc">Вы попали на ${t.name}, и у вас есть право его купить.<br>
                          Если вы откажетесь от покупки, то поле будет выставлено на аукцион.</div>
                          <div class="service-actions">
-                            <button class="btn btn-primary" id="buyBtn" ${ph.canBuy ? '' : 'disabled'}>Купить за <b>${DS}${fmt(ph.price)}</b></button>
+                            <button class="btn btn-primary" id="buyBtn" ${afford(ph.price) ? '' : 'disabled'}>Купить за <b>${DS}${fmt(ph.price)}</b></button>
                             <button class="btn btn-secondary" id="aucBtn">Выставить на аукцион</button>
                          </div>`;
                 } else { bar.classList.add('compact'); html = head(''); }
@@ -314,14 +320,14 @@
                     const who = ph.toName
                         ? `игроку <b>${ph.toName}</b>` : 'Банку';
                     let hint = '';
-                    if (!ph.canPay && ph.enough)
+                    if (!afford(ph.amount) && ph.enough)
                         hint = `<br><small class="pay-hint">Не хватает наличных — заложите поля или продайте филиалы. Чтобы выплатить всю сумму, придётся отдать ~${ph.percent}% своего имущества.</small>`;
                     if (!ph.enough)
                         hint = `<br><small class="pay-hint danger">Даже заложив всё, вы не соберёте эту сумму.</small>`;
                     html = head('Оплата') +
                         `<div class="service-desc">Вы должны заплатить ${who} <b>${DS}${fmt(ph.amount)}</b>.${hint}</div>
                          <div class="service-actions">
-                            <button class="btn btn-primary" id="payBtn" ${ph.canPay ? '' : 'disabled'}>Заплатить <b>${DS}${fmt(ph.amount)}</b></button>
+                            <button class="btn btn-primary" id="payBtn" ${afford(ph.amount) ? '' : 'disabled'}>Заплатить <b>${DS}${fmt(ph.amount)}</b></button>
                             ${!ph.enough ? '<button class="btn btn-danger" id="bankruptBtn">Признать банкротство</button>' : ''}
                          </div>`;
                 } else { bar.classList.add('compact'); html = head(''); }
@@ -341,7 +347,7 @@
                                 <b>${DS}${fmt(casinoWin(ph.bet))}</b></div>
                          </div>
                          <div class="service-actions">
-                            <button class="btn btn-primary" id="betBtn" ${casinoPick.length && ph.canBet ? '' : 'disabled'}>Поставить <b>${DS}${fmt(ph.bet)}</b></button>
+                            <button class="btn btn-primary" id="betBtn" ${casinoPick.length && afford(ph.bet) ? '' : 'disabled'}>Поставить <b>${DS}${fmt(ph.bet)}</b></button>
                             <button class="btn btn-secondary" id="casinoSkipBtn">Отказаться</button>
                          </div>`;
                 } else { bar.classList.add('compact'); html = head(''); }
@@ -365,7 +371,7 @@
                     html = head('Тюрьма') +
                         `<div class="service-desc">Заплатите штраф или попробуйте выбросить дубль.</div>
                          <div class="service-actions">
-                            <button class="btn btn-primary" id="jailPayBtn" ${ph.canPay ? '' : 'disabled'}>Заплатить <b>${DS}${fmt(ph.fine)}</b></button>
+                            <button class="btn btn-primary" id="jailPayBtn" ${afford(ph.fine) ? '' : 'disabled'}>Заплатить <b>${DS}${fmt(ph.fine)}</b></button>
                             <button class="btn btn-secondary" id="jailRollBtn">Бросить на дубль</button>
                          </div>`;
                 } else { bar.classList.add('compact'); html = head(''); }

@@ -166,11 +166,19 @@
         const me = E.me(), other = c.withId;
         if (!E.canTrade(me)) { logLine(me, `договор можно предложить только в свой ход`); return; }
         if (!E.validTrade(me, other, deal)) return;
-        E.S && E.S.players && document.body.dispatchEvent(new CustomEvent('noop'));
-        logLine(me, `предлагает игроку @${E.S.players[other].name} подписать договор`);
         T.composing = null;
         closePanel();
-        const bot = E.S.players[other];
+
+        /* Онлайн: предложение уходит на сервер, он разошлёт его адресату и
+           сам напишет строку в лог. Раньше здесь безусловно работала ветка
+           для ботов — botEvaluate у сетевого движка всегда false, поэтому
+           договор до соперника не доходил и тут же «отклонялся». */
+        if (global.NetEngine && E === global.NetEngine) {
+            E.applyTrade(me, other, deal);
+            return;
+        }
+
+        logLine(me, `предлагает игроку @${E.S.players[other].name} подписать договор`);
         setTimeout(() => {
             if (E.botEvaluate(other, deal) && E.validTrade(me, other, deal)) {
                 E.applyTrade(me, other, deal);
@@ -178,7 +186,6 @@
                 logLine(other, `отклоняет договор`);
             }
         }, 900 + Math.floor(Math.random() * 900));
-        void bot;
     }
     function logLine(pid, text) {
         // проксируем в чат через engine-событие

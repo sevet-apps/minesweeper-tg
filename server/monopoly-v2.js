@@ -307,6 +307,7 @@ class Game {
         this.log(p.id, `ставит $${fmt(E.casinoBet)} на ${picked.length > 1 ? 'числа' : 'число'} ${list} и бросает кубик...`);
         this.pushState();
         this.send('m2:phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: E.casinoBet });
+        this.send('m2:dice', { a: rolled, b: null, pid: p.id });   // один кубик, видят все
 
         setTimeout(() => {
             if (this.phase !== 'casino-roll') return;
@@ -324,7 +325,7 @@ class Game {
             this.casino = null;
             this.pushState();
             this.endStep(this.lastCtx);
-        }, 1500);
+        }, 2300);                                  // столько же, сколько на обычный бросок
     }
 
     landOnProp(p, t, ctx) {

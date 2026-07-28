@@ -26,6 +26,7 @@
     };
 
     let sock = null, myId = null, roomId = null;
+    let lastPhase = null;      // чтобы интерфейс мог пересчитать кнопки после залога
 
     function connect(url, auth) {
         sock = global.io(url + '/mono2', { auth, transports: ['websocket', 'polling'] });
@@ -35,7 +36,7 @@
             emit('state');
         });
         sock.on('m2:log', l => emit('log', l));
-        sock.on('m2:phase', ph => emit('phase', ph));
+        sock.on('m2:phase', ph => { lastPhase = ph; emit('phase', ph); });
         sock.on('m2:timer', t => { S.timerEnd = t.end; emit('timer', t.secs); });
         sock.on('m2:dice', async ({ a, b }) => { await emitAsync('dice', a, b); });
         sock.on('m2:move', async m => { await emitAsync('move', m); });
@@ -142,6 +143,6 @@
         canBuild, canTrade, validTrade, rentFor, ownsFullGroup, liquidValue,
         botEvaluate: () => false,
         tradeValue: (tiles, money) => tiles.reduce((s, i) => s + D().TILES[i].price, 0) + (money || 0),
-        currentPhasePayload: () => null,
+        currentPhasePayload: () => lastPhase,
     };
 })(window);

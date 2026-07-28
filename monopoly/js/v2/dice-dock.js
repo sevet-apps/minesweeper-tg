@@ -35,17 +35,23 @@
         if (v && scene && scene._onResize) scene._onResize();
     }
 
+    /** roll(a, b) — обычный бросок двух кубиков.
+        roll(a)     — одиночный бросок (казино): второй кубик прячем. */
     async function roll(a, b) {
+        const single = (b == null);
         show(true);
         document.body.classList.add('rolling');
+        const second = single && ready && dice && dice.dieB ? dice.dieB : null;
+        if (second && second.setVisible) second.setVisible(false);
         try {
-            if (ready) await dice.rollTo(a, b);
-            else await roll2D(a, b);
+            if (ready) await dice.rollTo(a, single ? 1 + Math.floor(Math.random() * 6) : b);
+            else await roll2D(a, single ? null : b);
         } catch (e) {
             console.warn('DiceDock: rollTo error, 2D-фолбэк —', e.message);
-            await roll2D(a, b);
+            await roll2D(a, single ? null : b);
         }
         await sleep(650);            // пауза, чтобы увидеть результат
+        if (second && second.setVisible) second.setVisible(true);
         document.body.classList.remove('rolling');
         show(false);
     }
@@ -62,15 +68,16 @@
     }
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     async function roll2D(a, b) {
+        const single = (b == null);
         el.innerHTML = `<div class="d2"></div>`;
         const box = el.querySelector('.d2');
+        const rnd6 = () => 1 + Math.floor(Math.random() * 6);
         const t0 = performance.now(), dur = 1300;
         while (performance.now() - t0 < dur) {
-            box.innerHTML = face(1 + Math.floor(Math.random() * 6)) +
-                            face(1 + Math.floor(Math.random() * 6));
+            box.innerHTML = single ? face(rnd6()) : face(rnd6()) + face(rnd6());
             await sleep(70 + (performance.now() - t0) / 8);
         }
-        box.innerHTML = face(a) + face(b);
+        box.innerHTML = single ? face(a) : face(a) + face(b);
     }
 
     global.DiceDock = { mount, roll, show };

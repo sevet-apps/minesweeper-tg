@@ -223,15 +223,21 @@
             /* фишки: выстраиваются в линию вдоль клетки — на вертикальных
                карточках столбиком, на горизонтальных в ряд (раскладку
                задаёт CSS по data-side, здесь только количество) */
-            el.chipsEl.innerHTML = '';
             const here = (st.chips && st.chips[t.i]) || [];
-            el.chipsEl.dataset.n = here.length;
-            here.forEach(pid => {
-                const c = document.createElement('div');
-                c.className = 'chip';
-                c.style.setProperty('--cc', (st.players[pid] && st.players[pid].color) || '#888');
-                el.chipsEl.appendChild(c);
-            });
+            /* пересобираем только если набор фишек на клетке изменился —
+               иначе на каждом обновлении состояния они моргают */
+            const sig = here.join(',');
+            if (el.chipSig !== sig) {
+                el.chipSig = sig;
+                el.chipsEl.innerHTML = '';
+                el.chipsEl.dataset.n = here.length;
+                here.forEach(pid => {
+                    const c = document.createElement('div');
+                    c.className = 'chip';
+                    c.style.setProperty('--cc', (st.players[pid] && st.players[pid].color) || '#888');
+                    el.chipsEl.appendChild(c);
+                });
+            }
 
             if (t.type !== 'prop') return;
 
