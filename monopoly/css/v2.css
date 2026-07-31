@@ -502,6 +502,13 @@ img.qmark-img,
 .btn-secondary:hover { background: #f6f6f8; }
 .btn-danger { background: var(--red); color: #fff; }
 
+/* пока сумма добегает до новой — подкрашиваем: прибыль зелёным, трата красным */
+.player-money { transition: color .28s ease; }
+.player-money.up   { color: #34c759; }
+.player-money.down { color: #ff5f57; }
+.player-money.up .dsign   { --dcol: #34c759; }
+.player-money.down .dsign { --dcol: #ff5f57; }
+
 /* ---------- Казино (поле «Джекпот») ---------- */
 .casino-row {
     display: flex; align-items: center; gap: 14px;

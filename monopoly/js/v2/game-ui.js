@@ -106,24 +106,29 @@
         останется скрытой до следующего события. Страховочный таймер и
         проверки на null не дают movingPid залипнуть, если клетки не нашлось
         или вкладка была свёрнута. */
-    function moveEnder(ghost, resolve) {
+    function moveEnder(ghost, resolve, pid, to) {
         let done = false;
         const finish = () => {
             if (done) return;
             done = true;
             clearTimeout(finish.guard);
+            /* Ставим фишку на конечную клетку сами. Снапшот с сервера может
+               прийти позже анимации, и без этого фишка на миг появлялась
+               на старом поле, а уже потом перескакивала на новое. */
+            const p = E.S.players[pid];
+            if (p && to != null) p.pos = to;
             movingPid = null;
-            renderAll();                       // фишка появляется ПОД призраком
-            /* призрака снимаем следующим кадром — иначе между его удалением
-               и отрисовкой фишки проскакивает пустой кадр и она «мигает» */
-            requestAnimationFrame(() => { if (ghost && ghost.parentNode) ghost.remove(); });
+            /* удаление призрака и отрисовка фишки — в одном синхронном блоке:
+               браузер рисует только итог, промежуточного кадра не будет */
+            if (ghost && ghost.parentNode) ghost.remove();
+            renderAll();
             resolve();
         };
         finish.guard = setTimeout(finish, 8000);
         return finish;
     }
 
-    function animateMove({ pid, from, steps }) {
+    function animateMove({ pid, from, steps, to }) {
         return new Promise(resolve => {
             const p = E.S.players[pid];
             if (!p) return resolve();
@@ -133,7 +138,8 @@
             ghost.className = 'chip move-ghost';
             ghost.style.setProperty('--cc', p.color);
             document.body.appendChild(ghost);
-            const finish = moveEnder(ghost, resolve);
+            const dest = to != null ? to : ((from + steps) % 40 + 40) % 40;
+            const finish = moveEnder(ghost, resolve, pid, dest);
 
             const per = STEP_MS;                          // спокойный темп, не зависит от длины пути
             let k = 0;
@@ -176,7 +182,7 @@
             ghost.className = 'chip move-ghost fly';
             ghost.style.setProperty('--cc', p.color);
             document.body.appendChild(ghost);
-            const finish = moveEnder(ghost, resolve);
+            const finish = moveEnder(ghost, resolve, pid, to);
             const c0 = tileCenter(from), c1 = tileCenter(to);
             if (!c0 || !c1) return finish();
             ghost.animate([
@@ -208,36 +214,87 @@
         renderClock();
     }
 
-    let colSig = '';
+    /* Сумма не переставляется рывком, а быстро добегает до новой:
+       ~420 мс с замедлением в конце. Если во время отсчёта прилетает
+       ещё одно изменение, счёт продолжается с той цифры, что видна
+       сейчас, — поэтому подряд идущие платежи не дёргаются. */
+    const MONEY_MS = 420;
+    let moneyAnim = {};
+    function setMoney(box, id, value, instant) {
+        const val = box.querySelector('.pm-val');
+        const st = moneyAnim[id] || (moneyAnim[id] = { shown: value, raf: 0 });
+        if (st.raf) cancelAnimationFrame(st.raf);
+        st.raf = 0;
+
+        if (instant || st.shown === value || !box.isConnected) {
+            st.shown = value;
+            val.textContent = fmt(value);
+            box.classList.remove('up', 'down');
+            return;
+        }
+        const from = st.shown;
+        box.classList.toggle('up', value > from);
+        box.classList.toggle('down', value < from);
+        const t0 = performance.now();
+        const tick = now => {
+            const k = Math.min(1, (now - t0) / MONEY_MS);
+            const e = 1 - Math.pow(1 - k, 3);          // резво стартует, мягко тормозит
+            st.shown = Math.round(from + (value - from) * e);
+            val.textContent = fmt(st.shown);
+            if (k < 1) { st.raf = requestAnimationFrame(tick); return; }
+            st.raf = 0; st.shown = value;
+            val.textContent = fmt(value);
+            box.classList.remove('up', 'down');
+        };
+        st.raf = requestAnimationFrame(tick);
+    }
+
+    /* Карточки игроков собираем один раз и дальше только правим текст и
+       классы. Раньше колонка пересоздавалась на каждом изменении денег —
+       браузер заново подхватывал <img> аватарок, и они заметно мигали. */
+    let cardEls = {}, rosterSig = '';
     function renderPlayers() {
         const S = E.S;
-        /* Снапшот приходит часто, а разметка карточек меняется редко.
-           Без этой проверки колонка пересобиралась на каждом обновлении —
-           аватарки и фишки успевали мигнуть. */
-        const sig = S.order.map(id => {
+        const roster = S.order.map(id => {
             const p = S.players[id] || {};
-            return [id, p.money, p.pos, p.alive ? 1 : 0, p.jailed ? 1 : 0,
-                    p.name, p.color, p.avatar || ''].join('~');
-        }).join('|') + '||' + (E.cur() && E.cur().id) + '|' + S.phase;
-        if (sig === colSig) return;
-        colSig = sig;
-        els.col.innerHTML = '';
+            return [id, p.name, p.color, p.avatar || '', p.initials || '', p.host ? 1 : 0].join('~');
+        }).join('|');
+
+        const rebuilt = roster !== rosterSig;
+        if (rebuilt) {                               // состав или профили сменились
+            rosterSig = roster;
+            cardEls = {};
+            moneyAnim = {};
+            els.col.innerHTML = '';
+            for (const id of S.order) {
+                const p = S.players[id];
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.style.setProperty('--pc', p.color);
+                card.innerHTML = `
+                    <div class="turn-badge">–</div>
+                    <div class="player-avatar">${avaHtml(p)}</div>
+                    <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${p.name}</div>
+                    <div class="player-money"><i class="dsign"></i><span class="pm-val"></span></div>
+                    <div class="rip-mark">⚰️ RIP</div>`;
+                card.addEventListener('click', ev =>
+                    global.Modals.playerMenu(id, ev.currentTarget.getBoundingClientRect(), ev.currentTarget));
+                els.col.appendChild(card);
+                cardEls[id] = card;
+            }
+        }
+
+        const curId = E.cur() && E.cur().id;
         for (const id of S.order) {
-            const p = S.players[id];
-            const active = E.cur().id === id && S.phase !== 'ended';
-            const card = document.createElement('div');
-            card.className = 'player-card' + (active ? ' active' : '') + (p.alive ? '' : ' rip');
-            card.style.setProperty('--pc', p.color);
-            card.innerHTML = `
-                ${active ? `<div class="turn-badge" id="turnBadge">–</div>` : ''}
-                <div class="player-avatar">${avaHtml(p)}</div>
-                <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${p.name}</div>
-                ${p.alive
-                    ? `<div class="player-money"><i class="dsign"></i>${fmt(p.money)}</div>`
-                    : `<div class="rip-mark">⚰️ RIP</div>`}`;
-            card.addEventListener('click', ev =>
-                global.Modals.playerMenu(id, ev.currentTarget.getBoundingClientRect(), ev.currentTarget));
-            els.col.appendChild(card);
+            const p = S.players[id], card = cardEls[id];
+            if (!p || !card) continue;
+            const active = curId === id && S.phase !== 'ended';
+            card.classList.toggle('active', active);
+            card.classList.toggle('rip', !p.alive);
+            setMoney(card.querySelector('.player-money'), id, p.money, rebuilt);
+            card.querySelector('.player-money').style.display = p.alive ? '' : 'none';
+            card.querySelector('.rip-mark').style.display = p.alive ? 'none' : '';
+            card.querySelector('.turn-badge').style.display = active ? '' : 'none';
         }
     }
 
@@ -618,17 +675,18 @@
     /* ---------- таймер ---------- */
     /** Комната может быть создана без таймеров — тогда сервер присылает
         timerEnd = 0, и обратный отсчёт на карточке игрока просто не рисуем. */
+    const turnBadge = () => els.col.querySelector('.player-card.active .turn-badge');
     function startTimer() {
         clearInterval(timerTick);
         if (!E.S.timerEnd) {
-            const b = $('#turnBadge'); if (b) b.style.display = 'none';
+            const b = turnBadge(); if (b) b.textContent = '–';
             $('#timerDot') && $('#timerDot').classList.remove('warn');
             return;
         }
         timerTick = setInterval(() => {
             const t = Math.max(0, Math.round((E.S.timerEnd - Date.now()) / 1000));
             $('#timerDot')?.classList.toggle('warn', t <= 15);
-            const b = $('#turnBadge'); if (b) { b.style.display = ''; b.textContent = t; }
+            const b = turnBadge(); if (b) b.textContent = t;
             if (t <= 0) clearInterval(timerTick);
         }, 250);
     }
