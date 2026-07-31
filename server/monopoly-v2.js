@@ -798,9 +798,13 @@ function attach(io) {
                 started: g.phase !== 'lobby',
                 maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
             });
-            /* вернувшемуся игроку сразу восстанавливаем служебную плашку */
-            if (ok && g.phase !== 'lobby' && g.lastPhase)
-                socket.emit('m2:phase', g.lastPhase);
+            /* Вернувшемуся игроку досылаем состояние и текущую фазу лично и
+               уже ПОСЛЕ ответа: рассылка по комнате уходит раньше, чем клиент
+               успевает построить интерфейс, и её никто не услышит. */
+            if (ok && g.phase !== 'lobby') {
+                socket.emit('m2:state', g.snapshot());
+                if (g.lastPhase) socket.emit('m2:phase', g.lastPhase);
+            }
         });
 
         /* список открытых комнат для лобби */

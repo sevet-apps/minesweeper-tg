@@ -63,6 +63,13 @@
         });
         startMatchClock();
 
+        /* Показываем то, что уже пришло. При возврате в начатую партию
+           снапшот прилетает раньше, чем создаётся интерфейс, и без этого
+           доска оставалась пустой до следующего действия игрока. */
+        renderAll();
+        const ph0 = E.currentPhasePayload && E.currentPhasePayload();
+        if (ph0) renderBar(ph0);
+
         els.input.addEventListener('keydown', e => {
             if (e.key !== 'Enter') return;
             const v = e.target.value.trim(); if (!v) return;
@@ -197,6 +204,7 @@
     /* ---------- доска + игроки ---------- */
     function renderAll() {
         const S = E.S;
+        if (!S || !S.order || !S.order.length) return;   // партия ещё не заполнена
         const chips = {};
         for (const id of S.order) {
             const p = S.players[id];
@@ -458,6 +466,11 @@
                 html = head('');
         }
         bar.innerHTML = html;
+        /* В казино текста и кнопок больше, чем помещается в центр доски.
+           На телефоне разрешаем плашке выйти за поле — иначе низ обрезается
+           и до ставки просто не добраться. */
+        bar.classList.toggle('overlay',
+            mine && (ph.phase === 'casino' || ph.phase === 'casino-roll'));
 
         $('#rollBtn')?.addEventListener('click', () => E.roll());
         $('#buyBtn')?.addEventListener('click', () => E.buy(ph.ctx));

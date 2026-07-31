@@ -637,6 +637,21 @@ img.qmark-img,
     .board { width: min(98vw, calc(100vh - 190px - var(--safe-top) - var(--safe-bottom))); }
     :root { --pill-h: 20px; font-size: 13px; }
 
+    /* казино: плашка выходит за пределы доски, иначе не помещается */
+    .service-bar.overlay {
+        position: fixed; left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+        width: min(92vw, 380px);
+        max-height: min(84vh, 620px);
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
+        margin: 0; padding: 12px 14px 14px;
+        z-index: 60;
+        box-shadow: 0 22px 70px rgba(0,0,0,.65);
+    }
+    .service-bar.overlay .service-desc { font-size: 13px; line-height: 1.35; }
+    .service-bar.overlay .service-actions { flex-direction: row; gap: 8px; }
+    .service-bar.overlay .service-actions .btn { flex: 1; padding: 11px 8px; font-size: 14px; }
+
     /* вкладки «О матче / Настройки» — в одну строку */
     .mi-tab { padding: 7px 10px; font-size: 13px; gap: 5px; }
     .mi-tab .mi-ico { width: 14px; height: 14px; }
