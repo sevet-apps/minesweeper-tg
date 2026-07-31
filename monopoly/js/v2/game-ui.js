@@ -208,8 +208,19 @@
         renderClock();
     }
 
+    let colSig = '';
     function renderPlayers() {
         const S = E.S;
+        /* Снапшот приходит часто, а разметка карточек меняется редко.
+           Без этой проверки колонка пересобиралась на каждом обновлении —
+           аватарки и фишки успевали мигнуть. */
+        const sig = S.order.map(id => {
+            const p = S.players[id] || {};
+            return [id, p.money, p.pos, p.alive ? 1 : 0, p.jailed ? 1 : 0,
+                    p.name, p.color, p.avatar || ''].join('~');
+        }).join('|') + '||' + (E.cur() && E.cur().id) + '|' + S.phase;
+        if (sig === colSig) return;
+        colSig = sig;
         els.col.innerHTML = '';
         for (const id of S.order) {
             const p = S.players[id];
@@ -379,7 +390,10 @@
             case 'ended': {
                 const w = ph.winner ? S.players[ph.winner] : null;
                 html = head('Игра завершена') +
-                    `<div class="service-desc">${w ? `Победитель — <b style="color:${w.color}">${w.name}</b>! 🏆` : 'Победителя нет.'}</div>`;
+                    `<div class="service-desc">${w ? `Победитель — <b style="color:${w.color}">${w.name}</b>! 🏆` : 'Победителя нет.'}</div>
+                     <div class="service-actions">
+                        <button class="btn btn-primary" id="endExitBtn">Выйти в лобби</button>
+                     </div>`;
                 break;
             }
             default:
@@ -409,6 +423,7 @@
         $('#betBtn')?.addEventListener('click', () => E.casinoBet(casinoPick.slice(), ph.ctx));
         $('#casinoSkipBtn')?.addEventListener('click', () => E.casinoSkip(ph.ctx));
         if (ph.phase === 'casino-roll' && mine) runCasinoRoll(ph);
+        $('#endExitBtn')?.addEventListener('click', () => global.Lobby.exitToLobby());
         $('#jailPayBtn')?.addEventListener('click', () => E.jailPay());
         $('#jailRollBtn')?.addEventListener('click', () => E.jailRoll());
         $('#gearBtn')?.addEventListener('click', openMatchInfo);

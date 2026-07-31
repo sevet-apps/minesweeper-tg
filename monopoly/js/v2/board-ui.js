@@ -244,7 +244,15 @@
             const owner = st.owners && st.owners[t.i];
             const mort  = st.mortgaged && st.mortgaged[t.i];
 
+            /* всё, что не изменилось, не трогаем — иначе картинки звёзд и
+               ценники пересоздаются на каждом снапшоте и мелькают */
             const label = labelFor(t, st);
+            const tileSig = [label, owner || '', (st.branches && st.branches[t.i]) || 0,
+                             mort != null ? 1 : 0,
+                             (st.selected && st.selected[t.i]) || '',
+                             (st.players[owner] && st.players[owner].color) || ''].join('~');
+            if (el.tileSig === tileSig) return;      // на клетке ничего не поменялось
+            el.tileSig = tileSig;
             el.pill.innerHTML = '<span class="pill-in">' + label + '</span>';
             /* число знаков (цифры + «×» у разработчиков) определяет кегль */
             el.pillChars = (label.replace(/<[^>]*>/g, '').trim() || ' ').length;

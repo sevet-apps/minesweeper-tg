@@ -195,7 +195,7 @@
         const card = openAt(`
             <div class="confirm">
                 <div class="c-ico">?</div>
-                <div class="c-txt"><b>Выйти из игры?</b><span>Матч с ботами не сохранится.</span></div>
+                <div class="c-txt"><b>Выйти из игры?</b><span>Матч с ботами не сохранится. Вернётесь в меню монополии.</span></div>
                 <div class="c-btns">
                     <button class="btn btn-secondary cancel">Отмена</button>
                     <button class="btn btn-danger ok">Выйти</button>
@@ -204,7 +204,9 @@
         card.querySelector('.cancel').addEventListener('click', close);
         card.querySelector('.ok').addEventListener('click', () => {
             close();
-            try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
+            /* в меню монополии, а не в лобби приложения */
+            if (global.Lobby && global.Lobby.exitToLobby) global.Lobby.exitToLobby();
+            else try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
         });
     }
 

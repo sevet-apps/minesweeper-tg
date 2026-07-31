@@ -85,7 +85,10 @@ class Game {
 
     /* ---------- рассылка ---------- */
     room() { return this.io.to(this.roomId); }
-    send(ev, data) { this.room().emit(ev, data); }
+    send(ev, data) {
+        if (ev === 'm2:phase') this.lastPhase = data;   // пригодится вернувшемуся
+        this.room().emit(ev, data);
+    }
     log(pid, text) { this.send('m2:log', { pid, text }); }
     pushState() { this.send('m2:state', this.snapshot()); }
     snapshot() {
@@ -412,9 +415,14 @@ class Game {
 
     /* ---------- тюрьма ---------- */
     sendToJail(p) {
-        p.pos = 10; p.jailed = true; p.jailTries = 0; this.doubles = 0;
-        this.pushState();
-        this.nextTurn();
+        /* фишка должна долететь до тюрьмы, а не телепортироваться:
+           клиент проигрывает перелёт ровно 1000 мс */
+        this.send('m2:teleport', { pid: p.id, from: p.pos, to: 10 });
+        setTimeout(() => {
+            p.pos = 10; p.jailed = true; p.jailTries = 0; this.doubles = 0;
+            this.pushState();
+            this.nextTurn();
+        }, 1050);
     }
     jailPrompt() {
         const p = this.cur();
@@ -731,6 +739,25 @@ function publicRooms() {
 function attach(io) {
     const nsp = io.of('/mono2');
     broadcastRooms = () => nsp.emit('m2:rooms', publicRooms());
+
+    /** Незавершённая партия игрока: он мог закрыть приложение и вернуться.
+        Отдаём только то, что действительно можно продолжить. */
+    function myGame(uid) {
+        for (const g of rooms.values()) {
+            const p = g.players[uid];
+            if (!p || !p.alive) continue;
+            if (g.phase === 'lobby' || g.phase === 'ended') continue;
+            return {
+                roomId: g.roomId,
+                round: g.round,
+                players: g.order.map(id => ({
+                    name: g.players[id].name, avatar: g.players[id].avatar,
+                    initials: g.players[id].initials, online: !!g.players[id].online,
+                })),
+            };
+        }
+        return null;
+    }
     nsp.on('connection', socket => {
         let roomId = null;
         const uid = String(socket.handshake.auth?.uid || socket.id);
@@ -768,12 +795,17 @@ function attach(io) {
             broadcastRooms();
             ack && ack({
                 ok, roomId, state: g.snapshot(), you: uid,
+                started: g.phase !== 'lobby',
                 maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
             });
+            /* вернувшемуся игроку сразу восстанавливаем служебную плашку */
+            if (ok && g.phase !== 'lobby' && g.lastPhase)
+                socket.emit('m2:phase', g.lastPhase);
         });
 
         /* список открытых комнат для лобби */
         socket.on('m2:rooms', (_, ack) => ack && ack(publicRooms()));
+        socket.on('m2:my-game', (_, ack) => ack && ack(myGame(uid)));
         socket.on('m2:leave', () => {
             const g = rooms.get(roomId);
             if (!g) return;

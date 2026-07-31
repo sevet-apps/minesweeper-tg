@@ -50,6 +50,19 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 @keyframes lbIn { from { opacity: 0; transform: translateY(6px); } }
 
 /* --- кнопки режимов --- */
+/* незавершённая партия */
+.lb-resume {
+    background: linear-gradient(135deg, rgba(90,200,250,.16), rgba(0,198,255,.10));
+    border: 1px solid rgba(90,200,250,.28);
+    border-radius: 18px; padding: 14px 16px 16px; margin-bottom: 14px;
+}
+.lb-resume-top { display: flex; align-items: center; gap: 10px; }
+.lb-resume-txt b { display: block; font-size: 15px; font-weight: 650; }
+.lb-resume-txt span { display: block; font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+.lb-resume-avas { display: flex; margin: 12px 0; }
+.lb-resume-avas .lb-ava { margin-right: -8px; border: 2px solid #1b1b1f; }
+.lb-resume .lb-btn { margin-top: 0; }
+
 .lb-modes { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
 .lb-mode {
     display: flex; align-items: center; gap: 14px;
@@ -143,17 +156,26 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 .lb-field.off { opacity: .38; pointer-events: none; }
 .lb-field-lbl { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
 .lb-seg {
+    position: relative;
     display: flex; gap: 6px;
     background: #26262c; border-radius: 12px; padding: 4px;
 }
+/* бегунок плавно переезжает к выбранной кнопке, без пружины */
+.lb-seg-ind {
+    position: absolute; top: 4px; bottom: 4px; left: 4px; width: 0;
+    background: #3a3a44; border-radius: 9px;
+    transition: left .22s ease, width .22s ease;
+    pointer-events: none; z-index: 0;
+}
 .lb-seg button {
+    position: relative; z-index: 1;
     flex: 1; border: none; background: transparent; color: var(--text-dim);
     border-radius: 9px; padding: 9px 4px;
     font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: background .16s, color .16s;
+    transition: color .18s ease;
 }
 .lb-seg button:hover { color: var(--text); }
-.lb-seg button.on { background: #3a3a44; color: var(--text); }
+.lb-seg button.on { color: var(--text); }
 
 /* выход из комнаты ожидания */
 .lb-leave {

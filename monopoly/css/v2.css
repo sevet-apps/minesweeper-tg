@@ -53,7 +53,7 @@
     --fs-h: 0px;         /* место под кнопку «На весь экран» (только десктоп) */
     font-size: 15px;
 }
-@media (min-width: 901px) { :root { --fs-h: 52px; } }
+body.has-fs { --fs-h: 52px; }        /* класс ставит lobby.js по платформе */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, textarea, select {
@@ -629,6 +629,29 @@ img.qmark-img,
     .player-money { font-size: 21px; }
     .board { width: min(98vw, calc(100vh - 190px - var(--safe-top) - var(--safe-bottom))); }
     :root { --pill-h: 20px; font-size: 13px; }
+
+    /* вкладки «О матче / Настройки» — в одну строку */
+    .mi-tab { padding: 7px 10px; font-size: 13px; gap: 5px; }
+    .mi-tab .mi-ico { width: 14px; height: 14px; }
+    .mi-tabs { gap: 2px; padding-right: 26px; }
+
+    /* договор целиком помещается в центр поля, не закрывая доску */
+    #tradePanel { max-height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .tp-card { padding: 8px 10px 10px; border-radius: 14px; }
+    .tp-title { font-size: 14px; }
+    .tp-timer { font-size: 11.5px; padding: 2px 8px; }
+    .tp-cols { gap: 0 10px; }
+    .tp-col:first-child { padding-right: 10px; }
+    .tp-who, .tp-gname, .tp-row { font-size: 11.5px; }
+    .tp-row { padding-left: 12px; gap: 4px; }
+    .tp-gname .dot { width: 9px; height: 9px; }
+    .tp-empty { font-size: 11.5px; padding: 4px 0; }
+    .tp-money { font-size: 11.5px; margin-top: 5px; gap: 5px; }
+    .tp-money input { padding: 5px 7px; font-size: 12px; }
+    .tp-total { font-size: 12.5px; margin-top: 6px; }
+    .tp-actions { margin-top: 8px; gap: 6px; }
+    .tp-actions .btn { padding: 8px 14px; font-size: 13px; }
+    .future-toggle { font-size: 12px; gap: 6px; }
 }
 
 /* ---------- Значок доллара (PNG-маска, красится currentColor/переменной) ---------- */
@@ -873,7 +896,9 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .mi-view.on { display: block; animation: miFade .22s ease; }
 @keyframes miFade { from { opacity: 0; transform: translateY(4px); } }
 .mi-knob {
-    position: absolute; top: 2px; height: 32px;
+    /* высоту не фиксируем: если подпись переносилась, подложка съезжала
+       вверх и её тень выглядела оторванной от кнопки */
+    position: absolute; top: 2px; bottom: 8px;
     background: #f1f1f4; border-radius: 999px;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
     transition: left .25s cubic-bezier(.4,1.4,.4,1), width .25s;
@@ -884,7 +909,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     border: none; background: transparent; border-radius: 999px;
     padding: 7px 14px; font-size: 14px; font-weight: 600; color: #6d6d76; cursor: pointer;
 }
-.mi-tab { position: relative; z-index: 1; transition: color .2s; }
+.mi-tab { position: relative; z-index: 1; transition: color .2s; white-space: nowrap; }
 .mi-tab.on { color: #17171a; }
 .mi-close {
     position: absolute; right: 0; top: 2px;
@@ -904,9 +929,12 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .mi-row.mi-head { color: #8a8a92; font-size: 13px; }
 .mi-name { font-weight: 700; }
 .mi-set { display: flex; align-items: center; gap: 10px; font-size: 14.5px; padding: 8px 2px; cursor: pointer; }
-.mi-set .switch {
+.mi-set { justify-content: space-between; }
+.mi-set .switch, .future-toggle .switch {
     width: 38px; height: 22px; border-radius: 999px; background: #d9d9df;
     position: relative; transition: background .2s; display: inline-block;
+    flex: 0 0 38px;                 /* иначе интерфейс ужимал дорожку, и кружок вылезал */
+    box-sizing: content-box;
 }
 .mi-set .switch::after {
     content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;

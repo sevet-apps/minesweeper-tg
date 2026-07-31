@@ -113,6 +113,8 @@
     function show(id) {
         document.querySelectorAll('.lb-screen').forEach(s => s.classList.toggle('on', s.id === id));
         syncBackButton();
+        /* размеры кнопок известны только когда экран показан */
+        if (id === 'lbCreate') requestAnimationFrame(() => SEGS.forEach(moveSeg));
     }
     function currentScreen() {
         const el = document.querySelector('.lb-screen.on');
@@ -141,12 +143,25 @@
     }
     function syncBackButton() {
         const inGame = $('#game').style.display !== 'none';
-        setBackButton(!inGame && currentScreen() !== 'lbMain');
+        setBackButton(!inGame);          // в лобби — всегда, в матче — нет
     }
     function goBack() {
         const s = currentScreen();
         if (s === 'lbWait') return leaveRoom();
-        if (s !== 'lbMain') show('lbMain');
+        if (s !== 'lbMain') return show('lbMain');
+        exitToApp();                     // с главного экрана — выход из монополии
+    }
+    function exitToApp() {
+        try { net().socket() && net().socket().emit('m2:leave'); } catch (e) {}
+        try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
+    }
+
+    /** Возврат из матча в лобби монополии. Перезагружаем страницу: так
+        гарантированно гасятся таймеры движка, боты и 3D-сцена, а сама
+        страница локальная и поднимается мгновенно. */
+    function exitToLobby() {
+        try { net().socket() && net().socket().emit('m2:leave'); } catch (e) {}
+        location.reload();
     }
     addEventListener('message', e => {
         const d = e.data;
@@ -224,6 +239,48 @@
     function refreshRooms() {
         if (!connected) return;
         net().socket().emit('m2:rooms', null, list => { rooms = list || []; renderRooms(); });
+        checkMyGame();
+    }
+
+    /* ---------- незавершённая партия ----------
+       Если игрок закрыл приложение посреди матча, сервер помнит его место.
+       Показываем отдельную плашку с кнопкой «Продолжить»; все проверки
+       (существует ли комната, жив ли игрок, не закончилась ли игра) делает
+       сервер — клиент только рисует то, что ему прислали. */
+    function checkMyGame() {
+        if (!connected) return;
+        net().socket().emit('m2:my-game', null, g => renderResume(g));
+    }
+    function renderResume(g) {
+        const box = $('#lbResume');
+        if (!box) return;
+        if (!g) { box.innerHTML = ''; return; }
+        box.innerHTML = `
+            <div class="lb-resume">
+                <div class="lb-resume-top">
+                    <div class="lb-resume-txt">
+                        <b>Ваша игра продолжается</b>
+                        <span>Комната ${g.roomId} · ${g.round} раунд · ${g.players.length} игроков</span>
+                    </div>
+                </div>
+                <div class="lb-resume-avas">${g.players.map(p => ava(p, 32)).join('')}</div>
+                <button class="lb-btn" id="lbResumeGo">Продолжить</button>
+            </div>`;
+        $('#lbResumeGo').onclick = () => resumeGame(g.roomId);
+    }
+    function resumeGame(rid) {
+        const btn = $('#lbResumeGo');
+        if (btn) { btn.disabled = true; btn.textContent = 'Подключаемся…'; }
+        net().socket().emit('m2:join', { roomId: rid, profile: ME }, res => {
+            if (!res || !res.ok) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Продолжить'; }
+                renderResume(null);
+                return toast('Игра уже недоступна', true);
+            }
+            net().setRoom(res.roomId);
+            if (res.started) startGame('online');
+            else openWaitRoom(res.roomId, false, false, res.maxPlayers || 5);
+        });
     }
 
     /** Ручное обновление: иконка крутится, пока идёт запрос
@@ -260,14 +317,34 @@
         const on = document.querySelector('#' + id + ' button.on');
         return on ? parseInt(on.dataset.v, 10) : fallback;
     }
+    /** Сегментный переключатель с бегунком: подложка плавно едет к выбранной
+        кнопке. Ровный ease без пружины. */
+    function moveSeg(id) {
+        const box = document.querySelector('#' + id);
+        if (!box) return;
+        const on = box.querySelector('button.on'), ind = box.querySelector('.lb-seg-ind');
+        if (!on || !ind || !box.offsetWidth) return;      // экран ещё скрыт — размеров нет
+        ind.style.left = on.offsetLeft + 'px';
+        ind.style.width = on.offsetWidth + 'px';
+    }
     function bindSeg(id) {
-        document.querySelectorAll('#' + id + ' button').forEach(b => {
+        const box = document.querySelector('#' + id);
+        if (!box) return;
+        if (!box.querySelector('.lb-seg-ind')) {
+            const ind = document.createElement('span');
+            ind.className = 'lb-seg-ind';
+            box.prepend(ind);
+        }
+        box.querySelectorAll('button').forEach(b => {
             b.onclick = () => {
-                document.querySelectorAll('#' + id + ' button').forEach(x => x.classList.remove('on'));
+                box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
                 b.classList.add('on');
+                moveSeg(id);
             };
         });
+        requestAnimationFrame(() => moveSeg(id));
     }
+    const SEGS = ['lbMaxPlayers', 'lbTurnSecs'];
     function timersOn() { return $('#lbTimers .lb-sw').classList.contains('on'); }
     function syncTimerField() {
         $('#lbTurnSecsField').classList.toggle('off', !timersOn());
@@ -353,8 +430,14 @@
     function setupFullscreen() {
         const btn = $('#fsBtn');
         if (!btn) return;
-        const phone = TG && ['ios', 'android', 'android_x'].includes(TG.platform);
-        if (phone || innerWidth <= 900) { btn.remove(); return; }   // на телефоне и так во весь экран
+        /* На телефоне мини-приложение и так во весь экран. Ориентируемся на
+           платформу Telegram, а не на ширину: окно десктопного клиента узкое,
+           и по ширине кнопка ошибочно пропадала. */
+        const phone = TG && TG.platform
+            ? ['ios', 'android', 'android_x'].indexOf(TG.platform) >= 0
+            : innerWidth <= 900;
+        if (phone) { btn.remove(); return; }
+        document.body.classList.add('has-fs');          // резервируем место под доской
         let on = false;
         btn.onclick = () => {
             on = !on;
@@ -439,5 +522,5 @@
         syncBackButton();
     }
 
-    global.Lobby = { init, profile: () => ME };
+    global.Lobby = { init, profile: () => ME, exitToLobby, exitToApp };
 })(window);
