@@ -9,11 +9,11 @@
     const TITLES = ['Новичок', 'Арендатор', 'Риелтор', 'Домовладелец', 'Инвестор',
                     'Застройщик', 'Банкир', 'Магнат', 'Монополист', 'Легенда'];
 
-    const CROWN = `<svg class="rw-crown" viewBox="0 0 64 44" aria-hidden="true">
-        <path d="M4 40h56l-4-28-14 11L32 4 18 23 4 12z" fill="#f5c518" stroke="#a37b00" stroke-width="2.4"
-              stroke-linejoin="round"/>
-        <circle cx="32" cy="4" r="4" fill="#ffd94a" stroke="#a37b00" stroke-width="2"/>
-    </svg>`;
+    /** Корона над аватаркой победителя (PNG из ui-icons.js). */
+    function crown() {
+        const src = (global.MonopolyUIPNG || {}).crown;
+        return src ? `<img class="rw-crown" src="${src}" alt="">` : '';
+    }
 
     const fmt = n => (n | 0).toLocaleString('ru-RU');
     const esc = s => String(s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
@@ -48,7 +48,7 @@
         wrap.innerHTML = `
             <div class="rw-card">
                 <div class="rw-win">
-                    <div class="rw-ava">${CROWN}<div class="rw-ava-in">${avatar(wp || {})}</div></div>
+                    <div class="rw-ava">${crown()}<div class="rw-ava-in">${avatar(wp || {})}</div></div>
                     <div class="rw-name">${esc(winner ? winner.name : '—')}</div>
                     <div class="rw-sub">${winner && winner.uid === meId ? 'Вы победили!' : 'Победитель матча'}</div>
                 </div>
