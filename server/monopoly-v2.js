@@ -30,11 +30,20 @@
 'use strict';
 
 const path = require('path');
+const Rating = require('./monopoly-rating');
 
 /* Данные доски — общие с клиентом (тот же файл) */
 const dataModule = require(path.join(__dirname, '..', 'monopoly', 'js', 'board-data-v2.js'));
 const D = globalThis.MonopolyDataV2 || dataModule;
 const E = D.ECONOMY;
+
+/** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
+    нулевой ширины, соединители, вариационные селекторы, пустой Брайль.
+    Обычные пробелы сюда не входят — их достаточно схлопнуть и обрезать. */
+const INVISIBLE_CHARS = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff]/g;
+function cleanName(s) {
+    return String(s == null ? '' : s).replace(INVISIBLE_CHARS, '').replace(/\s+/g, ' ').trim();
+}
 
 const rnd = n => Math.floor(Math.random() * n);
 const fmt = n => n.toLocaleString('ru-RU');
@@ -53,6 +62,8 @@ class Game {
         this.doubles = 0;
         this.auction = null;
         this.casino = null;
+        this.bankruptedBy = {};      // кто кого разорил — для рейтинга
+        this.startedAt = 0;          // время начала партии
         this.pendingBuy = null;
         this.pendingTrades = {};            // toId -> {fromId, deal, timer}
         this.timer = null;
@@ -137,9 +148,13 @@ class Game {
             return true;
         }
         if (this.phase !== 'lobby' || this.order.length >= this.maxPlayers) return false;
+        /* имя приходит от клиента, поэтому чистим его здесь: пустое или
+           набранное невидимыми символами заменяем юзернеймом */
+        const nm = (cleanName(pr.name) || cleanName(pr.username) || 'Игрок').slice(0, 24);
+        const ini = cleanName(pr.initials).slice(0, 2).toUpperCase() || nm.slice(0, 2).toUpperCase();
         this.players[id] = {
-            id, name: String(pr.name || 'Игрок').slice(0, 24), socketId, online: true,
-            avatar: pr.avatar || null, initials: String(pr.initials || '').slice(0, 2).toUpperCase(),
+            id, name: nm, socketId, online: true,
+            avatar: pr.avatar || null, initials: ini,
             color: COLORS[this.order.length % COLORS.length],
             money: E.startingCash, pos: 0, alive: true, jailed: false, jailTries: 0,
         };
@@ -546,18 +561,44 @@ class Game {
         this.pendingPay = null;
         this.eliminate(pid, toId);
     }
+    /** Банкротство. Имущество уходит Банку, а вырученные за него деньги
+        вместе с остатком наличных получает кредитор — тот, кому банкрот не
+        смог заплатить. Раньше кредитору не доставалось ничего. */
     eliminate(pid, toId) {
         const p = this.players[pid];
+        if (!p || !p.alive) return;
         p.alive = false;
+
+        let payout = Math.max(0, p.money);           // остаток наличных
+        p.money = 0;
         Object.keys(this.owners).forEach(i => {
-            if (this.owners[i] === pid) {
-                if (toId) this.owners[i] = toId;
-                else { delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i]; }
+            if (this.owners[i] !== pid) return;
+            const pr = D.PROP[i];
+            if (pr) {
+                payout += (this.branches[i] || 0) * Math.floor((pr.branch || 0) / 2);
+                if (this.mortgaged[i] == null) payout += pr.mortgage;   // заложенное уже оплачено
             }
+            delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i];
         });
-        this.log(pid, toId ? `банкрот — активы переходят игроку @${this.players[toId].name}` : `банкрот — активы возвращаются Банку`);
+
+        if (toId && this.players[toId] && payout > 0) {
+            this.players[toId].money += payout;
+            this.log(pid, `банкрот — имущество уходит Банку, @${this.players[toId].name} получает $${fmt(payout)}`);
+        } else {
+            this.log(pid, `банкрот — имущество возвращается Банку`);
+        }
+        if (toId) this.bankruptedBy[pid] = toId;     // пригодится при подсчёте рейтинга
         this.pushState();
         if (!this.checkWin() && this.cur().id === pid) this.nextTurn();
+    }
+    /** Кнопка «Объявить банкротство» во время платежа. */
+    bankrupt(pid) {
+        const pp = this.pendingPay;
+        if (!pp || pp.pid !== pid || this.phase !== 'await-pay') return this.surrender(pid);
+        clearTimeout(this.timer);
+        const toId = pp.toId;
+        this.pendingPay = null;
+        this.eliminate(pid, toId);
     }
     surrender(pid) {
         const p = this.players[pid];
@@ -578,9 +619,37 @@ class Game {
             this.log(null, 'Игра завершена.');
             this.send('m2:ended', { winner: a[0] || null });
             this.pushState();
+            this.awardRating(a[0] || null);
             return true;
         }
         return false;
+    }
+
+    /** Подсчёт рейтинга после матча. Считаем на сервере: клиент присылает
+        только действия, поэтому подделать длительность или число раундов
+        он не может. Результат уходит отдельным событием, чтобы окно
+        начисления показалось всем участникам. */
+    async awardRating(winnerId) {
+        if (!rating || this.rated) return;
+        this.rated = true;
+        try {
+            const startedAt = this.startedAt || Date.now();
+            const players = this.order.map(id => {
+                const p = this.players[id];
+                let bk = 0;
+                for (const victim of Object.keys(this.bankruptedBy))
+                    if (this.bankruptedBy[victim] === id) bk++;
+                return { uid: id, name: p.name, winner: id === winnerId, bankruptedCount: bk };
+            });
+            const res = await rating.applyMatch({
+                players,
+                rounds: this.round || 0,
+                durationMs: Date.now() - startedAt,
+            });
+            this.send('m2:rating', res);
+        } catch (e) {
+            console.error('[mono2] рейтинг:', e.message);
+        }
     }
 
     /* ---------- залог / филиалы ---------- */
@@ -736,6 +805,9 @@ function publicRooms() {
     return out.sort((a, b) => b.players.length - a.players.length || b.createdAt - a.createdAt);
 }
 
+let rating = null;          // выставляется из index.js через setRating()
+function setRating(r) { rating = r; }
+
 function attach(io) {
     const nsp = io.of('/mono2');
     broadcastRooms = () => nsp.emit('m2:rooms', publicRooms());
@@ -848,6 +920,7 @@ function attach(io) {
         socket.on('m2:trade-answer',withGame((g, d) => g.tradeAnswer(uid, !!d?.accept)));
         socket.on('m2:pay',         withGame(g => g.pay(uid)));
         socket.on('m2:surrender',   withGame(g => g.surrender(uid)));
+        socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
         socket.on('m2:chat',        withGame((g, d) => {
             const text = String(d?.text || '').slice(0, 200);
             if (!text) return;
@@ -870,4 +943,4 @@ function attach(io) {
     return { rooms };
 }
 
-module.exports = { attach, Game, rooms, publicRooms };
+module.exports = { attach, Game, rooms, publicRooms, setRating };

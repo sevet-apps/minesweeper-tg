@@ -16,6 +16,7 @@
         phase: 'idle',           // await-roll | rolling | await-buy | auction | await-jail | ended
         doubles: 0,
         auction: null,           // {tile, price, queue:[ids], idx, starter}
+        bankruptedBy: {},        // кто кого разорил
         casino: null,            // {picked:[1..6], rolled}
         pendingBuy: null,        // tile idx
         timerEnd: 0, timerId: null,
@@ -542,16 +543,31 @@
         return null;
     }
 
+    /** Имущество банкрота уходит Банку, а вырученные деньги — кредитору. */
     function eliminate(pid, toId) {
         const p = S.players[pid];
+        if (!p || !p.alive) return;
         p.alive = false;
+
+        let payout = Math.max(0, p.money);
+        p.money = 0;
         Object.keys(S.owners).forEach(i => {
-            if (S.owners[i] === pid) {
-                if (toId) S.owners[i] = toId;         // кредитору
-                else { delete S.owners[i]; delete S.branches[i]; delete S.mortgaged[i]; }
+            if (S.owners[i] !== pid) return;
+            const pr = D.PROP[i];
+            if (pr) {
+                payout += (S.branches[i] || 0) * Math.floor((pr.branch || 0) / 2);
+                if (S.mortgaged[i] == null) payout += pr.mortgage;
             }
+            delete S.owners[i]; delete S.branches[i]; delete S.mortgaged[i];
         });
-        log(pid, toId ? `банкрот — активы переходят игроку @${S.players[toId].name}` : `банкрот — активы возвращаются Банку`);
+
+        if (toId && S.players[toId] && payout > 0) {
+            S.players[toId].money += payout;
+            log(pid, `банкрот — имущество уходит Банку, @${S.players[toId].name} получает $${fmt(payout)}`);
+        } else {
+            log(pid, `банкрот — имущество возвращается Банку`);
+        }
+        if (toId) S.bankruptedBy[pid] = toId;
         emit('state');
         checkWin() || (cur().id === pid ? nextTurn() : null);
     }

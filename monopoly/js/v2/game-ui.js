@@ -25,10 +25,16 @@
     const DIE_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
                        5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
     function dieFace(n, selected, dim) {
+        /* Точки рисуем внутри SVG: у него собственные пропорции, и грань
+           не схлопывается на узких экранах (грид с aspect-ratio там давал
+           нулевую высоту — кнопка была видна, а точки нет). */
         const pips = DIE_PIPS[n] || [];
-        const cells = Array.from({ length: 9 },
-            (_, k) => `<i class="${pips.indexOf(k) >= 0 ? 'pip' : ''}"></i>`).join('');
-        return `<button type="button" class="die${selected ? ' on' : ''}${dim ? ' dim' : ''}" data-n="${n}">${cells}</button>`;
+        const dots = pips.map(k => {
+            const cx = 16 + (k % 3) * 24, cy = 16 + Math.floor(k / 3) * 24;
+            return `<circle cx="${cx}" cy="${cy}" r="7"/>`;
+        }).join('');
+        return `<button type="button" class="die${selected ? ' on' : ''}${dim ? ' dim' : ''}" data-n="${n}">
+            <svg viewBox="0 0 64 64" aria-hidden="true">${dots}</svg></button>`;
     }
     function casinoWin(bet) {
         return casinoPick.length ? Math.round(bet * 6 / casinoPick.length) : 0;
@@ -57,6 +63,11 @@
         E.on('dice', (a, b) => global.DiceDock.roll(a, b));
         E.on('move', animateMove);
         E.on('teleport', animateTeleport);
+        /* итоги матча: окно с начислением рейтинга поверх затемнённого поля */
+        E.on('rating', data => {
+            setTimeout(() => global.RatingUI.show(
+                data, E.S, E.me(), () => global.Lobby.exitToLobby()), 900);
+        });
         E.on('state', () => {            // после залога/продажи кнопки оживают
             const ph = E.currentPhasePayload && E.currentPhasePayload();
             if (ph && lastPhase && ph.phase === lastPhase.phase) renderBar({ ...lastPhase, ...ph });
@@ -520,6 +531,7 @@
 
     /* ---------- О матче / Настройки ---------- */
     let hideSpectators = false;
+    let hideSystem = false;         // служебные строки чата (ходы, покупки, аренда)
     function assetsOf(pid) {
         const S = E.S;
         let v = S.players[pid].money;
@@ -579,7 +591,8 @@
                 </div>`;
         }
         wrap.querySelector('.mi-settings').innerHTML = `
-            <label class="mi-set"><span class="switch ${hideSpectators ? 'on' : ''}" id="hideSpec"></span> Скрыть сообщения зрителей</label>`;
+            <label class="mi-set"><span>Скрыть сообщения зрителей</span><span class="switch ${hideSpectators ? 'on' : ''}" id="hideSpec"></span></label>
+            <label class="mi-set"><span>Очистить служебные сообщения</span><span class="switch ${hideSystem ? 'on' : ''}" id="hideSys"></span></label>`;
         fillMatch();
 
         /* слайдер-«кнопка» под активной вкладкой */
@@ -676,7 +689,12 @@
         wrap.querySelector('.mi-close').onclick = closeMi;
         wrap.querySelector('#hideSpec')?.addEventListener('click', ev => {
             hideSpectators = !hideSpectators;
-            ev.target.classList.toggle('on', hideSpectators);
+            ev.currentTarget.classList.toggle('on', hideSpectators);
+        });
+        wrap.querySelector('#hideSys')?.addEventListener('click', ev => {
+            hideSystem = !hideSystem;
+            ev.currentTarget.classList.toggle('on', hideSystem);
+            applySystemFilter();
         });
         /* живое обновление времени, пока открыто */
         const upd = setInterval(() => {
@@ -734,6 +752,12 @@
         els.chat.scrollTop = els.chat.scrollHeight;
     }
     function esc(s) { return s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+    /** Служебные строки остаются в разметке — переключатель только прячет их,
+        поэтому обратно они возвращаются мгновенно, без перезагрузки истории. */
+    function applySystemFilter() {
+        els.chat.classList.toggle('no-sys', hideSystem);
+        els.chat.scrollTop = els.chat.scrollHeight;
+    }
     function rerenderChatVisibility() {
         els.chat.querySelectorAll('.usermsg').forEach(m => {
             m.style.display = E.S.ignored[m.dataset.author] ? 'none' : '';

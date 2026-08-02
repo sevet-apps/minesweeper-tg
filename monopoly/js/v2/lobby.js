@@ -12,29 +12,41 @@
     const QS = new URLSearchParams(location.search);
 
     /* ---------- профиль игрока ---------- */
-    function initials(first, last, uname) {
-        const a = (first || '').trim(), b = (last || '').trim();
-        if (a && b) return (a[0] + b[0]).toUpperCase();
-        if (a) return a.slice(0, 2).toUpperCase();
-        if (uname) return uname.slice(0, 2).toUpperCase();
-        return '??';
+    /** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
+        нулевой ширины, соединители, вариационные селекторы, пустой Брайль.
+        Обычные пробелы сюда не входят — их достаточно схлопнуть и обрезать. */
+    const INVISIBLE_CHARS = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff]/g;
+    function cleanName(s) {
+        return String(s == null ? '' : s).replace(INVISIBLE_CHARS, '').replace(/\s+/g, ' ').trim();
+    }
+
+    /** Инициалы для аватарки-заглушки: по имени, иначе по юзернейму. */
+    function initials(full, uname) {
+        const parts = cleanName(full).split(' ').filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        const u = cleanName(uname);
+        return u ? u.slice(0, 2).toUpperCase() : '??';
     }
     function profile() {
         const u = TG && TG.initDataUnsafe && TG.initDataUnsafe.user;
         if (u) {
-            const name = [u.first_name, u.last_name].filter(Boolean).join(' ')
-                || u.username || 'Игрок';
+            /* имя может состоять из невидимых символов — тогда берём юзернейм */
+            const full = cleanName([u.first_name, u.last_name].filter(Boolean).join(' '));
+            const uname = cleanName(u.username);
+            const name = full || uname || 'Игрок';
             return {
                 uid: 'tg' + u.id,
                 name: name.slice(0, 24),
+                username: uname || null,
                 avatar: u.photo_url || null,
-                initials: initials(u.first_name, u.last_name, u.username),
+                initials: initials(full, uname),
             };
         }
         let uid = localStorage.getItem('mono_uid');
         if (!uid) { uid = 'g' + Math.random().toString(36).slice(2, 10); localStorage.setItem('mono_uid', uid); }
-        const name = localStorage.getItem('mono_name') || 'Гость';
-        return { uid, name, avatar: null, initials: initials(name) };
+        const name = cleanName(localStorage.getItem('mono_name')) || 'Гость';
+        return { uid, name, username: null, avatar: null, initials: initials(name) };
     }
     const ME = profile();
 

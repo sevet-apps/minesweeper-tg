@@ -3301,12 +3301,20 @@
         <script>
         const tg = window.Telegram.WebApp; 
 
+        /** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
+            нулевой ширины, соединители, вариационные селекторы, пустой Брайль.
+            Обычные пробелы сюда не входят — их достаточно схлопнуть и обрезать. */
+        const INVISIBLE_CHARS = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff]/g;
+        function cleanName(s) {
+            return String(s == null ? '' : s).replace(INVISIBLE_CHARS, '').replace(/\s+/g, ' ').trim();
+        }
+
         /** Отображаемое имя: имя+фамилия, иначе юзернейм, иначе «Игрок».
-            У части аккаунтов Telegram имя пустое — тогда показываем @username. */
+            Имя может состоять из невидимых символов — такое считаем пустым. */
         function tgName(u) {
             if (!u) return 'Игрок';
-            const full = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
-            return full || u.username || 'Игрок';
+            const full = cleanName([u.first_name, u.last_name].filter(Boolean).join(' '));
+            return full || cleanName(u.username) || 'Игрок';
         }
 
         

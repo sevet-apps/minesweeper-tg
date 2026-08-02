@@ -567,7 +567,17 @@ async function loadBannedUsers() {
 }
 loadBannedUsers();
 
-async function notifyOwner(message) {
+/* ---------- рейтинг монополии ----------
+   Модуль сам считает очки и титулы, а проверки подозрительных серий
+   присылает сюда — отсюда они уходят владельцу с кнопками. */
+const MonopolyRating = require('./monopoly-rating');
+const monoRating = MonopolyRating.makeRating({
+    supabase,
+    notify: (text, keyboard) => notifyOwner(text, keyboard),
+});
+MonopolyV2.setRating(monoRating);
+
+async function notifyOwner(message, replyMarkup) {
     if (!BOT_TOKEN) return;
     try {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -576,7 +586,8 @@ async function notifyOwner(message) {
             body: JSON.stringify({
                 chat_id: OWNER_ID,
                 text: message,
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+                ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
             })
         });
     } catch(e) { console.error('Failed to notify owner:', e.message); }
@@ -2351,11 +2362,20 @@ function cleanupRoom(roomCode) {
 const TelegramBot = require('node-telegram-bot-api');
 
 
-/** Отображаемое имя игрока: имя+фамилия, иначе юзернейм, иначе «Игрок». */
+/** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
+    нулевой ширины, соединители, вариационные селекторы, пустой Брайль.
+    Обычные пробелы сюда не входят — их достаточно схлопнуть и обрезать. */
+const INVISIBLE_CHARS = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff]/g;
+function cleanName(s) {
+    return String(s == null ? '' : s).replace(INVISIBLE_CHARS, '').replace(/\s+/g, ' ').trim();
+}
+
+/** Отображаемое имя игрока: имя+фамилия, иначе юзернейм, иначе «Игрок».
+    Имя из одних невидимых символов считаем пустым. */
 function tgDisplayName(user) {
     if (!user) return 'Игрок';
-    const full = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
-    return full || user.username || 'Игрок';
+    const full = cleanName([user.first_name, user.last_name].filter(Boolean).join(' '));
+    return full || cleanName(user.username) || 'Игрок';
 }
 // Premium эмодзи ID
 const EMOJI = {
@@ -3216,6 +3236,29 @@ if (BOT_TOKEN) {
         const user = callbackQuery.from;
         const inlineMessageId = callbackQuery.inline_message_id;
         
+        /* Проверка игрока монополии: сообщение приходит владельцу в личку,
+           поэтому inline_message_id у него нет — обрабатываем до общей проверки. */
+        if (data && data.startsWith('mrb_')) {
+            if (String(user.id) !== OWNER_ID) {
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Нет доступа' }); } catch(e) {}
+                return;
+            }
+            const ban = data.startsWith('mrb_ban_');
+            const uid = data.replace(/^mrb_(ban|ok)_/, '');
+            const rec = await monoRating.setBanned(uid, ban);
+            const verdict = ban
+                ? `🚫 Забанен. Очки не начисляются ни ему, ни соперникам в его партиях.`
+                : `✅ Проверка пройдена. Всего проверок: ${rec.checked}.`;
+            try {
+                await bot.editMessageText(
+                    (callbackQuery.message.text || '') + '\n\n' + verdict,
+                    { chat_id: callbackQuery.message.chat.id, message_id: callbackQuery.message.message_id }
+                );
+            } catch (e) {}
+            try { await bot.answerCallbackQuery(callbackQuery.id, { text: ban ? 'Забанен' : 'Отпущен' }); } catch(e) {}
+            return;
+        }
+
         if (!inlineMessageId) {
             try { await bot.answerCallbackQuery(callbackQuery.id); } catch(e) {}
             return;

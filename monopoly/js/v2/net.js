@@ -47,6 +47,7 @@
         });
         sock.on('m2:chat', m => emit('chat', m));
         sock.on('m2:ended', d => emit('phase', { phase: 'ended', winner: d.winner }));
+        sock.on('m2:rating', d => emit('rating', d));
         sock.on('m2:rooms', list => emit('rooms', list));
         sock.on('m2:started', () => emit('started'));
         sock.on('disconnect', () => emit('disconnected'));
@@ -129,7 +130,7 @@
         casinoBet:     nums => send('m2:casino-bet', { nums }),
         casinoSkip:    () => send('m2:casino-skip'),
         pay:           () => send('m2:pay'),
-        declareBankrupt: () => send('m2:surrender'),
+        declareBankrupt: () => send('m2:bankrupt'),
         mortgage:      (pid, i) => send('m2:mortgage', { i }),
         unmortgage:    (pid, i) => send('m2:unmortgage', { i }),
         build:         (pid, i) => send('m2:build', { i }),

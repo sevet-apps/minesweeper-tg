@@ -339,7 +339,8 @@ img.qmark-img,
     object-fit: contain; display: block;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
 }
-.stars .star-img.hotel { width: 2em; height: 2em; }
+/* максимальный уровень — та же звезда, но в полтора раза крупнее */
+.stars .star-img.hotel { width: 1.72em; height: 1.72em; }
 .tw[data-side="top"] .stars    { bottom: 3px; left: 50%; transform: translateX(-50%); }
 .tw[data-side="bottom"] .stars { top: 3px; left: 50%; transform: translateX(-50%); }
 .tw[data-side="left"] .stars   { right: 3px; top: 50%; transform: translateY(-50%); flex-direction: column; }
@@ -502,6 +503,9 @@ img.qmark-img,
 .btn-secondary:hover { background: #f6f6f8; }
 .btn-danger { background: var(--red); color: #fff; }
 
+/* скрытые служебные сообщения */
+.chat-log.no-sys .msg:not(.usermsg) { display: none; }
+
 /* пока сумма добегает до новой — подкрашиваем: прибыль зелёным, трата красным */
 .player-money { transition: color .28s ease; }
 .player-money.up   { color: #34c759; }
@@ -519,29 +523,27 @@ img.qmark-img,
 /* грань кубика: сетка 3×3, точки только на нужных позициях */
 .die {
     flex: 1 1 0; min-width: 0; max-width: 48px;
-    aspect-ratio: 1;
-    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-    gap: 2px; padding: 6px;
+    display: block; padding: 5px;
     border: 2px solid transparent; border-radius: 11px;
     background: #f1f1f4;
     cursor: pointer;
     transition: border-color .15s, background .15s, transform .1s;
 }
-.die i { border-radius: 50%; }
-.die i.pip { background: #b9b9c2; transition: background .15s; }
+/* пропорции задаёт сам SVG — на узких экранах грань не схлопывается */
+.die svg { display: block; width: 100%; height: auto; fill: #b9b9c2; transition: fill .15s; }
 .die:hover { background: #e9e9ee; }
 .die:active { transform: scale(.95); }
 .die.on { border-color: var(--accent); background: #fff; }
-.die.on i.pip { background: #17171a; }
+.die.on svg { fill: #17171a; }
 
 /* после ставки: грани не кликаются, выпавшая подсвечивается */
 .dice-pick.rolling .die { cursor: default; }
 .die.dim { opacity: .55; }
 .die.flash { background: #e4e4ea; transform: scale(1.04); }
 .die.hit  { border-color: var(--green); background: #fff; opacity: 1; }
-.die.hit i.pip { background: #17171a; }
+.die.hit svg { fill: #17171a; }
 .die.miss { border-color: var(--red); background: #fff; opacity: 1; }
-.die.miss i.pip { background: #17171a; }
+.die.miss svg { fill: #17171a; }
 
 .casino-win { flex: 0 0 auto; line-height: 1.15; }
 .casino-win small { display: block; font-size: 13px; color: #6d6d76; }
@@ -551,7 +553,7 @@ img.qmark-img,
 @media (max-width: 520px) {
     .casino-row { gap: 10px; margin: 8px 2px 10px; }
     .dice-pick { gap: 5px; }
-    .die { padding: 4px; border-radius: 9px; gap: 1.5px; }
+    .die { padding: 4px; border-radius: 9px; }
     .casino-win small { font-size: 11.5px; }
     .casino-win b { font-size: 17px; }
 }
@@ -1070,3 +1072,124 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .tw { transition: opacity .2s, filter .2s; }
 .tw.dimmed { opacity: .34; filter: grayscale(.55); }
 .tw.deal-hl .tile { box-shadow: inset 0 0 0 3px var(--green); }
+
+/* ============================================================
+   Окно начисления рейтинга (конец матча)
+   ============================================================ */
+.rw-back {
+    position: fixed; inset: 0; z-index: 200;
+    display: grid; place-items: center;
+    padding: 16px;
+    background: rgba(8,8,10,.55);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    opacity: 0; transition: opacity .28s ease;
+}
+.rw-back.on { opacity: 1; }
+
+.rw-card {
+    position: relative;
+    width: min(360px, 100%);
+    max-height: calc(100vh - 32px); overflow-y: auto;
+    background: #fff; color: #17171a;
+    border-radius: 22px; padding: 26px 22px 20px;
+    box-shadow: 0 30px 90px rgba(0,0,0,.55);
+    text-align: center;
+    transform: translateY(14px) scale(.96);
+    transition: transform .34s cubic-bezier(.2,.8,.3,1);
+}
+.rw-back.on .rw-card { transform: none; }
+
+/* победитель */
+.rw-ava { position: relative; width: 96px; height: 96px; margin: 6px auto 12px; }
+.rw-ava-in {
+    width: 96px; height: 96px; border-radius: 50%; overflow: hidden;
+    background: #ececf1; display: grid; place-items: center;
+    font-size: 34px; font-weight: 700; color: #8a8a93;
+    box-shadow: 0 6px 22px rgba(0,0,0,.18);
+}
+.rw-ava-in img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* корона наклонена и лежит на самой аватарке */
+.rw-crown {
+    position: absolute; width: 52px; height: auto;
+    left: -12px; top: -16px;
+    transform: rotate(-24deg);
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,.32));
+    animation: rwCrown .9s cubic-bezier(.2,.9,.3,1) .15s backwards;
+    z-index: 2;
+}
+@keyframes rwCrown {
+    from { transform: rotate(-70deg) translateY(-30px) scale(.6); opacity: 0; }
+}
+.rw-name { font-size: 20px; font-weight: 700; }
+.rw-sub { font-size: 13.5px; color: #7c7c85; margin-top: 2px; }
+
+/* очки */
+.rw-gain { margin: 18px 0 2px; font-size: 15px; color: #7c7c85; }
+.rw-plus {
+    display: inline-block; font-size: 30px; font-weight: 800; color: #34c759;
+    animation: rwPlus .5s cubic-bezier(.2,.9,.3,1) .45s backwards;
+}
+@keyframes rwPlus { from { transform: scale(.4); opacity: 0; } }
+
+.rw-reasons { margin: 12px 0 4px; }
+.rw-reason {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13.5px; color: #55555e;
+    padding: 5px 2px; border-bottom: 1px solid #f0f0f3;
+}
+.rw-reason:last-child { border-bottom: none; }
+.rw-reason b { color: #34c759; }
+.rw-skip { font-size: 13px; color: #9a9aa2; line-height: 1.4; padding: 6px 0; }
+
+/* шкала титула */
+.rw-title { margin: 16px 0 4px; text-align: left; }
+.rw-title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.rw-tname { font-size: 15.5px; font-weight: 700; }
+.rw-tpts { font-size: 13px; color: #8a8a93; }
+.rw-tpts i { font-style: normal; font-weight: 700; color: #17171a; }
+.rw-bar {
+    position: relative; height: 12px; border-radius: 999px;
+    background: #ececed; overflow: hidden;
+}
+.rw-fill {
+    height: 100%; width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #5ac8fa, #00c6ff);
+    transition: width .95s cubic-bezier(.25,.9,.3,1);
+}
+.rw-fill.nofx { transition: none; }
+.rw-next { font-size: 12.5px; color: #8a8a93; margin-top: 8px; }
+.rw-next b { color: #55555e; }
+
+/* смена титула */
+.rw-card.promo .rw-tname { animation: rwPromo .7s cubic-bezier(.2,.9,.3,1); }
+@keyframes rwPromo {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.22); color: #f5a623; }
+    100% { transform: scale(1); }
+}
+
+/* летящие очки */
+.rw-dot {
+    position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%; background: #34c759;
+    box-shadow: 0 0 10px rgba(52,199,89,.65);
+    pointer-events: none; z-index: 3;
+}
+
+.rw-exit {
+    width: 100%; margin-top: 18px;
+    border: none; border-radius: 14px; padding: 13px;
+    background: #17171a; color: #fff;
+    font-size: 15px; font-weight: 650; cursor: pointer;
+    transition: opacity .15s;
+}
+.rw-exit:active { opacity: .85; }
+
+@media (max-width: 520px) {
+    .rw-card { padding: 22px 18px 16px; border-radius: 20px; }
+    .rw-ava, .rw-ava-in { width: 84px; height: 84px; }
+    .rw-crown { width: 46px; left: -10px; top: -14px; }
+    .rw-name { font-size: 18px; }
+    .rw-plus { font-size: 26px; }
+}
