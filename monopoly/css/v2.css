@@ -1112,8 +1112,8 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
    появляется вместе с ней — мягкое всплывание, без вылета */
 .rw-crown {
     position: absolute; width: 54px; height: auto;
-    left: -14px; top: -18px;
-    transform: rotate(-24deg);
+    left: -6px; top: -26px;
+    transform: rotate(-22deg);
     filter: drop-shadow(0 3px 6px rgba(0,0,0,.3));
     z-index: 2;
 }
@@ -1190,7 +1190,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 @media (max-width: 520px) {
     .rw-card { padding: 22px 18px 16px; border-radius: 20px; }
     .rw-ava, .rw-ava-in { width: 84px; height: 84px; }
-    .rw-crown { width: 46px; left: -10px; top: -14px; }
+    .rw-crown { width: 48px; left: -4px; top: -23px; }
     .rw-name { font-size: 18px; }
     .rw-plus { font-size: 26px; }
 }
