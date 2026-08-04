@@ -259,6 +259,7 @@ class Game {
         if (this.phase !== 'lobby' || byId !== this.hostId || this.order.length < 2) return;
         this.phase = 'idle';
         this.startedAt = Date.now();
+        this.sendOwner();          // партия началась — обновляем панель
         this.send('m2:started', { roomId: this.roomId });
         this.pushState();
         this.beginTurn();
