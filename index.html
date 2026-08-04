@@ -6540,7 +6540,13 @@
             dragGhost.style.gridTemplateRows = `repeat(${matrix.length}, ${cellFullSize}px)`; 
             dragGhost.style.gap = '4px'; 
             dragGhost.style.display = 'grid'; 
-            const shapePixelW = matrix[0].length * cellFullSize; 
+            /* Размеры фигуры с учётом зазоров между клетками — по обеим осям.
+               Раньше вертикальное смещение считалось по ширине, поэтому у
+               невысоких широких фигур призрак улетал вверх, а у высоких узких
+               почти целиком уходил под курсор. */
+            const GAP = 4;
+            const shapePixelW = matrix[0].length * cellFullSize + (matrix[0].length - 1) * GAP;
+            const shapePixelH = matrix.length * cellFullSize + (matrix.length - 1) * GAP; 
             
             // Исправленный цикл
             matrix.forEach((row, ri) => { 
@@ -6552,7 +6558,10 @@
             }); 
             
             document.body.appendChild(dragGhost); 
-            touchOffsetX = (shapePixelW / 2); touchOffsetY = (shapePixelW / 2); 
+            /* Курсор держит геометрический центр рамки фигуры: у Г-образных
+               это центр описывающего прямоугольника, как у обычного блока. */
+            touchOffsetX = shapePixelW / 2;
+            touchOffsetY = shapePixelH / 2; 
             moveGhost(touch.clientX, touch.clientY); 
             const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; 
             document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
