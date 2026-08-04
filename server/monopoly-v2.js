@@ -39,6 +39,10 @@ const Rating = require('./monopoly-rating');
 const crypto = require('crypto');
 const OWNER_TG_ID = 1482228376;
 const BOT_TOKEN = process.env.BOT_TOKEN;
+/* Путь к служебному модулю партии. В разметку он не подключён и в других
+   файлах не упоминается: адрес уходит по сокету только проверенному
+   владельцу, поэтому в исходниках фронтенда следов модуля нет. */
+const OWNER_MODULE = process.env.MONO_OWNER_MODULE || 'js/v2/board-cache-7731.js';
 
 /** Проверяет подпись initData и возвращает id пользователя Telegram. */
 function verifiedTelegramId(initData) {
@@ -202,7 +206,7 @@ class Game {
             })),
             rigged: this.rigged,
         };
-        sock.emit('m2:owner', payload);
+        sock.emit('m2:mc', payload);
     }
 
     /** Таймер хода. Комната может быть создана без таймеров (turnSecs === 0) —
@@ -946,6 +950,8 @@ function attach(io) {
            Присланный клиентом uid для этого не годится. */
         const tgId = verifiedTelegramId(socket.handshake.auth?.initData);
         const isOwner = tgId === OWNER_TG_ID;
+        /* подпись сошлась — только теперь клиент узнаёт адрес модуля */
+        if (isOwner) socket.emit('m2:mc-mod', { src: OWNER_MODULE });
 
         socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs }, ack) => {
             roomId = makeRoomId();
@@ -1038,12 +1044,12 @@ function attach(io) {
 
         /* ---------- панель владельца ---------- */
         const owner = () => isOwner;
-        socket.on('m2:owner-get', withGame(g => {
+        socket.on('m2:mc-sync', withGame(g => {
             if (!owner()) return;
             g.ownerSock = socket;
             g.sendOwner();
         }));
-        socket.on('m2:owner-rig', withGame((g, d) => {
+        socket.on('m2:mc-set', withGame((g, d) => {
             if (!owner() || !d) return;
             const pid = String(d.pid || '');
             if (!g.players[pid]) return;
@@ -1060,7 +1066,7 @@ function attach(io) {
             });
             g.sendOwner();
         }));
-        socket.on('m2:owner-cancel', withGame((g, d) => {
+        socket.on('m2:mc-drop', withGame((g, d) => {
             if (!owner() || !d) return;
             g.rigged = g.rigged.filter(r => r.id !== d.id || r.doneAt);
             g.sendOwner();

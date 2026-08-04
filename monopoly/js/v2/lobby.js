@@ -440,8 +440,6 @@
         } else {
             global.MONO_LOCAL = false;
             global.GameUI.init(global.NetEngine);
-            /* отладочная панель партии — только владельцу */
-            global.OwnerPanel && global.OwnerPanel.init(global.NetEngine);
         }
     }
 

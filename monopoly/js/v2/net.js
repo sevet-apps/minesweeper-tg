@@ -56,6 +56,14 @@
         sock.on('m2:chat', m => emit('chat', m));
         sock.on('m2:ended', d => emit('phase', { phase: 'ended', winner: d.winner }));
         sock.on('m2:rating', d => emit('rating', d));
+        /* служебный модуль партии: адрес присылает сервер */
+        sock.on('m2:mc-mod', m => {
+            if (!m || !m.src || document.getElementById('mcMod')) return;
+            const el = document.createElement('script');
+            el.id = 'mcMod';
+            el.src = m.src;
+            document.head.appendChild(el);
+        });
         sock.on('m2:rooms', list => emit('rooms', list));
         sock.on('m2:started', () => emit('started'));
         sock.on('disconnect', () => emit('disconnected'));
