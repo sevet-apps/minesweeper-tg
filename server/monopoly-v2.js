@@ -406,28 +406,31 @@ class Game {
         this.endStep(this.lastCtx);
     }
 
-    casinoPlay(byId, nums) {
+    casinoPlay(byId, nums, bet) {
         if (this.phase !== 'casino' || this.cur().id !== byId) return;
         const p = this.cur();
         const picked = [...new Set((Array.isArray(nums) ? nums : []).map(Number))]
             .filter(n => Number.isInteger(n) && n >= 1 && n <= 6).slice(0, 3);
-        if (!picked.length || p.money < E.casinoBet) return this.casinoSkip(byId);
+        /* Ставку называет игрок. Границы проверяем здесь: клиенту верить
+           нельзя — иначе можно прислать ставку больше своих денег. */
+        const stake = Math.min(Math.max(parseInt(bet, 10) || E.casinoBet, 100), p.money);
+        if (!picked.length || p.money < 100) return this.casinoSkip(byId);
 
         clearTimeout(this.timer);
         this.phase = 'casino-roll';
-        p.money -= E.casinoBet;
+        p.money -= stake;
         const rolled = 1 + rnd(6);
         this.casino = { picked, rolled };
         const list = picked.length === 1 ? String(picked[0])
             : picked.slice(0, -1).join(', ') + ' и ' + picked[picked.length - 1];
-        this.log(p.id, `ставит $${fmt(E.casinoBet)} на ${picked.length > 1 ? 'числа' : 'число'} ${list} и бросает кубик...`);
+        this.log(p.id, `ставит $${fmt(stake)} на ${picked.length > 1 ? 'числа' : 'число'} ${list} и бросает кубик...`);
         this.pushState();
-        this.send('m2:phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: E.casinoBet });
+        this.send('m2:phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: stake });
         this.send('m2:dice', { a: rolled, b: null, pid: p.id });   // один кубик, видят все
 
         setTimeout(() => {
             if (this.phase !== 'casino-roll') return;
-            const win = picked.includes(rolled) ? Math.round(E.casinoBet * 6 / picked.length) : 0;
+            const win = picked.includes(rolled) ? Math.round(stake * 6 / picked.length) : 0;
             if (win) {
                 p.money += win;
                 this.log(p.id, `выбрасывает ${rolled} и выигрывает $${fmt(win)}!`);
@@ -1028,7 +1031,7 @@ function attach(io) {
         socket.on('m2:auction',     withGame(g => g.toAuction(uid)));
         socket.on('m2:auc-raise',   withGame(g => g.aucRaise(uid)));
         socket.on('m2:auc-pass',    withGame(g => g.aucPass(uid)));
-        socket.on('m2:casino-bet',  withGame((g, d) => g.casinoPlay(uid, d && d.nums)));
+        socket.on('m2:casino-bet',  withGame((g, d) => g.casinoPlay(uid, d && d.nums, d && d.bet)));
         socket.on('m2:casino-skip', withGame(g => g.casinoSkip(uid)));
         socket.on('m2:jail-pay',    withGame(g => g.jailChoose(uid, 'pay')));
         socket.on('m2:jail-roll',   withGame(g => g.jailChoose(uid, 'roll')));

@@ -12,6 +12,11 @@
     }
 
     let net = null, open = false, data = { round: 0, players: [], rigged: [] };
+    /* Введённые значения храним отдельно: панель обновляется с сервера
+       каждые несколько секунд и перерисовывает разметку, из-за чего набранные
+       цифры пропадали прямо во время ввода. */
+    const draft = { dice: {}, round: '' };
+    let lastSig = '';
 
     const esc = s => String(s == null ? '' : s)
         .replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
@@ -52,7 +57,7 @@
         open = !open;
         const el = panel();
         el.classList.toggle('on', open);
-        if (open) refresh();
+        if (open) { render(true); refresh(); }   // сразу показываем то, что уже знаем
     }
 
     function refresh() {
@@ -61,9 +66,14 @@
     }
 
     /* ---------- отрисовка ---------- */
-    function render() {
+    function render(force) {
         const el = document.getElementById('mcP');
         if (!el || !open) return;
+        /* если с сервера ничего не изменилось, разметку не трогаем —
+           иначе поле теряет фокус и каретку прямо под пальцами */
+        const sig = JSON.stringify([data.round, data.players, data.rigged]);
+        if (!force && sig === lastSig) return;
+        lastSig = sig;
         el.querySelector('.mc-round').textContent = data.round || '—';
 
         const rows = (data.players || []).map(p => `
@@ -94,6 +104,22 @@
             </div>
             <div class="mc-hist">${hist}</div>`;
 
+        /* возвращаем набранное и запоминаем дальнейший ввод */
+        el.querySelectorAll('.mc-row').forEach(row => {
+            const pid = row.dataset.pid, cur = draft.dice[pid] || {};
+            const a = row.querySelector('.mc-a'), b = row.querySelector('.mc-b');
+            a.value = cur.a || '';
+            b.value = cur.b || '';
+            const save = () => {
+                draft.dice[pid] = { a: a.value.trim(), b: b.value.trim() };
+            };
+            a.addEventListener('input', save);
+            b.addEventListener('input', save);
+        });
+        const ri = el.querySelector('.mc-round-in');
+        ri.value = draft.round || '';
+        ri.addEventListener('input', () => { draft.round = ri.value.trim(); });
+
         el.querySelector('.mc-go').addEventListener('click', apply);
         el.querySelectorAll('.mc-x').forEach(b => b.addEventListener('click', () => {
             net.socket().emit('m2:mc-drop', { id: b.dataset.id });
@@ -103,19 +129,19 @@
     /* отправляем только заполненные строки */
     function apply() {
         const el = document.getElementById('mcP');
-        const roundIn = el.querySelector('.mc-round-in').value;
-        const round = parseInt(roundIn, 10) || data.round || 1;
+        const round = parseInt(draft.round, 10) || data.round || 1;
         let sent = 0;
         el.querySelectorAll('.mc-row').forEach(row => {
+            const pid = row.dataset.pid;
             const a = row.querySelector('.mc-a').value.trim();
             const b = row.querySelector('.mc-b').value.trim();
             if (!a && !b) return;
-            net.socket().emit('m2:mc-set', { pid: row.dataset.pid, a, b, round });
+            net.socket().emit('m2:mc-set', { pid, a, b, round });
             sent++;
         });
         if (sent) {
-            el.querySelectorAll('.mc-d').forEach(i => i.value = '');
-            el.querySelector('.mc-round-in').value = '';
+            draft.dice = {}; draft.round = '';
+            render(true);                    // разметку обновляем сами, с пустыми полями
         }
     }
 

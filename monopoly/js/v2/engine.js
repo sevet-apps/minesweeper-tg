@@ -210,25 +210,27 @@
         endStep(ctx);
     }
 
-    async function casinoPlay(nums, ctx) {
+    async function casinoPlay(nums, ctx, bet) {
         if (S.phase !== 'casino') return;
         const p = cur();
         const picked = [...new Set((nums || []).map(Number))]
             .filter(n => n >= 1 && n <= 6).slice(0, 3);
-        if (!picked.length || p.money < E.casinoBet) return casinoSkip(ctx);
+        /* ставку выбирает игрок: не меньше 100 и не больше наличных */
+        const stake = Math.min(Math.max(parseInt(bet, 10) || E.casinoBet, 100), p.money);
+        if (!picked.length || p.money < 100) return casinoSkip(ctx);
 
         clearTimeout(S.timerId);
         S.phase = 'casino-roll';
-        p.money -= E.casinoBet;
+        p.money -= stake;
         const rolled = 1 + rnd(6);
         S.casino = { picked, rolled };
-        log(p.id, `ставит $${fmt(E.casinoBet)} на ${picked.length > 1 ? 'числа' : 'число'} ${numsText(picked)} и бросает кубик...`);
+        log(p.id, `ставит $${fmt(stake)} на ${picked.length > 1 ? 'числа' : 'число'} ${numsText(picked)} и бросает кубик...`);
         emit('state');
-        emit('phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: E.casinoBet, ctx });
+        emit('phase', { phase: 'casino-roll', pid: p.id, picked, rolled, bet: stake, ctx });
 
         await emitAsync('dice', rolled, null);        // один настоящий кубик
 
-        const win = picked.includes(rolled) ? casinoPayout(picked.length) : 0;
+        const win = picked.includes(rolled) ? Math.round(stake * 6 / picked.length) : 0;
         if (win) {
             p.money += win;
             log(p.id, `выбрасывает ${rolled} и выигрывает $${fmt(win)}!`);
@@ -249,7 +251,7 @@
         if (S.phase !== 'casino') return;
         if (p.money < E.casinoBet * 2 || rnd(4) === 0) return casinoSkip(ctx);
         const pool = [1, 2, 3, 4, 5, 6].sort(() => Math.random() - .5);
-        casinoPlay(pool.slice(0, 1 + rnd(3)).sort(), ctx);
+        casinoPlay(pool.slice(0, 1 + rnd(3)).sort(), ctx, E.casinoBet);
     }
 
     function myBranchCount(pid) {
@@ -779,7 +781,7 @@
         auctionPass: () => auctionPass(S.auction && S.auction.queue[S.auction.idx]),
         jailPay: () => jailChoose('pay'),
         jailRoll: () => jailChoose('roll'),
-        casinoBet: (nums, ctx) => casinoPlay(nums, ctx),
+        casinoBet: (nums, ctx, bet) => casinoPlay(nums, ctx, bet),
         casinoSkip: ctx => casinoSkip(ctx),
         mortgage: doMortgage, unmortgage: doUnmortgage,
         pay, declareBankrupt, currentPhasePayload, liquidValue,

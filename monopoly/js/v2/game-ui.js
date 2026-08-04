@@ -19,6 +19,7 @@
     let els = {};
     let timerTick = null, lastPhase = null;
     let casinoPick = [];          // выбранные числа в казино
+    let casinoBet = null;         // введённая ставка (null = ещё не трогали)
     let casinoTick = null;        // «прокрутка» кубика после ставки
 
     /* грань кубика 3×3: точки на нужных позициях */
@@ -41,6 +42,17 @@
     }
     function casinoWin(bet) {
         return casinoPick.length ? Math.round(bet * 6 / casinoPick.length) : 0;
+    }
+    /** Ставка: своя, если ввели, иначе предложенная сервером (1000).
+        Ограничена наличными игрока и минимальной суммой. */
+    const CASINO_MIN = 100;
+    function betValue(ph, money) {
+        const base = casinoBet == null ? ph.bet : casinoBet;
+        const n = parseInt(base, 10);
+        if (!n || n < CASINO_MIN) return 0;
+        const stake = Math.min(n, money);
+        /* если денег меньше минимальной ставки, играть нельзя вовсе */
+        return stake >= CASINO_MIN ? stake : 0;
     }
 
     function init(engine) {
@@ -353,7 +365,9 @@
         const prev = lastPhase;
         lastPhase = ph;
         clearInterval(casinoTick);
-        if (ph.phase === 'casino' && (!prev || prev.phase !== 'casino')) casinoPick = [];
+        if (ph.phase === 'casino' && (!prev || prev.phase !== 'casino')) {
+            casinoPick = []; casinoBet = null;
+        }
         const S = E.S;
         const meId = E.me();
         const mine = ph.pid === meId;
@@ -428,6 +442,7 @@
             }
             case 'casino': {
                 if (mine) {
+                    const bet = betValue(ph, myMoney);
                     html = head('Джекпот') +
                         `<div class="service-desc">Выберите от 1 до 3 чисел и бросьте кубик.
                             Если вы угадаете выпавшее число, то получите выигрыш.</div>
@@ -437,10 +452,18 @@
                             <div class="dice-pick">${[1, 2, 3, 4, 5, 6]
                                 .map(n => dieFace(n, casinoPick.indexOf(n) >= 0)).join('')}</div>
                             <div class="casino-win"><small>Выигрыш</small>
-                                <b>${DS}${fmt(casinoWin(ph.bet))}</b></div>
+                                <b>${DS}${fmt(casinoWin(bet))}</b></div>
+                         </div>
+                         <div class="casino-bet">
+                            <label for="betInput">Ставка</label>
+                            <div class="casino-bet-in"><i class="dsign"></i>
+                                <input id="betInput" type="number" inputmode="numeric"
+                                       min="${CASINO_MIN}" max="${myMoney}" step="100"
+                                       value="${bet || ''}" placeholder="${ph.bet}"></div>
+                            <button class="casino-max" id="betMax" type="button">Всё</button>
                          </div>
                          <div class="service-actions">
-                            <button class="btn btn-primary" id="betBtn" ${casinoPick.length && afford(ph.bet) ? '' : 'disabled'}>Поставить <b>${DS}${fmt(ph.bet)}</b></button>
+                            <button class="btn btn-primary" id="betBtn" ${casinoPick.length && bet ? '' : 'disabled'}>Поставить <b>${DS}${fmt(bet || ph.bet)}</b></button>
                             <button class="btn btn-secondary" id="casinoSkipBtn">Отказаться</button>
                          </div>`;
                 } else { bar.classList.add('compact'); html = head(''); }
@@ -507,7 +530,27 @@
                 renderBar(lastPhase);
             });
         });
-        $('#betBtn')?.addEventListener('click', () => E.casinoBet(casinoPick.slice(), ph.ctx));
+        const betIn = $('#betInput');
+        if (betIn) {
+            betIn.addEventListener('input', () => {
+                casinoBet = betIn.value.trim();
+                /* пересчитываем выигрыш и кнопку, не трогая само поле */
+                const b = betValue(ph, myMoney);
+                const winEl = els.bar.querySelector('.casino-win b');
+                if (winEl) winEl.innerHTML = DS + fmt(casinoWin(b));
+                const go = $('#betBtn');
+                if (go) {
+                    go.disabled = !(casinoPick.length && b);
+                    go.innerHTML = 'Поставить <b>' + DS + fmt(b || ph.bet) + '</b>';
+                }
+            });
+        }
+        $('#betMax')?.addEventListener('click', () => {
+            casinoBet = String(myMoney);
+            renderBar(lastPhase);
+        });
+        $('#betBtn')?.addEventListener('click', () =>
+            E.casinoBet(casinoPick.slice(), ph.ctx, betValue(ph, myMoney)));
         $('#casinoSkipBtn')?.addEventListener('click', () => E.casinoSkip(ph.ctx));
         if (ph.phase === 'casino-roll' && mine) runCasinoRoll(ph);
         $('#endExitBtn')?.addEventListener('click', () => global.Lobby.exitToLobby());

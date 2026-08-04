@@ -147,7 +147,7 @@
         auctionPass:   () => send('m2:auc-pass'),
         jailPay:       () => send('m2:jail-pay'),
         jailRoll:      () => send('m2:jail-roll'),
-        casinoBet:     nums => send('m2:casino-bet', { nums }),
+        casinoBet:     (nums, ctx, bet) => send('m2:casino-bet', { nums, bet }),
         casinoSkip:    () => send('m2:casino-skip'),
         pay:           () => send('m2:pay'),
         declareBankrupt: () => send('m2:bankrupt'),
