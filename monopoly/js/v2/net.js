@@ -38,8 +38,16 @@
         sock.on('m2:log', l => emit('log', l));
         sock.on('m2:phase', ph => { lastPhase = ph; emit('phase', ph); });
         sock.on('m2:timer', t => { S.timerEnd = t.end; emit('timer', t.secs); });
-        sock.on('m2:dice', async ({ a, b }) => { await emitAsync('dice', a, b); });
-        sock.on('m2:move', async m => { await emitAsync('move', m); });
+        /* Сервер применяет эффект клетки только после нашего подтверждения,
+           поэтому досматриваем анимацию до конца и отвечаем. */
+        sock.on('m2:dice', async m => {
+            await emitAsync('dice', m.a, m.b);
+            if (m.seq && m.pid === myId) sock.emit('m2:anim-done', { seq: m.seq });
+        });
+        sock.on('m2:move', async m => {
+            await emitAsync('move', m);
+            if (m.seq && m.pid === myId) sock.emit('m2:anim-done', { seq: m.seq });
+        });
         sock.on('m2:teleport', async m => { await emitAsync('teleport', m); });
         sock.on('m2:trade-offer', o => {
             S.pendingOffer = o;
@@ -100,6 +108,10 @@
         if (b === 0 && ownsFullGroup(owner, t.group)) r *= 2;
         return r;
     }
+    /** Построен ли хоть один филиал на этой монополии (для кнопки залога). */
+    function groupHasBranches(group) {
+        return groupTiles(group).some(x => (S.branches[x.i] || 0) > 0);
+    }
     function liquidValue(pid) {
         let v = S.players[pid].money;
         for (const [i, o] of Object.entries(S.owners)) {
@@ -141,7 +153,7 @@
         chat:          (text, dmTo) => send('m2:chat', { text, dmTo }),
 
         /* локальные подсказки для интерфейса */
-        canBuild, canTrade, validTrade, rentFor, ownsFullGroup, liquidValue,
+        canBuild, canTrade, validTrade, rentFor, ownsFullGroup, liquidValue, groupHasBranches,
         botEvaluate: () => false,
         tradeValue: (tiles, money) => tiles.reduce((s, i) => s + D().TILES[i].price, 0) + (money || 0),
         currentPhasePayload: () => lastPhase,

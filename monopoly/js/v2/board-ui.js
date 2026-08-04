@@ -247,8 +247,10 @@
             /* всё, что не изменилось, не трогаем — иначе картинки звёзд и
                ценники пересоздаются на каждом снапшоте и мелькают */
             const label = labelFor(t, st);
+            /* именно значение, а не факт залога: иначе счётчик на замке
+               застывает — подпись не меняется и клетка не перерисовывается */
             const tileSig = [label, owner || '', (st.branches && st.branches[t.i]) || 0,
-                             mort != null ? 1 : 0,
+                             mort == null ? '-' : mort,
                              (st.selected && st.selected[t.i]) || '',
                              (st.players[owner] && st.players[owner].color) || ''].join('~');
             if (el.tileSig === tileSig) return;      // на клетке ничего не поменялось

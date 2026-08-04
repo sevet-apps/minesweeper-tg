@@ -506,7 +506,7 @@
         for (const i of Object.keys(S.owners)) {
             if (p.money >= pp.amount) break;
             if (S.owners[i] === pp.pid && S.mortgaged[i] == null && !(S.branches[i] > 0))
-                doMortgage(pp.pid, +i, true);
+                doMortgage(pp.pid, +i, true, true);   // вынужденно
         }
         if (p.money >= pp.amount) return pay();
         declareBankrupt();
@@ -516,7 +516,7 @@
             for (const i of Object.keys(S.owners)) {
                 if (p.money >= amount) break;
                 if (S.owners[i] === p.id && S.mortgaged[i] == null && !(S.branches[i] > 0))
-                    doMortgage(p.id, +i, true);
+                    doMortgage(p.id, +i, true, true);
             }
         }
         if (p.money >= amount) {
@@ -598,9 +598,16 @@
     }
 
     /* ---------- залог / выкуп / филиалы ---------- */
-    function doMortgage(pid, i, silent) {
+    /** Построен ли хоть один филиал на этой монополии. */
+    function groupHasBranches(group) {
+        return groupTiles(group).some(x => (S.branches[x.i] || 0) > 0);
+    }
+    function doMortgage(pid, i, silent, force) {
         const pr = D.PROP[i];
         if (S.owners[i] !== pid || S.mortgaged[i] != null || (S.branches[i] > 0)) return false;
+        /* пока на монополии кто-то стоит, закладывать её нельзя;
+           при вынужденной распродаже долга ограничение не действует */
+        if (!force && groupOccupied(D.TILES[i].group)) return false;
         S.players[pid].money += pr.mortgage;
         S.mortgaged[i] = E.mortgageRounds;
         if (!silent) log(pid, `закладывает **${D.TILES[i].name}**`);
@@ -649,6 +656,7 @@
     function endStep(ctx) {
         if (S.phase === 'ended') return;
         if (ctx && ctx.wasDouble && cur().alive && !cur().jailed) {
+            S.builtGroups = {};             // дубль — новый ход, лимит на постройку снимается
             S.phase = 'await-roll';
             emit('phase', { phase: 'await-roll', pid: cur().id });
             armTimer(() => doRoll());
@@ -775,7 +783,7 @@
         casinoSkip: ctx => casinoSkip(ctx),
         mortgage: doMortgage, unmortgage: doUnmortgage,
         pay, declareBankrupt, currentPhasePayload, liquidValue,
-        canBuild, build, sellBranch,
+        canBuild, groupHasBranches, build, sellBranch,
         surrender,
         applyTrade, validTrade, botEvaluate, tradeValue, answerTrade, canTrade,
         rentFor, ownsFullGroup,

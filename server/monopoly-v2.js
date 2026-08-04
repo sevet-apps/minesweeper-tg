@@ -96,6 +96,30 @@ class Game {
 
     /* ---------- рассылка ---------- */
     room() { return this.io.to(this.roomId); }
+    /** Ждём подтверждения от клиента ходящего игрока, что анимация доиграла.
+        Раньше сервер отмерял время «на глазок», и если бросок кубиков у игрока
+        затягивался, аренда списывалась ещё во время ходьбы фишки. Таймаут
+        оставлен страховкой на случай зависшей вкладки. */
+    waitAnim(pid, fallbackMs, fn) {
+        this.animSeq = (this.animSeq || 0) + 1;
+        const seq = this.animSeq;
+        let fired = false;
+        const go = () => {
+            if (fired || seq !== this.animSeq) return;
+            fired = true;
+            clearTimeout(this.animTimer);
+            this.animWait = null;
+            fn();
+        };
+        this.animWait = { seq, pid, go };
+        this.animTimer = setTimeout(go, fallbackMs);
+        return seq;
+    }
+    animDone(pid, seq) {
+        const w = this.animWait;
+        if (w && w.pid === pid && w.seq === seq) w.go();
+    }
+
     send(ev, data) {
         if (ev === 'm2:phase') this.lastPhase = data;   // пригодится вернувшемуся
         this.room().emit(ev, data);
@@ -197,28 +221,26 @@ class Game {
         clearTimeout(this.timer);
         this.phase = 'rolling';
         const a = 1 + rnd(6), b = 1 + rnd(6);
-        this.send('m2:dice', { a, b, pid: p.id });
         const dbl = a === b;
         if (dbl) this.doubles++;
-        setTimeout(() => {                        // время на анимацию у клиентов
+        const seq = this.waitAnim(p.id, 6000, () => {
             if (this.doubles >= 3) {
                 this.log(p.id, `выбрасывает ${a}:${b} третий дубль подряд и отправляется в тюрьму`);
                 return this.sendToJail(p);
             }
             this.log(p.id, `выбрасывает ${a}:${b}` + (dbl ? ' и получает ещё один ход, так как выпал дубль' : ''));
             this.moveBy(p, a + b, { diceSum: a + b, wasDouble: dbl });
-        }, 2300);
+        });
+        this.send('m2:dice', { a, b, pid: p.id, seq });
     }
 
     moveBy(p, steps, ctx) {
         const from = p.pos;
         const to = ((p.pos + steps) % 40 + 40) % 40;
-        this.send('m2:move', { pid: p.id, from, steps, to });
-        /* Клиент гоняет фишку по 215 мс на шаг плюс ~170 мс на посадку.
-           Ждём столько же, иначе состояние прилетает, пока фишка ещё в
-           воздухе, и деньги за аренду успевают обновиться раньше хода. */
-        const animMs = Math.min(2800, Math.abs(steps) * 215) + 260;
-        setTimeout(() => {
+        /* Эффект клетки применяем только когда фишка на неё встала:
+           клиент подтверждает окончание анимации сам. */
+        const fallback = Math.min(4000, Math.abs(steps) * 215) + 1500;
+        const seq = this.waitAnim(p.id, fallback, () => {
             p.pos = to;
             if (steps > 0 && to < from) {
                 p.money += E.lapBonus;
@@ -226,7 +248,8 @@ class Game {
             }
             this.pushState();
             this.landOn(p, ctx || {});
-        }, animMs);
+        });
+        this.send('m2:move', { pid: p.id, from, steps, to, seq });
     }
     moveTo(p, idx, ctx) {
         const steps = ((idx - p.pos) % 40 + 40) % 40;
@@ -552,7 +575,7 @@ class Game {
         for (const i of Object.keys(this.owners)) {
             if (p.money >= pp.amount) break;
             if (this.owners[i] === pp.pid && this.mortgaged[i] == null && !(this.branches[i] > 0))
-                this.mortgage(pp.pid, +i, true);
+                this.mortgage(pp.pid, +i, true, true);   // вынужденно — ограничения не действуют
         }
         if (p.money >= pp.amount) return this.pay(pp.pid);
         if (pp.toId) this.players[pp.toId].money += Math.max(0, p.money);
@@ -653,9 +676,17 @@ class Game {
     }
 
     /* ---------- залог / филиалы ---------- */
-    mortgage(pid, i, silent) {
+    /** Построен ли хоть один филиал на этой монополии. */
+    groupHasBranches(group) {
+        return this.groupTiles(group).some(x => (this.branches[x.i] || 0) > 0);
+    }
+    mortgage(pid, i, silent, force) {
         const pr = D.PROP[i];
         if (!pr || this.owners[i] !== pid || this.mortgaged[i] != null || (this.branches[i] > 0)) return false;
+        /* нельзя закладывать поле монополии, на которой стоят филиалы:
+           иначе получилась бы застройка при заложенной части группы.
+           При вынужденной распродаже долга ограничение не действует. */
+        if (!force && this.groupHasBranches(D.TILES[i].group)) return false;
         this.players[pid].money += pr.mortgage;
         this.mortgaged[i] = E.mortgageRounds;
         this.log(pid, `закладывает **${D.TILES[i].name}**`);
@@ -760,6 +791,7 @@ class Game {
         if (this.phase === 'ended') return;
         this.lastCtx = null;
         if (ctx && ctx.wasDouble && this.cur().alive && !this.cur().jailed) {
+            this.builtGroups = {};          // дубль — это новый ход, можно строить снова
             this.phase = 'await-roll';
             this.send('m2:phase', { phase: 'await-roll', pid: this.cur().id });
             this.arm(() => this.roll(this.cur().id));
@@ -921,6 +953,7 @@ function attach(io) {
         socket.on('m2:pay',         withGame(g => g.pay(uid)));
         socket.on('m2:surrender',   withGame(g => g.surrender(uid)));
         socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
+        socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq)));
         socket.on('m2:chat',        withGame((g, d) => {
             const text = String(d?.text || '').slice(0, 200);
             if (!text) return;

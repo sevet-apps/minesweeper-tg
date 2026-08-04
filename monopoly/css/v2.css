@@ -340,7 +340,7 @@ img.qmark-img,
     filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
 }
 /* максимальный уровень — та же звезда, но в полтора раза крупнее */
-.stars .star-img.hotel { width: 1.72em; height: 1.72em; }
+.stars .star-img.hotel { width: 1.01em; height: 1.01em; }
 .tw[data-side="top"] .stars    { bottom: 3px; left: 50%; transform: translateX(-50%); }
 .tw[data-side="bottom"] .stars { top: 3px; left: 50%; transform: translateX(-50%); }
 .tw[data-side="left"] .stars   { right: 3px; top: 50%; transform: translateY(-50%); flex-direction: column; }
@@ -789,6 +789,8 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .mi-ico { width: 19px; height: 19px; object-fit: contain; flex: 0 0 auto; display: block; }
 .mi-ico-svg { width: 19px; height: 19px; flex: 0 0 auto; display: block; }
 .mi-ico-fb { width: 19px; text-align: center; flex: 0 0 auto; }
+.pc-actions .act.disabled { opacity: .45; pointer-events: none; }
+.pc-actions .act small { display: block; font-size: 11.5px; opacity: .75; font-weight: 500; margin-top: 2px; }
 .pc-actions .act .mi-ico,
 .pc-actions .act .mi-ico-fb { display: inline-block; vertical-align: -4px; margin-right: 6px; }
 .star-inline { width: 1.05em; height: 1.05em; object-fit: contain; vertical-align: -.15em; }
@@ -1177,6 +1179,22 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     box-shadow: 0 0 10px rgba(52,199,89,.65);
     pointer-events: none; z-index: 3;
 }
+
+/* кнопки внизу окна */
+.rw-btns { display: flex; gap: 8px; margin-top: 18px; }
+.rw-btns .rw-exit, .rw-btns .rw-watch { margin-top: 0; flex: 1; }
+.rw-watch {
+    border: none; border-radius: 14px; padding: 13px;
+    background: #ececf1; color: #17171a;
+    font-size: 15px; font-weight: 650; cursor: pointer;
+    transition: opacity .15s;
+}
+.rw-watch:active { opacity: .85; }
+
+/* проигравший: без золотого ободка, спокойные тона */
+.rw-card.lose .rw-ava-in { box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+.rw-card.lose .rw-plus { color: #55555e; }
+.rw-card.lose .rw-reason b { color: #55555e; }
 
 .rw-exit {
     width: 100%; margin-top: 18px;

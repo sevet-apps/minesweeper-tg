@@ -66,7 +66,10 @@
         /* итоги матча: окно с начислением рейтинга поверх затемнённого поля */
         E.on('rating', data => {
             setTimeout(() => global.RatingUI.show(
-                data, E.S, E.me(), () => global.Lobby.exitToLobby()), 900);
+                data, E.S, E.me(),
+                () => global.Lobby.exitToLobby(),   // «Выйти в лобби»
+                () => {}                            // «Смотреть игру» — просто закрыть окно
+            ), 900);
         });
         E.on('state', () => {            // после залога/продажи кнопки оживают
             const ph = E.currentPhasePayload && E.currentPhasePayload();

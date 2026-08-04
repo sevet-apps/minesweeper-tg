@@ -122,8 +122,12 @@
                     actions += `<button class="act build">${star('gold')} Построить филиал <b>${DS}${fmt(pr.branch)}</b></button>`;
                 if (S.branches[i] > 0)
                     actions += `<button class="act sellb">Продать филиал <b>${DS}${fmt(Math.floor(pr.branch / 2))}</b></button>`;
-                if (!(S.branches[i] > 0))
-                    actions += `<button class="act mort danger">${ico('lock', '🔒')} Заложить поле <b>${DS}${fmt(pr.mortgage)}</b></button>`;
+                if (!(S.branches[i] > 0)) {
+                    /* пока на монополии есть филиалы, залог недоступен */
+                    const busy = E.groupHasBranches && E.groupHasBranches(D.TILES[i].group);
+                    actions += `<button class="act mort danger${busy ? ' disabled' : ''}">${ico('lock', '🔒')} Заложить поле <b>${DS}${fmt(pr.mortgage)}</b>${
+                        busy ? '<small>на монополии есть филиалы</small>' : ''}</button>`;
+                }
             }
         }
 
@@ -138,7 +142,8 @@
 
         card.querySelector('.build')?.addEventListener('click', () => { global.Engine.build(me, i); close(); });
         card.querySelector('.sellb')?.addEventListener('click', () => { global.Engine.sellBranch(me, i); close(); });
-        card.querySelector('.mort')?.addEventListener('click', () => { global.Engine.mortgage(me, i); close(); });
+        card.querySelector('.mort:not(.disabled)')?.addEventListener('click',
+            () => { global.Engine.mortgage(me, i); close(); });
         card.querySelector('.unmort')?.addEventListener('click', () => { global.Engine.unmortgage(me, i); close(); });
     }
 
@@ -150,10 +155,12 @@
         const self = pid === me;
         let items = '';
         if (self) {
-            /* своя карточка: профиль, сдаться и — в игре с ботами — выход */
+            /* своя карточка: профиль, сдаться и выход — выход нужен и выбывшему,
+               иначе из режима наблюдения не выбраться */
+            const alive = S.players[pid] && S.players[pid].alive;
             items += `<button class="mi profile">${ico('user', '👤')} Профиль</button>`;
-            items += `<button class="mi danger giveup"><span class="mi-ico-fb">✕</span> Сдаться</button>`;
-            if (global.MONO_LOCAL) items += `<button class="mi quit">${EXIT_SVG} Выйти</button>`;
+            if (alive) items += `<button class="mi danger giveup"><span class="mi-ico-fb">✕</span> Сдаться</button>`;
+            items += `<button class="mi quit">${EXIT_SVG} Выйти</button>`;
         } else {
             /* чужая карточка: только договор и игнор */
             const myTurn = E.canTrade(me);
@@ -195,10 +202,12 @@
         const card = openAt(`
             <div class="confirm">
                 <div class="c-ico">?</div>
-                <div class="c-txt"><b>Выйти из игры?</b><span>Матч с ботами не сохранится. Вернётесь в меню монополии.</span></div>
+                <div class="c-txt"><b>Точно выйти?</b><span>${global.MONO_LOCAL
+                    ? 'Матч с ботами не сохранится. Вернётесь в меню монополии.'
+                    : 'Вернётесь в меню монополии. В комнату можно будет зайти снова.'}</span></div>
                 <div class="c-btns">
                     <button class="btn btn-secondary cancel">Отмена</button>
-                    <button class="btn btn-danger ok">Выйти</button>
+                    <button class="btn btn-danger ok">Да</button>
                 </div>
             </div>`, null, 'confirm-card');
         card.querySelector('.cancel').addEventListener('click', close);

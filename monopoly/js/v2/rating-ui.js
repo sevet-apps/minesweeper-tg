@@ -24,13 +24,19 @@
         return `<span>${esc(ini).toUpperCase()}</span>`;
     }
 
-    /** Показывает окно. data — ответ сервера (m2:rating), S — состояние партии. */
-    function show(data, S, meId, onExit) {
+    /** Показывает окно. data — ответ сервера (m2:rating), S — состояние партии.
+        Победитель видит себя с короной, проигравший — свою карточку с итогом
+        и кнопкой вернуться к доске: очки у каждого свои. */
+    function show(data, S, meId, onExit, onWatch) {
         close();
-        const me = (data.players || []).find(p => p.uid === meId)
-                || (data.players || []).find(p => p.winner) || null;
-        const winner = (data.players || []).find(p => p.winner);
-        const wp = winner && S.players ? S.players[winner.uid] : null;
+        const list = data.players || [];
+        const me = list.find(p => p.uid === meId) || null;
+        const winner = list.find(p => p.winner) || null;
+        const iWon = !!(me && me.winner);
+        /* карточка всегда про себя; если меня в матче нет (зритель) — про победителя */
+        const hero = me || winner;
+        const heroP = hero && S.players ? S.players[hero.uid] : null;
+        const place = me && !iWon ? placeOf(list, me) : null;
 
         const t0 = me ? me.titleBefore : null;
         const t1 = me ? me.titleAfter : null;
@@ -46,11 +52,15 @@
         const wrap = document.createElement('div');
         wrap.className = 'rw-back';
         wrap.innerHTML = `
-            <div class="rw-card">
+            <div class="rw-card${iWon ? '' : ' lose'}">
                 <div class="rw-win">
-                    <div class="rw-ava">${crown()}<div class="rw-ava-in">${avatar(wp || {})}</div></div>
-                    <div class="rw-name">${esc(winner ? winner.name : '—')}</div>
-                    <div class="rw-sub">${winner && winner.uid === meId ? 'Вы победили!' : 'Победитель матча'}</div>
+                    <div class="rw-ava">${iWon ? crown() : ''}<div class="rw-ava-in">${avatar(heroP || {})}</div></div>
+                    <div class="rw-name">${esc(hero ? hero.name : '—')}</div>
+                    <div class="rw-sub">${
+                        iWon ? 'Вы победили!'
+                             : me ? `Вы выбыли${place ? ` · ${place} место` : ''}${
+                                    winner ? ` · победил ${esc(winner.name)}` : ''}`
+                                  : 'Победитель матча'}</div>
                 </div>
 
                 ${me ? `
@@ -70,7 +80,10 @@
                         : 'Максимальный титул'}</div>
                 </div>` : ''}
 
-                <button class="rw-exit">Выйти в лобби</button>
+                <div class="rw-btns">
+                    ${!iWon ? '<button class="rw-watch">Смотреть игру</button>' : ''}
+                    <button class="rw-exit">Выйти в лобби</button>
+                </div>
             </div>`;
         document.body.appendChild(wrap);
         requestAnimationFrame(() => wrap.classList.add('on'));
@@ -78,6 +91,12 @@
         wrap.querySelector('.rw-exit').addEventListener('click', () => {
             close();
             if (onExit) onExit();
+        });
+        /* «Смотреть игру» просто убирает окно — доска остаётся под ним,
+           выйти потом можно через меню своей карточки */
+        wrap.querySelector('.rw-watch')?.addEventListener('click', () => {
+            close();
+            if (onWatch) onWatch();
         });
 
         if (me) runAnimation(wrap, me, promoted);
@@ -170,6 +189,14 @@
                 fill: 'forwards',
             }).onfinish = () => dot.remove();
         }
+    }
+
+    /** Место игрока: победитель первый, дальше по очкам за матч. */
+    function placeOf(list, me) {
+        const order = [...list].sort((a, b) =>
+            (b.winner - a.winner) || (b.pointsAfter - a.pointsAfter));
+        const idx = order.findIndex(p => p.uid === me.uid);
+        return idx >= 0 ? idx + 1 : null;
     }
 
     function close() {
