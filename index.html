@@ -756,8 +756,10 @@
             font-weight: 900;
             font-size: 30px;
             line-height: 1;
-            color: #fff;
-            text-shadow: 0 2px 10px rgba(0,0,0,.55), 0 0 18px var(--ls-glow, rgba(255,255,255,.7));
+            /* число целиком в цвете поставленной фигуры, свечения нет —
+               только мягкая тень, чтобы цифры читались на светлых клетках */
+            color: var(--ls-color, #fff);
+            text-shadow: 0 2px 6px rgba(0,0,0,.45);
             transform: translate(-50%, -50%);
             animation: bbLineScore 1s cubic-bezier(.2,.9,.3,1) forwards;
             will-change: transform, opacity;
@@ -770,7 +772,7 @@
             70%  { opacity: 1; transform: translate(-50%,-58%) scale(1); }
             100% { opacity: 0; transform: translate(-50%,-115%) scale(.92); }
         }
-        body.lite-mode .bb-line-score { animation-duration: .7s; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+        body.lite-mode .bb-line-score { animation-duration: .7s; }
 
         .bb-combo-bar {
             display: flex;
@@ -6837,8 +6839,7 @@
             el.textContent = '+' + points;
             el.style.left = (sx / n) + 'px';
             el.style.top = (sy / n) + 'px';
-            const hex = COLOR_MAP[colorClass] || '#ffffff';
-            el.style.setProperty('--ls-glow', hexToRgba(hex, 0.85));
+            el.style.setProperty('--ls-color', COLOR_MAP[colorClass] || '#ffffff');
             document.body.appendChild(el);
             setTimeout(() => el.remove(), 1100);
         }
