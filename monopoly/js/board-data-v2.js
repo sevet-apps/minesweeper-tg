@@ -16,7 +16,7 @@
         jailFine: 500,
         turnSeconds: 70,
         luxuryTax: 1000,         // 💎 поле 36
-        incomeTaxPerBranch: 250, // 💵 поле 4: 250 за каждый построенный филиал
+        incomeTaxPerBranch: 125, // 💵 поле 4: 125 за каждый построенный филиал
         creditUnlockRounds: 20,
         casinoBet: 1000,         // ставка в казино (поле 20)
         casinoJackpot: 400,      // суперприз: шанс 1/6 независимо от исхода ставки
@@ -123,7 +123,7 @@
         { id:'toJail',   text:'Вас арестовали! В тюрьму',      effect:{ jail:true } },
         { id:'fwd3',     text:'Пройдите на 3 поля вперёд',     effect:{ moveBy:+3 } },
         { id:'back3',    text:'Вернитесь на 3 поля назад',     effect:{ moveBy:-3 } },
-        { id:'repairs',  text:'Ремонт: заплатите $250 за каждый построенный филиал', effect:{ perBranch:-250 } },
+        { id:'repairs',  text:'Ремонт: заплатите $125 за каждый построенный филиал', effect:{ perBranch:-250 } },
         { id:'birthday', text:'День рождения! Каждый игрок дарит вам $250', effect:{ fromEach:+250 } },
     ];
 

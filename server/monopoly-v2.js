@@ -32,6 +32,38 @@
 const path = require('path');
 const Rating = require('./monopoly-rating');
 
+/* Владелец проекта: только ему доступна отладочная панель партии.
+   ВАЖНО: uid из рукопожатия присылает клиент, подделать его тривиально,
+   поэтому право владельца подтверждается подписью Telegram initData —
+   её невозможно подделать, не зная токена бота. */
+const crypto = require('crypto');
+const OWNER_TG_ID = 1482228376;
+const BOT_TOKEN = process.env.BOT_TOKEN;
+
+/** Проверяет подпись initData и возвращает id пользователя Telegram. */
+function verifiedTelegramId(initData) {
+    if (!initData || !BOT_TOKEN) return null;
+    try {
+        const params = new URLSearchParams(initData);
+        const hash = params.get('hash');
+        if (!hash) return null;
+        params.delete('hash');
+        const check = Array.from(params.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}=${v}`)
+            .join('\n');
+        const secret = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+        const calc = crypto.createHmac('sha256', secret).update(check).digest('hex');
+        /* сравнение постоянного времени — чтобы нельзя было подбирать хеш побайтно */
+        const a = Buffer.from(calc, 'hex'), b = Buffer.from(hash, 'hex');
+        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+        const authDate = parseInt(params.get('auth_date'), 10);
+        if (!authDate || Date.now() / 1000 - authDate > 86400) return null;   // не старше суток
+        const user = JSON.parse(params.get('user') || '{}');
+        return user && user.id ? Number(user.id) : null;
+    } catch (e) { return null; }
+}
+
 /* Данные доски — общие с клиентом (тот же файл) */
 const dataModule = require(path.join(__dirname, '..', 'monopoly', 'js', 'board-data-v2.js'));
 const D = globalThis.MonopolyDataV2 || dataModule;
@@ -63,6 +95,7 @@ class Game {
         this.auction = null;
         this.casino = null;
         this.bankruptedBy = {};      // кто кого разорил — для рейтинга
+        this.rigged = [];            // отладка владельца: заданные броски
         this.startedAt = 0;          // время начала партии
         this.pendingBuy = null;
         this.pendingTrades = {};            // toId -> {fromId, deal, timer}
@@ -142,6 +175,36 @@ class Game {
     }
 
     /* ---------- таймер ---------- */
+    /** Достаёт запланированный бросок для игрока на текущий раунд
+        и вычёркивает его из списка — срабатывает один раз. */
+    takeRigged(pid) {
+        const k = this.rigged.findIndex(r =>
+            r.pid === pid && !r.doneAt && r.round <= this.round);
+        if (k < 0) return null;
+        const r = this.rigged[k];
+        r.doneAt = Date.now();
+        r.doneRound = this.round;
+        this.sendOwner();
+        return r;
+    }
+
+    /** Состояние панели — только владельцу.
+        Держим сам сокет, а не его id: искать по карте неймспейса лишнее
+        и ненадёжно (на реконнекте id меняется). */
+    sendOwner() {
+        const sock = this.ownerSock;
+        if (!sock || sock.disconnected) return;
+        const payload = {
+            round: this.round,
+            players: this.order.map(id => ({
+                id, name: this.players[id].name,
+                color: this.players[id].color, alive: this.players[id].alive,
+            })),
+            rigged: this.rigged,
+        };
+        sock.emit('m2:owner', payload);
+    }
+
     /** Таймер хода. Комната может быть создана без таймеров (turnSecs === 0) —
         тогда ход никто не обрывает, но событие всё равно шлём, чтобы клиент
         убрал обратный отсчёт. Значение secs у конкретных фаз (например 20 с на
@@ -220,7 +283,14 @@ class Game {
         const p = this.cur();
         clearTimeout(this.timer);
         this.phase = 'rolling';
-        const a = 1 + rnd(6), b = 1 + rnd(6);
+        let a = 1 + rnd(6), b = 1 + rnd(6);
+        /* Подкрутка владельца: если на этот раунд для игрока задан бросок,
+           берём его. Пустое значение остаётся случайным. */
+        const rig = this.takeRigged(p.id);
+        if (rig) {
+            if (rig.a) a = rig.a;
+            if (rig.b) b = rig.b;
+        }
         const dbl = a === b;
         if (dbl) this.doubles++;
         const seq = this.waitAnim(p.id, 6000, () => {
@@ -480,7 +550,14 @@ class Game {
             return this.roll(p.id);          // сразу бросаем
         }
         this.phase = 'rolling';
-        const a = 1 + rnd(6), b = 1 + rnd(6);
+        let a = 1 + rnd(6), b = 1 + rnd(6);
+        /* Подкрутка владельца: если на этот раунд для игрока задан бросок,
+           берём его. Пустое значение остаётся случайным. */
+        const rig = this.takeRigged(p.id);
+        if (rig) {
+            if (rig.a) a = rig.a;
+            if (rig.b) b = rig.b;
+        }
         this.send('m2:dice', { a, b, pid: p.id });
         setTimeout(() => {
             if (a === b) {
@@ -865,6 +942,10 @@ function attach(io) {
     nsp.on('connection', socket => {
         let roomId = null;
         const uid = String(socket.handshake.auth?.uid || socket.id);
+        /* Право на отладочную панель — только по проверенной подписи Telegram.
+           Присланный клиентом uid для этого не годится. */
+        const tgId = verifiedTelegramId(socket.handshake.auth?.initData);
+        const isOwner = tgId === OWNER_TG_ID;
 
         socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs }, ack) => {
             roomId = makeRoomId();
@@ -954,6 +1035,36 @@ function attach(io) {
         socket.on('m2:surrender',   withGame(g => g.surrender(uid)));
         socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
         socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq)));
+
+        /* ---------- панель владельца ---------- */
+        const owner = () => isOwner;
+        socket.on('m2:owner-get', withGame(g => {
+            if (!owner()) return;
+            g.ownerSock = socket;
+            g.sendOwner();
+        }));
+        socket.on('m2:owner-rig', withGame((g, d) => {
+            if (!owner() || !d) return;
+            const pid = String(d.pid || '');
+            if (!g.players[pid]) return;
+            const clamp = v => {
+                const n = parseInt(v, 10);
+                return (n >= 1 && n <= 6) ? n : null;
+            };
+            const round = Math.max(g.round, parseInt(d.round, 10) || g.round);
+            g.rigged.push({
+                id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                pid, name: g.players[pid].name,
+                a: clamp(d.a), b: clamp(d.b),
+                round, at: Date.now(), doneAt: 0,
+            });
+            g.sendOwner();
+        }));
+        socket.on('m2:owner-cancel', withGame((g, d) => {
+            if (!owner() || !d) return;
+            g.rigged = g.rigged.filter(r => r.id !== d.id || r.doneAt);
+            g.sendOwner();
+        }));
         socket.on('m2:chat',        withGame((g, d) => {
             const text = String(d?.text || '').slice(0, 200);
             if (!text) return;

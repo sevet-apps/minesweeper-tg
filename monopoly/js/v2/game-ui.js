@@ -28,10 +28,13 @@
         /* Точки рисуем внутри SVG: у него собственные пропорции, и грань
            не схлопывается на узких экранах (грид с aspect-ratio там давал
            нулевую высоту — кнопка была видна, а точки нет). */
+        /* Сетка 3×3 в поле 64: центры точек по 16 / 32 / 48, поля по краям
+           одинаковые. Раньше шаг был 24, и третьи столбец и ряд уезжали
+           за границу viewBox — грань выглядела смещённой вправо вниз. */
         const pips = DIE_PIPS[n] || [];
         const dots = pips.map(k => {
-            const cx = 16 + (k % 3) * 24, cy = 16 + Math.floor(k / 3) * 24;
-            return `<circle cx="${cx}" cy="${cy}" r="7"/>`;
+            const cx = 16 + (k % 3) * 16, cy = 16 + Math.floor(k / 3) * 16;
+            return `<circle cx="${cx}" cy="${cy}" r="7.5"/>`;
         }).join('');
         return `<button type="button" class="die${selected ? ' on' : ''}${dim ? ' dim' : ''}" data-n="${n}">
             <svg viewBox="0 0 64 64" aria-hidden="true">${dots}</svg></button>`;

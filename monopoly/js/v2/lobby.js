@@ -233,7 +233,12 @@
     }
     function tryConnect(url) {
         return new Promise((resolve, reject) => {
-            const s = net().connect(url, { uid: ME.uid });
+            /* initData отдаём серверу как есть: он проверит подпись Telegram
+               и только по ней решит, показывать ли отладочную панель. */
+            const s = net().connect(url, {
+                uid: ME.uid,
+                initData: (TG && TG.initData) || '',
+            });
             net().setMe(ME.uid);
             const done = ok => {
                 clearTimeout(t);
@@ -435,6 +440,8 @@
         } else {
             global.MONO_LOCAL = false;
             global.GameUI.init(global.NetEngine);
+            /* отладочная панель партии — только владельцу */
+            global.OwnerPanel && global.OwnerPanel.init(global.NetEngine);
         }
     }
 
