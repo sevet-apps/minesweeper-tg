@@ -276,6 +276,14 @@
         } 
         
         .back-btn { color: var(--accent); font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 4px; cursor: pointer; } 
+        /* Block Blast: «Меню» и «Лучший» — одна строка, шкала комбо строкой ниже.
+           Раскладка задана явными строками, а не выравниванием колонки, чтобы
+           кнопка не съезжала при изменении высоты шкалы или плашки ×1.5. */
+        .bb-top-bar { flex-direction: column; align-items: stretch; gap: 6px; }
+        .bb-tb-row { display: flex; align-items: center; justify-content: space-between; }
+        .bb-tb-row2 { justify-content: flex-end; gap: 8px; }
+        .bb-best { font-weight: 700; font-size: 18px; }
+
         .game-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding-bottom: 20px; position: relative; width: 100%; flex-direction: column; }
 
         .tab-bar { 
@@ -739,6 +747,31 @@
 
         /* Combo buffer bar — square brick segments, always visible, shows how
            many no-line moves remain before the combo streak resets. */
+        /* Очки за закрытую линию: возникают резко прямо на месте фигуры,
+           подпрыгивают и тают. */
+        .bb-line-score {
+            position: fixed;
+            z-index: 10500;
+            pointer-events: none;
+            font-weight: 900;
+            font-size: 30px;
+            line-height: 1;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0,0,0,.55), 0 0 18px var(--ls-glow, rgba(255,255,255,.7));
+            transform: translate(-50%, -50%);
+            animation: bbLineScore 1s cubic-bezier(.2,.9,.3,1) forwards;
+            will-change: transform, opacity;
+        }
+        .bb-line-score.big { font-size: 38px; }
+        @keyframes bbLineScore {
+            0%   { opacity: 0; transform: translate(-50%,-50%) scale(.35); }
+            14%  { opacity: 1; transform: translate(-50%,-50%) scale(1.28); }
+            28%  { transform: translate(-50%,-50%) scale(1); }
+            70%  { opacity: 1; transform: translate(-50%,-58%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%,-115%) scale(.92); }
+        }
+        body.lite-mode .bb-line-score { animation-duration: .7s; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+
         .bb-combo-bar {
             display: flex;
             gap: 5px;
@@ -772,10 +805,12 @@
             transform: scaleX(1);
             opacity: 1;
         }
-        /* Draining: shrink toward the LEFT edge (origin right) for a nice
-           right→left emptying feel. */
+        /* Опустошение: заливка ужимается к ЛЕВОМУ краю, поэтому правая
+           кромка уезжает влево — волна идёт справа налево.
+           (Было origin: right — заливка схлопывалась вправо, и визуально
+           волна шла слева направо.) */
         .bb-combo-seg.draining::after {
-            transform-origin: right center;
+            transform-origin: left center;
             transform: scaleX(0);
             opacity: 0;
             transition: transform 0.5s cubic-bezier(0.5,0,0.75,0), opacity 0.4s ease 0.1s;
@@ -3044,7 +3079,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"><div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div></div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -6711,7 +6746,12 @@
                 reportGameMove('bb_best_score', { matrix: dragData.matrix, r: dragData.validPos.r, c: dragData.validPos.c });
                 document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
                 const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
-                const linesCleared = checkLines(dragData.color); 
+                /* координаты клеток, куда легла фигура — там и покажем очки */
+                const placedCells = [];
+                dragData.matrix.forEach((row, i) => row.forEach((v, j) => {
+                    if (v) placedCells.push({ r: dragData.validPos.r + i, c: dragData.validPos.c + j });
+                }));
+                const linesCleared = checkLines(dragData.color, placedCells); 
                 if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } else { updateComboBar(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } 
                 else { if(bbShapes.every(s => s === null)) spawnShapes(); } 
             } 
@@ -6721,7 +6761,7 @@
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); bbPlayPlace(); let placedCount = 0; 
             for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = getCellFast(r+i, c+j); cell.classList.add('no-transition'); cell.classList.add('filled', color, 'place-pop'); cell.style.backgroundColor = ''; setTimeout(() => { cell.classList.remove('no-transition', 'place-pop'); }, 150); placedCount++; } } } addScore(placedCount); 
         }
-        function checkLines(triggerColor) { 
+        function checkLines(triggerColor, placedCells) { 
             let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
             for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
             for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } 
@@ -6769,6 +6809,7 @@
                         showComboPopup(`X${kThisMove} LINES!`);
                     }
                     addScore(points); 
+                    showLineScore(points, placedCells, triggerColor);
                     saveBBState(); 
                     setTimeout(checkAllClear, 50); 
                     checkGameOver(); 
@@ -6776,6 +6817,32 @@
                 return totalCleared; 
             } return 0; 
         }
+        /** Очки за закрытие линий — прямо на месте поставленной фигуры.
+            Точку берём из клеток, куда лёг блок: так число появляется там,
+            куда игрок только что смотрел. */
+        function showLineScore(points, cells, colorClass) {
+            if (!points || !cells || !cells.length) return;
+            let sx = 0, sy = 0, n = 0;
+            cells.forEach(({ r, c }) => {
+                const cell = getCellFast(r, c);
+                if (!cell) return;
+                const b = cell.getBoundingClientRect();
+                sx += b.left + b.width / 2;
+                sy += b.top + b.height / 2;
+                n++;
+            });
+            if (!n) return;
+            const el = document.createElement('div');
+            el.className = 'bb-line-score' + (points >= 500 ? ' big' : '');
+            el.textContent = '+' + points;
+            el.style.left = (sx / n) + 'px';
+            el.style.top = (sy / n) + 'px';
+            const hex = COLOR_MAP[colorClass] || '#ffffff';
+            el.style.setProperty('--ls-glow', hexToRgba(hex, 0.85));
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1100);
+        }
+
         function fireNeonParticles(row, col, colorClass) {
             // Лёгкая вспышка линии через один CSS-элемент вместо confetti canvas
             const hex = COLOR_MAP[colorClass] || '#ffffff';
