@@ -99,6 +99,9 @@
         const ph0 = E.currentPhasePayload && E.currentPhasePayload();
         if (ph0) renderBar(ph0);
 
+        /* кнопка эмодзи прямо в строке ввода */
+        if (global.Emoji) global.Emoji.mount(els.input.parentElement, els.input);
+
         els.input.addEventListener('keydown', e => {
             if (e.key !== 'Enter') return;
             const v = e.target.value.trim(); if (!v) return;
@@ -796,11 +799,14 @@
         d.className = 'msg usermsg';
         d.dataset.author = pid;
         d.innerHTML = `<span class="nick-pill" style="--nc:${p.color}">${p.name}</span>
-            <span class="utext">${dmTo ? `<span class="dm-tag">лично для ${E.S.players[dmTo].name}:</span>` : ''}${esc(text)}</span>`;
+            <span class="utext">${dmTo ? `<span class="dm-tag">лично для ${E.S.players[dmTo].name}:</span>` : ''}${emo(esc(text))}</span>`;
         els.chat.appendChild(d);
         els.chat.scrollTop = els.chat.scrollHeight;
     }
     function esc(s) { return s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+    /** Эмодзи в сообщениях — картинками, чтобы вид был одинаковым везде.
+        Вызывается только после esc(), поэтому чужую разметку не пропустит. */
+    function emo(html) { return global.Emoji ? global.Emoji.render(html) : html; }
     /** Служебные строки остаются в разметке — переключатель только прячет их,
         поэтому обратно они возвращаются мгновенно, без перезагрузки истории. */
     function applySystemFilter() {

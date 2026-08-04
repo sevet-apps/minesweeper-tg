@@ -632,6 +632,7 @@ img.qmark-img,
 .chat-input-row {
     flex: 0 0 auto;
     margin-top: 8px;
+    position: relative;          /* кнопка эмодзи стоит внутри строки */
 }
 .chat-input {
     width: 100%;
@@ -646,6 +647,63 @@ img.qmark-img,
 }
 .chat-input:focus { border-color: #55555e; }
 .chat-input::placeholder { color: #77777f; }
+/* место под кнопку, чтобы текст под неё не заезжал */
+.chat-input-row .chat-input { padding-right: 44px; }
+
+/* ---------- эмодзи ---------- */
+.emo {
+    width: 1.15em; height: 1.15em;
+    vertical-align: -.22em;
+    object-fit: contain;
+    display: inline-block;
+}
+.emo.big { width: 26px; height: 26px; vertical-align: middle; }
+
+.emo-btn {
+    position: absolute; right: 8px; top: 50%;
+    transform: translateY(-50%);
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border: none; border-radius: 50%;
+    background: none; color: #77777f;
+    cursor: pointer; padding: 0;
+    transition: color .18s, background .18s;
+}
+.emo-btn svg { width: 21px; height: 21px; }
+.emo-btn:hover { color: #a5a5ae; background: rgba(255,255,255,.06); }
+.emo-btn.on { color: var(--accent); background: rgba(90,200,250,.14); }
+
+/* панель разворачивается из кнопки: вниз-вправо к её углу */
+.emo-pop {
+    position: absolute; right: 4px; bottom: calc(100% + 8px);
+    z-index: 50;
+    width: min(288px, calc(100% - 8px));
+    background: #26262c;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 14px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.5);
+    padding: 10px;
+    opacity: 0; visibility: hidden;
+    transform: scale(.82) translateY(10px);
+    transform-origin: bottom right;
+    transition: opacity .17s ease, transform .21s cubic-bezier(.2,.9,.3,1), visibility .21s;
+}
+.emo-pop.on { opacity: 1; visibility: visible; transform: none; }
+
+.emo-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    max-height: 210px; overflow-y: auto;
+}
+.emo-cell {
+    border: none; background: none; border-radius: 9px;
+    padding: 5px 0; cursor: pointer; line-height: 0;
+    display: grid; place-items: center;
+    transition: background .14s, transform .1s;
+}
+.emo-cell:hover { background: rgba(255,255,255,.09); }
+.emo-cell:active { transform: scale(.88); }
 
 /* якорь прокрутки вниз */
 .scroll-down {
@@ -1049,6 +1107,12 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     .btn { padding: 10px 10px; font-size: 13.5px; border-radius: 10px; }
     .chat-log { font-size: 12.5px; gap: 6px; }
     .chat-input { font-size: 16px; padding: 10px 12px; }  /* 16px — iOS не зумит */
+    .chat-input-row .chat-input { padding-right: 40px; }
+    .emo-btn { right: 6px; width: 28px; height: 28px; }
+    .emo-btn svg { width: 19px; height: 19px; }
+    .emo-pop { width: min(258px, calc(100vw - 40px)); padding: 8px; }
+    .emo-grid { gap: 3px; max-height: 176px; }
+    .emo.big { width: 24px; height: 24px; }
     .msg.usermsg .nick-pill { font-size: 11px; padding: 2px 7px; }
 
     /* карточки — всегда по центру, без клона-якоря сбоку */
