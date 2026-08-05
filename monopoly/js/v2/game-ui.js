@@ -101,6 +101,7 @@
 
         /* кнопка эмодзи прямо в строке ввода */
         if (global.Emoji) global.Emoji.mount(els.input.parentElement, els.input);
+        keepInputVisible(els.input);
 
         els.input.addEventListener('keydown', e => {
             if (e.key !== 'Enter') return;
@@ -192,6 +193,7 @@
             const total = Math.abs(steps);
             const hop = () => {
                 k++;
+                if (global.SFX) global.SFX.step(k - 1, total);   // тик на каждую клетку
                 if (k === total) {                        // последний шаг — без подскока
                     ghost.style.animationName = 'none';
                     ghost.style.marginTop = '0px';
@@ -204,6 +206,7 @@
                 if (k < total) setTimeout(hop, per);
                 else setTimeout(() => {
                     ghost.classList.add('land');          // мягкая посадка
+                    if (global.SFX) global.SFX.land();
                     setTimeout(finish, 150);
                 }, per + 20);
             };
@@ -644,7 +647,8 @@
         }
         wrap.querySelector('.mi-settings').innerHTML = `
             <label class="mi-set"><span>Скрыть сообщения зрителей</span><span class="switch ${hideSpectators ? 'on' : ''}" id="hideSpec"></span></label>
-            <label class="mi-set"><span>Очистить служебные сообщения</span><span class="switch ${hideSystem ? 'on' : ''}" id="hideSys"></span></label>`;
+            <label class="mi-set"><span>Очистить служебные сообщения</span><span class="switch ${hideSystem ? 'on' : ''}" id="hideSys"></span></label>
+            <label class="mi-set"><span>Звуки игры</span><span class="switch ${global.SFX && !global.SFX.isMuted() ? 'on' : ''}" id="sndOn"></span></label>`;
         fillMatch();
 
         /* слайдер-«кнопка» под активной вкладкой */
@@ -743,6 +747,13 @@
             hideSpectators = !hideSpectators;
             ev.currentTarget.classList.toggle('on', hideSpectators);
         });
+        wrap.querySelector('#sndOn')?.addEventListener('click', ev => {
+            if (!global.SFX) return;
+            const on = global.SFX.isMuted();          // было выключено — включаем
+            global.SFX.setMuted(!on);
+            ev.currentTarget.classList.toggle('on', on);
+            if (on) global.SFX.tap();                 // сразу слышно, что включилось
+        });
         wrap.querySelector('#hideSys')?.addEventListener('click', ev => {
             hideSystem = !hideSystem;
             ev.currentTarget.classList.toggle('on', hideSystem);
@@ -779,6 +790,7 @@
 
     /* ---------- чат ---------- */
     function addLog({ pid, text }) {
+        sfxForLog(text);
         const d = document.createElement('div');
         d.className = 'msg';
         d.innerHTML = text
@@ -789,6 +801,62 @@
         els.chat.appendChild(d);
         els.chat.scrollTop = els.chat.scrollHeight;
     }
+    /** Клавиатура на телефоне закрывает нижнюю часть экрана. Страница
+        зафиксирована, поэтому сдвигаем саму игру ровно настолько, чтобы поле
+        ввода осталось видно, и возвращаем всё назад при потере фокуса.
+        Заодно гасим любые попытки системы прокрутить документ. */
+    function keepInputVisible(input) {
+        if (!input) return;
+        const vv = global.visualViewport;
+        const app = document.querySelector('.app');
+        let focused = false;
+
+        const unscroll = () => {
+            if (global.scrollY || global.scrollX) global.scrollTo(0, 0);
+            const se = document.scrollingElement;
+            if (se && se.scrollTop) se.scrollTop = 0;
+        };
+        const adjust = () => {
+            unscroll();
+            if (!app) return;
+            if (!focused || !vv) { app.style.marginTop = ''; return; }
+            const r = input.getBoundingClientRect();
+            const over = r.bottom - vv.height + 12;      // насколько поле ушло под клавиатуру
+            /* сдвигаем отступом, а не transform: transform сделал бы .app
+               точкой отсчёта для вложенных fixed-элементов (панель договора
+               на телефоне), и они бы поехали вместе с игрой */
+            if (over > 0) {
+                const cur = parseFloat(app.style.marginTop) || 0;
+                app.style.marginTop = Math.max(-320, cur - over) + 'px';
+            }
+        };
+
+        input.addEventListener('focus', () => {
+            focused = true;
+            [0, 120, 300, 550].forEach(t => setTimeout(adjust, t));   // клавиатура выезжает не сразу
+        });
+        input.addEventListener('blur', () => {
+            focused = false;
+            [0, 120, 300].forEach(t => setTimeout(adjust, t));
+        });
+        global.addEventListener('scroll', unscroll, { passive: true });
+        if (vv) {
+            vv.addEventListener('resize', adjust);
+            vv.addEventListener('scroll', adjust);
+        }
+    }
+
+    /** Звук по событию в логе: покупка, аренда, тюрьма, победа.
+        Так его слышат все игроки, а не только тот, кто нажал кнопку. */
+    function sfxForLog(text) {
+        if (!global.SFX || !text) return;
+        const t = String(text);
+        if (/покупает|побеждает в аукционе/.test(t)) return global.SFX.buy();
+        if (/заплатил|платит|получает \$/.test(t)) return global.SFX.coin();
+        if (/банкрот|отправляется в тюрьму|попадает в тюрьму/.test(t)) return global.SFX.bad();
+        if (/выигрывает|побеждает|суперприз/.test(t)) return global.SFX.win();
+    }
+
     function nameSpan(n) {
         const p = Object.values(E.S.players).find(x => x.name === n);
         return `<span class="pname" style="color:${p ? p.color : '#ccc'}">${n}</span>`;

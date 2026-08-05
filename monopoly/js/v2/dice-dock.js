@@ -41,6 +41,8 @@
         const single = (b == null);
         show(true);
         document.body.classList.add('rolling');
+        /* звук отскоков идёт параллельно броску */
+        if (global.SFX) global.SFX.dice(single ? 1 : 2);
         const second = single && ready && dice && dice.dieB ? dice.dieB : null;
         if (second && second.setVisible) second.setVisible(false);
         try {
