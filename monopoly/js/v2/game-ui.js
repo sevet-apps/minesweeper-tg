@@ -193,7 +193,6 @@
             const total = Math.abs(steps);
             const hop = () => {
                 k++;
-                if (global.SFX) global.SFX.step(k - 1, total);   // тик на каждую клетку
                 if (k === total) {                        // последний шаг — без подскока
                     ghost.style.animationName = 'none';
                     ghost.style.marginTop = '0px';
@@ -206,7 +205,6 @@
                 if (k < total) setTimeout(hop, per);
                 else setTimeout(() => {
                     ghost.classList.add('land');          // мягкая посадка
-                    if (global.SFX) global.SFX.land();
                     setTimeout(finish, 150);
                 }, per + 20);
             };
@@ -648,7 +646,7 @@
         wrap.querySelector('.mi-settings').innerHTML = `
             <label class="mi-set"><span>Скрыть сообщения зрителей</span><span class="switch ${hideSpectators ? 'on' : ''}" id="hideSpec"></span></label>
             <label class="mi-set"><span>Очистить служебные сообщения</span><span class="switch ${hideSystem ? 'on' : ''}" id="hideSys"></span></label>
-            <label class="mi-set"><span>Звуки игры</span><span class="switch ${global.SFX && !global.SFX.isMuted() ? 'on' : ''}" id="sndOn"></span></label>`;
+`;
         fillMatch();
 
         /* слайдер-«кнопка» под активной вкладкой */
@@ -747,13 +745,6 @@
             hideSpectators = !hideSpectators;
             ev.currentTarget.classList.toggle('on', hideSpectators);
         });
-        wrap.querySelector('#sndOn')?.addEventListener('click', ev => {
-            if (!global.SFX) return;
-            const on = global.SFX.isMuted();          // было выключено — включаем
-            global.SFX.setMuted(!on);
-            ev.currentTarget.classList.toggle('on', on);
-            if (on) global.SFX.tap();                 // сразу слышно, что включилось
-        });
         wrap.querySelector('#hideSys')?.addEventListener('click', ev => {
             hideSystem = !hideSystem;
             ev.currentTarget.classList.toggle('on', hideSystem);
@@ -790,7 +781,6 @@
 
     /* ---------- чат ---------- */
     function addLog({ pid, text }) {
-        sfxForLog(text);
         const d = document.createElement('div');
         d.className = 'msg';
         d.innerHTML = text
@@ -844,17 +834,6 @@
             vv.addEventListener('resize', adjust);
             vv.addEventListener('scroll', adjust);
         }
-    }
-
-    /** Звук по событию в логе: покупка, аренда, тюрьма, победа.
-        Так его слышат все игроки, а не только тот, кто нажал кнопку. */
-    function sfxForLog(text) {
-        if (!global.SFX || !text) return;
-        const t = String(text);
-        if (/покупает|побеждает в аукционе/.test(t)) return global.SFX.buy();
-        if (/заплатил|платит|получает \$/.test(t)) return global.SFX.coin();
-        if (/банкрот|отправляется в тюрьму|попадает в тюрьму/.test(t)) return global.SFX.bad();
-        if (/выигрывает|побеждает|суперприз/.test(t)) return global.SFX.win();
     }
 
     function nameSpan(n) {
