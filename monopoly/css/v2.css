@@ -791,9 +791,13 @@ img.qmark-img,
     .tp-actions { margin-top: 6px; gap: 5px; }
     .tp-actions .btn { padding: 6px 10px; font-size: 12px; }
     .future-toggle { font-size: 11px; gap: 4px; }
+    /* Кружок двигается свойством left (как в базовом правиле), поэтому
+       здесь только пересчитываем крайнее положение под уменьшенную дорожку:
+       32 - 15 - 2 = 15. Раньше сюда добавлялся ещё и transform, сдвиги
+       складывались, и кружок выезжал за пределы переключателя. */
     .future-toggle .switch { width: 32px; height: 19px; flex: 0 0 32px; }
     .future-toggle .switch::after { width: 15px; height: 15px; }
-    .future-toggle .switch.on::after { transform: translateX(13px); }
+    .future-toggle .switch.on::after { left: 15px; }
 }
 
 /* ---------- Значок доллара (PNG-маска, красится currentColor/переменной) ---------- */
