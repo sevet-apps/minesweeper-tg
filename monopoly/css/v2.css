@@ -759,23 +759,41 @@ img.qmark-img,
     .mi-tab .mi-ico { width: 14px; height: 14px; }
     .mi-tabs { gap: 2px; padding-right: 26px; }
 
-    /* договор целиком помещается в центр поля, не закрывая доску */
-    #tradePanel { max-height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    .tp-card { padding: 8px 10px 10px; border-radius: 14px; }
-    .tp-title { font-size: 14px; }
-    .tp-timer { font-size: 11.5px; padding: 2px 8px; }
-    .tp-cols { gap: 0 10px; }
-    .tp-col:first-child { padding-right: 10px; }
-    .tp-who, .tp-gname, .tp-row { font-size: 11.5px; }
-    .tp-row { padding-left: 12px; gap: 4px; }
-    .tp-gname .dot { width: 9px; height: 9px; }
-    .tp-empty { font-size: 11.5px; padding: 4px 0; }
-    .tp-money { font-size: 11.5px; margin-top: 5px; gap: 5px; }
-    .tp-money input { padding: 5px 7px; font-size: 12px; }
-    .tp-total { font-size: 12.5px; margin-top: 6px; }
-    .tp-actions { margin-top: 8px; gap: 6px; }
-    .tp-actions .btn { padding: 8px 14px; font-size: 13px; }
-    .future-toggle { font-size: 12px; gap: 6px; }
+    /* Договор целиком помещается в центр доски (там же, где кубики и чат),
+       поэтому поля вокруг остаются видны. Шрифты уменьшены, обе стороны
+       сделки по-прежнему в две колонки — так предложение читается целиком
+       без прокрутки. */
+    #tradePanel {
+        position: absolute; inset: 0; z-index: 60;
+        margin: 0; display: flex; align-items: center;
+        overflow: hidden;
+    }
+    .tp-card {
+        width: 100%; max-height: 100%;
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
+        padding: 7px 9px 8px; border-radius: 12px;
+    }
+    .tp-head { margin-bottom: 3px; }
+    .tp-title { font-size: 13px; }
+    .tp-timer { font-size: 10.5px; padding: 1px 7px; }
+    .tp-cols { gap: 0 8px; }
+    .tp-col:first-child { padding-right: 8px; }
+    .tp-who { font-size: 10.5px; margin-bottom: 2px; }
+    .tp-group { margin-bottom: 3px; }
+    .tp-gname { font-size: 11px; gap: 5px; margin: 2px 0 1px; }
+    .tp-gname .dot { width: 7px; height: 7px; }
+    .tp-row { font-size: 10.5px; padding: 0 0 0 10px; gap: 4px; }
+    .tp-row .dots { border-bottom-width: 1px; transform: translateY(-2px); }
+    .tp-empty { font-size: 10.5px; padding: 3px 0; }
+    .tp-money { font-size: 10.5px; margin-top: 4px; gap: 4px; }
+    .tp-money input { padding: 4px 6px; font-size: 11px; }
+    .tp-total { font-size: 11.5px; margin-top: 4px; padding-top: 4px; }
+    .tp-actions { margin-top: 6px; gap: 5px; }
+    .tp-actions .btn { padding: 6px 10px; font-size: 12px; }
+    .future-toggle { font-size: 11px; gap: 4px; }
+    .future-toggle .switch { width: 32px; height: 19px; flex: 0 0 32px; }
+    .future-toggle .switch::after { width: 15px; height: 15px; }
+    .future-toggle .switch.on::after { transform: translateX(13px); }
 }
 
 /* ---------- Значок доллара (PNG-маска, красится currentColor/переменной) ---------- */
@@ -1126,11 +1144,6 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     .popcard { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; position: fixed !important; }
     .anchor-ghost { display: none; }
 
-    /* договор — почти во весь экран */
-    #tradePanel { position: fixed; inset: 8px; z-index: 120; margin: 0; display: grid; place-items: center; }
-    .tp-card { width: 100%; max-height: 100%; overflow: auto; }
-    .tp-cols { grid-template-columns: 1fr; gap: 10px; }
-    .tp-col:first-child { border-right: none; padding-right: 0; border-bottom: 1px solid #ececf0; padding-bottom: 10px; }
 
     .match-info { top: 10%; width: min(400px, calc(100vw - 20px)); }
 
