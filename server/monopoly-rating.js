@@ -61,14 +61,19 @@ function titleFor(points) {
 /* ---------- условия зачёта партии ---------- */
 const WIN_POINTS = { 2: 6, 3: 9, 4: 12, 5: 15 };
 const TEAM_WIN_POINTS = 7;              // победа в командном матче 2×2
-const MIN_ROUNDS = { 2: 20, 3: 15, 4: 10, 5: 8 };
+const MIN_ROUNDS = { 2: 20, 3: 15, 4: 10, 5: 10 };
+const MIN_ROUNDS_ANY = 10;      /* короче десяти раундов партия не считается
+                                   настоящей ни при каком числе игроков */
 const MIN_MINUTES = 20;
 
 /** Засчитывать ли партию: и время, и раунды должны быть настоящими. */
-function matchCounts({ players, rounds, durationMs }) {
+function roundsNeeded(players) {
     const n = Math.max(2, Math.min(5, players | 0));
+    return Math.max(MIN_ROUNDS_ANY, MIN_ROUNDS[n] || 20);
+}
+function matchCounts({ players, rounds, durationMs }) {
     const minutes = durationMs / 60000;
-    return minutes >= MIN_MINUTES && rounds >= (MIN_ROUNDS[n] || 20);
+    return minutes >= MIN_MINUTES && rounds >= roundsNeeded(players);
 }
 
 /* ---------- пороги проверок ---------- */
@@ -222,7 +227,7 @@ function makeRating(opts) {
         return {
             counted: counts && !tainted,
             minMinutes: MIN_MINUTES,
-            minRounds: MIN_ROUNDS[Math.max(2, Math.min(5, n))] || 20,
+            minRounds: roundsNeeded(n),
             players: result,
         };
     }
@@ -292,4 +297,5 @@ function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 }
 
-module.exports = { makeRating, titleFor, TITLES, matchCounts, WIN_POINTS, TEAM_WIN_POINTS, MIN_ROUNDS, MIN_MINUTES };
+module.exports = { makeRating, titleFor, TITLES, matchCounts, roundsNeeded,
+                   WIN_POINTS, TEAM_WIN_POINTS, MIN_ROUNDS, MIN_ROUNDS_ANY, MIN_MINUTES };

@@ -967,7 +967,8 @@ class Game {
             const toId = pp.toId;
             this.pendingPay = null;
             this.log(pid, `сдаётся`);
-            return this.eliminate(pid, toId, pp.amount);
+            this.eliminate(pid, toId, pp.amount);
+            return this.surrenderTeam(pid);
         }
 
         this.log(pid, `сдаётся`);
@@ -978,7 +979,21 @@ class Game {
             if (this.owners[i] === pid) { delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i]; }
         });
         this.pushState();
+        if (this.surrenderTeam(pid)) return;
         if (!this.checkWin() && this.cur().id === pid) { clearTimeout(this.timer); this.nextTurn(); }
+    }
+
+    /** В режиме 2×2 сдача одного означает поражение всей команды: играют
+        на общий результат, поэтому и выбывают вместе. Возвращает true,
+        если напарник тоже выведен из игры. */
+    surrenderTeam(pid) {
+        if (!this.teams) return false;
+        const mate = this.order.find(id =>
+            id !== pid && this.sameTeam(id, pid) && this.players[id].alive);
+        if (!mate) return false;
+        this.log(mate, `выбывает вместе с напарником — команда сдалась`);
+        this.eliminate(mate, null);
+        return true;
     }
 
     /** Игрок выбывает вскоре после того, как раздал имущество почти даром?
