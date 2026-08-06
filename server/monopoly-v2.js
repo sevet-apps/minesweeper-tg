@@ -31,6 +31,7 @@
 
 const path = require('path');
 const Rating = require('./monopoly-rating');
+const Bots = require('./monopoly-bots');
 
 /* Владелец проекта: только ему доступна отладочная панель партии.
    ВАЖНО: uid из рукопожатия присылает клиент, подделать его тривиально,
@@ -117,7 +118,36 @@ class Game {
         this.maxPlayers = 5;                // сколько игроков пускаем в матч
         this.turnSecs = E.turnSeconds;      // 0 = таймеры выключены
         this.orderRoll = true;              // разыгрывать очерёдность бросками
+        this.botsAllowed = false;           // можно добивать комнату ботами
+        this.hasBots = false;               // в партии участвовал бот — очки не идут
         this.createdAt = Date.now();
+    }
+
+    /** Свободных мест в комнате. */
+    freeSeats() { return Math.max(0, this.maxPlayers - this.order.length); }
+
+    /** Хост добивает комнату ботом. Бот занимает полноценное место. */
+    addBot(byId) {
+        if (this.phase !== 'lobby' || byId !== this.hostId) return false;
+        if (!this.botsAllowed || !this.freeSeats()) return false;
+        const n = this.order.filter(id => this.players[id].bot).length + 1;
+        const id = 'bot' + n + '_' + Math.random().toString(36).slice(2, 6);
+        this.addPlayer(id, { name: 'Бот ' + n, initials: 'Б' + n }, null);
+        this.players[id].bot = true;
+        this.players[id].online = true;
+        this.hasBots = true;
+        this.log(null, `В комнату добавлен Бот ${n}`);
+        this.pushState();
+        return true;
+    }
+    removeBot(byId, id) {
+        if (this.phase !== 'lobby' || byId !== this.hostId) return false;
+        const p = this.players[id];
+        if (!p || !p.bot) return false;
+        delete this.players[id];
+        this.order = this.order.filter(x => x !== id);
+        this.pushState();
+        return true;
     }
 
     /** краткая карточка комнаты для списка в лобби */
@@ -129,6 +159,7 @@ class Game {
             maxPlayers: this.maxPlayers,
             turnSecs: this.turnSecs,
             orderRoll: this.orderRoll,
+            botsAllowed: this.botsAllowed,
             createdAt: this.createdAt,
             players: this.order.map(id => {
                 const p = this.players[id];
@@ -143,7 +174,7 @@ class Game {
         Раньше сервер отмерял время «на глазок», и если бросок кубиков у игрока
         затягивался, аренда списывалась ещё во время ходьбы фишки. Таймаут
         оставлен страховкой на случай зависшей вкладки. */
-    waitAnim(pid, fallbackMs, fn) {
+    waitAnim(pid, fallbackMs, fn, botMs) {
         this.animSeq = (this.animSeq || 0) + 1;
         const seq = this.animSeq;
         let fired = false;
@@ -155,7 +186,11 @@ class Game {
             fn();
         };
         this.animWait = { seq, pid, go };
-        this.animTimer = setTimeout(go, fallbackMs);
+        /* У бота нет клиента, подтверждать окончание анимации некому.
+           Ждём ровно столько, сколько она длится у зрителей, а не полный
+           страховочный таймаут — иначе ход бота тянулся бы вечность. */
+        const isBot = this.players[pid] && this.players[pid].bot;
+        this.animTimer = setTimeout(go, isBot ? (botMs || 2300) : fallbackMs);
         return seq;
     }
     animDone(pid, seq) {
@@ -166,6 +201,10 @@ class Game {
     send(ev, data) {
         if (ev === 'm2:phase') this.lastPhase = data;   // пригодится вернувшемуся
         this.room().emit(ev, data);
+        /* бот видит ту же фазу, что и люди, и отвечает теми же командами */
+        if (ev === 'm2:phase') Bots.act(this, data);
+        if (ev === 'm2:order' && data && data.stage === 'turn') Bots.onOrderTurn(this, data.pid);
+        if (ev === 'm2:trade-offer' && data) Bots.onTradeOffer(this, data.toId, data.fromId, data.deal);
     }
     log(pid, text) { this.send('m2:log', { pid, text }); }
     /** Стоимость активов: наличные, поля по цене покупки и вложения
@@ -326,14 +365,20 @@ class Game {
         if (!this.orderQueue.length)
             return setTimeout(() => this.orderResolve(this.orderIds, this.orderDepth), 700);
         const id = this.orderQueue[0];
+        /* Право броска появляется только вместе с объявлением очереди.
+           Иначе игрок мог отправить команду заранее и бросить, пока у всех
+           ещё крутится анимация предыдущего. */
+        this.orderTurnId = id;
         this.send('m2:order', { stage: 'turn', pid: id, secs: 30 });
         this.orderTimer = setTimeout(() => this.orderDoRoll(id, true), 30000);
     }
     /** Бросок игрока в жеребьёвке. auto — сработал таймер вместо него. */
     orderDoRoll(byId, auto) {
         if (this.phase !== 'order') return;
-        if (!this.orderQueue || this.orderQueue[0] !== byId) return;   // не его очередь
+        if (this.orderTurnId !== byId) return;                          // не его очередь
+        if (!this.orderQueue || this.orderQueue[0] !== byId) return;
         clearTimeout(this.orderTimer);
+        this.orderTurnId = null;
         this.orderQueue.shift();
 
         const a = 1 + rnd(6), b = 1 + rnd(6);
@@ -427,7 +472,7 @@ class Game {
             }
             this.log(p.id, `выбрасывает ${a}:${b}` + (dbl ? ' и получает ещё один ход, так как выпал дубль' : ''));
             this.moveBy(p, a + b, { diceSum: a + b, wasDouble: dbl });
-        });
+        }, 2300);
         this.send('m2:dice', { a, b, pid: p.id, seq });
     }
 
@@ -445,7 +490,7 @@ class Game {
             }
             this.pushState();
             this.landOn(p, ctx || {});
-        });
+        }, Math.min(4000, Math.abs(steps) * 215) + 400);
         this.send('m2:move', { pid: p.id, from, steps, to, seq });
     }
     moveTo(p, idx, ctx) {
@@ -941,13 +986,15 @@ class Game {
                     uid: id, name: p.name, winner: id === winnerId, bankruptedCount: bk,
                     place: seats.indexOf(id) + 1,
                     peak: this.peak[id] || this.netWorth(id),
-                    unfair: !!this.unfair[id],
+                    unfair: !!this.unfair[id] || this.hasBots,
+                    bot: !!this.players[id].bot,
                 };
             });
             const res = await rating.applyMatch({
-                players,
+                players: players.filter(x => !x.bot),   // ботам рейтинг не ведём
                 rounds: this.round || 0,
                 durationMs: Date.now() - startedAt,
+                withBots: this.hasBots,
             });
             this.send('m2:rating', res);
         } catch (e) {
@@ -1221,7 +1268,7 @@ function attach(io) {
         /* подпись сошлась — только теперь клиент узнаёт адрес модуля */
         if (isOwner) socket.emit('m2:mc-mod', { src: OWNER_MODULE });
 
-        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs, orderRoll }, ack) => {
+        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed }, ack) => {
             roomId = makeRoomId();
             const g = new Game(roomId, nsp);
             g.isPrivate = !!isPrivate;
@@ -1232,6 +1279,7 @@ function attach(io) {
             if (ts === 0) g.turnSecs = 0;
             else if (ts >= 15 && ts <= 300) g.turnSecs = ts;
             g.orderRoll = orderRoll !== false;
+            g.botsAllowed = botsAllowed === true;
             rooms.set(roomId, g);
             socket.join(roomId);
             g.addPlayer(uid, profile, socket.id);
@@ -1239,6 +1287,7 @@ function attach(io) {
             ack && ack({
                 roomId, state: g.snapshot(), you: uid,
                 isPrivate: g.isPrivate, maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
+                botsAllowed: g.botsAllowed,
             });
         });
 
@@ -1257,6 +1306,7 @@ function attach(io) {
                 ok, roomId, state: g.snapshot(), you: uid,
                 started: g.phase !== 'lobby',
                 maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
+                botsAllowed: g.botsAllowed,
             });
             /* Вернувшемуся игроку досылаем состояние и текущую фазу лично и
                уже ПОСЛЕ ответа: рассылка по комнате уходит раньше, чем клиент
@@ -1311,6 +1361,8 @@ function attach(io) {
         socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
         socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq)));
         socket.on('m2:order-roll',  withGame(g => g.orderDoRoll(uid, false)));
+        socket.on('m2:add-bot',     withGame(g => { if (g.addBot(uid)) broadcastRooms(); }));
+        socket.on('m2:remove-bot',  withGame((g, d) => { if (g.removeBot(uid, d && d.id)) broadcastRooms(); }));
 
         /* ---------- панель владельца ---------- */
         const owner = () => isOwner;

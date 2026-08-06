@@ -296,7 +296,7 @@
             }
             net().setRoom(res.roomId);
             if (res.started) startGame('online');
-            else openWaitRoom(res.roomId, false, false, res.maxPlayers || 5);
+            else openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
         });
     }
 
@@ -370,13 +370,14 @@
     async function createRoom() {
         const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
         const orderRoll = $('#lbOrderRoll .lb-sw').classList.contains('on');
+        const botsAllowed = $('#lbBots .lb-sw').classList.contains('on');
         const maxPlayers = segValue('lbMaxPlayers', 5);
         const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
         try {
             await ensureNet();
-            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll }, res => {
+            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed }, res => {
                 net().setRoom(res.roomId);
-                openWaitRoom(res.roomId, true, isPrivate, maxPlayers);
+                openWaitRoom(res.roomId, true, isPrivate, maxPlayers, botsAllowed);
             });
         } catch (e) { toast(e.message, true); }
     }
@@ -391,7 +392,7 @@
                     return toast(msg[res && res.error] || 'Не удалось войти', true);
                 }
                 net().setRoom(res.roomId);
-                openWaitRoom(res.roomId, false, false, res.maxPlayers || 5);
+                openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
             });
         } catch (e) { toast(e.message, true); }
     }
@@ -402,22 +403,46 @@
     }
 
     /* ---------- комната ожидания ---------- */
-    function openWaitRoom(roomId, isHost, isPrivate, maxPlayers) {
+    function openWaitRoom(roomId, isHost, isPrivate, maxPlayers, botsAllowed) {
         show('lbWait');
         $('#lbWaitCode').textContent = roomId;
         $('#lbWaitPrivate').style.display = isPrivate ? '' : 'none';
         $('#lbStart').style.display = isHost ? '' : 'none';
         $('#lbWaitHint').textContent = isHost
-            ? `Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков`
+            ? `Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
+                botsAllowed ? ' · с ботами очки не начисляются' : ''}`
             : 'Ждём, пока хост начнёт игру';
+        const seats = maxPlayers || 5;
         const paint = () => {
             const S = net().S;
-            $('#lbWaitPlayers').innerHTML = (S.order || []).map(id => {
+            const ids = S.order || [];
+
+            /* каждый игрок — своей строкой; ниже пустые места до вместимости */
+            const rows = ids.map(id => {
                 const p = S.players[id];
-                return `<div class="lb-wp">${ava(p, 48)}<span>${p.name}</span>${
-                    p.host ? '<i class="lb-host">хост</i>' : ''}</div>`;
-            }).join('');
-            $('#lbStart').disabled = (S.order || []).length < 2;
+                const tag = p.host ? '<i class="lb-host">хост</i>'
+                    : p.bot ? '<i class="lb-bot">бот</i>' : '';
+                const kick = (isHost && p.bot)
+                    ? `<button class="lb-seat-btn ghost" data-kick="${id}">Убрать</button>` : '';
+                return `<div class="lb-wp${p.bot ? ' bot' : ''}">
+                    ${ava(p, 42)}<span class="lb-wp-name">${p.name}</span>${tag}${kick}</div>`;
+            });
+
+            for (let k = ids.length; k < seats; k++) {
+                rows.push(`<div class="lb-wp empty">
+                    <div class="lb-ava ghost" style="width:42px;height:42px"></div>
+                    <span class="lb-wp-name dim">Свободно</span>
+                    ${isHost && botsAllowed
+                        ? '<button class="lb-seat-btn" data-addbot="1">Добавить бота</button>' : ''}
+                </div>`);
+            }
+
+            $('#lbWaitPlayers').innerHTML = rows.join('');
+            $('#lbWaitPlayers').querySelectorAll('[data-addbot]').forEach(b =>
+                b.onclick = () => net().socket().emit('m2:add-bot'));
+            $('#lbWaitPlayers').querySelectorAll('[data-kick]').forEach(b =>
+                b.onclick = () => net().socket().emit('m2:remove-bot', { id: b.dataset.kick }));
+            $('#lbStart').disabled = ids.length < 2;
         };
         net().on('state', paint); paint();
         net().on('started', () => startGame('online'));
@@ -522,6 +547,7 @@
 
         $('#lbPrivate').onclick = () => $('#lbPrivate .lb-sw').classList.toggle('on');
         $('#lbOrderRoll').onclick = () => $('#lbOrderRoll .lb-sw').classList.toggle('on');
+        $('#lbBots').onclick = () => $('#lbBots .lb-sw').classList.toggle('on');
         document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
         $('#lbCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
         $('#lbCopy').onclick = () => {

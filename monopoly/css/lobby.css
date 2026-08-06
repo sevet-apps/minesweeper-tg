@@ -263,3 +263,37 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
     .lb-mode { padding: 13px 14px; }
     #lbWaitCode { font-size: 26px; letter-spacing: 5px; }
 }
+
+/* ---------- комната ожидания: игроки колонкой ---------- */
+#lbWaitPlayers {
+    display: flex; flex-direction: column; gap: 8px;
+    margin: 14px 0 4px;
+}
+.lb-wp {
+    display: flex; align-items: center; gap: 10px;
+    background: #26262c; border-radius: 12px;
+    padding: 8px 10px;
+    min-height: 58px;
+}
+.lb-wp.empty { background: transparent; border: 1px dashed #3a3a44; }
+.lb-wp .lb-ava.ghost { background: #2e2e36; border: none; }
+.lb-wp-name {
+    flex: 1; min-width: 0; font-size: 15px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lb-wp-name.dim { color: #6d6d78; font-weight: 500; }
+.lb-host, .lb-bot {
+    flex: 0 0 auto; font-style: normal;
+    font-size: 11.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 999px;
+}
+.lb-host { background: rgba(255,209,102,.16); color: #ffd166; }
+.lb-bot  { background: rgba(90,200,250,.16); color: var(--accent, #5ac8fa); }
+
+.lb-seat-btn {
+    flex: 0 0 auto; border: none; border-radius: 9px;
+    background: var(--accent, #5ac8fa); color: #06232e;
+    padding: 7px 12px; font-size: 13px; font-weight: 650; cursor: pointer;
+}
+.lb-seat-btn:active { transform: scale(.96); }
+.lb-seat-btn.ghost { background: #33333c; color: #b9b9c4; }

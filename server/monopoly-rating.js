@@ -151,7 +151,7 @@ function makeRating(opts) {
        players: [{ uid, name, winner, bankruptedCount }]
        Возвращает разбор по каждому игроку для красивого окна на клиенте. */
     async function applyMatch(match) {
-        const { players, rounds, durationMs } = match;
+        const { players, rounds, durationMs, withBots } = match;
         const n = players.length;
         const counts = matchCounts({ players: n, rounds, durationMs });
 
@@ -169,7 +169,7 @@ function makeRating(opts) {
             const reasons = [];
             let gained = 0;
 
-            if (counts && !tainted && !rec.banned && !p.unfair) {
+            if (counts && !tainted && !rec.banned && !p.unfair && !withBots) {
                 if (p.winner) { gained += base; reasons.push({ label: 'Победа', points: base }); }
                 const bk = p.bankruptedCount | 0;
                 if (bk > 0) {
@@ -181,7 +181,7 @@ function makeRating(opts) {
             /* Партии, за которые очки не начисляются (короткие, с забаненным
                участником), не попадают и в общую статистику: иначе процент
                побед считался бы по матчам, которых как бы не было. */
-            const inStats = gained > 0 || (counts && !tainted && !rec.banned && !p.unfair);
+            const inStats = gained > 0 || (counts && !tainted && !rec.banned && !p.unfair && !withBots);
             if (p.unfair) {
                 rec.unfairCount = (rec.unfairCount | 0) + 1;
                 rec.streak = 0;
