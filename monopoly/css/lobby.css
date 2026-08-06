@@ -311,3 +311,17 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
     .lb-wp-name { font-size: 14px; }
     .lb-seat-btn { padding: 8px 12px; font-size: 12.5px; }
 }
+
+
+/* ---------- команды 2×2 ---------- */
+.lb-team-sep {
+    display: flex; align-items: center; gap: 10px;
+    margin: 4px 0; color: #6d6d78;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+}
+.lb-team-sep::before, .lb-team-sep::after {
+    content: ''; flex: 1; height: 1px; background: #34343e;
+}
+.lb-wp.team1 { border-left: 3px solid #5ac8fa; }
+.lb-wp.team2 { border-left: 3px solid #ff9f6b; }
+.lb-wp.team1.empty, .lb-wp.team2.empty { border-left-width: 3px; border-left-style: solid; }

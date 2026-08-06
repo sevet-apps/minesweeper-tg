@@ -85,6 +85,8 @@
         if (!T.composing) return false;
         const E = global.Engine, S = E.S;
         const me = E.me(), other = T.composing.withId;
+        /* застроенное поле в договор не берём: сервер такую сделку отклонит */
+        if ((S.branches[i] || 0) > 0) return true;
         if (S.owners[i] === me) toggle(T.composing.give, i);
         else if (S.owners[i] === other) toggle(T.composing.take, i);
         renderCompose();

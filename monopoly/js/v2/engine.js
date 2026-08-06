@@ -734,6 +734,9 @@
         if ((deal.giveMoney || 0) > f.money || (deal.takeMoney || 0) > t.money) return false;
         if (!deal.giveTiles.every(i => S.owners[i] === fromId)
             || !deal.takeTiles.every(i => S.owners[i] === toId)) return false;
+        /* поле с филиалами передавать нельзя — сначала продайте застройку */
+        const built = i => (S.branches[i] || 0) > 0;
+        if (deal.giveTiles.some(built) || deal.takeTiles.some(built)) return false;
         /* при непогашенном долге у должника должно остаться чем расплатиться */
         const pp = S.pendingPay;
         if (pp && pp.amount > 0) {

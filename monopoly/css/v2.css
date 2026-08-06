@@ -398,11 +398,17 @@ img.qmark-img,
 .tw.corner .chips { flex-direction: row; flex-wrap: wrap; gap: 3px; --ov: 0px; }
 .tw.corner .chip + .chip { margin: 0; }
 .chip {
-    width: 24px; height: 24px;
+    width: 27px; height: 27px;
     border-radius: 50%;
-    background: radial-gradient(circle at 32% 30%, #ffffff66, transparent 45%), var(--cc);
-    border: 3px solid #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,.45);
+    /* цвет насыщеннее: блик мягче и не размывает основной тон,
+       снизу лёгкое затемнение для объёма */
+    background:
+        radial-gradient(circle at 34% 28%, rgba(255,255,255,.42), transparent 42%),
+        radial-gradient(circle at 62% 88%, rgba(0,0,0,.22), transparent 55%),
+        var(--cc);
+    /* обводка тёмная, а не белая — фишка чётче читается на светлых клетках */
+    border: 3px solid #16161a;
+    box-shadow: 0 2px 7px rgba(0,0,0,.5);
 }
 
 /* ---------- Центральная зона ---------- */
@@ -1240,7 +1246,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     .stars .star-img { width: .82em; height: .82em; }
     .stars .star-img.hotel { width: 1.4em; height: 1.4em; }
     .lock-badge { font-size: 10px; padding: 2px 6px; }
-    .chip { width: 18px; height: 18px; border-width: 2px; }
+    .chip { width: 21px; height: 21px; border-width: 2.5px; }
     .move-ghost { width: 18px; height: 18px; }
 }
 @media (max-width: 520px) {

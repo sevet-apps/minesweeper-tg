@@ -75,7 +75,8 @@
         E.on('log', addLog);
         E.on('phase', renderBar);
         E.on('timer', startTimer);
-        E.on('dice', (a, b) => global.DiceDock.roll(a, b));
+        /* запоминаем текущий бросок: жеребьёвка ждёт, пока кубики улягутся */
+        E.on('dice', (a, b) => (diceAnim = global.DiceDock.roll(a, b)));
         E.on('move', animateMove);
         E.on('teleport', animateTeleport);
         E.on('order', orderScreen);
@@ -588,6 +589,7 @@
        посередине — обычная площадка для кубиков, снизу итоговые места. */
     let orderList = [];
     let orderTurn = null;      // чей сейчас бросок в жеребьёвке
+    let diceAnim = null;       // промис текущей анимации кубиков
     function orderBox() {
         let el = document.getElementById('orderPanel');
         if (!el) {
@@ -600,6 +602,13 @@
     }
     function orderScreen(d) {
         if (!d) return;
+        /* Грани показываем только когда кубики докатились: сервер присылает
+           результат сразу, но подглядывать раньше времени неинтересно. */
+        if (d.stage === 'roll' && diceAnim) {
+            const wait = diceAnim;
+            diceAnim = null;
+            return wait.then(() => orderScreen(d), () => orderScreen(d));
+        }
         const el = orderBox();
 
         if (d.stage === 'start') {

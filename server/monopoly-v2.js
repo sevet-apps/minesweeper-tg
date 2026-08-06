@@ -119,12 +119,27 @@ class Game {
         this.turnSecs = E.turnSeconds;      // 0 = таймеры выключены
         this.orderRoll = true;              // разыгрывать очерёдность бросками
         this.botsAllowed = false;           // свободные места можно занять ботами
+        this.teams = false;                 // режим 2×2: места 0-1 против 2-3
         this.hasBots = false;               // в партии участвовал бот — очки не идут
         this.createdAt = Date.now();
     }
 
     /** Свободных мест в комнате. */
     freeSeats() { return Math.max(0, this.maxPlayers - this.order.length); }
+
+    /** Команда игрока в режиме 2×2: первые два места против последних двух. */
+    teamOf(id) {
+        if (!this.teams) return null;
+        const p = this.players[id];
+        if (!p || p.seat < 0) return null;
+        return p.seat < 2 ? 0 : 1;
+    }
+    /** Союзники ли двое — своей команде не платят и торгуются свободно. */
+    sameTeam(a, b) {
+        if (!this.teams || !a || !b || a === b) return false;
+        const ta = this.teamOf(a), tb = this.teamOf(b);
+        return ta !== null && ta === tb;
+    }
 
     /** Первое свободное место в комнате (или -1). */
     freeSeat() {
@@ -200,6 +215,7 @@ class Game {
             turnSecs: this.turnSecs,
             orderRoll: this.orderRoll,
             botsAllowed: this.botsAllowed,
+            teams: this.teams,
             createdAt: this.createdAt,
             players: this.order.map(id => {
                 const p = this.players[id];
@@ -281,7 +297,7 @@ class Game {
             };
         return {
             players, order: this.order, seats: this.seatList(),
-            maxPlayers: this.maxPlayers, turnIdx: this.turnIdx, round: this.round,
+            maxPlayers: this.maxPlayers, teams: this.teams, turnIdx: this.turnIdx, round: this.round,
             owners: this.owners, branches: this.branches, mortgaged: this.mortgaged,
             phase: this.phase, startedAt: this.startedAt,
         };
@@ -669,6 +685,10 @@ class Game {
             return;
         }
         if (owner === p.id || this.mortgaged[t.i] != null) return this.endStep(ctx);
+        if (this.sameTeam(owner, p.id)) {
+            this.log(p.id, `попадает на **${t.name}** — поле союзника, аренда не взимается`);
+            return this.endStep(ctx);
+        }
         const rent = this.rentFor(t.i, ctx);
         this.log(p.id, `попадает на **${t.name}** и должен заплатить игроку @${this.players[owner].name} аренду в размере $${fmt(rent)}`);
         this.charge(p, rent, owner, () => { this.log(p.id, `заплатил $${fmt(rent)} аренды`); this.endStep(ctx); });
@@ -991,31 +1011,41 @@ class Game {
     }
     checkWin() {
         const a = this.alive();
-        if (a.length <= 1) {
-            this.phase = 'ended';
-            clearTimeout(this.timer);
-            this.log(null, 'Игра завершена.');
-            this.send('m2:ended', { winner: a[0] || null });
-            this.pushState();
-            this.awardRating(a[0] || null);
-            return true;
+        /* В режиме 2×2 партия заканчивается, когда все живые — из одной
+           команды: побеждают оба её участника, даже если один уже выбыл. */
+        let winners = null;
+        if (this.teams && a.length) {
+            const t0 = this.teamOf(a[0]);
+            if (a.every(id => this.teamOf(id) === t0))
+                winners = this.order.filter(id => this.teamOf(id) === t0);
+        } else if (a.length <= 1) {
+            winners = a.length ? [a[0]] : [];
         }
-        return false;
+        if (!winners) return false;
+
+        this.phase = 'ended';
+        clearTimeout(this.timer);
+        this.log(null, 'Игра завершена.');
+        this.send('m2:ended', { winner: winners[0] || null, winners });
+        this.pushState();
+        this.awardRating(winners);
+        return true;
     }
 
     /** Подсчёт рейтинга после матча. Считаем на сервере: клиент присылает
         только действия, поэтому подделать длительность или число раундов
         он не может. Результат уходит отдельным событием, чтобы окно
         начисления показалось всем участникам. */
-    async awardRating(winnerId) {
+    async awardRating(winnerIds) {
         if (!rating || this.rated) return;
+        const winners = Array.isArray(winnerIds) ? winnerIds : (winnerIds ? [winnerIds] : []);
         this.rated = true;
         try {
             const startedAt = this.startedAt || Date.now();
             /* Места: победитель первый, дальше — обратный порядок выбывания
                (кто вылетел последним, тот выше). Капитал на это не влияет. */
             const seats = [];
-            if (winnerId) seats.push(winnerId);
+            winners.forEach(id => seats.push(id));
             for (let i = this.outOrder.length - 1; i >= 0; i--) {
                 const id = this.outOrder[i];
                 if (seats.indexOf(id) < 0) seats.push(id);
@@ -1028,8 +1058,9 @@ class Game {
                 for (const victim of Object.keys(this.bankruptedBy))
                     if (this.bankruptedBy[victim] === id) bk++;
                 return {
-                    uid: id, name: p.name, winner: id === winnerId, bankruptedCount: bk,
-                    place: seats.indexOf(id) + 1,
+                    uid: id, name: p.name, winner: winners.indexOf(id) >= 0, bankruptedCount: bk,
+                    team: this.teamOf(id),
+                    place: winners.indexOf(id) >= 0 ? 1 : seats.indexOf(id) + 1,
                     peak: this.peak[id] || this.netWorth(id),
                     unfair: !!this.unfair[id] || this.hasBots,
                     bot: !!this.players[id].bot,
@@ -1040,6 +1071,7 @@ class Game {
                 rounds: this.round || 0,
                 durationMs: Date.now() - startedAt,
                 withBots: this.hasBots,
+                teamMode: this.teams,
             });
             this.send('m2:rating', res);
         } catch (e) {
@@ -1169,6 +1201,11 @@ class Game {
         if (!deal.giveTiles.every(i => this.owners[i] === fromId)
             || !deal.takeTiles.every(i => this.owners[i] === toId)) return false;
 
+        /* Поле с филиалами передавать нельзя: иначе монополия оказалась бы
+           разорванной пополам вместе с застройкой. Сначала продайте филиалы. */
+        const built = i => (this.branches[i] || 0) > 0;
+        if (deal.giveTiles.some(built) || deal.takeTiles.some(built)) return false;
+
         /* Пока висит непогашенный платёж, должник не может выводить активы:
            после сделки у него должно остаться чем расплатиться. Продать поле
            сопернику, чтобы собрать денег, по-прежнему можно — это законный ход,
@@ -1210,6 +1247,7 @@ class Game {
         const w = this.dealWorth(deal);
         const mark = (giver, taker, gave, got) => {
             if (gave <= 0 || (gave - got) / gave < 0.8) return;
+            if (this.sameTeam(giver, taker)) return;   // внутри команды это нормально
             this.log(giver, `передаёт имущество на $${fmt(gave)}, получая взамен $${fmt(got)}`);
             /* liquid — сколько игрок выручил бы за розданное, заложив его
                Банку. По этой сумме потом решаем, была ли схема. */
@@ -1329,7 +1367,7 @@ function attach(io) {
         /* подпись сошлась — только теперь клиент узнаёт адрес модуля */
         if (isOwner) socket.emit('m2:mc-mod', { src: OWNER_MODULE });
 
-        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed }, ack) => {
+        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed, teams }, ack) => {
             roomId = makeRoomId();
             const g = new Game(roomId, nsp);
             g.isPrivate = !!isPrivate;
@@ -1341,6 +1379,7 @@ function attach(io) {
             else if (ts >= 15 && ts <= 300) g.turnSecs = ts;
             g.orderRoll = orderRoll !== false;
             g.botsAllowed = botsAllowed === true;
+            if (teams === true) { g.teams = true; g.maxPlayers = 4; }
             rooms.set(roomId, g);
             socket.join(roomId);
             g.addPlayer(uid, profile, socket.id);
@@ -1348,7 +1387,7 @@ function attach(io) {
             ack && ack({
                 roomId, state: g.snapshot(), you: uid,
                 isPrivate: g.isPrivate, maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
-                botsAllowed: g.botsAllowed,
+                botsAllowed: g.botsAllowed, teams: g.teams,
             });
         });
 
@@ -1367,7 +1406,7 @@ function attach(io) {
                 ok, roomId, state: g.snapshot(), you: uid,
                 started: g.phase !== 'lobby',
                 maxPlayers: g.maxPlayers, turnSecs: g.turnSecs,
-                botsAllowed: g.botsAllowed,
+                botsAllowed: g.botsAllowed, teams: g.teams,
             });
             /* Вернувшемуся игроку досылаем состояние и текущую фазу лично и
                уже ПОСЛЕ ответа: рассылка по комнате уходит раньше, чем клиент

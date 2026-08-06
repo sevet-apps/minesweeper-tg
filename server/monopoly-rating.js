@@ -60,6 +60,7 @@ function titleFor(points) {
 
 /* ---------- условия зачёта партии ---------- */
 const WIN_POINTS = { 2: 6, 3: 9, 4: 12, 5: 15 };
+const TEAM_WIN_POINTS = 7;              // победа в командном матче 2×2
 const MIN_ROUNDS = { 2: 20, 3: 15, 4: 10, 5: 8 };
 const MIN_MINUTES = 20;
 
@@ -151,7 +152,7 @@ function makeRating(opts) {
        players: [{ uid, name, winner, bankruptedCount }]
        Возвращает разбор по каждому игроку для красивого окна на клиенте. */
     async function applyMatch(match) {
-        const { players, rounds, durationMs, withBots } = match;
+        const { players, rounds, durationMs, withBots, teamMode } = match;
         const n = players.length;
         const counts = matchCounts({ players: n, rounds, durationMs });
 
@@ -160,7 +161,8 @@ function makeRating(opts) {
 
         /* если в партии был забаненный, очки не получает никто */
         const tainted = players.some(p => recs[p.uid].banned);
-        const base = WIN_POINTS[Math.max(2, Math.min(5, n))] || 6;
+        /* в режиме 2×2 победа команды стоит 7 очков каждому её участнику */
+        const base = teamMode ? TEAM_WIN_POINTS : (WIN_POINTS[Math.max(2, Math.min(5, n))] || 6);
         const result = [];
 
         for (const p of players) {
@@ -290,4 +292,4 @@ function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 }
 
-module.exports = { makeRating, titleFor, TITLES, matchCounts, WIN_POINTS, MIN_ROUNDS, MIN_MINUTES };
+module.exports = { makeRating, titleFor, TITLES, matchCounts, WIN_POINTS, TEAM_WIN_POINTS, MIN_ROUNDS, MIN_MINUTES };

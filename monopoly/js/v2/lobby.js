@@ -332,7 +332,10 @@
     /* ---------- настройки новой комнаты ---------- */
     function segValue(id, fallback) {
         const on = document.querySelector('#' + id + ' button.on');
-        return on ? parseInt(on.dataset.v, 10) : fallback;
+        if (!on) return fallback;
+        const raw = on.dataset.v;
+        const n = parseInt(raw, 10);
+        return isNaN(n) ? raw : n;                 // «2×2» приходит словом
     }
     /** Сегментный переключатель с бегунком: подложка плавно едет к выбранной
         кнопке. Ровный ease без пружины. */
@@ -371,11 +374,14 @@
         const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
         const orderRoll = $('#lbOrderRoll .lb-sw').classList.contains('on');
         const botsAllowed = $('#lbBotSeats .lb-sw').classList.contains('on');
-        const maxPlayers = segValue('lbMaxPlayers', 5);
+        /* «2×2» — это четыре игрока двумя командами */
+        const pick = segValue('lbMaxPlayers', 5);
+        const teams = pick === 'team';
+        const maxPlayers = teams ? 4 : pick;
         const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
         try {
             await ensureNet();
-            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed }, res => {
+            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed, teams }, res => {
                 net().setRoom(res.roomId);
                 openWaitRoom(res.roomId, true, isPrivate, maxPlayers, botsAllowed);
             });
@@ -409,7 +415,7 @@
         $('#lbWaitPrivate').style.display = isPrivate ? '' : 'none';
         $('#lbStart').style.display = isHost ? '' : 'none';
         $('#lbWaitHint').textContent = isHost
-            ? `Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
+            ? `${net().S && net().S.teams ? 'Команда 1 против команды 2 · ' : ''}Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
                 botsAllowed ? ' · за матч с ботами очки не начисляются' : ''}`
             : 'Ждём, пока хост начнёт игру';
         const paint = () => {
@@ -420,10 +426,13 @@
                 ? S.seats.slice(0, total)
                 : (S.order || []).concat(new Array(total).fill(null)).slice(0, total);
 
+            const teamMode = !!S.teams;
             const rows = seatList.map((id, k) => {
                 const p = id && S.players[id];
+                /* в режиме 2×2 первые два места — одна команда, следующие два — другая */
+                const sep = teamMode && k === 2 ? '<div class="lb-team-sep"><span>против</span></div>' : '';
                 if (!p) {
-                    return `<div class="lb-wp empty">
+                    return sep + `<div class="lb-wp empty">
                         <div class="lb-ava ghost" style="width:42px;height:42px"></div>
                         <span class="lb-wp-name dim">Свободно</span>
                         ${isHost && botsAllowed
@@ -434,7 +443,8 @@
                     : p.bot ? '<i class="lb-bot">бот</i>' : '';
                 const kick = (isHost && p.bot)
                     ? `<button class="lb-seat-btn danger" data-kick="${id}">Убрать</button>` : '';
-                return `<div class="lb-wp${p.bot ? ' bot' : ''}">
+                return sep + `<div class="lb-wp${p.bot ? ' bot' : ''}${
+                    teamMode ? ' team' + (k < 2 ? '1' : '2') : ''}">
                     ${ava(p, 42)}<span class="lb-wp-name">${p.name}</span>${tag}${kick}</div>`;
             });
             const ids = S.order || [];
@@ -514,6 +524,10 @@
         }
         if (isNaN(top)) top = 0;
         if (isNaN(bottom)) bottom = 0;
+        /* Отступ сверху нужен только на телефоне, где служебные кнопки
+           Telegram лежат поверх страницы. На десктопе окно приложения
+           отдельное, и лишний отступ просто уводит карточки вниз. */
+        if (!isPhone) { top = 0; bottom = 0; }
 
         /* На телефоне сверху висят кнопки Telegram — держим гарантированный
            отступ, даже если приложение прислало маленькое значение. */

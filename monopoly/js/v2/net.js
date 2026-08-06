@@ -98,6 +98,9 @@
         const f = S.players[fromId], t = S.players[toId];
         if (!f || !t || !f.alive || !t.alive || !canTrade(fromId)) return false;
         if ((deal.giveMoney || 0) > f.money || (deal.takeMoney || 0) > t.money) return false;
+        /* поле с филиалами передавать нельзя — сначала продайте застройку */
+        const built = i => (S.branches[i] || 0) > 0;
+        if (deal.giveTiles.some(built) || deal.takeTiles.some(built)) return false;
         return deal.giveTiles.every(i => S.owners[i] === fromId)
             && deal.takeTiles.every(i => S.owners[i] === toId);
     }
