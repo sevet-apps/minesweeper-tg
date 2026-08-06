@@ -238,10 +238,6 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
     color: #b98cf0; background: rgba(160,110,224,.14);
     padding: 3px 10px; border-radius: 999px;
 }
-#lbWaitPlayers { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 20px 0 6px; }
-.lb-wp { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 74px; }
-.lb-wp span { font-size: 12.5px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
-.lb-host { font-size: 10.5px; color: #f5c518; font-style: normal; }
 #lbWaitHint { text-align: center; font-size: 13px; color: var(--text-dim); margin-top: 10px; }
 
 /* --- тост --- */
@@ -264,36 +260,54 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
     #lbWaitCode { font-size: 26px; letter-spacing: 5px; }
 }
 
-/* ---------- комната ожидания: игроки колонкой ---------- */
+/* ---------- комната ожидания: игроки строками ---------- */
 #lbWaitPlayers {
-    display: flex; flex-direction: column; gap: 8px;
-    margin: 14px 0 4px;
+    display: flex; flex-direction: column;
+    flex-wrap: nowrap; gap: 8px;
+    width: 100%; margin: 16px 0 6px;
 }
 .lb-wp {
-    display: flex; align-items: center; gap: 10px;
-    background: #26262c; border-radius: 12px;
-    padding: 8px 10px;
-    min-height: 58px;
+    display: flex; flex-direction: row; align-items: center;
+    gap: 12px; width: 100%; box-sizing: border-box;
+    background: #26262c; border-radius: 16px;
+    padding: 10px 12px; min-height: 64px;
 }
-.lb-wp.empty { background: transparent; border: 1px dashed #3a3a44; }
+.lb-wp.empty {
+    background: rgba(255,255,255,.03);
+    border: 1px dashed #3a3a44;
+}
+.lb-wp .lb-ava { flex: 0 0 auto; }
 .lb-wp .lb-ava.ghost { background: #2e2e36; border: none; }
 .lb-wp-name {
-    flex: 1; min-width: 0; font-size: 15px; font-weight: 600;
+    flex: 1 1 auto; min-width: 0; width: auto;
+    font-size: 15px; font-weight: 600; text-align: left;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .lb-wp-name.dim { color: #6d6d78; font-weight: 500; }
+
 .lb-host, .lb-bot {
     flex: 0 0 auto; font-style: normal;
-    font-size: 11.5px; font-weight: 700;
-    padding: 3px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: .2px;
+    padding: 4px 10px; border-radius: 999px;
+    white-space: nowrap;
 }
 .lb-host { background: rgba(255,209,102,.16); color: #ffd166; }
 .lb-bot  { background: rgba(90,200,250,.16); color: var(--accent, #5ac8fa); }
 
+/* кнопки на строке: скруглённые «пилюли» */
 .lb-seat-btn {
-    flex: 0 0 auto; border: none; border-radius: 9px;
+    flex: 0 0 auto; border: none; border-radius: 999px;
     background: var(--accent, #5ac8fa); color: #06232e;
-    padding: 7px 12px; font-size: 13px; font-weight: 650; cursor: pointer;
+    padding: 9px 16px; font-size: 13.5px; font-weight: 700;
+    white-space: nowrap; cursor: pointer;
+    transition: filter .15s, transform .1s;
 }
-.lb-seat-btn:active { transform: scale(.96); }
-.lb-seat-btn.ghost { background: #33333c; color: #b9b9c4; }
+.lb-seat-btn:hover { filter: brightness(1.06); }
+.lb-seat-btn:active { transform: scale(.95); }
+.lb-seat-btn.danger { background: #ff4d5e; color: #fff; }
+
+@media (max-width: 380px) {
+    .lb-wp { gap: 9px; padding: 9px 10px; min-height: 58px; }
+    .lb-wp-name { font-size: 14px; }
+    .lb-seat-btn { padding: 8px 12px; font-size: 12.5px; }
+}

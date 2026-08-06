@@ -603,9 +603,14 @@ img.qmark-img,
 /* ---------- Жеребьёвка очерёдности ---------- */
 .ord {
     display: none;
-    flex: 0 0 auto;
+    position: relative;
+    z-index: 5;                 /* ниже дока кубиков: он должен быть виден поверх */
+    flex: 0 1 auto;
+    max-height: 46%;            /* оставляем место, где катятся кубики */
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
     margin: 6px 0 4px;
-    background: #26262c;
+    background: rgba(38,38,44,.88);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     border-radius: 14px;
     padding: 10px 12px;
     color: #f0f0f4;
@@ -1011,7 +1016,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 #diceDock {
     position: absolute;
     inset: 6px;
-    z-index: 40;
+    z-index: 60;                /* поверх служебных панелей, включая жеребьёвку */
     visibility: hidden;
     pointer-events: none;
 }

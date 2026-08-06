@@ -126,14 +126,54 @@ class Game {
     /** Свободных мест в комнате. */
     freeSeats() { return Math.max(0, this.maxPlayers - this.order.length); }
 
+    /** Первое свободное место в комнате (или -1). */
+    freeSeat() {
+        const taken = new Set(this.order.map(id => this.players[id].seat));
+        for (let i = 0; i < this.maxPlayers; i++) if (!taken.has(i)) return i;
+        return -1;
+    }
+    /** Раскладка комнаты: массив длиной maxPlayers, где на своих местах
+        стоят игроки, а пустые места отмечены null. Клиент рисует строки
+        именно по нему, поэтому бот остаётся там, куда его посадили. */
+    seatList() {
+        const arr = new Array(this.maxPlayers).fill(null);
+        this.order.forEach(id => {
+            const st = this.players[id].seat;
+            if (st >= 0 && st < arr.length && arr[st] === null) arr[st] = id;
+        });
+        /* подстраховка: если место занято или не задано — сажаем в первое свободное */
+        this.order.forEach(id => {
+            if (arr.indexOf(id) >= 0) return;
+            const k = arr.indexOf(null);
+            if (k >= 0) arr[k] = id;
+        });
+        return arr;
+    }
+    /** Очерёдность хода следует порядку мест в комнате. */
+    reorderBySeats() {
+        this.order = this.seatList().filter(Boolean);
+    }
+
+    /** Остались ли в комнате живые люди. Комната из одних ботов бессмысленна:
+        её никто не начнёт и не покинет, поэтому она подлежит удалению. */
+    hasHumans() {
+        return this.order.some(id => this.players[id] && !this.players[id].bot);
+    }
+
     /** Хост занимает свободное место ботом. Бот играет как полноценный участник. */
-    addBot(byId) {
+    addBot(byId, seat) {
         if (this.phase !== 'lobby' || byId !== this.hostId) return false;
         if (!this.botsAllowed || !this.freeSeats()) return false;
         const n = this.order.filter(id => this.players[id].bot).length + 1;
         const id = 'bot' + n + '_' + Math.random().toString(36).slice(2, 6);
         this.addPlayer(id, { name: 'Бот ' + n, initials: 'Б' + n }, null);
         this.players[id].bot = true;
+        /* Бот занимает именно ту строку, на которой нажал хост. Между
+           занятыми местами могут оставаться пустые — так строка не «съезжает». */
+        const want = parseInt(seat, 10);
+        const busy = this.order.some(x => x !== id && this.players[x].seat === want);
+        if (want >= 0 && want < this.maxPlayers && !busy) this.players[id].seat = want;
+        this.reorderBySeats();
         this.players[id].online = true;
         this.hasBots = true;
         this.log(null, `В комнату добавлен Бот ${n}`);
@@ -237,9 +277,11 @@ class Game {
                 id, name: p.name, color: p.color, money: p.money, pos: p.pos,
                 alive: p.alive, jailed: p.jailed, host: id === this.hostId,
                 avatar: p.avatar, initials: p.initials, online: p.online !== false,
+                bot: !!p.bot,
             };
         return {
-            players, order: this.order, turnIdx: this.turnIdx, round: this.round,
+            players, order: this.order, seats: this.seatList(),
+            maxPlayers: this.maxPlayers, turnIdx: this.turnIdx, round: this.round,
             owners: this.owners, branches: this.branches, mortgaged: this.mortgaged,
             phase: this.phase, startedAt: this.startedAt,
         };
@@ -315,8 +357,11 @@ class Game {
             avatar: pr.avatar || null, initials: ini,
             color: COLORS[this.order.length % COLORS.length],
             money: E.startingCash, pos: 0, alive: true, jailed: false, jailTries: 0,
+            seat: -1,
         };
         this.order.push(id);
+        this.players[id].seat = this.freeSeat();
+        this.reorderBySeats();
         if (!this.hostId) this.hostId = id;
         this.pushState();
         return true;
@@ -1240,6 +1285,22 @@ function attach(io) {
     const nsp = io.of('/mono2');
     broadcastRooms = () => nsp.emit('m2:rooms', publicRooms());
 
+    /* Подчистка: комнаты без живых людей и давно брошенные лобби.
+       Без неё в списке накапливаются комнаты, из которых хост вышел,
+       оставив ботов. */
+    setInterval(() => {
+        let changed = false;
+        for (const [id, g] of [...rooms]) {
+            const stale = g.phase === 'lobby' && Date.now() - g.createdAt > 6 * 3600e3;
+            if (!g.order.length || !g.hasHumans() || stale) {
+                Bots.forget(id);
+                rooms.delete(id);
+                changed = true;
+            }
+        }
+        if (changed) broadcastRooms();
+    }, 60000);
+
     /** Незавершённая партия игрока: он мог закрыть приложение и вернуться.
         Отдаём только то, что действительно можно продолжить. */
     function myGame(uid) {
@@ -1327,7 +1388,11 @@ function attach(io) {
                 delete g.players[uid];
                 g.order = g.order.filter(x => x !== uid);
                 if (g.hostId === uid) g.hostId = g.order[0] || null;
-                if (!g.order.length) rooms.delete(roomId);
+                /* комната из одних ботов никому не нужна — закрываем */
+                if (!g.order.length || !g.hasHumans()) {
+                    Bots.forget(roomId);
+                    rooms.delete(roomId);
+                }
                 else g.pushState();
             }
             socket.leave(roomId);
@@ -1361,7 +1426,7 @@ function attach(io) {
         socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
         socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq)));
         socket.on('m2:order-roll',  withGame(g => g.orderDoRoll(uid, false)));
-        socket.on('m2:add-bot',     withGame(g => { if (g.addBot(uid)) broadcastRooms(); }));
+        socket.on('m2:add-bot',     withGame((g, d) => { if (g.addBot(uid, d && d.seat)) broadcastRooms(); }));
         socket.on('m2:remove-bot',  withGame((g, d) => { if (g.removeBot(uid, d && d.id)) broadcastRooms(); }));
 
         /* ---------- панель владельца ---------- */
@@ -1406,7 +1471,11 @@ function attach(io) {
                 delete g.players[uid];
                 g.order = g.order.filter(x => x !== uid);
                 if (g.hostId === uid) g.hostId = g.order[0] || null;
-                if (!g.order.length) rooms.delete(roomId);
+                /* комната из одних ботов никому не нужна — закрываем */
+                if (!g.order.length || !g.hasHumans()) {
+                    Bots.forget(roomId);
+                    rooms.delete(roomId);
+                }
                 else g.pushState();
             } else g.pushState();
             broadcastRooms();

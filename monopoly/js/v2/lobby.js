@@ -412,34 +412,36 @@
             ? `Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
                 botsAllowed ? ' · за матч с ботами очки не начисляются' : ''}`
             : 'Ждём, пока хост начнёт игру';
-        const seats = maxPlayers || 5;
         const paint = () => {
             const S = net().S;
-            const ids = S.order || [];
+            const total = S.maxPlayers || maxPlayers || 5;
+            /* раскладку присылает сервер: где сидят игроки, где пусто */
+            const seatList = S.seats && S.seats.length
+                ? S.seats.slice(0, total)
+                : (S.order || []).concat(new Array(total).fill(null)).slice(0, total);
 
-            /* каждый игрок — своей строкой; ниже пустые места до вместимости */
-            const rows = ids.map(id => {
-                const p = S.players[id];
+            const rows = seatList.map((id, k) => {
+                const p = id && S.players[id];
+                if (!p) {
+                    return `<div class="lb-wp empty">
+                        <div class="lb-ava ghost" style="width:42px;height:42px"></div>
+                        <span class="lb-wp-name dim">Свободно</span>
+                        ${isHost && botsAllowed
+                            ? `<button class="lb-seat-btn" data-addbot="${k}">Добавить бота</button>` : ''}
+                    </div>`;
+                }
                 const tag = p.host ? '<i class="lb-host">хост</i>'
                     : p.bot ? '<i class="lb-bot">бот</i>' : '';
                 const kick = (isHost && p.bot)
-                    ? `<button class="lb-seat-btn ghost" data-kick="${id}">Убрать</button>` : '';
+                    ? `<button class="lb-seat-btn danger" data-kick="${id}">Убрать</button>` : '';
                 return `<div class="lb-wp${p.bot ? ' bot' : ''}">
                     ${ava(p, 42)}<span class="lb-wp-name">${p.name}</span>${tag}${kick}</div>`;
             });
-
-            for (let k = ids.length; k < seats; k++) {
-                rows.push(`<div class="lb-wp empty">
-                    <div class="lb-ava ghost" style="width:42px;height:42px"></div>
-                    <span class="lb-wp-name dim">Свободно</span>
-                    ${isHost && botsAllowed
-                        ? '<button class="lb-seat-btn" data-addbot="1">Добавить бота</button>' : ''}
-                </div>`);
-            }
+            const ids = S.order || [];
 
             $('#lbWaitPlayers').innerHTML = rows.join('');
             $('#lbWaitPlayers').querySelectorAll('[data-addbot]').forEach(b =>
-                b.onclick = () => net().socket().emit('m2:add-bot'));
+                b.onclick = () => net().socket().emit('m2:add-bot', { seat: +b.dataset.addbot }));
             $('#lbWaitPlayers').querySelectorAll('[data-kick]').forEach(b =>
                 b.onclick = () => net().socket().emit('m2:remove-bot', { id: b.dataset.kick }));
             $('#lbStart').disabled = ids.length < 2;
