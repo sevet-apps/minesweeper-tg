@@ -370,7 +370,7 @@
     async function createRoom() {
         const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
         const orderRoll = $('#lbOrderRoll .lb-sw').classList.contains('on');
-        const botsAllowed = $('#lbBots .lb-sw').classList.contains('on');
+        const botsAllowed = $('#lbBotSeats .lb-sw').classList.contains('on');
         const maxPlayers = segValue('lbMaxPlayers', 5);
         const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
         try {
@@ -547,7 +547,7 @@
 
         $('#lbPrivate').onclick = () => $('#lbPrivate .lb-sw').classList.toggle('on');
         $('#lbOrderRoll').onclick = () => $('#lbOrderRoll .lb-sw').classList.toggle('on');
-        $('#lbBots').onclick = () => $('#lbBots .lb-sw').classList.toggle('on');
+        $('#lbBotSeats').onclick = () => $('#lbBotSeats .lb-sw').classList.toggle('on');
         document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
         $('#lbCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
         $('#lbCopy').onclick = () => {
