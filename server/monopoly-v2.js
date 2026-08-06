@@ -118,7 +118,7 @@ class Game {
         this.maxPlayers = 5;                // сколько игроков пускаем в матч
         this.turnSecs = E.turnSeconds;      // 0 = таймеры выключены
         this.orderRoll = true;              // разыгрывать очерёдность бросками
-        this.botsAllowed = false;           // можно добивать комнату ботами
+        this.botsAllowed = false;           // свободные места можно занять ботами
         this.hasBots = false;               // в партии участвовал бот — очки не идут
         this.createdAt = Date.now();
     }
@@ -126,7 +126,7 @@ class Game {
     /** Свободных мест в комнате. */
     freeSeats() { return Math.max(0, this.maxPlayers - this.order.length); }
 
-    /** Хост добивает комнату ботом. Бот занимает полноценное место. */
+    /** Хост занимает свободное место ботом. Бот играет как полноценный участник. */
     addBot(byId) {
         if (this.phase !== 'lobby' || byId !== this.hostId) return false;
         if (!this.botsAllowed || !this.freeSeats()) return false;

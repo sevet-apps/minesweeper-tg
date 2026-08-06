@@ -410,7 +410,7 @@
         $('#lbStart').style.display = isHost ? '' : 'none';
         $('#lbWaitHint').textContent = isHost
             ? `Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
-                botsAllowed ? ' · с ботами очки не начисляются' : ''}`
+                botsAllowed ? ' · за матч с ботами очки не начисляются' : ''}`
             : 'Ждём, пока хост начнёт игру';
         const seats = maxPlayers || 5;
         const paint = () => {
