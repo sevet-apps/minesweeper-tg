@@ -150,6 +150,7 @@
         jailRoll:      () => send('m2:jail-roll'),
         casinoBet:     (nums, ctx, bet) => send('m2:casino-bet', { nums, bet }),
         casinoSkip:    () => send('m2:casino-skip'),
+        orderRoll:     () => send('m2:order-roll'),
         pay:           () => send('m2:pay'),
         declareBankrupt: () => send('m2:bankrupt'),
         mortgage:      (pid, i) => send('m2:mortgage', { i }),

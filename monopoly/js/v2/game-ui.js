@@ -587,6 +587,7 @@
        Перед партией все бросают кубики: сверху список игроков с их бросками,
        посередине — обычная площадка для кубиков, снизу итоговые места. */
     let orderList = [];
+    let orderTurn = null;      // чей сейчас бросок в жеребьёвке
     function orderBox() {
         let el = document.getElementById('orderPanel');
         if (!el) {
@@ -602,16 +603,23 @@
         const el = orderBox();
 
         if (d.stage === 'start') {
+            orderTurn = null;
             orderList = d.players.map(p => ({ ...p, sum: null, a: 0, b: 0, place: null }));
             els.bar.classList.add('compact');
             el.classList.add('on');
         }
+        if (d.stage === 'turn') {
+            orderTurn = d.pid;
+            orderList.forEach(p => { p.now = p.id === d.pid; });
+        }
         if (d.stage === 'roll') {
             const p = orderList.find(x => x.id === d.pid);
-            if (p) { p.a = d.a; p.b = d.b; p.sum = d.sum; }
+            if (p) { p.a = d.a; p.b = d.b; p.sum = d.sum; p.now = false; p.auto = !!d.auto; }
+            if (orderTurn === d.pid) orderTurn = null;
         }
         if (d.stage === 'tie') {
-            orderList.forEach(p => { if (d.ids.indexOf(p.id) >= 0) { p.sum = null; p.tie = true; } });
+            orderTurn = null;
+            orderList.forEach(p => { if (d.ids.indexOf(p.id) >= 0) { p.sum = null; p.tie = true; p.now = false; } });
         }
         if (d.stage === 'done') {
             d.seats.forEach(s => {
@@ -621,16 +629,32 @@
             orderList.sort((x, y) => (x.place || 99) - (y.place || 99));
         }
 
+        const mine = orderTurn && orderTurn === E.me();
+        const whoName = orderTurn
+            ? (orderList.find(p => p.id === orderTurn) || {}).name : '';
+
         el.innerHTML = `
             <div class="ord-head">${d.stage === 'done'
                 ? 'Порядок ходов определён'
                 : 'Определяем, кто ходит первым'}</div>
             <div class="ord-rows">${orderList.map(p => `
-                <div class="ord-row${p.place ? ' seated' : ''}${p.tie ? ' tie' : ''}">
+                <div class="ord-row${p.place ? ' seated' : ''}${p.tie ? ' tie' : ''}${p.now ? ' now' : ''}">
                     ${p.place ? `<i class="ord-place">${p.place}</i>` : '<i class="ord-dot" style="background:' + (p.color || '#888') + '"></i>'}
                     <span class="ord-name">${esc(p.name)}</span>
-                    <b class="ord-val">${p.sum == null ? (p.tie ? 'переброс' : '—') : `${p.a}:${p.b} = ${p.sum}`}</b>
-                </div>`).join('')}</div>`;
+                    <b class="ord-val">${p.sum == null
+                        ? (p.now ? 'бросает…' : p.tie ? 'переброс' : '—')
+                        : `${p.a}:${p.b} = ${p.sum}`}</b>
+                </div>`).join('')}</div>
+            ${orderTurn ? (mine
+                ? '<button class="ord-btn" id="ordRoll">Бросить кубики</button>'
+                : `<div class="ord-wait">Бросает ${esc(whoName)}</div>`) : ''}`;
+
+        const btn = el.querySelector('#ordRoll');
+        if (btn) btn.addEventListener('click', () => {
+            btn.disabled = true;
+            btn.textContent = 'Бросаем…';
+            E.orderRoll();
+        });
 
         if (d.stage === 'done') setTimeout(() => {
             el.classList.remove('on');

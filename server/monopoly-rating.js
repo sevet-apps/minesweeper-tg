@@ -87,7 +87,7 @@ function makeRating(opts) {
     function blank(uid) {
         return {
             uid, points: 0, games: 0, wins: 0, bankrupted: 0,
-            streak: 0, banned: false, checked: 0,
+            streak: 0, banned: false, checked: 0, unfairCount: 0,
             history: [],           // отметки времени побед, для всплесков
             lastReport: 0,
         };
@@ -106,6 +106,7 @@ function makeRating(opts) {
                 } else if (data) {
                     rec = Object.assign(rec, data, {
                         history: Array.isArray(data.history) ? data.history : [],
+                        unfairCount: data.unfair_count | 0,
                     });
                 }
             } catch (e) { log('[rating] load:', e.message); }
@@ -122,6 +123,7 @@ function makeRating(opts) {
                 uid: rec.uid, points: rec.points, games: rec.games, wins: rec.wins,
                 bankrupted: rec.bankrupted, streak: rec.streak, banned: rec.banned,
                 checked: rec.checked, history: rec.history,
+                unfair_count: rec.unfairCount | 0,
                 updated_at: new Date().toISOString(),
             }, { onConflict: 'uid' });
         } catch (e) { log('[rating] save:', e.message); }
@@ -167,7 +169,7 @@ function makeRating(opts) {
             const reasons = [];
             let gained = 0;
 
-            if (counts && !tainted && !rec.banned) {
+            if (counts && !tainted && !rec.banned && !p.unfair) {
                 if (p.winner) { gained += base; reasons.push({ label: 'Победа', points: base }); }
                 const bk = p.bankruptedCount | 0;
                 if (bk > 0) {
@@ -179,7 +181,11 @@ function makeRating(opts) {
             /* Партии, за которые очки не начисляются (короткие, с забаненным
                участником), не попадают и в общую статистику: иначе процент
                побед считался бы по матчам, которых как бы не было. */
-            const inStats = gained > 0 || (counts && !tainted && !rec.banned);
+            const inStats = gained > 0 || (counts && !tainted && !rec.banned && !p.unfair);
+            if (p.unfair) {
+                rec.unfairCount = (rec.unfairCount | 0) + 1;
+                rec.streak = 0;
+            }
             if (inStats) {
                 rec.games += 1;
                 if (p.winner) {
@@ -201,8 +207,9 @@ function makeRating(opts) {
                 gained, reasons,
                 pointsBefore: before, pointsAfter: rec.points,
                 titleBefore: titleFor(before), titleAfter: titleFor(rec.points),
-                counted: counts && !tainted && !rec.banned,
-                skipReason: rec.banned ? 'banned'
+                counted: counts && !tainted && !rec.banned && !p.unfair,
+                skipReason: p.unfair ? 'unfair'
+                    : rec.banned ? 'banned'
                     : tainted ? 'tainted'
                     : !counts ? 'short' : null,
             });
@@ -225,6 +232,8 @@ function makeRating(opts) {
 
         const burst = rec.history.filter(t => now - t <= BURST_WINDOW).length;
         const reasons = [];
+        if ((rec.unfairCount | 0) >= 2)
+            reasons.push(`невыгодные сделки перед выбыванием: ${rec.unfairCount}`);
         if (rec.streak >= STREAK_LIMIT && rec.streak % STREAK_LIMIT === 0)
             reasons.push(`${rec.streak} побед подряд`);
         if (burst >= BURST_LIMIT)

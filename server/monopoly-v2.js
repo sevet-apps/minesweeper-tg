@@ -100,6 +100,8 @@ class Game {
         this.casino = null;
         this.bankruptedBy = {};      // кто кого разорил — для рейтинга
         this.outOrder = [];          // порядок выбывания: кто раньше, тот ниже в таблице
+        this.dumps = {};             // кто и кому раздал имущество почти даром
+        this.unfair = {};            // участники такой схемы — без очков за матч
         this.peak = {};              // наибольшая стоимость активов за партию
         this.rigged = [];            // отладка владельца: заданные броски
         this.startedAt = 0;          // время начала партии
@@ -172,9 +174,9 @@ class Game {
         let v = this.players[pid].money;
         for (const [i, o] of Object.entries(this.owners)) {
             if (o !== pid) continue;
-            const pr = D.PROP[i];
-            if (!pr) continue;
-            v += this.mortgaged[i] == null ? pr.price : pr.mortgage;
+            const pr = D.PROP[i], t = D.TILES[i];
+            if (!pr || !t) continue;
+            v += this.mortgaged[i] == null ? (t.price || 0) : pr.mortgage;
             v += (this.branches[i] || 0) * (pr.branch || 0);
         }
         return v;
@@ -309,21 +311,36 @@ class Game {
         setTimeout(() => this.orderRound(this.order.slice()), 900);
     }
 
-    /** Один круг бросков среди переданных игроков. */
+    /** Круг бросков: игроки кидают сами, по очереди. Если кто-то не нажал
+        кнопку, через полминуты бросаем за него — иначе партия встанет. */
     orderRound(ids, depth = 0) {
         if (this.phase !== 'order') return;
-        let k = 0;
-        const rollNext = () => {
-            if (this.phase !== 'order') return;
-            if (k >= ids.length) return setTimeout(() => this.orderResolve(ids, depth), 700);
-            const id = ids[k++];
-            const a = 1 + rnd(6), b = 1 + rnd(6);
-            this.orderRolls[id] = { a, b, sum: a + b };
-            this.send('m2:dice', { a, b, pid: id });
-            this.send('m2:order', { stage: 'roll', pid: id, a, b, sum: a + b });
-            setTimeout(rollNext, 2000);
-        };
-        rollNext();
+        this.orderIds = ids.slice();
+        this.orderQueue = ids.slice();
+        this.orderDepth = depth;
+        this.orderNext();
+    }
+    orderNext() {
+        if (this.phase !== 'order') return;
+        clearTimeout(this.orderTimer);
+        if (!this.orderQueue.length)
+            return setTimeout(() => this.orderResolve(this.orderIds, this.orderDepth), 700);
+        const id = this.orderQueue[0];
+        this.send('m2:order', { stage: 'turn', pid: id, secs: 30 });
+        this.orderTimer = setTimeout(() => this.orderDoRoll(id, true), 30000);
+    }
+    /** Бросок игрока в жеребьёвке. auto — сработал таймер вместо него. */
+    orderDoRoll(byId, auto) {
+        if (this.phase !== 'order') return;
+        if (!this.orderQueue || this.orderQueue[0] !== byId) return;   // не его очередь
+        clearTimeout(this.orderTimer);
+        this.orderQueue.shift();
+
+        const a = 1 + rnd(6), b = 1 + rnd(6);
+        this.orderRolls[byId] = { a, b, sum: a + b };
+        this.send('m2:dice', { a, b, pid: byId });
+        this.send('m2:order', { stage: 'roll', pid: byId, a, b, sum: a + b, auto: !!auto });
+        setTimeout(() => this.orderNext(), 2300);
     }
 
     /** Разбор круга: равные броски перебрасывают, остальные занимают места. */
@@ -343,7 +360,7 @@ class Game {
             tied.forEach(sum => again.push(...bySum[sum]));
             this.send('m2:order', { stage: 'tie', ids: again });
             again.forEach(id => { delete this.orderRolls[id]; });
-            return setTimeout(() => this.orderRound(again, depth + 1), 1200);
+            return setTimeout(() => this.orderRound(again, depth + 1), 1500);
         }
 
         /* итоговая расстановка: по сумме броска, затем по прежнему порядку */
@@ -781,17 +798,19 @@ class Game {
         if (p.money >= pp.amount) return this.pay(pp.pid);
         if (pp.toId) this.players[pp.toId].money += Math.max(0, p.money);
         p.money = 0;
-        const pid = pp.pid, toId = pp.toId;
+        const pid = pp.pid, toId = pp.toId, debt = pp.amount;
         this.pendingPay = null;
-        this.eliminate(pid, toId);
+        this.eliminate(pid, toId, debt);
     }
     /** Банкротство. Имущество уходит Банку, а вырученные за него деньги
         вместе с остатком наличных получает кредитор — тот, кому банкрот не
         смог заплатить. Раньше кредитору не доставалось ничего. */
-    eliminate(pid, toId) {
+    eliminate(pid, toId, debt) {
         const p = this.players[pid];
         if (!p || !p.alive) return;
         p.alive = false;
+        this.markUnfair(pid, debt || (this.pendingPay && this.pendingPay.pid === pid
+            ? this.pendingPay.amount : 0));
         this.outOrder.push(pid);          // места считаем по времени выбывания
 
         let payout = Math.max(0, p.money);           // остаток наличных
@@ -821,20 +840,64 @@ class Game {
         const pp = this.pendingPay;
         if (!pp || pp.pid !== pid || this.phase !== 'await-pay') return this.surrender(pid);
         clearTimeout(this.timer);
-        const toId = pp.toId;
+        const toId = pp.toId, debt = pp.amount;
         this.pendingPay = null;
-        this.eliminate(pid, toId);
+        this.eliminate(pid, toId, debt);
     }
     surrender(pid) {
         const p = this.players[pid];
         if (!p || !p.alive) return;
+
+        /* Сдача при непогашенном долге равносильна банкротству: имущество
+           распродаётся, деньги получает кредитор. Иначе достаточно было
+           наступить на дорогое поле и сдаться, чтобы тот не получил ничего. */
+        const pp = this.pendingPay;
+        if (pp && pp.pid === pid && pp.amount > 0) {
+            clearTimeout(this.timer);
+            const toId = pp.toId;
+            this.pendingPay = null;
+            this.log(pid, `сдаётся`);
+            return this.eliminate(pid, toId, pp.amount);
+        }
+
         this.log(pid, `сдаётся`);
+        this.markUnfair(pid, 0);          // сдался сам, долга нет
         p.alive = false;
+        this.outOrder.push(pid);
         Object.keys(this.owners).forEach(i => {
             if (this.owners[i] === pid) { delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i]; }
         });
         this.pushState();
         if (!this.checkWin() && this.cur().id === pid) { clearTimeout(this.timer); this.nextTurn(); }
+    }
+
+    /** Игрок выбывает вскоре после того, как раздал имущество почти даром?
+        Тогда очки за матч не получают ни он, ни тот, кому досталось.
+
+        Отличаем схему от честного проигрыша. При банкротстве смотрим, спасли
+        бы его розданные активы: если да — он сам загнал себя в долг, отдав их
+        другу; если нет, он разорился бы в любом случае, и это не наказывается.
+        Добровольная сдача строже: там долга может не быть вовсе, поэтому
+        считаем её схемой, если подарок был совсем недавно.
+
+        debt — сумма непогашенного платежа (0, если игрок сдался сам). */
+    markUnfair(pid, debt) {
+        const d = this.dumps[pid];
+        if (!d) return;
+        const rounds = this.round - d.round;
+        const mins = (Date.now() - d.at) / 60000;
+
+        if (debt > 0) {
+            /* разорился на платеже: наказываем, только если розданного
+               хватило бы расплатиться */
+            if (d.liquid < debt) return;
+            if (rounds > 3 && mins > 10) return;      // совсем давняя сделка
+        } else {
+            /* сдался сам: узкое окно, оба условия сразу */
+            if (rounds > 2 || mins > 5) return;
+        }
+        this.unfair[pid] = true;
+        if (d.toId) this.unfair[d.toId] = true;
     }
     checkWin() {
         const a = this.alive();
@@ -878,6 +941,7 @@ class Game {
                     uid: id, name: p.name, winner: id === winnerId, bankruptedCount: bk,
                     place: seats.indexOf(id) + 1,
                     peak: this.peak[id] || this.netWorth(id),
+                    unfair: !!this.unfair[id],
                 };
             });
             const res = await rating.applyMatch({
@@ -965,6 +1029,44 @@ class Game {
         return this.phase !== 'ended' && this.phase !== 'lobby'
             && this.cur() && this.cur().id === pid && this.players[pid] && this.players[pid].alive;
     }
+    /** Рыночная стоимость поля: цена покупки плюс вложения в филиалы.
+        Заложенное считаем по залоговой цене — вернуть его дороже нельзя. */
+    tileWorth(i) {
+        const pr = D.PROP[i], t = D.TILES[i];
+        if (!pr || !t) return 0;
+        /* цена покупки лежит в TILES, залоговая и стоимость филиала — в PROP */
+        return (this.mortgaged[i] == null ? (t.price || 0) : pr.mortgage)
+            + (this.branches[i] || 0) * (pr.branch || 0);
+    }
+    /** Что каждая сторона отдаёт по сделке — для сравнения и для лога. */
+    dealWorth(deal) {
+        const give = (deal.giveTiles || []).reduce((a, i) => a + this.tileWorth(i), 0)
+            + (deal.giveMoney || 0);
+        const take = (deal.takeTiles || []).reduce((a, i) => a + this.tileWorth(i), 0)
+            + (deal.takeMoney || 0);
+        return { give, take };
+    }
+    /** Ликвидная стоимость должника после сделки: хватит ли расплатиться.
+        Считаем по тем же правилам, что и liquidValue — залог и продажа
+        филиалов Банку. */
+    liquidAfterTrade(pid, deal, asFrom) {
+        let v = this.liquidValue(pid);
+        const out = asFrom ? (deal.giveTiles || []) : (deal.takeTiles || []);
+        const inc = asFrom ? (deal.takeTiles || []) : (deal.giveTiles || []);
+        const cashDelta = asFrom
+            ? (deal.takeMoney || 0) - (deal.giveMoney || 0)
+            : (deal.giveMoney || 0) - (deal.takeMoney || 0);
+        const liq = i => {
+            const pr = D.PROP[i];
+            if (!pr) return 0;
+            return (this.branches[i] || 0) * Math.floor((pr.branch || 0) / 2)
+                + (this.mortgaged[i] == null ? pr.mortgage : 0);
+        };
+        out.forEach(i => { v -= liq(i); });
+        inc.forEach(i => { v += liq(i); });
+        return v + cashDelta;
+    }
+
     validTrade(fromId, toId, deal) {
         const f = this.players[fromId], t = this.players[toId];
         if (!f || !t || !f.alive || !t.alive) return false;
@@ -972,8 +1074,19 @@ class Game {
         if (!Array.isArray(deal.giveTiles) || !Array.isArray(deal.takeTiles)) return false;
         if ((deal.giveMoney || 0) < 0 || (deal.takeMoney || 0) < 0) return false;
         if ((deal.giveMoney || 0) > f.money || (deal.takeMoney || 0) > t.money) return false;
-        return deal.giveTiles.every(i => this.owners[i] === fromId)
-            && deal.takeTiles.every(i => this.owners[i] === toId);
+        if (!deal.giveTiles.every(i => this.owners[i] === fromId)
+            || !deal.takeTiles.every(i => this.owners[i] === toId)) return false;
+
+        /* Пока висит непогашенный платёж, должник не может выводить активы:
+           после сделки у него должно остаться чем расплатиться. Продать поле
+           сопернику, чтобы собрать денег, по-прежнему можно — это законный ход,
+           запрещён только вывод имущества в подарок перед банкротством. */
+        const pp = this.pendingPay;
+        if (pp && pp.amount > 0) {
+            if (pp.pid === fromId && this.liquidAfterTrade(fromId, deal, true) < pp.amount) return false;
+            if (pp.pid === toId && this.liquidAfterTrade(toId, deal, false) < pp.amount) return false;
+        }
+        return true;
     }
     tradeOffer(fromId, toId, deal) {
         if (!this.validTrade(fromId, toId, deal)) return;
@@ -999,6 +1112,26 @@ class Game {
         this.players[fromId].money += (deal.takeMoney || 0) - (deal.giveMoney || 0);
         this.players[toId].money += (deal.giveMoney || 0) - (deal.takeMoney || 0);
         this.log(toId, `принимает договор игрока @${this.players[fromId].name}`);
+
+        /* Сильно неравные сделки показываем всем и запоминаем: если следом
+           даритель выбывает, очки за матч не получит ни он, ни получатель. */
+        const w = this.dealWorth(deal);
+        const mark = (giver, taker, gave, got) => {
+            if (gave <= 0 || (gave - got) / gave < 0.8) return;
+            this.log(giver, `передаёт имущество на $${fmt(gave)}, получая взамен $${fmt(got)}`);
+            /* liquid — сколько игрок выручил бы за розданное, заложив его
+               Банку. По этой сумме потом решаем, была ли схема. */
+            const tiles = giver === fromId ? (deal.giveTiles || []) : (deal.takeTiles || []);
+            const liquid = tiles.reduce((a, i) => {
+                const pr = D.PROP[i];
+                if (!pr) return a;
+                return a + (this.branches[i] || 0) * Math.floor((pr.branch || 0) / 2)
+                    + (this.mortgaged[i] == null ? pr.mortgage : 0);
+            }, 0) + (giver === fromId ? (deal.giveMoney || 0) : (deal.takeMoney || 0));
+            this.dumps[giver] = { at: Date.now(), round: this.round, toId: taker, value: gave, liquid };
+        };
+        mark(fromId, toId, w.give, w.take);
+        mark(toId, fromId, w.take, w.give);
         this.pushState();
     }
 
@@ -1177,6 +1310,7 @@ function attach(io) {
         socket.on('m2:surrender',   withGame(g => g.surrender(uid)));
         socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
         socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq)));
+        socket.on('m2:order-roll',  withGame(g => g.orderDoRoll(uid, false)));
 
         /* ---------- панель владельца ---------- */
         const owner = () => isOwner;

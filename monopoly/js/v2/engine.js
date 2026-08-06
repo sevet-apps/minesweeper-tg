@@ -707,13 +707,40 @@
         return S.phase !== 'ended' && S.phase !== 'lobby'
             && cur() && cur().id === pid && S.players[pid] && S.players[pid].alive;
     }
+    /** Ликвидная стоимость должника после сделки — чтобы нельзя было
+        вывести активы, не расплатившись. */
+    function liquidAfterTrade(pid, deal, asFrom) {
+        let v = liquidValue(pid);
+        const out = asFrom ? (deal.giveTiles || []) : (deal.takeTiles || []);
+        const inc = asFrom ? (deal.takeTiles || []) : (deal.giveTiles || []);
+        const cash = asFrom
+            ? (deal.takeMoney || 0) - (deal.giveMoney || 0)
+            : (deal.giveMoney || 0) - (deal.takeMoney || 0);
+        const liq = i => {
+            const pr = D.PROP[i];
+            if (!pr) return 0;
+            return (S.branches[i] || 0) * Math.floor((pr.branch || 0) / 2)
+                + (S.mortgaged[i] == null ? pr.mortgage : 0);
+        };
+        out.forEach(i => { v -= liq(i); });
+        inc.forEach(i => { v += liq(i); });
+        return v + cash;
+    }
+
     function validTrade(fromId, toId, deal) {
         const f = S.players[fromId], t = S.players[toId];
         if (!f || !t || !f.alive || !t.alive) return false;
         if (!canTrade(fromId)) return false;
         if ((deal.giveMoney || 0) > f.money || (deal.takeMoney || 0) > t.money) return false;
-        return deal.giveTiles.every(i => S.owners[i] === fromId)
-            && deal.takeTiles.every(i => S.owners[i] === toId);
+        if (!deal.giveTiles.every(i => S.owners[i] === fromId)
+            || !deal.takeTiles.every(i => S.owners[i] === toId)) return false;
+        /* при непогашенном долге у должника должно остаться чем расплатиться */
+        const pp = S.pendingPay;
+        if (pp && pp.amount > 0) {
+            if (pp.pid === fromId && liquidAfterTrade(fromId, deal, true) < pp.amount) return false;
+            if (pp.pid === toId && liquidAfterTrade(toId, deal, false) < pp.amount) return false;
+        }
+        return true;
     }
     function applyTrade(fromId, toId, deal) {
         if (!validTrade(fromId, toId, deal)) return false;
