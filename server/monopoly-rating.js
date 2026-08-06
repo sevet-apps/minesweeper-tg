@@ -176,21 +176,28 @@ function makeRating(opts) {
                 }
             }
 
-            rec.games += 1;
-            if (p.winner) {
-                rec.wins += 1;
-                rec.streak += 1;
-                rec.history.push(Date.now());
-                if (rec.history.length > 200) rec.history = rec.history.slice(-200);
-            } else {
-                rec.streak = 0;
+            /* Партии, за которые очки не начисляются (короткие, с забаненным
+               участником), не попадают и в общую статистику: иначе процент
+               побед считался бы по матчам, которых как бы не было. */
+            const inStats = gained > 0 || (counts && !tainted && !rec.banned);
+            if (inStats) {
+                rec.games += 1;
+                if (p.winner) {
+                    rec.wins += 1;
+                    rec.streak += 1;
+                    rec.history.push(Date.now());
+                    if (rec.history.length > 200) rec.history = rec.history.slice(-200);
+                } else {
+                    rec.streak = 0;
+                }
+                rec.bankrupted += (p.bankruptedCount | 0);
+                rec.points = Math.max(0, rec.points + gained);
             }
-            rec.bankrupted += (p.bankruptedCount | 0);
-            rec.points = Math.max(0, rec.points + gained);
             await save(rec);
 
             result.push({
                 uid: p.uid, name: p.name, winner: !!p.winner,
+                place: p.place || null, peak: p.peak || 0,
                 gained, reasons,
                 pointsBefore: before, pointsAfter: rec.points,
                 titleBefore: titleFor(before), titleAfter: titleFor(rec.points),
@@ -200,7 +207,7 @@ function makeRating(opts) {
                     : !counts ? 'short' : null,
             });
 
-            if (p.winner) await maybeReport(rec, p.name);
+            if (p.winner && inStats) await maybeReport(rec, p.name);
         }
 
         return {

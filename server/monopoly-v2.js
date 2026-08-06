@@ -99,6 +99,8 @@ class Game {
         this.auction = null;
         this.casino = null;
         this.bankruptedBy = {};      // кто кого разорил — для рейтинга
+        this.outOrder = [];          // порядок выбывания: кто раньше, тот ниже в таблице
+        this.peak = {};              // наибольшая стоимость активов за партию
         this.rigged = [];            // отладка владельца: заданные броски
         this.startedAt = 0;          // время начала партии
         this.pendingBuy = null;
@@ -112,6 +114,7 @@ class Game {
         this.isPrivate = false;
         this.maxPlayers = 5;                // сколько игроков пускаем в матч
         this.turnSecs = E.turnSeconds;      // 0 = таймеры выключены
+        this.orderRoll = true;              // разыгрывать очерёдность бросками
         this.createdAt = Date.now();
     }
 
@@ -123,6 +126,7 @@ class Game {
             isPrivate: this.isPrivate,
             maxPlayers: this.maxPlayers,
             turnSecs: this.turnSecs,
+            orderRoll: this.orderRoll,
             createdAt: this.createdAt,
             players: this.order.map(id => {
                 const p = this.players[id];
@@ -162,7 +166,29 @@ class Game {
         this.room().emit(ev, data);
     }
     log(pid, text) { this.send('m2:log', { pid, text }); }
-    pushState() { this.send('m2:state', this.snapshot()); }
+    /** Стоимость активов: наличные, поля по цене покупки и вложения
+        в филиалы. По ней в конце показываем пиковое состояние игрока. */
+    netWorth(pid) {
+        let v = this.players[pid].money;
+        for (const [i, o] of Object.entries(this.owners)) {
+            if (o !== pid) continue;
+            const pr = D.PROP[i];
+            if (!pr) continue;
+            v += this.mortgaged[i] == null ? pr.price : pr.mortgage;
+            v += (this.branches[i] || 0) * (pr.branch || 0);
+        }
+        return v;
+    }
+    trackPeak() {
+        for (const id of this.order) {
+            if (!this.players[id]) continue;
+            const w = this.netWorth(id);
+            if (w > (this.peak[id] || 0)) this.peak[id] = w;
+        }
+    }
+
+    pushState() {
+        this.trackPeak(); this.send('m2:state', this.snapshot()); }
     snapshot() {
         const players = {};
         for (const [id, p] of Object.entries(this.players))
@@ -262,7 +288,86 @@ class Game {
         this.sendOwner();          // партия началась — обновляем панель
         this.send('m2:started', { roomId: this.roomId });
         this.pushState();
+        if (this.orderRoll) return this.runOrderRoll();
         this.beginTurn();
+    }
+
+    /* ---------- жеребьёвка очерёдности ----------
+       Каждый бросает по разу, кто больше — ходит раньше. При равенстве
+       спорные перебрасывают между собой, пока не определятся. Всё считает
+       сервер, клиенты только показывают броски. */
+    runOrderRoll() {
+        this.phase = 'order';
+        this.orderRolls = {};                       // id -> {a,b,sum}
+        this.send('m2:order', {
+            stage: 'start',
+            players: this.order.map(id => ({
+                id, name: this.players[id].name, color: this.players[id].color,
+                avatar: this.players[id].avatar, initials: this.players[id].initials,
+            })),
+        });
+        setTimeout(() => this.orderRound(this.order.slice()), 900);
+    }
+
+    /** Один круг бросков среди переданных игроков. */
+    orderRound(ids, depth = 0) {
+        if (this.phase !== 'order') return;
+        let k = 0;
+        const rollNext = () => {
+            if (this.phase !== 'order') return;
+            if (k >= ids.length) return setTimeout(() => this.orderResolve(ids, depth), 700);
+            const id = ids[k++];
+            const a = 1 + rnd(6), b = 1 + rnd(6);
+            this.orderRolls[id] = { a, b, sum: a + b };
+            this.send('m2:dice', { a, b, pid: id });
+            this.send('m2:order', { stage: 'roll', pid: id, a, b, sum: a + b });
+            setTimeout(rollNext, 2000);
+        };
+        rollNext();
+    }
+
+    /** Разбор круга: равные броски перебрасывают, остальные занимают места. */
+    orderResolve(ids, depth) {
+        if (this.phase !== 'order') return;
+        const bySum = {};
+        ids.forEach(id => {
+            const s = this.orderRolls[id].sum;
+            (bySum[s] = bySum[s] || []).push(id);
+        });
+        const tied = Object.keys(bySum).map(Number)
+            .filter(sum => bySum[sum].length > 1);
+
+        /* глубже пяти перебросов не уходим — на всякий случай */
+        if (tied.length && depth < 5) {
+            const again = [];
+            tied.forEach(sum => again.push(...bySum[sum]));
+            this.send('m2:order', { stage: 'tie', ids: again });
+            again.forEach(id => { delete this.orderRolls[id]; });
+            return setTimeout(() => this.orderRound(again, depth + 1), 1200);
+        }
+
+        /* итоговая расстановка: по сумме броска, затем по прежнему порядку */
+        const seats = this.order.slice().sort((x, y) => {
+            const sx = this.orderRolls[x] ? this.orderRolls[x].sum : 0;
+            const sy = this.orderRolls[y] ? this.orderRolls[y].sum : 0;
+            return sy - sx || this.order.indexOf(x) - this.order.indexOf(y);
+        });
+        this.order = seats;
+        this.turnIdx = 0;
+        this.send('m2:order', {
+            stage: 'done',
+            seats: seats.map((id, i) => ({
+                id, place: i + 1, name: this.players[id].name,
+                sum: this.orderRolls[id] ? this.orderRolls[id].sum : 0,
+            })),
+        });
+        this.log(null, `Очерёдность определена: ${seats.map(id => this.players[id].name).join(' → ')}`);
+        this.pushState();
+        setTimeout(() => {
+            if (this.phase !== 'order') return;
+            this.phase = 'idle';
+            this.beginTurn();
+        }, 3200);
     }
 
     cur() { return this.players[this.order[this.turnIdx]]; }
@@ -574,12 +679,23 @@ class Game {
                 return this.moveBy(p, a + b, { diceSum: a + b });
             }
             p.jailTries++;
-            this.log(p.id, `выбрасывает ${a}:${b} — не смог выбросить дубль и остаётся в тюрьме`);
-            if (p.jailTries >= 3 && p.money >= E.jailFine) {
-                p.money -= E.jailFine; p.jailed = false;
-                this.log(p.id, `платит $${fmt(E.jailFine)} после трёх неудач и выходит`);
+            /* Третья неудача — срок отбыт: игрок обязан заплатить штраф и
+               выйти, дальше сидеть нельзя. Если денег не хватает, платёж
+               уходит в обычную процедуру с распродажей активов. */
+            if (p.jailTries >= 3) {
+                p.jailed = false; p.jailTries = 0;
+                this.log(p.id, `выбрасывает ${a}:${b} — третья неудача, платит $${fmt(E.jailFine)} и выходит`);
+                if (p.money >= E.jailFine) {
+                    p.money -= E.jailFine;          // денег хватает — списываем сразу
+                    this.pushState();
+                    return this.moveBy(p, a + b, { diceSum: a + b });
+                }
+                /* не хватает — обычная процедура с распродажей активов */
                 this.pushState();
+                return this.charge(p, E.jailFine, null,
+                    () => this.moveBy(p, a + b, { diceSum: a + b }));
             }
+            this.log(p.id, `выбрасывает ${a}:${b} — не смог выбросить дубль и остаётся в тюрьме`);
             this.nextTurn();
         }, 2300);
     }
@@ -676,6 +792,7 @@ class Game {
         const p = this.players[pid];
         if (!p || !p.alive) return;
         p.alive = false;
+        this.outOrder.push(pid);          // места считаем по времени выбывания
 
         let payout = Math.max(0, p.money);           // остаток наличных
         p.money = 0;
@@ -742,12 +859,26 @@ class Game {
         this.rated = true;
         try {
             const startedAt = this.startedAt || Date.now();
+            /* Места: победитель первый, дальше — обратный порядок выбывания
+               (кто вылетел последним, тот выше). Капитал на это не влияет. */
+            const seats = [];
+            if (winnerId) seats.push(winnerId);
+            for (let i = this.outOrder.length - 1; i >= 0; i--) {
+                const id = this.outOrder[i];
+                if (seats.indexOf(id) < 0) seats.push(id);
+            }
+            this.order.forEach(id => { if (seats.indexOf(id) < 0) seats.push(id); });
+
             const players = this.order.map(id => {
                 const p = this.players[id];
                 let bk = 0;
                 for (const victim of Object.keys(this.bankruptedBy))
                     if (this.bankruptedBy[victim] === id) bk++;
-                return { uid: id, name: p.name, winner: id === winnerId, bankruptedCount: bk };
+                return {
+                    uid: id, name: p.name, winner: id === winnerId, bankruptedCount: bk,
+                    place: seats.indexOf(id) + 1,
+                    peak: this.peak[id] || this.netWorth(id),
+                };
             });
             const res = await rating.applyMatch({
                 players,
@@ -957,7 +1088,7 @@ function attach(io) {
         /* подпись сошлась — только теперь клиент узнаёт адрес модуля */
         if (isOwner) socket.emit('m2:mc-mod', { src: OWNER_MODULE });
 
-        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs }, ack) => {
+        socket.on('m2:create', ({ profile, isPrivate, maxPlayers, turnSecs, orderRoll }, ack) => {
             roomId = makeRoomId();
             const g = new Game(roomId, nsp);
             g.isPrivate = !!isPrivate;
@@ -967,6 +1098,7 @@ function attach(io) {
             const ts = parseInt(turnSecs, 10);
             if (ts === 0) g.turnSecs = 0;
             else if (ts >= 15 && ts <= 300) g.turnSecs = ts;
+            g.orderRoll = orderRoll !== false;
             rooms.set(roomId, g);
             socket.join(roomId);
             g.addPlayer(uid, profile, socket.id);

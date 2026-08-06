@@ -369,11 +369,12 @@
 
     async function createRoom() {
         const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
+        const orderRoll = $('#lbOrderRoll .lb-sw').classList.contains('on');
         const maxPlayers = segValue('lbMaxPlayers', 5);
         const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
         try {
             await ensureNet();
-            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs }, res => {
+            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll }, res => {
                 net().setRoom(res.roomId);
                 openWaitRoom(res.roomId, true, isPrivate, maxPlayers);
             });
@@ -520,6 +521,7 @@
         syncTimerField();
 
         $('#lbPrivate').onclick = () => $('#lbPrivate .lb-sw').classList.toggle('on');
+        $('#lbOrderRoll').onclick = () => $('#lbOrderRoll .lb-sw').classList.toggle('on');
         document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
         $('#lbCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
         $('#lbCopy').onclick = () => {

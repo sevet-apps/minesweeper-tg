@@ -600,6 +600,52 @@ img.qmark-img,
     .casino-win b { font-size: 17px; }
 }
 
+/* ---------- Жеребьёвка очерёдности ---------- */
+.ord {
+    display: none;
+    flex: 0 0 auto;
+    margin: 6px 0 4px;
+    background: #26262c;
+    border-radius: 14px;
+    padding: 10px 12px;
+    color: #f0f0f4;
+}
+.ord.on { display: block; animation: ordIn .3s ease-out; }
+@keyframes ordIn { from { opacity: 0; transform: translateY(-6px); } }
+
+.ord-head {
+    font-size: 13px; font-weight: 650; text-align: center;
+    color: #b8b8c2; margin-bottom: 8px;
+}
+.ord-rows { display: flex; flex-direction: column; gap: 5px; }
+.ord-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+    padding: 5px 8px; border-radius: 9px;
+    background: rgba(255,255,255,.04);
+    transition: background .25s;
+}
+.ord-row.seated { background: rgba(90,200,250,.14); }
+.ord-row.tie { background: rgba(255,209,102,.14); }
+.ord-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.ord-place {
+    width: 18px; height: 18px; flex: 0 0 18px;
+    display: grid; place-items: center;
+    border-radius: 50%; background: var(--accent); color: #06232e;
+    font-size: 11px; font-weight: 800; font-style: normal;
+}
+.ord-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ord-val { font-size: 12.5px; color: #d8d8e0; font-variant-numeric: tabular-nums; }
+.ord-row.tie .ord-val { color: #ffd166; }
+
+@media (max-width: 900px) {
+    .ord { padding: 7px 9px; margin: 4px 0 3px; }
+    .ord-head { font-size: 11.5px; margin-bottom: 6px; }
+    .ord-row { font-size: 11.5px; padding: 4px 6px; gap: 6px; }
+    .ord-val { font-size: 11px; }
+    .ord-place { width: 16px; height: 16px; flex: 0 0 16px; font-size: 10px; }
+}
+
 /* ---------- Чат ---------- */
 .chat-log {
     flex: 1;
@@ -1161,7 +1207,16 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     }
     .service-title { max-width: calc(100% - 160px); font-size: 15px; }
 
-    .stars { font-size: 11px; }
+    /* Звёзды на телефоне: мельче, в один ряд без переносов и строго
+       внутри карточки — иначе они налезали друг на друга и вылезали за край. */
+    .stars {
+        font-size: 11px;
+        gap: 0; flex-wrap: nowrap;
+        max-width: 100%; overflow: hidden;
+        padding: 0 1px;
+    }
+    .stars .star-img { width: .82em; height: .82em; }
+    .stars .star-img.hotel { width: 1.4em; height: 1.4em; }
     .lock-badge { font-size: 10px; padding: 2px 6px; }
     .chip { width: 18px; height: 18px; border-width: 2px; }
     .move-ghost { width: 18px; height: 18px; }
@@ -1249,8 +1304,16 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .rw-name { font-size: 20px; font-weight: 700; }
 .rw-sub { font-size: 13.5px; color: #7c7c85; margin-top: 2px; }
 
+/* пиковая стоимость активов за матч */
+.rw-peak {
+    margin: 14px 0 0; font-size: 13.5px; color: #7c7c85;
+    display: flex; align-items: baseline; justify-content: center; gap: 8px;
+}
+.rw-peak b { font-size: 17px; font-weight: 700; color: #17171a; }
+.rw-peak .dsign { --dcol: #9a9aa2; --dh: .72em; }
+
 /* очки */
-.rw-gain { margin: 18px 0 2px; font-size: 15px; color: #7c7c85; }
+.rw-gain { margin: 12px 0 2px; font-size: 15px; color: #7c7c85; }
 .rw-plus {
     display: inline-block; font-size: 30px; font-weight: 800; color: #34c759;
     animation: rwPlus .5s cubic-bezier(.2,.9,.3,1) .45s backwards;

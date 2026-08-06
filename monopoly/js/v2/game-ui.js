@@ -78,6 +78,7 @@
         E.on('dice', (a, b) => global.DiceDock.roll(a, b));
         E.on('move', animateMove);
         E.on('teleport', animateTeleport);
+        E.on('order', orderScreen);
         /* итоги матча: окно с начислением рейтинга поверх затемнённого поля */
         E.on('rating', data => {
             setTimeout(() => global.RatingUI.show(
@@ -580,6 +581,61 @@
             }
             dice[Math.floor(Math.random() * 6)].classList.add('flash');
         }, 90);
+    }
+
+    /* ---------- жеребьёвка очерёдности ----------
+       Перед партией все бросают кубики: сверху список игроков с их бросками,
+       посередине — обычная площадка для кубиков, снизу итоговые места. */
+    let orderList = [];
+    function orderBox() {
+        let el = document.getElementById('orderPanel');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'orderPanel';
+            el.className = 'ord';
+            els.bar.parentElement.insertBefore(el, els.bar.nextSibling);
+        }
+        return el;
+    }
+    function orderScreen(d) {
+        if (!d) return;
+        const el = orderBox();
+
+        if (d.stage === 'start') {
+            orderList = d.players.map(p => ({ ...p, sum: null, a: 0, b: 0, place: null }));
+            els.bar.classList.add('compact');
+            el.classList.add('on');
+        }
+        if (d.stage === 'roll') {
+            const p = orderList.find(x => x.id === d.pid);
+            if (p) { p.a = d.a; p.b = d.b; p.sum = d.sum; }
+        }
+        if (d.stage === 'tie') {
+            orderList.forEach(p => { if (d.ids.indexOf(p.id) >= 0) { p.sum = null; p.tie = true; } });
+        }
+        if (d.stage === 'done') {
+            d.seats.forEach(s => {
+                const p = orderList.find(x => x.id === s.id);
+                if (p) { p.place = s.place; p.tie = false; }
+            });
+            orderList.sort((x, y) => (x.place || 99) - (y.place || 99));
+        }
+
+        el.innerHTML = `
+            <div class="ord-head">${d.stage === 'done'
+                ? 'Порядок ходов определён'
+                : 'Определяем, кто ходит первым'}</div>
+            <div class="ord-rows">${orderList.map(p => `
+                <div class="ord-row${p.place ? ' seated' : ''}${p.tie ? ' tie' : ''}">
+                    ${p.place ? `<i class="ord-place">${p.place}</i>` : '<i class="ord-dot" style="background:' + (p.color || '#888') + '"></i>'}
+                    <span class="ord-name">${esc(p.name)}</span>
+                    <b class="ord-val">${p.sum == null ? (p.tie ? 'переброс' : '—') : `${p.a}:${p.b} = ${p.sum}`}</b>
+                </div>`).join('')}</div>`;
+
+        if (d.stage === 'done') setTimeout(() => {
+            el.classList.remove('on');
+            els.bar.classList.remove('compact');
+        }, 3000);
     }
 
     /* ---------- О матче / Настройки ---------- */

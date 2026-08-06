@@ -56,6 +56,7 @@
         sock.on('m2:chat', m => emit('chat', m));
         sock.on('m2:ended', d => emit('phase', { phase: 'ended', winner: d.winner }));
         sock.on('m2:rating', d => emit('rating', d));
+        sock.on('m2:order', d => emit('order', d));
         /* служебный модуль партии: адрес присылает сервер */
         sock.on('m2:mc-mod', m => {
             if (!m || !m.src || document.getElementById('mcMod')) return;

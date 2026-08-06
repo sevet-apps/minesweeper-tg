@@ -6,7 +6,12 @@
 <title>Монополия — Spark Games</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-<script>window.DICE_SIZE = window.innerWidth > 900 ? 1.35 : 1.0;</script>
+<script>
+/* Размер кубиков фиксированный. Раньше он вычислялся из ширины окна в момент
+   загрузки: при входе сразу в полноэкранном режиме окно уже широкое, и кубики
+   получались слишком крупными, а при входе в обычном окне — нормальными. */
+window.DICE_SIZE = 1.0;
+</script>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/masks.css">
 <link rel="stylesheet" href="css/v2.css">
@@ -86,6 +91,11 @@
             <button class="on" data-v="70">70 с</button>
             <button data-v="120">2 мин</button>
           </div>
+        </div>
+
+        <div class="lb-switch-row" id="lbOrderRoll">
+          <div class="t"><b>Жеребьёвка очерёдности</b><span>Перед игрой все бросают кубики за право первого хода</span></div>
+          <div class="lb-sw on"></div>
         </div>
 
         <div class="lb-switch-row" id="lbPrivate">

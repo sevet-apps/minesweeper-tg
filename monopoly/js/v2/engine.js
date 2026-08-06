@@ -407,12 +407,19 @@
             return moveBy(p, a + b, { diceSum: a + b });
         }
         p.jailTries++;
-        log(p.id, `выбрасывает ${a}:${b} — не смог выбросить дубль и остаётся в тюрьме`);
-        if (p.jailTries >= 3 && p.money >= E.jailFine) {
-            p.money -= E.jailFine; p.jailed = false;
-            log(p.id, `платит $${fmt(E.jailFine)} после трёх неудач и выходит`);
+        /* третья неудача — срок отбыт, выходим обязательно */
+        if (p.jailTries >= 3) {
+            p.jailed = false; p.jailTries = 0;
+            log(p.id, `выбрасывает ${a}:${b} — третья неудача, платит $${fmt(E.jailFine)} и выходит`);
+            if (p.money >= E.jailFine) {
+                p.money -= E.jailFine;              // денег хватает — списываем сразу
+                emit('state');
+                return moveBy(p, a + b, { diceSum: a + b });
+            }
             emit('state');
+            return charge(p, E.jailFine, null, () => moveBy(p, a + b, { diceSum: a + b }));
         }
+        log(p.id, `выбрасывает ${a}:${b} — не смог выбросить дубль и остаётся в тюрьме`);
         nextTurn();
     }
 

@@ -16,6 +16,7 @@
     }
 
     const fmt = n => (n | 0).toLocaleString('ru-RU');
+    const DS = '<i class="dsign"></i>';
     const esc = s => String(s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
     function avatar(p) {
@@ -36,7 +37,7 @@
         /* карточка всегда про себя; если меня в матче нет (зритель) — про победителя */
         const hero = me || winner;
         const heroP = hero && S.players ? S.players[hero.uid] : null;
-        const place = me && !iWon ? placeOf(list, me) : null;
+        const place = me && !iWon ? (me.place || placeOf(list, me)) : null;
 
         const t0 = me ? me.titleBefore : null;
         const t1 = me ? me.titleAfter : null;
@@ -62,6 +63,9 @@
                                     winner ? ` · победил ${esc(winner.name)}` : ''}`
                                   : 'Победитель матча'}</div>
                 </div>
+
+                ${me && me.peak ? `<div class="rw-peak">Пиковая стоимость активов
+                    <b>${DS}${fmt(me.peak)}</b></div>` : ''}
 
                 ${me ? `
                 <div class="rw-gain"><span class="rw-plus">+${fmt(me.gained)}</span> очков</div>
@@ -191,7 +195,7 @@
         }
     }
 
-    /** Место игрока: победитель первый, дальше по очкам за матч. */
+    /** Запасной расчёт места, если сервер его не прислал. */
     function placeOf(list, me) {
         const order = [...list].sort((a, b) =>
             (b.winner - a.winner) || (b.pointsAfter - a.pointsAfter));
