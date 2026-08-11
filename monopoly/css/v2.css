@@ -98,13 +98,19 @@ html, body {
     flex-direction: column;
     gap: 18px;
     padding-top: 10px;
+    /* min-height: 0 обязателен: без него flex-колонка растягивается по
+       содержимому и прокрутка не включается — при шести игроках нижние
+       карточки просто уезжали за край экрана */
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-width: none;
 }
 .players-col::-webkit-scrollbar { display: none; }
 
 .player-card {
     position: relative;
+    flex: 0 0 auto;            /* иначе карточки сплющиваются вместо прокрутки */
     background: var(--panel);
     border-radius: 20px;
     padding: 22px 16px 24px;
@@ -116,6 +122,15 @@ html, body {
     transition: background .25s, transform .15s;
 }
 .player-card:hover { transform: translateY(-1px); }
+
+/* При пяти и более игроках карточки ужимаются: так почти вся колонка
+   помещается на экран, а не только первые четверо. */
+.players-col.many { gap: 10px; }
+.players-col.many .player-card { padding: 12px 14px 14px; border-radius: 16px; }
+.players-col.many .player-avatar { width: 54px; height: 54px; }
+.players-col.many .player-name { font-size: 14px; }
+.players-col.many .player-money { font-size: 19px; }
+.players-col.many .turn-badge { top: 8px; left: 8px; }
 .player-card.active { background: var(--pc, var(--p4)); }
 .player-card.active .money-sign { color: rgba(255,255,255,.75); }
 .player-card.dead { opacity: .8; }
@@ -623,7 +638,7 @@ img.qmark-img,
     position: relative;
     z-index: 5;                 /* ниже дока кубиков: он должен быть виден поверх */
     flex: 0 1 auto;
-    max-height: 46%;            /* оставляем место, где катятся кубики */
+    max-height: 42%;            /* оставляем место, где катятся кубики */
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     margin: 6px 0 4px;
     background: rgba(38,38,44,.88);
@@ -818,6 +833,13 @@ img.qmark-img,
         overflow-x: auto;
         padding-top: 4px;
     }
+    /* На телефоне колонка горизонтальная и уже прокручивается вбок,
+       поэтому вертикальные ужимания там не нужны. */
+    .players-col.many { gap: 8px; }
+    .players-col.many .player-card { padding: 12px 10px 14px; border-radius: 14px; }
+    .players-col.many .player-avatar { width: 52px; height: 52px; }
+    .players-col.many .player-money { font-size: 21px; }
+    .players-col.many .player-name { font-size: 14px; }
     .player-card { min-width: 150px; padding: 12px 10px 14px; }
     .player-avatar { width: 52px; height: 52px; }
     .player-money { font-size: 21px; }

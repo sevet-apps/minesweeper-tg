@@ -306,6 +306,8 @@
         const rebuilt = roster !== rosterSig;
         if (rebuilt) {                               // состав или профили сменились
             rosterSig = roster;
+            /* при пяти и более игроках включаем компактные карточки */
+            els.col.classList.toggle('many', S.order.length >= 5);
             cardEls = {};
             moneyAnim = {};
             els.col.innerHTML = '';

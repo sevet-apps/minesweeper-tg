@@ -368,10 +368,15 @@ class Game {
            набранное невидимыми символами заменяем юзернеймом */
         const nm = (cleanName(pr.name) || cleanName(pr.username) || 'Игрок').slice(0, 24);
         const ini = cleanName(pr.initials).slice(0, 2).toUpperCase() || nm.slice(0, 2).toUpperCase();
+        /* Берём первый НЕЗАНЯТЫЙ цвет, а не по длине списка: она меняется,
+           когда кто-то выходит из комнаты, и следующий вошедший получал цвет,
+           уже занятый другим игроком. */
+        const used = new Set(this.order.map(x => this.players[x] && this.players[x].color));
+        const color = COLORS.find(c => !used.has(c)) || COLORS[this.order.length % COLORS.length];
         this.players[id] = {
             id, name: nm, socketId, online: true,
             avatar: pr.avatar || null, initials: ini,
-            color: COLORS[this.order.length % COLORS.length],
+            color,
             money: E.startingCash, pos: 0, alive: true, jailed: false, jailTries: 0,
             seat: -1,
         };
