@@ -44,6 +44,7 @@
     --p3: #43b34c;  /* зелёный */
     --p4: #a06ee0;  /* фиолетовый */
     --p5: #e8a33a;  /* оранжевый */
+    --p6: #2fc4b2;  /* бирюзовый */
 
     --pill-h: 26px;      /* высота ценника */
     --safe-top: 0px;     /* отступы под интерфейс Telegram (задаёт приложение) */
@@ -384,6 +385,7 @@ img.qmark-img,
 .chips[data-n="3"] { --ov: 1px; }
 .chips[data-n="4"] { --ov: -5px; }
 .chips[data-n="5"] { --ov: -8px; }
+.chips[data-n="6"] { --ov: -11px; }   /* шестеро на клетке — плотнее внахлёст */
 
 .tw[data-side="top"] .chips,
 .tw[data-side="bottom"] .chips { flex-direction: column; }

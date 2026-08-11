@@ -59,16 +59,16 @@ function titleFor(points) {
 }
 
 /* ---------- условия зачёта партии ---------- */
-const WIN_POINTS = { 2: 6, 3: 9, 4: 12, 5: 15 };
+const WIN_POINTS = { 2: 6, 3: 9, 4: 12, 5: 15, 6: 18 };
 const TEAM_WIN_POINTS = 7;              // победа в командном матче 2×2
-const MIN_ROUNDS = { 2: 20, 3: 15, 4: 10, 5: 10 };
+const MIN_ROUNDS = { 2: 20, 3: 15, 4: 10, 5: 10, 6: 10 };
 const MIN_ROUNDS_ANY = 10;      /* короче десяти раундов партия не считается
                                    настоящей ни при каком числе игроков */
 const MIN_MINUTES = 20;
 
 /** Засчитывать ли партию: и время, и раунды должны быть настоящими. */
 function roundsNeeded(players) {
-    const n = Math.max(2, Math.min(5, players | 0));
+    const n = Math.max(2, Math.min(6, players | 0));
     return Math.max(MIN_ROUNDS_ANY, MIN_ROUNDS[n] || 20);
 }
 function matchCounts({ players, rounds, durationMs }) {
@@ -167,7 +167,7 @@ function makeRating(opts) {
         /* если в партии был забаненный, очки не получает никто */
         const tainted = players.some(p => recs[p.uid].banned);
         /* в режиме 2×2 победа команды стоит 7 очков каждому её участнику */
-        const base = teamMode ? TEAM_WIN_POINTS : (WIN_POINTS[Math.max(2, Math.min(5, n))] || 6);
+        const base = teamMode ? TEAM_WIN_POINTS : (WIN_POINTS[Math.max(2, Math.min(6, n))] || 6);
         const result = [];
 
         for (const p of players) {

@@ -169,10 +169,18 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 }
 .lb-seg button {
     position: relative; z-index: 1;
-    flex: 1; border: none; background: transparent; color: var(--text-dim);
-    border-radius: 9px; padding: 9px 4px;
+    /* шесть вариантов на узком экране: даём кнопкам ужиматься,
+       чтобы «2×2» не выдавливало соседей за край */
+    flex: 1 1 0; min-width: 0;
+    border: none; background: transparent; color: var(--text-dim);
+    border-radius: 9px; padding: 9px 2px;
     font-size: 14px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
     transition: color .18s ease;
+}
+@media (max-width: 400px) {
+    .lb-seg { gap: 3px; padding: 3px; }
+    .lb-seg button { font-size: 13px; padding: 8px 1px; }
 }
 .lb-seg button:hover { color: var(--text); }
 .lb-seg button.on { color: var(--text); }

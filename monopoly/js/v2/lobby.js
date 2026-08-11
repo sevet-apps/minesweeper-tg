@@ -109,7 +109,7 @@
             const max = r.maxPlayers || 5;
             return `
             <button class="lb-room" data-room="${r.roomId}">
-                <div class="lb-room-avas">${r.players.slice(0, 5).map(p => ava(p, 34)).join('')}</div>
+                <div class="lb-room-avas">${r.players.slice(0, 6).map(p => ava(p, 34)).join('')}</div>
                 <div class="lb-room-info">
                     <div class="lb-room-names">${r.players.map(p => p.name).join(', ')}</div>
                     <div class="lb-room-meta">Код <b>${r.roomId}</b> · ${r.players.length}/${max}</div>

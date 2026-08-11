@@ -355,7 +355,7 @@ class Game {
 
     /* ---------- жизненный цикл ---------- */
     addPlayer(id, profile, socketId) {
-        const COLORS = ['#e8534a', '#3aa5e8', '#43b34c', '#a06ee0', '#e8a33a'];
+        const COLORS = ['#e8534a', '#3aa5e8', '#43b34c', '#a06ee0', '#e8a33a', '#2fc4b2'];
         const pr = typeof profile === 'string' ? { name: profile } : (profile || {});
         if (this.players[id]) {                       // реконнект
             this.players[id].socketId = socketId;
@@ -1388,7 +1388,7 @@ function attach(io) {
             g.isPrivate = !!isPrivate;
             /* настройки из лобби: 2–5 игроков, 0 (без таймера) либо 15…300 с */
             const mp = parseInt(maxPlayers, 10);
-            if (mp >= 2 && mp <= 5) g.maxPlayers = mp;
+            if (mp >= 2 && mp <= 6) g.maxPlayers = mp;
             const ts = parseInt(turnSecs, 10);
             if (ts === 0) g.turnSecs = 0;
             else if (ts >= 15 && ts <= 300) g.turnSecs = ts;
