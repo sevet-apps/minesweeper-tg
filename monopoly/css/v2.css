@@ -519,6 +519,15 @@ img.qmark-img,
 /* скрытые служебные сообщения */
 .chat-log.no-sys .msg:not(.usermsg) { display: none; }
 
+/* удвоенная аренда при полной монополии */
+.pc-body .row.hl { color: #17171a; font-weight: 600; }
+.pc-body .row.hl .x2 {
+    font-style: normal; font-size: 11px; font-weight: 800;
+    color: #34c759; background: rgba(52,199,89,.14);
+    padding: 1px 5px; border-radius: 999px; margin-left: 5px;
+}
+.pc-body .hint.note { font-size: 12px; color: #8a8a93; margin-top: 6px; line-height: 1.35; }
+
 /* пока сумма добегает до новой — подкрашиваем: прибыль зелёным, трата красным */
 .player-money { transition: color .28s ease; }
 .player-money.up   { color: #34c759; }
@@ -840,12 +849,21 @@ img.qmark-img,
     #tradePanel {
         position: absolute; inset: 0; z-index: 60;
         margin: 0; display: flex; align-items: center;
-        overflow: hidden;
+        overflow: visible;              /* карточку можно вытянуть за край */
+        touch-action: none;             /* жест таскания не прокручивает страницу */
+        cursor: grab;
     }
+    #tradePanel:active { cursor: grabbing; }
     .tp-card {
         width: 100%; max-height: 100%;
         overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: 7px 9px 8px; border-radius: 12px;
+    }
+    /* подсказка, что карточку можно двигать */
+    .tp-card::before {
+        content: ''; display: block;
+        width: 34px; height: 3px; margin: 0 auto 5px;
+        border-radius: 999px; background: #d6d6dc;
     }
     .tp-head { margin-bottom: 3px; }
     .tp-title { font-size: 13px; }

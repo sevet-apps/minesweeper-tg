@@ -91,9 +91,17 @@
         let body = '';
         if (pr.rent) {
             body += `<p class="hint">Стройте филиалы, чтобы увеличить аренду.</p>`;
-            body += `<div class="row"><span>Базовая аренда</span><span>${DS}${fmt(pr.rent[0])}</span></div>`;
+            /* при полной монополии без филиалов базовая аренда удваивается —
+               правило неочевидное, поэтому проговариваем его прямо в карточке */
+            const doubled = owner && global.Engine && global.Engine.ownsFullGroup
+                && global.Engine.ownsFullGroup(owner, t.group) && !(S.branches[i] > 0);
+            body += `<div class="row${doubled ? ' hl' : ''}"><span>Базовая аренда${
+                doubled ? ' <i class="x2">×2</i>' : ''}</span><span>${DS}${fmt(
+                doubled ? pr.rent[0] * 2 : pr.rent[0])}</span></div>`;
             for (let n = 1; n <= 4; n++) body += starRow(n, pr.rent[n]);
             body += starRow(5, pr.rent[5]);
+            body += `<p class="hint note">Если собрана вся монополия и на ней нет филиалов,
+                базовая аренда взимается в двойном размере.</p>`;
             body += `<div class="sep"></div>`;
         } else if (pr.carRent) {
             body += `<p class="hint">Аренда зависит от количества Автомобилей, которыми вы владеете.</p>`;

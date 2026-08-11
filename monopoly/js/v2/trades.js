@@ -25,8 +25,64 @@
             el = document.createElement('div');
             el.id = 'tradePanel';
             document.querySelector('.center-panel').prepend(el);
+            makeDraggable(el);
         }
         return el;
+    }
+
+    /** Договор с длинным списком полей не помещается на телефоне целиком,
+        и кнопки уходят за нижний край. Даём таскать карточку в любую сторону,
+        но не выпускаем за пределы центра доски — иначе она потерялась бы
+        под клетками. Тянуть можно за любое место, кроме кнопок и полей. */
+    function makeDraggable(box) {
+        let sx = 0, sy = 0, ox = 0, oy = 0, active = false, moved = false;
+
+        const clamp = (dx, dy) => {
+            const card = box.querySelector('.tp-card');
+            const area = document.querySelector('.center-panel');
+            if (!card || !area) return [dx, dy];
+            const c = card.getBoundingClientRect(), a = area.getBoundingClientRect();
+            /* сколько ещё можно сдвинуть в каждую сторону */
+            const minX = a.left - c.left + ox, maxX = a.right - c.right + ox;
+            const minY = a.top - c.top + oy, maxY = a.bottom - c.bottom + oy;
+            return [
+                Math.max(Math.min(dx, Math.max(maxX, minX)), Math.min(minX, maxX)),
+                Math.max(Math.min(dy, Math.max(maxY, minY)), Math.min(minY, maxY)),
+            ];
+        };
+
+        const down = e => {
+            if (e.target.closest('button, input, .switch, a')) return;
+            const t = e.touches ? e.touches[0] : e;
+            active = true; moved = false;
+            sx = t.clientX; sy = t.clientY;
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', up);
+        };
+        const move = e => {
+            if (!active) return;
+            const t = e.touches ? e.touches[0] : e;
+            let dx = ox + t.clientX - sx, dy = oy + t.clientY - sy;
+            if (!moved && Math.abs(dx - ox) + Math.abs(dy - oy) < 4) return;
+            moved = true;
+            if (e.cancelable) e.preventDefault();
+            [dx, dy] = clamp(dx, dy);
+            box.style.transform = `translate(${dx}px, ${dy}px)`;
+            box.dataset.dx = dx; box.dataset.dy = dy;
+        };
+        const up = () => {
+            active = false;
+            ox = parseFloat(box.dataset.dx) || 0;
+            oy = parseFloat(box.dataset.dy) || 0;
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+            document.removeEventListener('touchmove', move);
+            document.removeEventListener('touchend', up);
+        };
+        box.addEventListener('mousedown', down);
+        box.addEventListener('touchstart', down, { passive: true });
     }
     function closePanel() {
         const el = $('#tradePanel'); if (el) el.remove();
