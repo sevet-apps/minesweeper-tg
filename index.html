@@ -278,8 +278,8 @@
             isolation: isolate;
             background-color: #1c1c1f;
             background-repeat: no-repeat;
-            background-position: right center, center;
-            background-size: 420px 110px, cover;
+            background-position: center, center;
+            background-size: 420px 120px, cover;
             border-color: rgba(255, 255, 255, 0.12);
         }
         #view-games .game-card > * { position: relative; z-index: 1; }
@@ -301,10 +301,8 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            transform: scale(1.14);
             filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
         }
-        #view-games .game-card--checkers .game-icon-real img { transform: scale(1.2); }
         #view-games .game-card--minesweeper {
             background-image: url('assets/game-patterns/minesweeper.svg'), linear-gradient(112deg, rgba(21, 67, 108, .92), rgba(15, 27, 43, .9));
         }
@@ -1219,6 +1217,19 @@
         .settings-footer-btn.primary {
             background: var(--accent);
             color: white;
+        }
+        .settings-asset-credit {
+            display: block;
+            width: max-content;
+            max-width: 100%;
+            margin: 13px auto 0;
+            color: var(--text-secondary, #8e8e93);
+            font-size: 11px;
+            line-height: 1.35;
+            text-align: center;
+            text-decoration: underline;
+            text-decoration-color: rgba(142, 142, 147, 0.45);
+            text-underline-offset: 2px;
         }
 
         /* Fix header position for settings button */
@@ -3372,6 +3383,7 @@
                 <button class="settings-footer-btn secondary" onclick="openPrivacyPolicy()" data-i18n="privacy">Политика</button>
                 <button class="settings-footer-btn primary" onclick="openSupport()" data-i18n="support">Поддержка</button>
             </div>
+            <a class="settings-asset-credit" href="https://www.flaticon.com/uicons" target="_blank" rel="noopener noreferrer" data-i18n="assetCredit">Фоновые SVG разработаны Flaticon</a>
         </div>
     </div>
     
@@ -3891,6 +3903,7 @@
                 privacy: 'Политика',
                 privacyTitle: 'Политика конфиденциальности',
                 support: 'Поддержка',
+                assetCredit: 'Фоновые SVG разработаны Flaticon',
                 profile: 'Профиль',
                 tops: 'Топ',
                 games: 'Игры',
@@ -4118,6 +4131,7 @@
                 privacy: 'Privacy',
                 privacyTitle: 'Privacy Policy',
                 support: 'Support',
+                assetCredit: 'Background SVG icons designed by Flaticon',
                 profile: 'Profile',
                 tops: 'Top',
                 games: 'Games',
