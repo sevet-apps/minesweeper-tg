@@ -1105,7 +1105,11 @@
         .settings-btn:active { background: var(--hover-bg); }
 
         /* Settings Sheet Styles */
-        .settings-sheet { max-height: 85vh; }
+        .settings-sheet {
+            max-height: 85vh;
+            will-change: transform;
+            overscroll-behavior: contain;
+        }
         
         .settings-section-label {
             font-size: 13px;
@@ -1138,14 +1142,14 @@
             transition: all 0.2s;
         }
         .lang-btn.active {
-            background: #fff;
-            border-color: #fff;
-            color: #000;
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
         }
         [data-theme="dark"] .lang-btn.active {
-            background: #fff;
-            border-color: #fff;
-            color: #000;
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
         }
         .lang-btn:active { transform: scale(0.96); }
         .lang-flag {
@@ -1443,7 +1447,7 @@
             border-radius: 20px 20px 0 0;
             padding: 10px 20px calc(20px + var(--safe-bottom));
             transform: translateY(100%);
-            transition: transform 0.28s ease-out;
+            transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 23001;
             max-height: 85vh;
             overflow-y: auto;
@@ -1451,6 +1455,9 @@
         }
         .bottom-sheet-overlay.visible .bottom-sheet {
             transform: translateY(0);
+        }
+        .bottom-sheet.dragging {
+            transition: none !important;
         }
         .bottom-sheet-handle {
             width: 40px;
@@ -2096,30 +2103,36 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: calc(100% - 60px);
-            padding: 0 10px;
+            justify-content: flex-end;
+            flex: 1 1 auto;
+            min-height: 0;
+            width: 100%;
+            height: auto;
+            padding: 8px 10px calc(10px + var(--safe-bottom));
             box-sizing: border-box;
-            gap: 20px;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
         }
         .wordle-board {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: var(--wordle-board-gap, 6px);
+            flex: 0 0 auto;
         }
         .wordle-row {
             display: flex;
-            gap: 6px;
+            gap: var(--wordle-board-gap, 6px);
         }
         .wordle-tile {
-            width: 54px;
-            height: 54px;
+            width: var(--wordle-tile-size, 54px);
+            height: var(--wordle-tile-size, 54px);
             border: 2px solid var(--glass-border);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
+            font-size: clamp(17px, calc(var(--wordle-tile-size, 54px) - 26px), 26px);
             font-weight: 800;
             text-transform: uppercase;
             background: var(--glass-bg);
@@ -2189,31 +2202,40 @@
             font-weight: 600;
             color: var(--text-color);
             text-align: center;
-            padding: 8px 16px;
+            padding: 4px 16px;
             border-radius: 8px;
+            flex: 0 0 auto;
         }
         .wordle-message.error {
             background: var(--danger);
             color: white;
         }
         .wordle-keyboard {
-            display: flex;
-            flex-direction: column;
+            display: grid;
             gap: 6px;
-            width: 100%;
+            width: min(100%, 500px);
             max-width: 500px;
-            padding: 0 4px;
+            padding: 0;
+            flex: 0 0 auto;
         }
         #wordle-screen .game-top-bar {
             padding-top: calc(90px + var(--safe-top));
+            flex: 0 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        body.desktop #wordle-screen .game-top-bar {
+            padding-top: 15px;
         }
         .wordle-kb-row {
-            display: flex;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: repeat(11, minmax(0, 1fr));
             gap: 4px;
+            width: 100%;
         }
         .wordle-key {
-            min-width: 28px;
+            width: 100%;
+            min-width: 0;
             height: 48px;
             border: none;
             border-radius: 8px;
@@ -2226,8 +2248,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            flex: 1;
-            max-width: 38px;
             transition: background 0.1s, transform 0.1s;
             -webkit-tap-highlight-color: transparent;
         }
@@ -2235,7 +2255,6 @@
             transform: scale(0.95);
         }
         .wordle-key.wide {
-            max-width: 48px;
             font-size: 18px;
         }
         .wordle-key.correct {
@@ -2258,10 +2277,8 @@
             background: #3a3a3c !important;
         }
         .wordle-submit-btn {
-            position: absolute;
-            bottom: calc(15px + var(--safe-bottom));
-            left: 15px;
-            right: 15px;
+            position: static;
+            width: 100%;
             height: 54px;
             background: var(--accent);
             border: none;
@@ -2273,6 +2290,8 @@
             transition: transform 0.1s, opacity 0.1s;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-top: 2px;
+            flex: 0 0 auto;
         }
         .wordle-submit-btn:active {
             transform: scale(0.98);
@@ -3835,50 +3854,88 @@
         
         // Settings Sheet with swipe to close
         let sheetStartY = 0;
+        let sheetStartX = 0;
+        let sheetStartTime = 0;
         let sheetCurrentY = 0;
         let sheetDragging = false;
+        let sheetGestureCandidate = false;
+
+        function isSettingsControl(target) {
+            return !!target.closest('button, a, input, textarea, select, .theme-switch');
+        }
+
+        function bindSettingsSheetGesture(sheet) {
+            if (sheet.dataset.dragBound === '1') return;
+            sheet.dataset.dragBound = '1';
+            sheet.addEventListener('touchstart', sheetTouchStart, { passive: true });
+            sheet.addEventListener('touchmove', sheetTouchMove, { passive: false });
+            sheet.addEventListener('touchend', sheetTouchEnd);
+            sheet.addEventListener('touchcancel', sheetTouchEnd);
+        }
         
         function openSettingsSheet() {
             const overlay = document.getElementById('settingsSheet');
             const sheet = overlay.querySelector('.bottom-sheet');
-            overlay.classList.add('visible');
+            sheet.classList.remove('dragging');
             sheet.style.transform = '';
+            overlay.classList.add('visible');
+            bindSettingsSheetGesture(sheet);
             applyLiteMode();
             applyVibration();
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
-            
-            // Add swipe listeners to handle
-            const handle = sheet.querySelector('.bottom-sheet-handle');
-            handle.addEventListener('touchstart', sheetTouchStart, { passive: true });
-            handle.addEventListener('touchmove', sheetTouchMove, { passive: false });
-            handle.addEventListener('touchend', sheetTouchEnd);
         }
         
         function sheetTouchStart(e) {
-            sheetDragging = true;
+            const sheet = e.currentTarget;
+            sheetGestureCandidate = !isSettingsControl(e.target) && sheet.scrollTop <= 0;
+            sheetDragging = false;
+            sheetCurrentY = 0;
+            if (!sheetGestureCandidate) return;
             sheetStartY = e.touches[0].clientY;
-            const sheet = document.querySelector('#settingsSheet .bottom-sheet');
-            sheet.style.transition = 'none';
+            sheetStartX = e.touches[0].clientX;
+            sheetStartTime = performance.now();
         }
         
         function sheetTouchMove(e) {
-            if (!sheetDragging) return;
+            if (!sheetGestureCandidate) return;
+            const deltaY = e.touches[0].clientY - sheetStartY;
+            const deltaX = e.touches[0].clientX - sheetStartX;
+            if (!sheetDragging) {
+                if (Math.abs(deltaY) < 6) return;
+                if (deltaY <= 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
+                    sheetGestureCandidate = false;
+                    return;
+                }
+                sheetDragging = true;
+                e.currentTarget.classList.add('dragging');
+            }
             e.preventDefault();
-            sheetCurrentY = e.touches[0].clientY - sheetStartY;
-            if (sheetCurrentY < 0) sheetCurrentY = 0; // только вниз
-            const sheet = document.querySelector('#settingsSheet .bottom-sheet');
+            sheetCurrentY = Math.max(0, deltaY);
+            const sheet = e.currentTarget;
             sheet.style.transform = `translateY(${sheetCurrentY}px)`;
         }
         
-        function sheetTouchEnd() {
+        function sheetTouchEnd(e) {
+            if (!sheetGestureCandidate && !sheetDragging) return;
+            const sheet = e.currentTarget;
+            const elapsed = Math.max(1, performance.now() - sheetStartTime);
+            const velocity = sheetCurrentY / elapsed;
+            const shouldClose = sheetDragging && (sheetCurrentY > Math.min(120, sheet.offsetHeight * 0.2) || velocity > 0.55);
             sheetDragging = false;
-            const sheet = document.querySelector('#settingsSheet .bottom-sheet');
-            sheet.style.transition = 'transform 0.3s ease';
-            
-            if (sheetCurrentY > 100) {
+            sheetGestureCandidate = false;
+            sheet.classList.remove('dragging');
+
+            if (shouldClose) {
                 closeSettingsSheet();
             } else {
                 sheet.style.transform = 'translateY(0)';
+                const cleanup = () => {
+                    if (document.getElementById('settingsSheet').classList.contains('visible')) {
+                        sheet.style.transform = '';
+                    }
+                    sheet.removeEventListener('transitionend', cleanup);
+                };
+                sheet.addEventListener('transitionend', cleanup);
             }
             sheetCurrentY = 0;
         }
@@ -3886,7 +3943,8 @@
         function closeSettingsSheet() {
             const overlay = document.getElementById('settingsSheet');
             const sheet = overlay.querySelector('.bottom-sheet');
-            sheet.style.transition = 'transform 0.3s ease';
+            sheet.classList.remove('dragging');
+            sheet.style.transform = '';
             overlay.classList.remove('visible');
         }
         
@@ -4369,6 +4427,7 @@
         
         function applyLanguage() {
             const tr = translations[currentLang] || translations.ru;
+            document.documentElement.lang = currentLang;
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.dataset.i18n;
                 if(tr[key]) el.textContent = tr[key];
@@ -4377,6 +4436,9 @@
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.dataset.i18nPlaceholder;
                 if(tr[key]) el.placeholder = tr[key];
+            });
+            document.querySelectorAll('[data-lang-content]').forEach(el => {
+                el.hidden = el.dataset.langContent !== currentLang;
             });
             // Update lang buttons
             document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -4387,6 +4449,8 @@
                 loadProfile();
             }
         }
+
+        document.addEventListener('DOMContentLoaded', applyLanguage);
         
         let bannerWasSwiping = false;
         
@@ -8949,8 +9013,29 @@
             submitBtn.className = 'wordle-submit-btn';
             submitBtn.innerText = t('inputBtn');
             submitBtn.onclick = () => handleWordleKey('ВВОД');
-            keyboard.parentElement.appendChild(submitBtn);
+            keyboard.appendChild(submitBtn);
+            fitWordleLayout();
         }
+
+        function fitWordleLayout() {
+            requestAnimationFrame(() => {
+                const screen = document.getElementById('wordle-screen');
+                const container = screen?.querySelector('.wordle-container');
+                const keyboard = document.getElementById('wordleKeyboard');
+                const message = document.getElementById('wordleMessage');
+                if (!screen || !container || !keyboard || !message || !screen.classList.contains('visible')) return;
+
+                const boardGap = container.clientHeight < 560 ? 4 : 6;
+                const reserved = keyboard.offsetHeight + message.offsetHeight + 16;
+                const heightSize = Math.floor((container.clientHeight - reserved - boardGap * 5) / 6);
+                const widthSize = Math.floor((container.clientWidth - 40 - boardGap * 4) / 5);
+                const tileSize = Math.max(24, Math.min(54, heightSize, widthSize));
+                screen.style.setProperty('--wordle-board-gap', `${boardGap}px`);
+                screen.style.setProperty('--wordle-tile-size', `${tileSize}px`);
+            });
+        }
+
+        window.addEventListener('resize', fitWordleLayout);
 
         function handleWordleKey(key) {
             if (wordleGameOver || wordleRevealing) return;
@@ -9197,6 +9282,7 @@
             </div>
         </div>
         <div class="privacy-body">
+            <div data-lang-content="ru">
             <h2>Политика конфиденциальности Telegram-бота @spark_game_bot</h2>
             
             <h3>1. Общие положения</h3>
@@ -9249,6 +9335,62 @@
             
             <h3>8. Контактная информация</h3>
             <p>По всем вопросам обращайтесь: <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a></p>
+            </div>
+
+            <div data-lang-content="en" hidden>
+                <h2>Privacy Policy for the @spark_game_bot Telegram Bot</h2>
+
+                <h3>1. General Provisions</h3>
+                <p>1.1. This Privacy Policy describes how personal data belonging to users of the @spark_game_bot Telegram bot is collected, used, stored, and protected.</p>
+                <p>1.2. By using the Bot, the user fully agrees to this Policy and to the terms governing the processing of their data. Users who disagree with these terms must stop using the Bot.</p>
+                <p>1.3. The official source of news and updates is the <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a> Telegram channel.</p>
+
+                <h3>2. Data We Collect</h3>
+                <p>To provide its full functionality, the Bot automatically collects and processes the following data:</p>
+                <ul>
+                    <li><b>Basic Telegram data:</b> the user’s unique identifier (Telegram ID), name, and public username.</li>
+                    <li><b>Game statistics:</b> game results and progress, match history, and scores earned.</li>
+                    <li><b>Tournament data:</b> payment details voluntarily supplied by the user for the purpose of receiving prizes.</li>
+                    <li><b>Technical data:</b> message metadata, including the date and time of requests and button presses.</li>
+                </ul>
+
+                <h3>3. Purposes of Data Collection and Use</h3>
+                <ul>
+                    <li><b>Profile creation:</b> displaying the user’s name and username in their profile.</li>
+                    <li><b>Leaderboards:</b> publicly displaying usernames and game results in ranking tables.</li>
+                    <li><b>Tournaments:</b> recording competition results and arranging prize payments.</li>
+                    <li><b>Communication:</b> sending notifications about new games, tournaments, and updates.</li>
+                </ul>
+
+                <h3>4. Disclosure to Third Parties</h3>
+                <p>4.1. User data is not sold or disclosed to third parties for marketing purposes.</p>
+                <p>4.2. Data may be disclosed only:</p>
+                <ul>
+                    <li>In public leaderboards, where usernames and game scores are displayed.</li>
+                    <li>In response to a lawful request from government or law-enforcement authorities.</li>
+                    <li>As the minimum information required by payment providers to issue prizes.</li>
+                </ul>
+
+                <h3>5. Data Storage and Protection</h3>
+                <p>5.1. We take the necessary technical and organisational measures to protect user data.</p>
+                <p>5.2. Database access is restricted to a limited group of developers and administrators.</p>
+                <p>5.3. Payment details are not stored permanently and are deleted after the transaction is completed.</p>
+
+                <h3>6. User Rights</h3>
+                <p>Users have the right to:</p>
+                <ul>
+                    <li>Request information about the data stored about them.</li>
+                    <li>Request deletion of their data, which will also delete their profile and statistics.</li>
+                    <li>Stop using the Bot at any time.</li>
+                </ul>
+
+                <h3>7. Changes to This Policy</h3>
+                <p>7.1. The administration may amend this Policy without prior notice.</p>
+                <p>7.2. Announcements of material changes are published in the <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a> channel.</p>
+
+                <h3>8. Contact Information</h3>
+                <p>For any questions, contact <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a>.</p>
+            </div>
         </div>
     </div>
 

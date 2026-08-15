@@ -333,3 +333,72 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 .lb-wp.team1 { border-left: 3px solid #5ac8fa; }
 .lb-wp.team2 { border-left: 3px solid #ff9f6b; }
 .lb-wp.team1.empty, .lb-wp.team2.empty { border-left-width: 3px; border-left-style: solid; }
+
+/* ---------- полноценная светлая тема лобби ----------
+   Переменные переопределяются только внутри #lobby, поэтому игровое поле
+   сохраняет свой самостоятельный тёмный дизайн. */
+html[data-theme="light"] #lobby {
+    --lb-bg: #f2f2f7;
+    --bg: #f2f2f7;
+    --panel: #ffffff;
+    --panel-2: #f4f5f9;
+    --text: #111114;
+    --text-dim: #6c6c72;
+    --shadow: 0 8px 24px rgba(31, 38, 60, .08);
+    color: var(--text);
+}
+html[data-theme="light"] .lb-mode,
+html[data-theme="light"] .lb-room,
+html[data-theme="light"] .lb-empty,
+html[data-theme="light"] .lb-card,
+html[data-theme="light"] .lb-resume {
+    border: 1px solid rgba(28, 28, 30, .08);
+    box-shadow: var(--shadow);
+}
+html[data-theme="light"] .lb-mode-arrow { color: #8e8e93; }
+html[data-theme="light"] .lb-room-meta b { color: #48484d; }
+html[data-theme="light"] .lb-resume-avas .lb-ava { border-color: #fff; }
+html[data-theme="light"] .lb-ava,
+html[data-theme="light"] .lb-wp .lb-ava.ghost {
+    background: linear-gradient(140deg, #e8e8ed, #d8d8df);
+    color: #3a3a40;
+}
+html[data-theme="light"] .lb-seg,
+html[data-theme="light"] .lb-input,
+html[data-theme="light"] .lb-code-box,
+html[data-theme="light"] .lb-wp,
+html[data-theme="light"] .lb-btn.ghost {
+    background: #f0f1f5;
+}
+html[data-theme="light"] .lb-seg-ind {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(31, 38, 60, .12);
+}
+html[data-theme="light"] .lb-input {
+    border-color: #d6d7dc;
+}
+html[data-theme="light"] .lb-input:focus { border-color: #0a84ff; }
+html[data-theme="light"] .lb-input::placeholder { color: #8e8e93; }
+html[data-theme="light"] .lb-sw { background: #d1d1d6; }
+html[data-theme="light"] .lb-btn:disabled {
+    background: #e5e5ea;
+    color: #8e8e93;
+}
+html[data-theme="light"] .lb-wp.empty {
+    background: rgba(255, 255, 255, .5);
+    border-color: #c7c7cc;
+}
+html[data-theme="light"] .lb-wp-name.dim,
+html[data-theme="light"] .lb-team-sep { color: #8e8e93; }
+html[data-theme="light"] .lb-team-sep::before,
+html[data-theme="light"] .lb-team-sep::after { background: #d1d1d6; }
+html[data-theme="light"] .lb-toast {
+    background: #fff;
+    color: #111114;
+    border: 1px solid rgba(28, 28, 30, .08);
+    box-shadow: 0 10px 30px rgba(31, 38, 60, .16);
+}
+html[data-theme="light"] .lb-toast.bad {
+    background: #fff0f1;
+    color: #c5293a;
+}
