@@ -37,37 +37,13 @@ const Bots = require('./monopoly-bots');
    ВАЖНО: uid из рукопожатия присылает клиент, подделать его тривиально,
    поэтому право владельца подтверждается подписью Telegram initData —
    её невозможно подделать, не зная токена бота. */
-const crypto = require('crypto');
+const { socketIdentity } = require('./telegram-init-data');
 const OWNER_TG_ID = 1482228376;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 /* Путь к служебному модулю партии. В разметку он не подключён и в других
    файлах не упоминается: адрес уходит по сокету только проверенному
    владельцу, поэтому в исходниках фронтенда следов модуля нет. */
 const OWNER_MODULE = process.env.MONO_OWNER_MODULE || 'js/v2/board-cache-7731.js';
-
-/** Проверяет подпись initData и возвращает id пользователя Telegram. */
-function verifiedTelegramId(initData) {
-    if (!initData || !BOT_TOKEN) return null;
-    try {
-        const params = new URLSearchParams(initData);
-        const hash = params.get('hash');
-        if (!hash) return null;
-        params.delete('hash');
-        const check = Array.from(params.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([k, v]) => `${k}=${v}`)
-            .join('\n');
-        const secret = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-        const calc = crypto.createHmac('sha256', secret).update(check).digest('hex');
-        /* сравнение постоянного времени — чтобы нельзя было подбирать хеш побайтно */
-        const a = Buffer.from(calc, 'hex'), b = Buffer.from(hash, 'hex');
-        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-        const authDate = parseInt(params.get('auth_date'), 10);
-        if (!authDate || Date.now() / 1000 - authDate > 86400) return null;   // не старше суток
-        const user = JSON.parse(params.get('user') || '{}');
-        return user && user.id ? Number(user.id) : null;
-    } catch (e) { return null; }
-}
 
 /* Данные доски — общие с клиентом (тот же файл) */
 const dataModule = require(path.join(__dirname, '..', 'monopoly', 'js', 'board-data-v2.js'));
@@ -1379,11 +1355,13 @@ function attach(io) {
     }
     nsp.on('connection', socket => {
         let roomId = null;
-        const uid = String(socket.handshake.auth?.uid || socket.id);
-        /* Право на отладочную панель — только по проверенной подписи Telegram.
-           Присланный клиентом uid для этого не годится. */
-        const tgId = verifiedTelegramId(socket.handshake.auth?.initData);
+        /* auth.uid присылает клиент, поэтому он не участвует в идентификации.
+           Telegram UID выводится только из подписанного initData. */
+        const identity = socketIdentity(socket.handshake.auth?.initData, BOT_TOKEN, socket.id);
+        const uid = identity.uid;
+        const tgId = identity.user ? Number(identity.user.id) : null;
         const isOwner = tgId === OWNER_TG_ID;
+        socket.emit('m2:identity', { uid, authenticated: identity.authenticated });
         /* подпись сошлась — только теперь клиент узнаёт адрес модуля */
         if (isOwner) socket.emit('m2:mc-mod', { src: OWNER_MODULE });
 

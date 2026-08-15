@@ -4715,6 +4715,10 @@
                 });
                 const data = await resp.json();
                 if (data.session_token) activeSessionTokens[game_type] = data.session_token;
+                if (game_type === 'bb_best_score') {
+                    bbServerCheckpoint = data.bb_checkpoint || null;
+                    saveBBState();
+                }
             } catch(e) { console.error('Session start error:', e); }
         }
         
@@ -4743,7 +4747,6 @@
             
             while (bbMoveQueue.length > 0) {
                 const move = bbMoveQueue[0];
-                let success = false;
                 
                 for (let attempt = 0; attempt < 2; attempt++) {
                     try {
@@ -4752,7 +4755,14 @@
                             headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
                             body: JSON.stringify(move)
                         });
-                        if (resp.ok) { success = true; break; }
+                        const data = await resp.json().catch(() => null);
+                        if (resp.ok && data && data.ok) {
+                            if (data.bb_checkpoint) {
+                                bbServerCheckpoint = data.bb_checkpoint;
+                                saveBBState();
+                            }
+                            break;
+                        }
                         break; // Server rejected — don't retry
                     } catch(e) {
                         // Network error — retry once
@@ -4764,6 +4774,14 @@
             }
             
             bbMoveProcessing = false;
+        }
+
+        async function waitForBBMoveQueue(timeoutMs = 8000) {
+            const deadline = Date.now() + timeoutMs;
+            while ((bbMoveProcessing || bbMoveQueue.length > 0) && Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return !bbMoveProcessing && bbMoveQueue.length === 0;
         }
         
         async function reportGameMove(game_type, bbMoveData) {
@@ -4793,6 +4811,11 @@
         async function sendStatToBackend(game_type, score) {
             if (userBanned) return false;
             const user = tg.initDataUnsafe.user; if (!user) return false;
+            if ((game_type === 'bb_best_score' || game_type === 'bb_tournament_score')
+                && !(await waitForBBMoveQueue())) {
+                console.error('BB score was not submitted: move queue did not drain');
+                return false;
+            }
             const url = `${API_BASE_URL}/save-stat`;
             // Tournament BB shares its session with regular BB on the backend
             const sessionKey =
@@ -5816,7 +5839,8 @@
         function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
         
         /* --- BLOCK BLAST (FIXED) --- */
-        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false, bbLastComboFilled=-1; 
+        const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false, bbLastComboFilled=-1;
+        let bbServerCheckpoint = null;
 
         // ===================== BLOCK BLAST SCORING CONFIG =====================
         // Единое место для балансировки очков. Меняй значения здесь.
@@ -6245,20 +6269,57 @@
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
             restoreBBState();
+            const resumeCheckpoint = bbServerCheckpoint;
             await startGameSession('bb_best_score');
-            syncBBSession();
+            const freshCheckpoint = bbServerCheckpoint;
+            bbServerCheckpoint = resumeCheckpoint;
+            await syncBBSession(freshCheckpoint);
         }
-        async function syncBBSession() {
+        async function syncBBSession(freshCheckpoint) {
             // Backend uses 'bb_best_score' as the session key for both modes
             const token = activeSessionTokens['bb_best_score'];
-            if (!token) return;
+            if (!token || !bbServerCheckpoint) {
+                resetBBToCurrentSession(freshCheckpoint);
+                return false;
+            }
             try {
-                await fetch(`${API_BASE_URL}/game-session/bb-sync`, {
+                const resp = await fetch(`${API_BASE_URL}/game-session/bb-sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
-                    body: JSON.stringify({ session_token: token, grid: bbGrid, score: bbScore, combo: bbCombo, comboBuffer: bbComboBuffer })
+                    body: JSON.stringify({ session_token: token, checkpoint: bbServerCheckpoint })
                 });
-            } catch(e) { console.error('BB sync error:', e); }
+                const data = await resp.json().catch(() => null);
+                if (!resp.ok || !data || !data.ok || !Array.isArray(data.server_grid)) {
+                    resetBBToCurrentSession(freshCheckpoint);
+                    return false;
+                }
+                bbGrid = data.server_grid.map(row => row.map(cell => cell ? 'bb-c-1' : 0));
+                bbScore = data.server_score || 0;
+                bbDisplayedScore = bbScore;
+                bbCombo = data.combo || 0;
+                bbComboBuffer = data.comboBuffer || 0;
+                bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
+                renderBBGrid();
+                updateBBScoreUI();
+                spawnShapes();
+                saveBBState();
+                return true;
+            } catch(e) {
+                console.error('BB sync error:', e);
+                resetBBToCurrentSession(freshCheckpoint);
+                return false;
+            }
+        }
+        function resetBBToCurrentSession(freshCheckpoint) {
+            localStorage.removeItem(bbStateKey());
+            bbServerCheckpoint = freshCheckpoint || null;
+            bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
+            bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
+            bbShapes = [];
+            renderBBGrid();
+            updateBBScoreUI();
+            spawnShapes();
+            saveBBState();
         }
         function newGameBB() {
             bbGameEnded = false;
@@ -6274,6 +6335,7 @@
         }
         function initBB() {
             bbMoveQueue = []; bbMoveProcessing = false;
+            bbServerCheckpoint = null;
             bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
             bbIsAnimating = false;
@@ -7224,8 +7286,8 @@
             }
             overlay.classList.add('visible');
         }
-        function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
+        function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, serverCheckpoint: bbServerCheckpoint }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;

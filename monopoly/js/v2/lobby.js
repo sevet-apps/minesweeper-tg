@@ -294,6 +294,7 @@
                 renderResume(null);
                 return toast('Игра уже недоступна', true);
             }
+            net().setMe(res.you);
             net().setRoom(res.roomId);
             if (res.started) startGame('online');
             else openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
@@ -382,6 +383,7 @@
         try {
             await ensureNet();
             net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed, teams }, res => {
+                net().setMe(res.you);
                 net().setRoom(res.roomId);
                 openWaitRoom(res.roomId, true, isPrivate, maxPlayers, botsAllowed);
             });
@@ -397,6 +399,7 @@
                     const msg = { 'no-room': 'Комната не найдена', started: 'Игра уже началась', full: 'В комнате нет мест' };
                     return toast(msg[res && res.error] || 'Не удалось войти', true);
                 }
+                net().setMe(res.you);
                 net().setRoom(res.roomId);
                 openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
             });

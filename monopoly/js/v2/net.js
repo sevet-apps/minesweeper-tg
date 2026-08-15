@@ -35,6 +35,11 @@
             Object.assign(S, st);
             emit('state');
         });
+        sock.on('m2:identity', identity => {
+            if (!identity || !identity.uid) return;
+            myId = String(identity.uid);
+            emit('identity', { uid: myId, authenticated: !!identity.authenticated });
+        });
         sock.on('m2:log', l => emit('log', l));
         sock.on('m2:phase', ph => { lastPhase = ph; emit('phase', ph); });
         sock.on('m2:timer', t => { S.timerEnd = t.end; emit('timer', t.secs); });
