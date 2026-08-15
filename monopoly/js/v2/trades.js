@@ -133,9 +133,29 @@
         const c = T.composing;
         return {
             giveTiles: [...c.give], takeTiles: [...c.take],
-            giveMoney: +($('#tpGiveMoney')?.value || 0) || 0,
-            takeMoney: +($('#tpTakeMoney')?.value || 0) || 0,
+            giveMoney: integerMoneyValue($('#tpGiveMoney')),
+            takeMoney: integerMoneyValue($('#tpTakeMoney')),
         };
+    }
+    function integerMoneyValue(input) {
+        const value = Number(input?.value || 0);
+        return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+    }
+    function bindMoneyInput(input) {
+        if (!input) return;
+        input.addEventListener('keydown', ev => {
+            if (['.', ',', 'e', 'E', '+', '-'].includes(ev.key)) ev.preventDefault();
+        });
+        input.addEventListener('paste', ev => {
+            const text = ev.clipboardData?.getData('text').trim() || '';
+            if (!/^\d+$/.test(text)) ev.preventDefault();
+        });
+        input.addEventListener('input', () => {
+            const value = Number(input.value);
+            if (input.value !== '' && (!Number.isSafeInteger(value) || value < 0)) input.value = '';
+            renderTotalsOnly();
+            if (T.future) refreshBoard();
+        });
     }
     function handleTileClick(i) {
         if (!T.composing) return false;
@@ -183,7 +203,7 @@
                     <div class="tp-who"><span class="pname" style="color:${me.color}">Вы</span> предлагаете</div>
                     ${listHtml([...c.give])}
                     <label class="tp-money">Наличные
-                        <input id="tpGiveMoney" type="number" min="0" max="${me.money}" step="100" value="${deal.giveMoney || ''}" placeholder="0">
+                        <input id="tpGiveMoney" type="number" inputmode="numeric" min="0" max="${me.money}" step="1" value="${deal.giveMoney || ''}" placeholder="0">
                     </label>
                     <div class="tp-total">Общая стоимость <span class="dots"></span> ${DS}${fmt(total([...c.give], deal.giveMoney))}</div>
                 </div>
@@ -191,7 +211,7 @@
                     <div class="tp-who"><span class="pname" style="color:${other.color}">${other.name}</span> отдаст</div>
                     ${listHtml([...c.take])}
                     <label class="tp-money">Наличные
-                        <input id="tpTakeMoney" type="number" min="0" max="${other.money}" step="100" value="${deal.takeMoney || ''}" placeholder="0">
+                        <input id="tpTakeMoney" type="number" inputmode="numeric" min="0" max="${other.money}" step="1" value="${deal.takeMoney || ''}" placeholder="0">
                     </label>
                     <div class="tp-total">Общая стоимость <span class="dots"></span> ${DS}${fmt(total([...c.take], deal.takeMoney))}</div>
                 </div>
@@ -205,8 +225,8 @@
         $('#tpSend').onclick = send;
         $('#tpCancel').onclick = () => { T.composing = null; closePanel(); };
         $('#tpFuture').onclick = ev => { setFuture(!T.future); ev.target.classList.toggle('on', T.future); };
-        $('#tpGiveMoney').oninput = () => { renderTotalsOnly(); if (T.future) refreshBoard(); };
-        $('#tpTakeMoney').oninput = () => { renderTotalsOnly(); if (T.future) refreshBoard(); };
+        bindMoneyInput($('#tpGiveMoney'));
+        bindMoneyInput($('#tpTakeMoney'));
     }
     function renderTotalsOnly() {
         const c = T.composing; if (!c) return;

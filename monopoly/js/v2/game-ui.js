@@ -321,7 +321,7 @@
                     <div class="player-avatar">${avaHtml(p)}</div>
                     <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${p.name}</div>
                     <div class="player-money"><i class="dsign"></i><span class="pm-val"></span></div>
-                    <div class="rip-mark">⚰️ RIP</div>`;
+                    <div class="rip-mark"><img src="assets/icons/coffin.png" alt=""> RIP</div>`;
                 card.addEventListener('click', ev =>
                     global.Modals.playerMenu(id, ev.currentTarget.getBoundingClientRect(), ev.currentTarget));
                 els.col.appendChild(card);
