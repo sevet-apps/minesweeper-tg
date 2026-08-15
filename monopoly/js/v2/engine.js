@@ -731,7 +731,10 @@
         const f = S.players[fromId], t = S.players[toId];
         if (!f || !t || !f.alive || !t.alive) return false;
         if (!canTrade(fromId)) return false;
-        if ((deal.giveMoney || 0) > f.money || (deal.takeMoney || 0) > t.money) return false;
+        const giveMoney = deal.giveMoney ?? 0, takeMoney = deal.takeMoney ?? 0;
+        if (!Number.isSafeInteger(giveMoney) || giveMoney < 0
+            || !Number.isSafeInteger(takeMoney) || takeMoney < 0) return false;
+        if (giveMoney > f.money || takeMoney > t.money) return false;
         if (!deal.giveTiles.every(i => S.owners[i] === fromId)
             || !deal.takeTiles.every(i => S.owners[i] === toId)) return false;
         /* поле с филиалами передавать нельзя — сначала продайте застройку */

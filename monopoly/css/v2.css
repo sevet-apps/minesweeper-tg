@@ -179,7 +179,20 @@ html, body {
     color: #fff;
 }
 .player-card.rip .player-money { display: none; }
-.rip-mark { font-size: 26px; color: var(--text-dim); }
+.rip-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: 26px;
+    color: var(--text-dim);
+}
+.rip-mark img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+}
+.players-col.many .rip-mark img { width: 30px; height: 30px; }
 
 /* ---------- Доска ---------- */
 .board-zone {

@@ -266,6 +266,70 @@
         .banner-slide:active { opacity: 0.85; }
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+
+        /* Main game launcher: real artwork, individual color and a quiet
+           theme pattern. The cards stay one-column and keep their old actions. */
+        #view-games .game-card {
+            min-height: 112px;
+            padding: 15px 18px;
+            gap: 18px;
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            background-color: #1c1c1f;
+            background-repeat: no-repeat;
+            background-position: right center, center;
+            background-size: 420px 110px, cover;
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        #view-games .game-card > * { position: relative; z-index: 1; }
+        #view-games .game-card > div:last-child { color: rgba(255, 255, 255, 0.9) !important; }
+        #view-games .game-card h3 {
+            color: #fff;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
+        }
+        #view-games .game-icon-real {
+            width: 78px;
+            height: 78px;
+            flex: 0 0 78px;
+            border-radius: 22px;
+            background: transparent;
+            overflow: visible;
+        }
+        #view-games .game-icon-real img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transform: scale(1.14);
+            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
+        }
+        #view-games .game-card--checkers .game-icon-real img { transform: scale(1.2); }
+        #view-games .game-card--minesweeper {
+            background-image: url('assets/game-patterns/minesweeper.svg'), linear-gradient(112deg, rgba(21, 67, 108, .92), rgba(15, 27, 43, .9));
+        }
+        #view-games .game-card--checkers {
+            background-image: url('assets/game-patterns/checkers.svg'), linear-gradient(112deg, rgba(92, 96, 102, .9), rgba(30, 31, 34, .92));
+        }
+        #view-games .game-card--block-blast {
+            background-image: url('assets/game-patterns/block-blast.svg'), linear-gradient(112deg, rgba(18, 100, 83, .9), rgba(12, 48, 83, .92));
+        }
+        #view-games .game-card--sudoku {
+            background-image: url('assets/game-patterns/sudoku.svg'), linear-gradient(112deg, rgba(105, 32, 170, .92), rgba(46, 18, 101, .94));
+        }
+        #view-games .game-card--tower {
+            background-image: url('assets/game-patterns/tower.svg'), linear-gradient(112deg, rgba(16, 119, 87, .9), rgba(8, 61, 103, .94));
+        }
+        #view-games .game-card--wordle {
+            background-image: url('assets/game-patterns/wordle.svg'), linear-gradient(112deg, rgba(0, 135, 158, .92), rgba(13, 82, 75, .94));
+        }
+        #view-games .game-card--monopoly {
+            background-image: url('assets/game-patterns/monopoly.svg'), linear-gradient(112deg, rgba(155, 24, 31, .92), rgba(62, 13, 26, .95));
+        }
+        @media (max-width: 380px) {
+            #view-games .game-card { min-height: 102px; padding: 12px 15px; gap: 14px; }
+            #view-games .game-icon-real { width: 70px; height: 70px; flex-basis: 70px; }
+        }
         
         .game-top-bar { 
             padding: 15px 20px; 
@@ -2729,48 +2793,44 @@
             </div>
         </div>
         
-        <div class="card" onclick="openGameModal('saper')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="minesweeper">Сапёр</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="openGameModal('checkers')"> <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="checkers">Шашки</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-                <div class="card" id="bbHomeCard" onclick="startBlockBlastCheck()"> <div class="card-event-badge" data-i18n="tournamentBadge" style="display:none;">ТУРНИР</div> <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="blockBlast">Блок Бласт</h3> <div style="font-size:12px; color:#FFA500; font-weight:600; margin-top:2px; display:none;" data-i18n="tournamentActive">Турнир на 150$</div> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="startSudokuCheck()"> <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div> <div style="flex:1;"> <h3 style="margin:0; font-size:17px;" data-i18n="sudoku">Судоку</h3> </div> <div style="color:var(--accent); font-weight:600;">Play</div> </div> 
-        <div class="card" onclick="openGameModal('tower')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #FF2D55, #FF375F);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="14" width="16" height="6" rx="1"></rect>
-                    <rect x="6" y="9" width="12" height="5" rx="1"></rect>
-                    <rect x="8" y="4" width="8" height="5" rx="1"></rect>
-                </svg>
-            </div>
+        <div class="card game-card game-card--minesweeper" onclick="openGameModal('saper')">
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/minesweeper.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="minesweeper">Сапёр</h3></div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+        <div class="card game-card game-card--checkers" onclick="openGameModal('checkers')">
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/checkers.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="checkers">Шашки</h3></div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+        <div class="card game-card game-card--block-blast" id="bbHomeCard" onclick="startBlockBlastCheck()">
+            <div class="card-event-badge" data-i18n="tournamentBadge" style="display:none;">ТУРНИР</div>
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/block-blast.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="blockBlast">Блок Бласт</h3><div style="font-size:12px; color:#FFA500; font-weight:600; margin-top:2px; display:none;" data-i18n="tournamentActive">Турнир на 150$</div></div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+        <div class="card game-card game-card--sudoku" onclick="startSudokuCheck()">
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/sudoku.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="sudoku">Судоку</h3></div>
+            <div style="color:var(--accent); font-weight:600;">Play</div>
+        </div>
+        <div class="card game-card game-card--tower" onclick="openGameModal('tower')">
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/tower.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="tower">Башня</h3>
             </div>
             <div style="color:var(--accent); font-weight:600;">Play</div>
         </div>
-        <div class="card" onclick="startWordle()" style="position:relative; overflow:hidden;">
+        <div class="card game-card game-card--wordle" onclick="startWordle()">
             <div style="position:absolute; top:8px; right:-24px; background:linear-gradient(135deg, #ff9500, #ff6b00); color:#fff; font-size:9px; font-weight:800; padding:2px 28px; transform:rotate(35deg); letter-spacing:1px; z-index:2; text-transform:uppercase;" data-i18n="beta">БЕТА</div>
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #6AAA64, #C9B458);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="5" height="5" rx="1"></rect>
-                    <rect x="9.5" y="4" width="5" height="5" rx="1"></rect>
-                    <rect x="16" y="4" width="5" height="5" rx="1"></rect>
-                    <rect x="3" y="10.5" width="5" height="5" rx="1"></rect>
-                    <rect x="9.5" y="10.5" width="5" height="5" rx="1"></rect>
-                </svg>
-            </div>
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/wordle.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="wordle">Вордли</h3>
             </div>
             <div style="color:var(--accent); font-weight:600;">Play</div>
         </div>
-        <div class="card" style="position:relative; overflow:hidden;" onclick="openMonopolyLobby()">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #2d6a4f, #40916c);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                    <rect x="7" y="7" width="10" height="10" rx="1"></rect>
-                    <circle cx="5" cy="5" r="1"></circle>
-                    <circle cx="19" cy="19" r="1"></circle>
-                </svg>
-            </div>
+        <div class="card game-card game-card--monopoly" onclick="openMonopolyLobby()">
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/monopoly.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;">Монополия</h3>
             </div>
