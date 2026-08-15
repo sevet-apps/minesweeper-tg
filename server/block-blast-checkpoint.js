@@ -42,6 +42,7 @@ function createCheckpoint(session, userId, secret, now = Date.now()) {
         c: session.bbCombo,
         b: session.bbComboBuffer,
         m: session.moveCount,
+        a: session.startTime,
         t: now,
     };
     const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -69,6 +70,12 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
     if (!Number.isInteger(payload.b) || payload.b < 0 || payload.b > 3) return null;
     if (!Number.isInteger(payload.m) || payload.m < 0 || payload.m > 1_000_000) return null;
     if (!Number.isFinite(payload.t) || payload.t > now + MAX_FUTURE_SKEW_MS || now - payload.t > MAX_AGE_MS) return null;
+    const startTime = Number.isFinite(payload.a)
+        && payload.a <= payload.t
+        && payload.a <= now + MAX_FUTURE_SKEW_MS
+        && now - payload.a <= MAX_AGE_MS
+        ? payload.a
+        : Math.max(0, payload.t - 5000);
 
     return {
         bbGrid: grid,
@@ -76,6 +83,7 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
         bbCombo: payload.c,
         bbComboBuffer: payload.b,
         moveCount: payload.m,
+        startTime,
         issuedAt: payload.t,
     };
 }

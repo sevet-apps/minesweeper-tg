@@ -267,8 +267,7 @@
         .card.disabled { cursor: default; opacity: 0.7; } .card.disabled:active { transform: none; }
         .game-icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
 
-        /* Main game launcher: real artwork, individual color and a quiet
-           theme pattern. The cards stay one-column and keep their old actions. */
+        /* Main game launcher: real artwork and an individual color gradient. */
         #view-games .game-card {
             min-height: 112px;
             padding: 15px 18px;
@@ -277,9 +276,6 @@
             overflow: hidden;
             isolation: isolate;
             background-color: #1c1c1f;
-            background-repeat: no-repeat;
-            background-position: center, center;
-            background-size: 420px 120px, cover;
             border-color: rgba(255, 255, 255, 0.12);
         }
         #view-games .game-card > * { position: relative; z-index: 1; }
@@ -304,26 +300,28 @@
             filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
         }
         #view-games .game-card--minesweeper {
-            background-image: url('assets/game-patterns/minesweeper.svg'), linear-gradient(112deg, rgba(21, 67, 108, .92), rgba(15, 27, 43, .9));
+            background: linear-gradient(112deg, rgba(21, 67, 108, .92), rgba(15, 27, 43, .9));
         }
         #view-games .game-card--checkers {
-            background-image: url('assets/game-patterns/checkers.svg'), linear-gradient(112deg, rgba(92, 96, 102, .9), rgba(30, 31, 34, .92));
+            background: linear-gradient(112deg, rgba(92, 96, 102, .9), rgba(30, 31, 34, .92));
         }
         #view-games .game-card--block-blast {
-            background-image: url('assets/game-patterns/block-blast.svg'), linear-gradient(112deg, rgba(18, 100, 83, .9), rgba(12, 48, 83, .92));
+            background: linear-gradient(112deg, rgba(18, 100, 83, .9), rgba(12, 48, 83, .92));
         }
         #view-games .game-card--sudoku {
-            background-image: url('assets/game-patterns/sudoku.svg'), linear-gradient(112deg, rgba(105, 32, 170, .92), rgba(46, 18, 101, .94));
+            background: linear-gradient(112deg, rgba(105, 32, 170, .92), rgba(46, 18, 101, .94));
         }
         #view-games .game-card--tower {
-            background-image: url('assets/game-patterns/tower.svg'), linear-gradient(112deg, rgba(16, 119, 87, .9), rgba(8, 61, 103, .94));
+            background: linear-gradient(112deg, rgba(16, 119, 87, .9), rgba(8, 61, 103, .94));
         }
         #view-games .game-card--wordle {
-            background-image: url('assets/game-patterns/wordle.svg'), linear-gradient(112deg, rgba(0, 135, 158, .92), rgba(13, 82, 75, .94));
+            background: linear-gradient(112deg, rgba(0, 135, 158, .92), rgba(13, 82, 75, .94));
         }
         #view-games .game-card--monopoly {
-            background-image: url('assets/game-patterns/monopoly.svg'), linear-gradient(112deg, rgba(155, 24, 31, .92), rgba(62, 13, 26, .95));
+            background: linear-gradient(112deg, rgba(155, 24, 31, .92), rgba(62, 13, 26, .95));
         }
+        .leaderboard-game-logo { background: transparent !important; overflow: hidden; }
+        .leaderboard-game-logo img { width: 100%; height: 100%; display: block; object-fit: contain; }
         @media (max-width: 380px) {
             #view-games .game-card { min-height: 102px; padding: 12px 15px; gap: 14px; }
             #view-games .game-icon-real { width: 70px; height: 70px; flex-basis: 70px; }
@@ -809,8 +807,8 @@
 
         /* Combo buffer bar — square brick segments, always visible, shows how
            many no-line moves remain before the combo streak resets. */
-        /* Очки за закрытую линию: возникают резко прямо на месте фигуры,
-           подпрыгивают и тают. */
+        /* Очки за закрытую линию плавно увеличиваются на месте, затем
+           удаляются из DOM без движения и затухания. */
         .bb-line-score {
             position: fixed;
             z-index: 10500;
@@ -818,23 +816,18 @@
             font-weight: 900;
             font-size: 30px;
             line-height: 1;
-            /* число целиком в цвете поставленной фигуры, свечения нет —
-               только мягкая тень, чтобы цифры читались на светлых клетках */
-            color: var(--ls-color, #fff);
-            text-shadow: 0 2px 6px rgba(0,0,0,.45);
+            color: #fff4a8;
+            text-shadow: 0 2px 7px rgba(0,0,0,.7), 0 0 10px rgba(255,196,0,.28);
             transform: translate(-50%, -50%);
-            animation: bbLineScore 1s cubic-bezier(.2,.9,.3,1) forwards;
+            animation: bbLineScoreIn .24s cubic-bezier(.16, 1, .3, 1) forwards;
             will-change: transform, opacity;
         }
         .bb-line-score.big { font-size: 38px; }
-        @keyframes bbLineScore {
-            0%   { opacity: 0; transform: translate(-50%,-50%) scale(.35); }
-            14%  { opacity: 1; transform: translate(-50%,-50%) scale(1.28); }
-            28%  { transform: translate(-50%,-50%) scale(1); }
-            70%  { opacity: 1; transform: translate(-50%,-58%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%,-115%) scale(.92); }
+        @keyframes bbLineScoreIn {
+            0%   { opacity: 0; transform: translate(-50%,-50%) scale(.82); }
+            100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
         }
-        body.lite-mode .bb-line-score { animation-duration: .7s; }
+        body.lite-mode .bb-line-score { animation-duration: .2s; }
 
         .bb-combo-bar {
             display: flex;
@@ -1222,20 +1215,6 @@
             background: var(--accent);
             color: white;
         }
-        .settings-asset-credit {
-            display: block;
-            width: max-content;
-            max-width: 100%;
-            margin: 13px auto 0;
-            color: var(--text-secondary, #8e8e93);
-            font-size: 11px;
-            line-height: 1.35;
-            text-align: center;
-            text-decoration: underline;
-            text-decoration-color: rgba(142, 142, 147, 0.45);
-            text-underline-offset: 2px;
-        }
-
         /* Fix header position for settings button */
         .header { position: relative; transition: opacity 0.25s ease; }
 
@@ -2635,51 +2614,37 @@
         <div class="header"><div class="app-title" data-i18n="tops">Топы</div></div>
         
         <div class="card" onclick="openLeaderboardDetail('saper')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #007aff, #5ac8fa);"> <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5z"/></svg> </div>
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/minesweeper.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsMinesweeper">Топ Сапёр</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
         <div class="card" onclick="openLeaderboardDetail('checkers')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #ff3b30, #ff9500);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg> </div>
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/checkers.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsCheckers">Топ Шашки</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
         <div class="card" onclick="openLeaderboardDetail('bb')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #34c759, #30b0c7);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"></rect><rect x="13" y="2" width="9" height="9" rx="2"></rect><rect x="2" y="13" width="9" height="9" rx="2"></rect></svg> </div>
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/block-blast.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" id="bbLbTitle" data-i18n="topsBlockBlast">Топ Блок Бласт</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
         <div class="card" onclick="openLeaderboardDetail('sudoku')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #5856d6, #af52de);"> <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> </div>
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/sudoku.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsSudoku">Топ Судоку</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
         <div class="card" onclick="openLeaderboardDetail('tower')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #FF2D55, #FF375F);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="14" width="16" height="6" rx="1"></rect>
-                    <rect x="6" y="9" width="12" height="5" rx="1"></rect>
-                    <rect x="8" y="4" width="8" height="5" rx="1"></rect>
-                </svg>
-            </div>
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/tower.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsTower">Топ Башня</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
         <div class="card" onclick="openLeaderboardDetail('wordle')">
-            <div class="game-icon-box" style="background: linear-gradient(135deg, #6AAA64, #C9B458);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="5" height="5" rx="1"></rect>
-                    <rect x="9.5" y="4" width="5" height="5" rx="1"></rect>
-                    <rect x="16" y="4" width="5" height="5" rx="1"></rect>
-                    <rect x="3" y="10.5" width="5" height="5" rx="1"></rect>
-                    <rect x="9.5" y="10.5" width="5" height="5" rx="1"></rect>
-                </svg>
-            </div>
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/wordle.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsWordle">Топ Вордли</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
@@ -2826,30 +2791,30 @@
         <div class="card game-card game-card--minesweeper" onclick="openGameModal('saper')">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/minesweeper.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="minesweeper">Сапёр</h3></div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--checkers" onclick="openGameModal('checkers')">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/checkers.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="checkers">Шашки</h3></div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--block-blast" id="bbHomeCard" onclick="startBlockBlastCheck()">
             <div class="card-event-badge" data-i18n="tournamentBadge" style="display:none;">ТУРНИР</div>
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/block-blast.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="blockBlast">Блок Бласт</h3><div style="font-size:12px; color:#FFA500; font-weight:600; margin-top:2px; display:none;" data-i18n="tournamentActive">Турнир на 150$</div></div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--sudoku" onclick="startSudokuCheck()">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/sudoku.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="sudoku">Судоку</h3></div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--tower" onclick="openGameModal('tower')">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/tower.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="tower">Башня</h3>
             </div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--wordle" onclick="startWordle()">
             <div style="position:absolute; top:8px; right:-24px; background:linear-gradient(135deg, #ff9500, #ff6b00); color:#fff; font-size:9px; font-weight:800; padding:2px 28px; transform:rotate(35deg); letter-spacing:1px; z-index:2; text-transform:uppercase;" data-i18n="beta">БЕТА</div>
@@ -2857,14 +2822,14 @@
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="wordle">Вордли</h3>
             </div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--monopoly" onclick="openMonopolyLobby()">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/monopoly.png" alt=""></div>
             <div style="flex:1;">
-                <h3 style="margin:0; font-size:17px;">Монополия</h3>
+                <h3 style="margin:0; font-size:17px;" data-i18n="monopoly">Монополия</h3>
             </div>
-            <div style="color:var(--accent); font-weight:600;">Play</div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
     </div>
 
@@ -3349,6 +3314,10 @@
                     <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="enClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#enClip)"><rect width="60" height="60" fill="#fff"/><rect y="0" width="60" height="9" fill="#E8323C"/><rect y="18" width="60" height="9" fill="#E8323C"/><rect y="36" width="60" height="9" fill="#E8323C"/><rect y="54" width="60" height="6" fill="#E8323C"/><rect width="30" height="36" fill="#3B5998"/><circle cx="8" cy="8" r="1.8" fill="#fff"/><circle cx="15" cy="8" r="1.8" fill="#fff"/><circle cx="22" cy="8" r="1.8" fill="#fff"/><circle cx="11.5" cy="14" r="1.8" fill="#fff"/><circle cx="18.5" cy="14" r="1.8" fill="#fff"/><circle cx="8" cy="20" r="1.8" fill="#fff"/><circle cx="15" cy="20" r="1.8" fill="#fff"/><circle cx="22" cy="20" r="1.8" fill="#fff"/><circle cx="11.5" cy="26" r="1.8" fill="#fff"/><circle cx="18.5" cy="26" r="1.8" fill="#fff"/><circle cx="8" cy="32" r="1.8" fill="#fff"/><circle cx="15" cy="32" r="1.8" fill="#fff"/><circle cx="22" cy="32" r="1.8" fill="#fff"/></g></svg></div>
                     EN
                 </button>
+                <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">
+                    <div class="lang-flag"><svg viewBox="0 0 60 60" aria-hidden="true"><clipPath id="zhClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#zhClip)"><rect width="60" height="60" fill="#DE2910"/><path fill="#FFDE00" d="M14.5 8.5l2.35 7.23h7.6l-6.15 4.47 2.35 7.23-6.15-4.47-6.15 4.47 2.35-7.23-6.15-4.47h7.6z"/><path fill="#FFDE00" d="M31 7l1.1 3.4h3.6l-2.9 2.1 1.1 3.4-2.9-2.1-2.9 2.1 1.1-3.4-2.9-2.1h3.6zm8 8l1.1 3.4h3.6l-2.9 2.1 1.1 3.4-2.9-2.1-2.9 2.1 1.1-3.4-2.9-2.1h3.6zm-1 12l1.1 3.4h3.6l-2.9 2.1 1.1 3.4-2.9-2.1-2.9 2.1 1.1-3.4-2.9-2.1h3.6zm-9 8l1.1 3.4h3.6l-2.9 2.1 1.1 3.4-2.9-2.1-2.9 2.1 1.1-3.4-2.9-2.1h3.6z"/></g></svg></div>
+                    中文
+                </button>
             </div>
             
             <!-- Тема -->
@@ -3402,7 +3371,6 @@
                 <button class="settings-footer-btn secondary" onclick="openPrivacyPolicy()" data-i18n="privacy">Политика</button>
                 <button class="settings-footer-btn primary" onclick="openSupport()" data-i18n="support">Поддержка</button>
             </div>
-            <a class="settings-asset-credit" href="https://www.flaticon.com/uicons" target="_blank" rel="noopener noreferrer" data-i18n="assetCredit">Фоновые SVG разработаны Flaticon</a>
         </div>
     </div>
     
@@ -3950,6 +3918,7 @@
         
         // Language
         let currentLang = localStorage.getItem('language') || 'ru';
+        if (!['ru', 'en', 'zh'].includes(currentLang)) currentLang = 'ru';
         const translations = {
             ru: {
                 settings: 'Настройки',
@@ -3961,7 +3930,6 @@
                 privacy: 'Политика',
                 privacyTitle: 'Политика конфиденциальности',
                 support: 'Поддержка',
-                assetCredit: 'Фоновые SVG разработаны Flaticon',
                 profile: 'Профиль',
                 tops: 'Топ',
                 games: 'Игры',
@@ -3982,6 +3950,7 @@
                 sudoku: 'Судоку',
                 checkers: 'Шашки',
                 wordle: 'Вордли',
+                monopoly: 'Монополия',
                 referrals: 'Рефоводы',
                 // Game UI
                 menu: 'Меню',
@@ -3997,6 +3966,8 @@
                 // Messages
                 newRecord: 'Новый Рекорд!',
                 recordNotBeat: 'Рекорд не побит',
+                recordSaveFailed: 'Результат ожидает отправки',
+                recordSaveRetry: 'Мы автоматически повторим сохранение при следующем запуске.',
                 tryAgain: 'Попробуйте ещё раз!',
                 victory: 'Победа!',
                 defeat: 'Поражение',
@@ -4189,7 +4160,6 @@
                 privacy: 'Privacy',
                 privacyTitle: 'Privacy Policy',
                 support: 'Support',
-                assetCredit: 'Background SVG icons designed by Flaticon',
                 profile: 'Profile',
                 tops: 'Top',
                 games: 'Games',
@@ -4210,6 +4180,7 @@
                 sudoku: 'Sudoku',
                 checkers: 'Checkers',
                 wordle: 'Wordle',
+                monopoly: 'Monopoly',
                 referrals: 'Referrers',
                 // Game UI
                 menu: 'Menu',
@@ -4225,6 +4196,8 @@
                 // Messages
                 newRecord: 'New Record!',
                 recordNotBeat: 'Record not beaten',
+                recordSaveFailed: 'Result pending upload',
+                recordSaveRetry: 'We will retry saving it automatically the next time you open the game.',
                 tryAgain: 'Try again!',
                 victory: 'Victory!',
                 defeat: 'Defeat',
@@ -4406,6 +4379,73 @@
                 bbVpnPartnerLabel: 'Partner:',
                 back: 'Back',
                 beta: 'BETA'
+            },
+            zh: {
+                settings: '设置', language: '语言', appearance: '外观', theme: '主题',
+                simplifiedGraphics: '简化画面', vibration: '振动', privacy: '隐私政策',
+                privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
+                myRecords: '我的纪录', referralProgram: '邀请计划', inviteFriends: '邀请好友并提升排行榜名次',
+                conditions: '规则', conditionsTitle: '邀请计划规则',
+                conditionsText: '使用您的专属链接邀请好友，并参加邀请排行榜。', invite: '邀请', invited: '已邀请',
+                activated: '已计入', rankInTop: '名次', blockBlast: '方块爆破', minesweeper: '扫雷', tower: '叠塔',
+                sudoku: '数独', checkers: '跳棋', wordle: '猜词', monopoly: '大富翁', referrals: '邀请达人',
+                menu: '菜单', back: '返回', newGame: '新游戏', playAgain: '再玩一次', exit: '退出', start: '开始',
+                score: '得分', best: '最佳', wins: '胜场', time: '时间', newRecord: '新纪录！',
+                recordNotBeat: '未打破纪录', recordSaveFailed: '结果等待上传',
+                recordSaveRetry: '下次打开游戏时会自动重试保存。', tryAgain: '再试一次！', victory: '胜利！', defeat: '失败', draw: '平局',
+                youWon: '您赢了！', robotDefeated: '机器人已被击败。', robotWon: '机器人获胜。',
+                whiteWon: '白方获胜！', blackWon: '黑方获胜！', sudokuSolved: '数独完成！', towerFell: '塔倒了',
+                dig: '挖掘', flag: '旗帜', yourTurn: '轮到您', opponentTurn: '对手回合', white: '白方', black: '黑方',
+                waitingOpponent: '等待中…', roomCode: '房间代码：', shareCode: '将此代码发给好友',
+                opponentDisconnected: '对手已断开连接', opponentTimeout: '对手时间已用完', opponentLeft: '对手已离开游戏',
+                totalGames: '总场次', numWins: '获胜次数', bestTime6: '6×6 最佳时间', bestTime8: '8×8 最佳时间',
+                bestTime10: '10×10 最佳时间', bestTime15: '15×15 最佳时间', winsVsBot: '战胜机器人',
+                bestScore: '最高得分', towerHeight: '塔高', cleanSeries: '连续完美', place: '名', points: '分', gamesPlayed: '场',
+                foundUnfinished: '发现未完成的游戏', continue: '继续', cancel: '取消', close: '关闭', cool: '太棒了',
+                exitGame: '退出游戏？', exitConfirm: '确定要退出吗？本局将计为失败。', yesExit: '确认退出',
+                chooseDifficulty: '选择难度', subscribeChannel: '订阅频道',
+                subscribeText: '要开始游戏，请订阅我们的新闻频道。频道只发布应用更新和开发动态。',
+                goToChannel: '前往频道', checkSub: '检查订阅', topsBlockBlast: '方块爆破排行榜',
+                topsMinesweeper: '扫雷排行榜', topsTower: '叠塔排行榜', topsSudoku: '数独排行榜',
+                topsCheckers: '跳棋排行榜', topsWordle: '猜词排行榜', topsReferrals: '邀请排行榜',
+                tapToStart: '点击开始', refCondition2: '好友首次通过链接进入后将永久归属于您的邀请。',
+                refCondition3: '好友在方块爆破中达到 1000 分后才会进入排行榜；此前只显示在个人资料中。',
+                gotIt: '知道了', easy: '简单', medium: '中等', hard: '困难', chooseGameMode: '选择游戏模式',
+                twoPlayers: '双人游戏', vsRobot: '对战机器人', play: '开始游戏', findOpponent: '寻找对手', join: '加入',
+                createRoom: '创建房间', top: '排行', seconds: '秒', errors: '错误', input: '输入', boom: '爆炸！',
+                badLuck: '运气不佳。', tooManyErrors: '错误太多。', hugeTower: '您建造了一座高塔！', botTurn: '机器人回合',
+                whiteTurn: '白方回合', blackTurn: '黑方回合', code: '代码', wordNotInDict: '词典中没有这个词',
+                enter5Letters: '请输入 5 个字母', notGuessed: '未猜中', theWord: '答案是', guessedIn: '猜中所用次数：',
+                attempts: '次', attempt1: '次', attempt234: '次', totalWins: '总胜场', tryAgainBtn: '再试一次',
+                yourTimeOut: '您的时间已用完', noMovesOrPieces: '没有可走的棋或棋子。', toMenu: '返回菜单',
+                gameStarted: '游戏开始！', yourColor: '您的颜色', opponent: '对手', letsGo: '出发', inputBtn: '确认',
+                sec: '秒', wins_short: '胜', linkCopied: '链接已复制！', codePlaceholder: '代码…',
+                creatingRoom: '正在创建房间…', you: '（您）', winsShort: '胜', wins2: '胜', noData: '暂无数据',
+                networkError: '网络错误', noReferralsYet: '还没有人邀请好友。<br>成为第一个吧！', copyFailed: '复制失败',
+                tournamentSoon: '即将开始…',
+                tournamentDesc: '方块爆破锦标赛！现在就开始刷分，比赛开始时您的纪录会自动上榜。第一名赢得全部奖金！',
+                refTournamentSoon: '即将开始…',
+                refTournamentDesc: '150 美元邀请锦标赛！现在开始邀请好友，比赛开始时邀请数会自动计入。第一名赢得大奖！',
+                tournamentBadge: '活动', liveEnded: '直播已结束', tournamentActive: '150 美元锦标赛',
+                tournamentRunning: '比赛进行中！', tournamentReturnsSoon: '锦标赛即将回归',
+                tournamentNextSoon: '下一场比赛即将开始！', tournamentNextOnTheWay: '下一场比赛正在筹备！',
+                tournamentNextRefOnTheWay: '下一场邀请赛正在筹备！',
+                tournamentBbEnded: '上一场比赛已结束，获奖者可在历史记录中查看。新比赛即将到来！',
+                tournamentRefEnded: '上一场邀请赛已结束，获奖者可在历史记录中查看。新比赛正在筹备！',
+                tournamentDays: '天', tournamentHours: '时', tournamentMinutes: '分', tournamentPrize: '比赛奖金',
+                tournamentHistoryTitle: '比赛历史', tournamentHistoryEmpty: '已结束的比赛会显示在这里。',
+                tournamentHistoryArchived: '已结束', tournamentHistoryViewBtn: '比赛历史',
+                tournamentLeaderboardBtn: '比赛排行榜', tournamentHistoryWinner: '🏆 获胜者',
+                tournamentHistoryYourPlace: '您的名次', tournamentHistoryNoPlace: '您未参加', bbModeTitle: '选择模式',
+                bbModeOriginal: '经典模式', bbModeOriginalDesc: '经典方块爆破，挑战个人纪录。',
+                bbModeTournament: '锦标赛', bbModeTournamentDesc: '争夺大奖，得分会进入比赛排行榜。',
+                bbModeTournamentInactive: '当前没有比赛', bbModeContinue: '未完成的游戏',
+                bbTournamentNewBest: '新的比赛纪录！', bbFinalScore: '最终得分', bbHudVpnCta: '获得 ×1.5',
+                multPromoTitle: '最终得分获得 ×1.5',
+                multPromoDesc: '如果您订阅合作伙伴的 VPN 服务，锦标赛模式的最终得分将乘以 1.5。打开合作伙伴页面并订阅，倍率会自动生效。',
+                multPromoGoBtn: '前往合作伙伴', bbLbGlobal: '全球', bbLbTournament: '锦标赛', bbVpnActive: '×1.5 已启用',
+                bbVpnCta: '获取 VPN，得分 ×1.5', bbVpnPartnerLabel: '合作伙伴：', beta: '测试版',
+                comingSoon: '即将推出', tournamentHistoryNoPlace: '您未参加'
             }
         };
         
@@ -4414,8 +4454,13 @@
             const trans = translations[currentLang] || translations.ru;
             return trans[key] || translations.ru[key] || key;
         }
+
+        function currentLocale() {
+            return currentLang === 'zh' ? 'zh-CN' : (currentLang === 'en' ? 'en-US' : 'ru-RU');
+        }
         
         function setLanguage(lang) {
+            if (!['ru', 'en', 'zh'].includes(lang)) return;
             currentLang = lang;
             localStorage.setItem('language', lang);
             applyLanguage();
@@ -4878,43 +4923,101 @@
         // Sequential move queue for BB (prevents out-of-order and lost moves)
         let bbMoveQueue = [];
         let bbMoveProcessing = false;
+        let bbMoveRetryTimer = null;
+        let bbSessionRecoveryPromise = null;
+
+        async function recoverBBServerSession() {
+            if (bbSessionRecoveryPromise) return bbSessionRecoveryPromise;
+            bbSessionRecoveryPromise = (async () => {
+                const checkpoint = bbServerCheckpoint;
+                try {
+                    const startResp = await fetch(`${API_BASE_URL}/game-session/start`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                        body: JSON.stringify({ game_type: 'bb_best_score' })
+                    });
+                    const started = await startResp.json().catch(() => null);
+                    if (!startResp.ok || !started || !started.session_token) return false;
+                    activeSessionTokens.bb_best_score = started.session_token;
+                    if (!checkpoint) {
+                        bbServerCheckpoint = started.bb_checkpoint || null;
+                        return true;
+                    }
+                    const syncResp = await fetch(`${API_BASE_URL}/game-session/bb-sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                        body: JSON.stringify({ session_token: started.session_token, checkpoint })
+                    });
+                    const synced = await syncResp.json().catch(() => null);
+                    if (!syncResp.ok || !synced || !synced.ok) return false;
+                    bbServerCheckpoint = synced.bb_checkpoint || checkpoint;
+                    bbMoveQueue.forEach(item => { item.session_token = started.session_token; });
+                    return true;
+                } catch (error) {
+                    console.error('BB session recovery error:', error);
+                    return false;
+                }
+            })();
+            try { return await bbSessionRecoveryPromise; }
+            finally { bbSessionRecoveryPromise = null; }
+        }
         
         async function processBBMoveQueue() {
             if (bbMoveProcessing || bbMoveQueue.length === 0) return;
             bbMoveProcessing = true;
-            
-            while (bbMoveQueue.length > 0) {
-                const move = bbMoveQueue[0];
-                
-                for (let attempt = 0; attempt < 2; attempt++) {
-                    try {
-                        const resp = await fetch(`${API_BASE_URL}/game-session/move`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
-                            body: JSON.stringify(move)
-                        });
-                        const data = await resp.json().catch(() => null);
+            let shouldRetry = false;
+            try {
+                while (bbMoveQueue.length > 0) {
+                    const move = bbMoveQueue[0];
+                    let delivered = false;
+                    for (let attempt = 0; attempt < 5; attempt++) {
+                        move.session_token = activeSessionTokens.bb_best_score || move.session_token;
+                        let data = null;
+                        let resp = null;
+                        try {
+                            resp = await fetch(`${API_BASE_URL}/game-session/move`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                                body: JSON.stringify(move)
+                            });
+                            data = await resp.json().catch(() => null);
+                        } catch (error) {
+                            await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+                            continue;
+                        }
                         if (resp.ok && data && data.ok) {
+                            delivered = true;
                             if (data.bb_checkpoint) {
                                 bbServerCheckpoint = data.bb_checkpoint;
-                                saveBBState();
+                                if (!bbGameEnded) saveBBState();
                             }
                             break;
                         }
-                        break; // Server rejected — don't retry
-                    } catch(e) {
-                        // Network error — retry once
-                        await new Promise(r => setTimeout(r, 300));
+                        if (data && (data.reason === 'invalid_session' || data.reason === 'occupied')) {
+                            if (await recoverBBServerSession()) continue;
+                        }
+                        console.error('BB move rejected:', data && data.reason);
+                        break;
                     }
+                    if (!delivered) {
+                        shouldRetry = true;
+                        break;
+                    }
+                    bbMoveQueue.shift();
                 }
-                
-                bbMoveQueue.shift();
+            } finally {
+                bbMoveProcessing = false;
             }
-            
-            bbMoveProcessing = false;
+            if (shouldRetry && !bbMoveRetryTimer) {
+                bbMoveRetryTimer = setTimeout(() => {
+                    bbMoveRetryTimer = null;
+                    processBBMoveQueue();
+                }, 1000);
+            }
         }
 
-        async function waitForBBMoveQueue(timeoutMs = 8000) {
+        async function waitForBBMoveQueue(timeoutMs = 20000) {
+            processBBMoveQueue();
             const deadline = Date.now() + timeoutMs;
             while ((bbMoveProcessing || bbMoveQueue.length > 0) && Date.now() < deadline) {
                 await new Promise(resolve => setTimeout(resolve, 50));
@@ -4925,9 +5028,11 @@
         async function reportGameMove(game_type, bbMoveData) {
             const sessionKey = (game_type === 'tower_combo') ? 'tower_best' : game_type;
             const token = activeSessionTokens[sessionKey];
-            if (!token) return;
-            const move_data = bbMoveData || generateMoveHash(game_type);
-            const payload = { game_type: sessionKey, session_token: token, move_data };
+            if (!token && !(game_type === 'bb_best_score' && bbMoveData)) return;
+            const move_data = bbMoveData
+                ? { ...bbMoveData, move_id: bbMoveData.move_id || generateMoveHash(game_type) }
+                : generateMoveHash(game_type);
+            const payload = { game_type: sessionKey, session_token: token || '', move_data };
             
             // BB moves go through sequential queue to maintain order
             if (game_type === 'bb_best_score' && bbMoveData) {
@@ -4962,11 +5067,17 @@
                 game_type;
             const token = activeSessionTokens[sessionKey] || '';
             const payload = { game_type, score, session_token: token };
-            try { 
-                const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) }); 
-                if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
+            try {
+                let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) });
+                let data = await resp.json().catch(() => ({}));
+                if (!resp.ok && (game_type === 'bb_best_score' || game_type === 'bb_tournament_score') && data.error === 'Invalid session') {
+                    if (await recoverBBServerSession()) {
+                        payload.session_token = activeSessionTokens.bb_best_score || '';
+                        resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) });
+                        data = await resp.json().catch(() => ({}));
+                    }
+                }
                 if (resp.status === 403) {
-                    const data = await resp.json().catch(() => ({}));
                     if (data.error === 'Account suspended') {
                         userBanned = true;
                         showResult('⛔️', t('accountSuspended') || 'Ваш аккаунт заблокирован за нарушения. Обратитесь к администратору.', 'OK', () => { closeResult(); });
@@ -4974,12 +5085,8 @@
                     return false;
                 }
                 if (!resp.ok) return false;
-                // For tournament BB, the server returns { success: true, tournament: {...} }
-                // Surface that to callers that need it; everyone else can keep using truthy.
-                if (game_type === 'bb_tournament_score') {
-                    try { return await resp.json(); } catch { return true; }
-                }
-                return true;
+                if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
+                return data && typeof data === 'object' ? data : true;
             } catch (error) { console.error(error); return false; }
         }
         async function syncStatsFromServer() {
@@ -5365,7 +5472,7 @@
                 const iconClass = kind === 'referral' ? 'referral' : 'bb';
                 const iconChar = kind === 'referral' ? '👥' : '🧱';
                 items.forEach(item => {
-                    const endDate = item.end_at ? new Date(item.end_at).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    const endDate = item.end_at ? new Date(item.end_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '';
                     const meta = [t('tournamentHistoryArchived') + ' ' + endDate, item.prize_text].filter(Boolean).join(' · ');
                     const el = document.createElement('div');
                     el.className = 'th-item';
@@ -5407,7 +5514,7 @@
                 const tt = data.tournament;
                 titleEl.textContent = tt ? tt.name : '#' + tournamentId;
                 if (tt) {
-                    const endDate = tt.end_at ? new Date(tt.end_at).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    const endDate = tt.end_at ? new Date(tt.end_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '';
                     metaEl.textContent = [t('tournamentHistoryArchived') + ' ' + endDate, tt.prize_text].filter(Boolean).join(' · ');
                 }
 
@@ -6123,7 +6230,25 @@
         // Entry point from the game card on the home screen.
         // When BB_TOURNAMENT_ENABLED is false, behaves like before: prompts to
         // resume if a save exists, otherwise starts a new game directly.
-        function startBlockBlastCheck() {
+        async function retryPendingBBResult() {
+            let pending = null;
+            try { pending = JSON.parse(localStorage.getItem('bb_pending_result') || 'null'); } catch (_) {}
+            if (!pending || !pending.checkpoint || !Number.isFinite(Number(pending.score))) return false;
+            bbServerCheckpoint = pending.checkpoint;
+            bbMoveQueue = [];
+            if (!(await recoverBBServerSession())) return false;
+            const result = await sendStatToBackend(pending.gameType || 'bb_best_score', Number(pending.score));
+            if (!result) return false;
+            if (Number.isFinite(Number(result.best_score))) {
+                saveStatToCloud('bb_best_score', Number(result.best_score));
+            }
+            localStorage.removeItem('bb_pending_result');
+            if (pending.stateKey) localStorage.removeItem(pending.stateKey);
+            return true;
+        }
+
+        async function startBlockBlastCheck() {
+            await retryPendingBBResult();
             if (!BB_TOURNAMENT_ENABLED) {
                 bbMode = 'original'; // force original mode so saves go to bb_state_original
                 if (hasBBSave('original')) {
@@ -6472,6 +6597,8 @@
             initBB();
         }
         function initBB() {
+            if (bbMoveRetryTimer) clearTimeout(bbMoveRetryTimer);
+            bbMoveRetryTimer = null;
             bbMoveQueue = []; bbMoveProcessing = false;
             bbServerCheckpoint = null;
             bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
@@ -7022,7 +7149,7 @@
         /** Очки за закрытие линий — прямо на месте поставленной фигуры.
             Точку берём из клеток, куда лёг блок: так число появляется там,
             куда игрок только что смотрел. */
-        function showLineScore(points, cells, colorClass) {
+        function showLineScore(points, cells) {
             if (!points || !cells || !cells.length) return;
             let sx = 0, sy = 0, n = 0;
             cells.forEach(({ r, c }) => {
@@ -7039,9 +7166,8 @@
             el.textContent = '+' + points;
             el.style.left = (sx / n) + 'px';
             el.style.top = (sy / n) + 'px';
-            el.style.setProperty('--ls-color', COLOR_MAP[colorClass] || '#ffffff');
             document.body.appendChild(el);
-            setTimeout(() => el.remove(), 1100);
+            setTimeout(() => el.remove(), 900);
         }
 
         function fireNeonParticles(row, col, colorClass) {
@@ -7226,7 +7352,7 @@
         }
         function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
         async function checkGameOver() {
-            if (bbIsAnimating) return;
+            if (bbIsAnimating || bbGameEnded) return;
             const shapesLeft = bbShapes.filter(s => s !== null);
             if (shapesLeft.length === 0) return;
             const canMove = shapesLeft.some(s => {
@@ -7239,12 +7365,10 @@
             });
             if (canMove) return;
 
-            // Mark game as ended FIRST — any subsequent saveBBState() (e.g. from
-            // closeGame, autosave timers, or live broadcasts) becomes a no-op.
+            // Freeze the finished board. The resumable state is removed only after
+            // the server confirms the authoritative score; failed saves can be
+            // retried later from the last signed checkpoint.
             bbGameEnded = true;
-            // Remove the in-progress save immediately so even a stale read can't
-            // resurrect it.
-            try { localStorage.removeItem(bbStateKey()); } catch (e) {}
 
             bbLiveStop();
             if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');
@@ -7264,25 +7388,44 @@
                 const accepted = !!result;
                 const tResult = (result && typeof result === 'object') ? result.tournament : null;
                 if (accepted) {
-                    if (bbScore > currentGlobalBest) saveStatToCloud('bb_best_score', bbScore);
+                    const serverBest = Number(result.best_score);
+                    if (Number.isFinite(serverBest)) saveStatToCloud('bb_best_score', serverBest);
+                    else if (bbScore > currentGlobalBest) saveStatToCloud('bb_best_score', bbScore);
                     if (tBestKey && bbScore > currentTournamentBest) {
                         localStorage.setItem(tBestKey, String(bbScore));
                     }
+                    localStorage.removeItem(bbStateKey());
+                    localStorage.removeItem('bb_pending_result');
+                } else {
+                    localStorage.setItem('bb_pending_result', JSON.stringify({
+                        gameType, score: bbScore, checkpoint: bbServerCheckpoint,
+                        stateKey: bbStateKey(), savedAt: Date.now()
+                    }));
                 }
                 showBBGameOverModal(
                     accepted && bbScore > currentTournamentBest,
                     bbScore,
                     currentTournamentBest,
-                    tResult // {raw_score, multiplier, final_score, vpn_active} or null
+                    tResult, // {raw_score, multiplier, final_score, vpn_active} or null
+                    !accepted
                 );
             } else {
                 const currentBest = parseInt(localStorage.getItem('bb_best_score') || 0);
-                const isRecord = bbScore > currentBest;
-                if (isRecord) {
-                    const accepted = await sendStatToBackend('bb_best_score', bbScore);
-                    if (accepted) saveStatToCloud('bb_best_score', bbScore);
+                const result = await sendStatToBackend('bb_best_score', bbScore);
+                const accepted = !!result;
+                const serverBest = accepted && Number(result.best_score);
+                if (accepted) {
+                    if (Number.isFinite(serverBest)) saveStatToCloud('bb_best_score', serverBest);
+                    localStorage.removeItem(bbStateKey());
+                    localStorage.removeItem('bb_pending_result');
+                } else {
+                    localStorage.setItem('bb_pending_result', JSON.stringify({
+                        gameType: 'bb_best_score', score: bbScore, checkpoint: bbServerCheckpoint,
+                        stateKey: bbStateKey(), savedAt: Date.now()
+                    }));
                 }
-                showBBGameOverModal(isRecord && parseInt(localStorage.getItem('bb_best_score') || 0) >= bbScore, bbScore, currentBest);
+                const isRecord = accepted ? !!result.record_improved : false;
+                showBBGameOverModal(isRecord, bbScore, currentBest, null, !accepted);
             }
 
             // bb_total_games counts both modes (it's just a play counter)
@@ -7299,7 +7442,7 @@
                 function frame(now) {
                     const t = Math.min(1, (now - start) / duration);
                     const v = Math.round(from + (to - from) * ease(t));
-                    el.innerText = v.toLocaleString('ru-RU');
+                    el.innerText = v.toLocaleString(currentLocale());
                     if (t < 1) requestAnimationFrame(frame);
                     else resolve();
                 }
@@ -7307,7 +7450,7 @@
             });
         }
 
-        function showBBGameOverModal(isRecord, score, oldBest, tournamentResult) {
+        function showBBGameOverModal(isRecord, score, oldBest, tournamentResult, saveFailed = false) {
             const modal = document.getElementById('bbGameOverContent');
             const overlay = document.getElementById('modalBBGameOver');
             modal.innerHTML = '';
@@ -7381,8 +7524,8 @@
                 });
             } else {
                 modal.innerHTML = `
-                    <h2 style="margin:0 0 5px 0;">${t('recordNotBeat')}</h2>
-                    <p style="color:#8e8e93; margin:0 0 20px 0;">${t('tryAgain')}</p>
+                    <h2 style="margin:0 0 5px 0;">${saveFailed ? t('recordSaveFailed') : t('recordNotBeat')}</h2>
+                    <p style="color:#8e8e93; margin:0 0 20px 0;">${saveFailed ? t('recordSaveRetry') : t('tryAgain')}</p>
                     <div style="font-size:32px; font-weight:700;" id="bbScoreNum">${score}</div>
                     ${showMultAnim ? `
                         <div id="bbMultLine" style="display:none; margin:8px 0 4px 0;">
@@ -8234,7 +8377,7 @@
             const frame = document.getElementById('monopolyFrame');
             const safeTop = monoSafeTop();
             const bottom = 20;
-            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&server=${encodeURIComponent(API_BASE_URL)}${window.__monoDebug ? '&debug=1' : ''}`;
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
         }
 
@@ -8658,6 +8801,7 @@
                     players: JSON.stringify(gamePlayers || []),
                     myIdx: (yourIndex != null ? yourIndex : 0),
                     theme: (isDark ? 'dark' : 'light'),
+                    lang: currentLang,
                     server: (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('/api','') : '')
                 });
                 if (window.__monoDebug) params.set('debug', '1');
@@ -8703,6 +8847,7 @@
                     players: JSON.stringify(gamePlayers || []),
                     myIdx: yourIndex != null ? yourIndex : 0,
                     theme: (isDark ? 'dark' : 'light'),
+                    lang: currentLang,
                     resume: '1',
                 });
                 if (window.__monoDebug) params.set('debug', '1');
@@ -9217,7 +9362,7 @@
             const content = document.getElementById('wordleGameOverContent');
             const n = wordleGuesses.length;
             let attemptsText;
-            if (currentLang === 'en') {
+            if (currentLang === 'en' || currentLang === 'zh') {
                 attemptsText = n === 1 ? 'attempt' : 'attempts';
             } else {
                 attemptsText = n === 1 ? t('attempt1') : (n >= 2 && n <= 4 ? t('attempt234') : t('attempts'));
@@ -9390,6 +9535,61 @@
 
                 <h3>8. Contact Information</h3>
                 <p>For any questions, contact <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a>.</p>
+            </div>
+
+            <div data-lang-content="zh" hidden>
+                <h2>@spark_game_bot Telegram 机器人隐私政策</h2>
+
+                <h3>1. 一般条款</h3>
+                <p>1.1. 本隐私政策说明 @spark_game_bot Telegram 机器人如何收集、使用、存储和保护用户的个人数据。</p>
+                <p>1.2. 使用本机器人即表示用户完全同意本政策及其数据处理条款。如不同意这些条款，用户应停止使用本机器人。</p>
+                <p>1.3. 官方新闻和更新发布于 Telegram 频道 <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a>。</p>
+
+                <h3>2. 我们收集的数据</h3>
+                <p>为了提供完整功能，本机器人会自动收集和处理以下数据：</p>
+                <ul>
+                    <li><b>基本 Telegram 数据：</b>用户唯一标识符（Telegram ID）、姓名和公开用户名。</li>
+                    <li><b>游戏统计：</b>游戏结果与进度、对局历史和获得的分数。</li>
+                    <li><b>锦标赛数据：</b>用户为领取奖金而自愿提供的收款信息。</li>
+                    <li><b>技术数据：</b>消息元数据，包括请求和点击按钮的日期及时间。</li>
+                </ul>
+
+                <h3>3. 收集和使用数据的目的</h3>
+                <ul>
+                    <li><b>创建个人资料：</b>在个人资料中显示用户姓名和用户名。</li>
+                    <li><b>排行榜：</b>在排行榜中公开显示用户名和游戏成绩。</li>
+                    <li><b>锦标赛：</b>记录比赛结果并安排奖金发放。</li>
+                    <li><b>通知：</b>发送有关新游戏、锦标赛和更新的消息。</li>
+                </ul>
+
+                <h3>4. 向第三方披露</h3>
+                <p>4.1. 我们不会出于营销目的出售或向第三方披露用户数据。</p>
+                <p>4.2. 仅在以下情况下可能披露数据：</p>
+                <ul>
+                    <li>在公开排行榜中显示用户名和游戏分数。</li>
+                    <li>响应政府或执法机关依法提出的请求。</li>
+                    <li>向支付服务商提供发放奖金所需的最少信息。</li>
+                </ul>
+
+                <h3>5. 数据存储与保护</h3>
+                <p>5.1. 我们采取必要的技术和组织措施保护用户数据。</p>
+                <p>5.2. 只有少数开发人员和管理员可以访问数据库。</p>
+                <p>5.3. 收款信息不会被永久保存，并会在交易完成后删除。</p>
+
+                <h3>6. 用户权利</h3>
+                <p>用户有权：</p>
+                <ul>
+                    <li>请求了解我们存储的相关数据。</li>
+                    <li>要求删除相关数据；这也会删除个人资料和游戏统计。</li>
+                    <li>随时停止使用本机器人。</li>
+                </ul>
+
+                <h3>7. 政策变更</h3>
+                <p>7.1. 管理方可在不事先通知的情况下修改本政策。</p>
+                <p>7.2. 重大变更将在 <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a> 频道公告。</p>
+
+                <h3>8. 联系方式</h3>
+                <p>如有任何问题，请联系 <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a>。</p>
             </div>
         </div>
     </div>

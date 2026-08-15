@@ -242,7 +242,8 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
             bbGrid: Array(8).fill(null).map(() => Array(8).fill(0)),
             bbScore: 0,
             bbCombo: 0,
-            bbComboBuffer: 0
+            bbComboBuffer: 0,
+            bbMoveResults: new Map()
         } : {})
     };
     gameSessions.set(key, session);
@@ -401,7 +402,16 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     const session = gameSessions.get(key);
     
     if (!session || session.token !== session_token) {
-        return res.json({ ok: false });
+        return res.json({ ok: false, reason: 'invalid_session' });
+    }
+
+    // A response may be lost after the move was already accepted. Return the
+    // cached result before anti-spam checks so a safe retry is truly idempotent.
+    if (game_type === 'bb_best_score' && move_data && typeof move_data === 'object') {
+        const retryId = move_data.move_id;
+        if (typeof retryId === 'string' && session.bbMoveResults && session.bbMoveResults.has(retryId)) {
+            return res.json(session.bbMoveResults.get(retryId));
+        }
     }
     
     // Anti-spam: minimum 300ms between moves (no human plays faster)
@@ -415,7 +425,14 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     
     // === BB Server-side validation ===
     if (game_type === 'bb_best_score' && move_data && typeof move_data === 'object' && move_data.matrix) {
-        const { matrix, r, c } = move_data;
+        const { matrix, r, c, move_id } = move_data;
+
+        if (typeof move_id !== 'string' || move_id.length < 6 || move_id.length > 80) {
+            return res.json({ ok: false, reason: 'invalid_move_id' });
+        }
+        if (!session.bbMoveResults) session.bbMoveResults = new Map();
+        const previousResult = session.bbMoveResults.get(move_id);
+        if (previousResult) return res.json(previousResult);
         
         // Validate matrix format
         if (!Array.isArray(matrix) || matrix.length === 0 || matrix.length > 5) {
@@ -448,11 +465,16 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         session.moveCount++;
         session.lastMoveTime = now;
         
-        return res.json({
+        const result = {
             ok: true,
             server_score: session.bbScore,
             bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
-        });
+        };
+        session.bbMoveResults.set(move_id, result);
+        if (session.bbMoveResults.size > 128) {
+            session.bbMoveResults.delete(session.bbMoveResults.keys().next().value);
+        }
+        return res.json(result);
     }
     
     // === Default: lightweight hash-based telemetry for other games ===
@@ -484,7 +506,7 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     const session = gameSessions.get(key);
     
     if (!session || session.token !== session_token) {
-        return res.json({ ok: false });
+        return res.json({ ok: false, reason: 'invalid_session' });
     }
     
     const restored = readBBCheckpoint(checkpoint, userId, GAME_SESSION_SECRET);
@@ -495,7 +517,9 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     session.bbCombo = restored.bbCombo;
     session.bbComboBuffer = restored.bbComboBuffer;
     session.moveCount = restored.moveCount;
+    session.startTime = restored.startTime;
     session.lastMoveTime = Date.now();
+    session.bbMoveResults = new Map();
     console.log(`BB session restored for user ${userId}: score=${session.bbScore}, moves=${session.moveCount}`);
     res.json({
         ok: true,
@@ -955,7 +979,12 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     }
     
     try {
-        let { data: existingUser } = await supabase.from('users').select('*').eq('telegram_id', user_id).single();
+        const { data: existingUser, error: existingUserError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('telegram_id', user_id)
+            .maybeSingle();
+        if (existingUserError) throw new Error(`DB read error: ${existingUserError.message}`);
         
         const updateData = { username: username, photo_url: photo_url };
         updateData[game_type] = score;
@@ -975,16 +1004,24 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             topBefore = topData || [];
         }
         
+        let recordImproved = false;
+        let persistedBest = score;
         if (!existingUser) {
-            await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
+            const { error: insertError } = await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
+            if (insertError) throw new Error(`DB write error: ${insertError.message}`);
+            recordImproved = true;
         } else {
             const currentScore = existingUser[game_type];
             let isRecord = false;
             if (currentScore === null || currentScore === undefined) isRecord = true;
             else if (isTime) { if (score < currentScore) isRecord = true; }
             else { if (score > currentScore) isRecord = true; }
-            if (isRecord) await supabase.from('users').update(updateData).eq('telegram_id', user_id);
-            else await supabase.from('users').update({ username: username, photo_url: photo_url }).eq('telegram_id', user_id);
+            recordImproved = isRecord;
+            const { error: updateError } = isRecord
+                ? await supabase.from('users').update(updateData).eq('telegram_id', user_id)
+                : await supabase.from('users').update({ username: username, photo_url: photo_url }).eq('telegram_id', user_id);
+            if (updateError) throw new Error(`DB write error: ${updateError.message}`);
+            persistedBest = isRecord ? score : currentScore;
         }
         
         // After saving, get new top and detect who got displaced
@@ -1028,9 +1065,9 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
         
         if (_tournamentResult) {
-            res.json({ success: true, tournament: _tournamentResult });
+            res.json({ success: true, saved_score: score, best_score: persistedBest, record_improved: recordImproved, tournament: _tournamentResult });
         } else {
-            res.json({ success: true });
+            res.json({ success: true, saved_score: score, best_score: persistedBest, record_improved: recordImproved });
         }
     } catch (e) { res.status(500).json({ error: e.message }); }
 });

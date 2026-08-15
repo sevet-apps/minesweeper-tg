@@ -53,11 +53,13 @@ test('Block Blast checkpoint restores only server-signed state', () => {
         bbCombo: 4,
         bbComboBuffer: 2,
         moveCount: 17,
+        startTime: now - 60_000,
     };
     const checkpoint = createCheckpoint(session, '42', secret, now);
     const restored = readCheckpoint(checkpoint, '42', secret, now + 1000);
     assert.equal(restored.bbScore, 1234);
     assert.equal(restored.moveCount, 17);
+    assert.equal(restored.startTime, session.startTime);
     assert.deepEqual(restored.bbGrid, session.bbGrid);
     assert.equal(readCheckpoint(checkpoint, '43', secret, now + 1000), null);
 });
