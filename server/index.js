@@ -5,6 +5,8 @@ const http = require('http');
 const { Server } = require("socket.io"); 
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const { verifyTelegramInitData } = require('./telegram-init-data');
+const { createCheckpoint: createBBCheckpoint, readCheckpoint: readBBCheckpoint } = require('./block-blast-checkpoint');
 const MonopolyEngine = require('./monopoly-engine');
 const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
 
@@ -22,6 +24,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Telegram Bot Token for subscription check
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const GAME_SESSION_SECRET = process.env.GAME_SESSION_SECRET || BOT_TOKEN;
 const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_news';
 const OWNER_ID = '1482228376'; // Твой Telegram ID
 
@@ -84,40 +87,7 @@ setInterval(async () => {
 // SECURITY: Telegram initData validation
 // ============================
 function validateInitData(initDataString) {
-    if (!initDataString || !BOT_TOKEN) return null;
-    
-    try {
-        const params = new URLSearchParams(initDataString);
-        const hash = params.get('hash');
-        if (!hash) return null;
-        
-        params.delete('hash');
-        
-        // Sort params alphabetically and build check string
-        const dataCheckString = Array.from(params.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([key, value]) => `${key}=${value}`)
-            .join('\n');
-        
-        // HMAC-SHA256 with secret key derived from bot token
-        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-        const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-        
-        if (computedHash !== hash) return null;
-        
-        // Check auth_date is not too old (allow 24h window)
-        const authDate = parseInt(params.get('auth_date'));
-        if (!authDate || (Date.now() / 1000 - authDate) > 86400) return null;
-        
-        // Extract user
-        const userStr = params.get('user');
-        if (!userStr) return null;
-        
-        return JSON.parse(userStr);
-    } catch (e) {
-        console.error('initData validation error:', e.message);
-        return null;
-    }
+    return verifyTelegramInitData(initDataString, BOT_TOKEN);
 }
 
 // Middleware: extract and validate user from initData header
@@ -262,7 +232,7 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
     const token = createSessionToken(userId, game_type, startTime);
     const key = `${userId}:${game_type}`;
     
-    gameSessions.set(key, { 
+    const session = {
         startTime, 
         token, 
         moveCount: 0,
@@ -272,10 +242,10 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
             bbGrid: Array(8).fill(null).map(() => Array(8).fill(0)),
             bbScore: 0,
             bbCombo: 0,
-            bbComboBuffer: 0,
-            bbSynced: false  // Set true after first successful move or bb-sync
+            bbComboBuffer: 0
         } : {})
-    });
+    };
+    gameSessions.set(key, session);
     
     // Cleanup old sessions (older than 24h)
     const now = Date.now();
@@ -283,7 +253,12 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
         if (now - v.startTime > 86400000) gameSessions.delete(k);
     }
     
-    res.json({ session_token: token });
+    res.json({
+        session_token: token,
+        ...(game_type === 'bb_best_score' ? {
+            bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
+        } : {})
+    });
 });
 
 // ============================
@@ -457,39 +432,27 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         }
         
         // Validate position
-        if (typeof r !== 'number' || typeof c !== 'number' || r < 0 || c < 0 || r >= BB_ROWS || c >= BB_COLS) {
+        if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= BB_ROWS || c >= BB_COLS) {
             return res.json({ ok: false, reason: 'invalid_position' });
         }
         
-        // Replay protection: track move hashes
-        if (!session.bbMoveHashes) session.bbMoveHashes = new Set();
-        const moveHash = `${r}:${c}:${session.moveCount}`;
-        if (session.bbMoveHashes.has(moveHash)) {
-            return res.json({ ok: false, reason: 'duplicate_move' });
-        }
-        session.bbMoveHashes.add(moveHash);
-        
         // Check placement validity on server grid
         if (!bbCanPlace(session.bbGrid, matrix, r, c)) {
-            // Grid desync (lost move request) — force-resync by clearing target cells and placing
-            console.log(`BB desync: user=${userId}, r=${r}, c=${c}, score=${session.bbScore} — resyncing`);
-            for (let i = 0; i < matrix.length; i++) {
-                for (let j = 0; j < matrix[0].length; j++) {
-                    if (matrix[i][j] === 1 && (r+i) < BB_ROWS && (c+j) < BB_COLS) {
-                        session.bbGrid[r+i][c+j] = 0;
-                    }
-                }
-            }
+            session.suspiciousCount = (session.suspiciousCount || 0) + 1;
+            console.log(`BB rejected placement: user=${userId}, r=${r}, c=${c}, score=${session.bbScore}`);
+            return res.json({ ok: false, reason: 'occupied' });
         }
         
         // Simulate placement and scoring
         bbPlaceAndScore(session, matrix, r, c);
-        session.bbSynced = true;
-        
         session.moveCount++;
         session.lastMoveTime = now;
         
-        return res.json({ ok: true, server_score: session.bbScore });
+        return res.json({
+            ok: true,
+            server_score: session.bbScore,
+            bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
+        });
     }
     
     // === Default: lightweight hash-based telemetry for other games ===
@@ -511,11 +474,11 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     res.json({ ok: true });
 });
 
-// Sync BB game state on resume (client sends current grid + score)
+// Resume BB only from a server-signed checkpoint. Client grid/score are untrusted.
 app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     const user = req.telegramUser;
     const userId = String(user.id);
-    const { session_token, grid, score, combo, comboBuffer } = req.body;
+    const { session_token, checkpoint } = req.body;
     
     const key = `${userId}:bb_best_score`;
     const session = gameSessions.get(key);
@@ -524,26 +487,24 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
         return res.json({ ok: false });
     }
     
-    // Validate grid format
-    if (!Array.isArray(grid) || grid.length !== BB_ROWS) {
-        return res.json({ ok: false, reason: 'invalid_grid' });
-    }
-    for (const row of grid) {
-        if (!Array.isArray(row) || row.length !== BB_COLS) {
-            return res.json({ ok: false, reason: 'invalid_grid' });
-        }
-    }
-    
-    // Sync server state to match client's saved state
-    // Server grid uses 0/1 (doesn't need colors)
-    session.bbGrid = grid.map(row => row.map(cell => cell === 0 ? 0 : 1));
-    session.bbScore = typeof score === 'number' ? score : 0;
-    session.bbCombo = typeof combo === 'number' ? combo : 0;
-    session.bbComboBuffer = typeof comboBuffer === 'number' ? comboBuffer : 0;
-    session.bbSynced = true;
-    
-    console.log(`BB session synced for user ${userId}: score=${session.bbScore}, combo=${session.bbCombo}`);
-    res.json({ ok: true, server_score: session.bbScore });
+    const restored = readBBCheckpoint(checkpoint, userId, GAME_SESSION_SECRET);
+    if (!restored) return res.json({ ok: false, reason: 'invalid_checkpoint' });
+
+    session.bbGrid = restored.bbGrid;
+    session.bbScore = restored.bbScore;
+    session.bbCombo = restored.bbCombo;
+    session.bbComboBuffer = restored.bbComboBuffer;
+    session.moveCount = restored.moveCount;
+    session.lastMoveTime = Date.now();
+    console.log(`BB session restored for user ${userId}: score=${session.bbScore}, moves=${session.moveCount}`);
+    res.json({
+        ok: true,
+        server_score: session.bbScore,
+        server_grid: session.bbGrid,
+        combo: session.bbCombo,
+        comboBuffer: session.bbComboBuffer,
+        bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
+    });
 });
 
 // ============================  
@@ -867,31 +828,12 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         
         // BB server-side score enforcement at save time
         if (game_type === 'bb_best_score' || game_type === 'bb_tournament_score') {
-            if (session.bbSynced && session.moveCount >= 3) {
-                // Server tracked the game — use server score as ceiling
-                const maxAllowed = session.bbScore + Math.max(50, session.bbScore * 0.1);
-                
-                if (score > maxAllowed) {
-                    // Client claims way more than server calculated — cheat
-                    logSuspiciousActivity(user_id, username, tgUsername, game_type, score, 
-                        `BB_INFLATED_SCORE (client=${score}, server=${session.bbScore})`);
-                    score = session.bbScore;
-                } else if (score > session.bbScore) {
-                    score = session.bbScore;
-                }
-                console.log(`BB save [synced]: client=${req.body.score}, saved=${score}, server=${session.bbScore}, user=${user_id}`);
-            } else {
-                // Not synced (server restarted mid-game) — cap by generous per-move estimate.
-                // С комбо-формулой средний темп даже отличной партии ~760 очков/ход,
-                // с редкими пиками. 5000/ход даёт ~7x запас — честных не режет, но
-                // ловит абсурд (напр. 100k очков/ход невозможно). Флор 5000 на случай
-                // очень короткой удачной игры.
-                const maxReasonable = Math.max(5000, session.moveCount * 5000);
-                if (score > maxReasonable) {
-                    console.log(`BB save [unsynced]: capped ${score} -> ${maxReasonable}, moves=${session.moveCount}, user=${user_id}`);
-                    score = maxReasonable;
-                }
+            if (score !== session.bbScore) {
+                logSuspiciousActivity(user_id, username, tgUsername, game_type, score,
+                    `BB_SCORE_MISMATCH (client=${score}, server=${session.bbScore})`);
             }
+            score = session.bbScore;
+            console.log(`BB save [authoritative]: client=${req.body.score}, saved=${score}, moves=${session.moveCount}, user=${user_id}`);
         }
         
         req.body.score = score;

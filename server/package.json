@@ -4,7 +4,8 @@
   "description": "Backend for Spark Game Telegram Mini App",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
