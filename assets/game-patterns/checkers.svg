@@ -1,11 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" fill="none">
-  <g opacity=".13" stroke="#fff" stroke-width="2">
-    <path d="m226 12 116 0 58 86H284z"/>
-    <path d="m255 12 58 86m0-86 58 86m-126-65h126m-107 28h126"/>
-    <g fill="#fff" fill-opacity=".1">
-      <ellipse cx="279" cy="34" rx="18" ry="10"/><ellipse cx="279" cy="31" rx="18" ry="10"/>
-      <ellipse cx="350" cy="76" rx="18" ry="10"/><ellipse cx="350" cy="73" rx="18" ry="10"/>
-    </g>
-    <path d="M261 31c4 6 32 6 36 0M332 73c4 6 32 6 36 0"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" width="420" height="120" fill="#fff">
+  <title>Checkers pattern</title>
+  <desc>Flaticon UIcons vector glyphs arranged as a decorative game pattern.</desc>
+  <metadata>Source: https://github.com/freepik-company/flaticon-uicons; License: https://github.com/freepik-company/flaticon-uicons/blob/main/LICENSE</metadata>
+  <defs>
+    <symbol id="chess-piece" viewBox="38 -300 225 300"><path d="M250 25H238V45Q238 67 222 81Q204 99 196.0 120.5Q188 142 188 175H200Q205 175 209.0 178.5Q213 182 213.0 187.0Q213 192 209.0 196.0Q205 200 200 200H193Q200 211 200.0 223.5Q200 236 192 256Q185 272 177 286Q172 292 165.0 296.0Q158 300 150.0 300.0Q142 300 135.0 296.0Q128 292 124 286Q116 272 109 256Q100 236 100.0 223.5Q100 211 107 200H100Q95 200 91.5 196.0Q88 192 88.0 187.0Q88 182 91.5 178.5Q95 175 100 175H113Q112 142 104.0 120.5Q96 99 78 81Q63 67 63 45V25H50Q45 25 41.5 21.0Q38 17 38.0 12.0Q38 7 41.5 3.5Q45 0 50 0H250Q256 0 259.5 3.5Q263 7 263.0 12.0Q263 17 259.5 21.0Q256 25 250 25ZM145 272Q147 275 150.5 275.0Q154 275 156 272Q170 250 175 225Q175 214 168.0 207.0Q161 200 150.5 200.0Q140 200 132.5 207.0Q125 214 125 225Q131 250 145 272ZM163 175Q163 142 170.5 118.0Q178 94 194 75H106Q122 94 129.5 118.0Q137 142 138 175ZM88 45Q88 48 88 50H212L213 45V25H88Z" transform="scale(1 -1)"/></symbol>
+    <symbol id="chess-board" viewBox="0 -300 300 300"><path d="M238 300H63Q46 300 31.5 291.5Q17 283 8.5 268.5Q0 254 0 238V63Q0 46 8.5 31.5Q17 17 31.5 8.5Q46 0 62 0H238Q254 0 268.5 8.5Q283 17 291.5 31.5Q300 46 300 62V238Q300 254 291.5 268.5Q283 283 268.5 291.5Q254 300 238 300ZM275 125V75H225V25H175V75H125V25H75V75H25V125H75V175H25V225H75V275H125V225H175V275H225V225H275V175H225V125ZM125 175H75V225H125ZM175 175V225H225V175ZM125 125V75H75V125ZM175 125H225V75H175ZM125 175H175V125H125Z" transform="scale(1 -1)"/></symbol>
+    <symbol id="circle" viewBox="0 -300 300 300"><path d="M150 300Q109 300 74.5 280.0Q40 260 20.0 225.5Q0 191 0.0 150.0Q0 109 20.0 74.5Q40 40 74.5 20.0Q109 0 150.0 0.0Q191 0 225.5 20.0Q260 40 280.0 74.5Q300 109 300.0 150.0Q300 191 280.0 225.5Q260 260 225.5 280.0Q191 300 150 300ZM150 25Q116 25 87.5 42.0Q59 59 42.0 87.5Q25 116 25.0 150.0Q25 184 42.0 212.5Q59 241 87.5 258.0Q116 275 150.0 275.0Q184 275 212.5 258.0Q241 241 258.0 212.5Q275 184 275.0 150.0Q275 116 258.0 87.5Q241 59 212.5 42.0Q184 25 150 25Z" transform="scale(1 -1)"/></symbol>
+  </defs>
+  <g transform="rotate(-10 33 83)" opacity="0.13"><use href="#chess-piece" x="14" y="64" width="38" height="38"/></g>
+  <g transform="rotate(8 105 24)" opacity="0.1"><use href="#chess-board" x="88" y="7" width="34" height="34"/></g>
+  <g transform="rotate(-12 190.5 88.5)" opacity="0.1"><use href="#circle" x="177" y="75" width="27" height="27"/></g>
+  <g transform="rotate(13 275 28)" opacity="0.12"><use href="#chess-piece" x="259" y="12" width="32" height="32"/></g>
+  <g transform="rotate(-7 364.5 82.5)" opacity="0.09"><use href="#chess-board" x="343" y="61" width="43" height="43"/></g>
 </svg>
