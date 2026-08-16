@@ -141,9 +141,12 @@ test('Tower growth, debris collisions and waves follow the polished motion model
     };
     vm.createContext(context);
     vm.runInContext(extractFunction(indexSource, 'twGetRenderedBlockGeometry'), context);
+    vm.runInContext(extractFunction(indexSource, 'twRotateVector'), context);
+    vm.runInContext(extractFunction(indexSource, 'twDebrisExtents'), context);
     vm.runInContext(extractFunction(indexSource, 'twFindDebrisLanding'), context);
     vm.runInContext(extractFunction(indexSource, 'twStepDebris'), context);
-    vm.runInContext(extractFunction(indexSource, 'twRotateVector'), context);
+    vm.runInContext(extractFunction(indexSource, 'twResolveDebrisPair'), context);
+    vm.runInContext(extractFunction(indexSource, 'twUpdateDebrisPhysics'), context);
 
     const growing = {
         x: 0, z: 0, w: 120, d: 130,
@@ -154,7 +157,7 @@ test('Tower growth, debris collisions and waves follow the polished motion model
         'perfect bonus must smoothly interpolate through the middle of its growth');
 
     const debris = {
-        x: 0, y: 200, z: 0,
+        x: 0, y: 200, z: 0, w: 40, d: 40,
         vx: 120, vy: 0, vz: -60,
         rx: 0, ry: 0, rz: 0,
         avx: 2, avy: 1, avz: -1,
@@ -168,13 +171,57 @@ test('Tower growth, debris collisions and waves follow the polished motion model
     const landingDebris = {
         x: 0, y: 54.8, z: 0, w: 40, d: 40,
         vx: 2, vy: -30, vz: 1,
-        rx: .02, ry: .1, rz: -.02,
+        rx: 0, ry: .1, rz: 0,
         avx: .1, avy: .1, avz: .1,
         age: 0, restTime: 0, sleeping: false, alpha: 1
     };
     context.twStepDebris(landingDebris, 40);
-    assert.equal(landingDebris.y, 52.5, 'a supported fragment must land on the block top');
-    assert.equal(landingDebris.sleeping, true, 'a slow supported fragment must stay on the tower');
+    const landedExtents = context.twDebrisExtents(landingDebris);
+    assert.ok(Math.abs(landingDebris.y - landedExtents.y - 35) < 1e-9,
+        'a rotated fragment must land on the block without penetrating it');
+    assert.equal(landingDebris.sleeping, false,
+        'a fragment must bounce instead of sticking on its first contact');
+    assert.ok(landingDebris.vy > 0, 'the first supported impact must retain physical motion');
+    for (let i = 0; i < 120; i++) context.twStepDebris(landingDebris, 16.67);
+    assert.equal(landingDebris.sleeping, true,
+        'a fragment may sleep only after its movement has genuinely settled');
+
+    const pair = [0, 20].map((x, index) => ({
+        x, y: 17.5, z: 0, w: 40, d: 40,
+        vx: index ? 0 : 20, vy: 0, vz: 0,
+        rx: 0, ry: 0, rz: 0,
+        avx: 0, avy: 0, avz: 0,
+        age: 1, restTime: 1, sleeping: true, alpha: 1
+    }));
+    assert.equal(context.twResolveDebrisPair(pair[0], pair[1]), true);
+    assert.equal(pair[0].sleeping, false, 'a collision must wake a resting fragment');
+    assert.equal(pair[1].sleeping, false, 'both fragments must participate in the impact');
+    assert.ok(pair[1].vx > 0, 'collision impulse must transfer into the second fragment');
+    assert.ok(pair[1].x - pair[0].x >= 40,
+        'the pair solver must remove visible interpenetration');
+
+    context.twDebris = [0, 0].map(() => ({
+        x: 0, y: 17.5, z: 0, w: 40, d: 40,
+        vx: 0, vy: 0, vz: 0,
+        rx: 0, ry: 0, rz: 0,
+        avx: 0, avy: 0, avz: 0,
+        age: 1, restTime: 1, sleeping: true, alpha: 1,
+        supportBlockIndex: -1
+    }));
+    context.twUpdateDebrisPhysics(16.67);
+    const floorExtents = context.twDebris.map(context.twDebrisExtents);
+    context.twDebris.forEach((item, index) => {
+        assert.ok(item.y - floorExtents[index].y >= -1e-9,
+            'pair separation must never push debris through the floor');
+    });
+    assert.ok(Math.abs(context.twDebris[1].x - context.twDebris[0].x) >= 40,
+        'floor debris must separate sideways instead of remaining inside each other');
+
+    landingDebris.age = 3;
+    landingDebris.alpha = 1;
+    for (let i = 0; i < 10; i++) context.twStepDebris(landingDebris, 40);
+    assert.ok(landingDebris.alpha > 0 && landingDebris.alpha < 1,
+        'a resting fragment must begin fading smoothly after about three seconds');
 
     const rotated = context.twRotateVector({ x: 3, y: 4, z: 5 }, .3, .6, .9);
     const length = Math.hypot(rotated.x, rotated.y, rotated.z);
@@ -194,4 +241,9 @@ test('Tower growth, debris collisions and waves follow the polished motion model
     assert.match(waves, /pass === 'rear'/);
     assert.match(waves, /lineTo\(top\.x, top\.y \+ TW_BLOCK_HEIGHT\)/,
         'rear edges must continue after emerging from behind the cube');
+
+    assert.match(indexSource, /twUpdateDebrisPhysics\(delta\);[\s\S]*?twDrawDebris\(d, cx, cy\)/,
+        'all physics and pair collisions must resolve before debris is drawn');
+    assert.match(indexSource, /for \(let pass = 0; pass < 2; pass\+\+\)/,
+        'the bounded debris pool must receive two pair-solver passes per frame');
 });
