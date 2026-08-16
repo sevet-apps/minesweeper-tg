@@ -8332,8 +8332,7 @@
                 twLastFrameTime = 0;
                 return;
             }
-            if(twState === 'gameover' && !twDebris.some(d => !d.sleeping && d.alpha > 0) &&
-               twPerfectMatchAlpha <= 0 &&
+            if(twState === 'gameover' && twDebris.length === 0 && twPerfectMatchAlpha <= 0 &&
                twPerfectWaves.length === 0 && !twCameraTween && !twGameOverRevealPending) {
                 twAnimationFrameId = null;
                 twLastFrameTime = 0;
@@ -8361,8 +8360,11 @@
             twCtx.scale(twCameraScale, twCameraScale);
             twCtx.translate(-window.innerWidth / 2, -window.innerHeight / 2);
 
+            twUpdateDebrisPhysics(delta);
+            twDebris = twDebris.filter(d => d.alpha > 0);
+
             // Draw debris and rear wave edges behind the solid tower.
-            twDebris.forEach(d => { if (d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
+            twDebris.forEach(d => { if (d.isBehind) twDrawDebris(d, cx, cy); });
             twDrawPerfectWaves(cx, cy, currentTime, 'rear');
 
             // Draw stacked blocks
@@ -8382,8 +8384,7 @@
             }
 
             // Draw debris in front of blocks
-            twDebris.forEach(d => { if (!d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
-            twDebris = twDebris.filter(d => d.alpha > 0);
+            twDebris.forEach(d => { if (!d.isBehind) twDrawDebris(d, cx, cy); });
             twCtx.restore();
         }
 
@@ -8444,33 +8445,67 @@
             }
         }
 
-        function twFindDebrisLanding(d, previousBottom, nextBottom) {
+        function twDebrisExtents(d) {
+            const hx = d.w / 2, hy = TW_BLOCK_HEIGHT / 2, hz = d.d / 2;
+            const axisX = twRotateVector({ x: 1, y: 0, z: 0 }, d.rx, d.ry, d.rz);
+            const axisY = twRotateVector({ x: 0, y: 1, z: 0 }, d.rx, d.ry, d.rz);
+            const axisZ = twRotateVector({ x: 0, y: 0, z: 1 }, d.rx, d.ry, d.rz);
+            return {
+                x: Math.abs(axisX.x) * hx + Math.abs(axisY.x) * hy + Math.abs(axisZ.x) * hz,
+                y: Math.abs(axisX.y) * hx + Math.abs(axisY.y) * hy + Math.abs(axisZ.y) * hz,
+                z: Math.abs(axisX.z) * hx + Math.abs(axisY.z) * hy + Math.abs(axisZ.z) * hz
+            };
+        }
+
+        function twFindDebrisLanding(d, previousBottom, nextBottom, extents) {
+            const footprintArea = Math.max(1, 4 * extents.x * extents.z);
             for (let i = twBlocks.length - 1; i >= 0; i--) {
                 const block = twBlocks[i];
                 const topY = (i + 1) * TW_BLOCK_HEIGHT;
-                if (previousBottom < topY - 0.01 || nextBottom > topY + 0.01) continue;
+                const crossedTop = previousBottom >= topY - 0.01 &&
+                    nextBottom <= topY + 0.01;
+                const shallowPenetration = d.y > topY && nextBottom < topY &&
+                    topY - nextBottom <= extents.y;
+                if (!crossedTop && !shallowPenetration) continue;
                 const overlapX = Math.max(0,
-                    Math.min(d.x + d.w / 2, block.x + block.w / 2) -
-                    Math.max(d.x - d.w / 2, block.x - block.w / 2));
+                    Math.min(d.x + extents.x, block.x + block.w / 2) -
+                    Math.max(d.x - extents.x, block.x - block.w / 2));
                 const overlapZ = Math.max(0,
-                    Math.min(d.z + d.d / 2, block.z + block.d / 2) -
-                    Math.max(d.z - d.d / 2, block.z - block.d / 2));
-                const supportRatio = (overlapX * overlapZ) / Math.max(1, d.w * d.d);
-                if (supportRatio >= 0.36) {
-                    return { y: topY + TW_BLOCK_HEIGHT / 2, supportRatio, blockIndex: i };
+                    Math.min(d.z + extents.z, block.z + block.d / 2) -
+                    Math.max(d.z - extents.z, block.z - block.d / 2));
+                const supportRatio = (overlapX * overlapZ) / footprintArea;
+                if (supportRatio >= 0.08) {
+                    return {
+                        y: topY + extents.y,
+                        supportRatio,
+                        stable: supportRatio >= 0.36,
+                        blockIndex: i,
+                        block
+                    };
                 }
             }
             if (nextBottom <= 0) {
-                return { y: TW_BLOCK_HEIGHT / 2, supportRatio: 1, blockIndex: -1 };
+                return {
+                    y: extents.y,
+                    supportRatio: 1,
+                    stable: true,
+                    blockIndex: -1,
+                    block: null
+                };
             }
             return null;
         }
         
         function twStepDebris(d, delta) {
-            if (d.sleeping) return;
             const dt = Math.min(delta, 40) / 1000;
             d.age += dt;
-            const previousBottom = d.y - TW_BLOCK_HEIGHT / 2;
+            if (d.age > 3) {
+                d.alpha = Math.max(0, 1 - (d.age - 3) / 1.15);
+            }
+            if (d.alpha <= 0 || d.sleeping) return;
+
+            const previousExtents = twDebrisExtents(d);
+            const previousBottom = d.y - previousExtents.y;
             d.vy -= 720 * dt;
             d.x += d.vx * dt;
             d.y += d.vy * dt;
@@ -8486,30 +8521,134 @@
             d.avy *= Math.exp(-0.18 * dt);
             d.avz *= Math.exp(-0.18 * dt);
 
+            const extents = twDebrisExtents(d);
             const landing = twFindDebrisLanding(
-                d, previousBottom, d.y - TW_BLOCK_HEIGHT / 2);
+                d, previousBottom, d.y - extents.y, extents);
             if (landing && d.vy <= 0) {
                 const impactSpeed = Math.abs(d.vy);
                 d.y = landing.y;
-                d.vx *= 0.48;
-                d.vz *= 0.48;
-                d.avx *= 0.55;
-                d.avy *= 0.55;
-                d.avz *= 0.55;
-                if (impactSpeed > 70) {
-                    d.vy = impactSpeed * 0.13;
+                const contactFriction = landing.stable ? 0.82 : 0.94;
+                d.vx *= contactFriction;
+                d.vz *= contactFriction;
+                d.avx *= landing.stable ? 0.72 : 0.9;
+                d.avy *= landing.stable ? 0.72 : 0.9;
+                d.avz *= landing.stable ? 0.72 : 0.9;
+
+                if (!landing.stable && landing.block) {
+                    const awayX = d.x - landing.block.x;
+                    const awayZ = d.z - landing.block.z;
+                    const length = Math.max(1, Math.hypot(awayX, awayZ));
+                    const slide = 10 + (0.36 - landing.supportRatio) * 35;
+                    d.vx += awayX / length * slide;
+                    d.vz += awayZ / length * slide;
+                    d.avx += awayZ / length * 0.24;
+                    d.avz -= awayX / length * 0.24;
+                    d.vy = impactSpeed * 0.08;
+                    d.restTime = 0;
+                } else if (impactSpeed > 32) {
+                    d.vy = impactSpeed * 0.16;
+                    d.restTime = 0;
                 } else {
                     d.vy = 0;
-                    d.vx = 0;
-                    d.vz = 0;
-                    d.avx = 0;
-                    d.avy = 0;
-                    d.avz = 0;
-                    d.rx = 0;
-                    d.rz = 0;
-                    d.sleeping = true;
-                    d.supportBlockIndex = landing.blockIndex;
+                    const slowLinear = Math.hypot(d.vx, d.vz) < 4;
+                    const slowAngular = Math.hypot(d.avx, d.avy, d.avz) < 0.18;
+                    if (slowLinear && slowAngular) d.restTime += dt;
+                    else d.restTime = 0;
+                    if (d.restTime >= 0.45) {
+                        d.vx = 0;
+                        d.vz = 0;
+                        d.avx = 0;
+                        d.avy = 0;
+                        d.avz = 0;
+                        d.sleeping = true;
+                        d.supportBlockIndex = landing.blockIndex;
+                    }
                 }
+            }
+        }
+
+        function twResolveDebrisPair(a, b) {
+            if (a.alpha <= 0 || b.alpha <= 0) return false;
+            const ea = twDebrisExtents(a);
+            const eb = twDebrisExtents(b);
+            const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+            const overlaps = {
+                x: ea.x + eb.x - Math.abs(dx),
+                y: ea.y + eb.y - Math.abs(dy),
+                z: ea.z + eb.z - Math.abs(dz)
+            };
+            if (overlaps.x <= 0 || overlaps.y <= 0 || overlaps.z <= 0) return false;
+
+            const supportedA = a.sleeping || a.supportBlockIndex != null || a.y - ea.y <= 0.5;
+            const supportedB = b.sleeping || b.supportBlockIndex != null || b.y - eb.y <= 0.5;
+            let axis = overlaps.x <= overlaps.y && overlaps.x <= overlaps.z ? 'x' :
+                (overlaps.y <= overlaps.z ? 'y' : 'z');
+            // Bodies already sharing the floor should separate sideways rather
+            // than force one another through the static surface.
+            if (axis === 'y' && supportedA && supportedB) {
+                axis = overlaps.x <= overlaps.z ? 'x' : 'z';
+            }
+            const deltaAxis = axis === 'x' ? dx : (axis === 'y' ? dy : dz);
+            const normalSign = deltaAxis >= 0 ? 1 : -1;
+            const correction = overlaps[axis] + 0.15;
+            let moveA = 0.5, moveB = 0.5;
+            if (axis === 'y' && supportedA !== supportedB) {
+                moveA = supportedA ? 0 : 1;
+                moveB = supportedB ? 0 : 1;
+            }
+            a[axis] -= normalSign * correction * moveA;
+            b[axis] += normalSign * correction * moveB;
+
+            const velocityKey = axis === 'x' ? 'vx' : (axis === 'y' ? 'vy' : 'vz');
+            const relativeVelocity = (b[velocityKey] - a[velocityKey]) * normalSign;
+            if (relativeVelocity < 0) {
+                const impulse = -(1 + 0.2) * relativeVelocity / 2;
+                a[velocityKey] -= impulse * normalSign;
+                b[velocityKey] += impulse * normalSign;
+            }
+
+            if (axis === 'y') {
+                a.vx *= 0.86; a.vz *= 0.86;
+                b.vx *= 0.86; b.vz *= 0.86;
+            } else {
+                a.vy *= 0.94;
+                b.vy *= 0.94;
+            }
+            const angularKick = Math.min(0.9, Math.abs(relativeVelocity) * 0.006);
+            if (axis === 'x') {
+                a.avz -= normalSign * angularKick;
+                b.avz += normalSign * angularKick;
+            } else if (axis === 'z') {
+                a.avx += normalSign * angularKick;
+                b.avx -= normalSign * angularKick;
+            } else {
+                const spinSign = dx + dz >= 0 ? 1 : -1;
+                a.avy -= spinSign * angularKick;
+                b.avy += spinSign * angularKick;
+            }
+            a.sleeping = false;
+            b.sleeping = false;
+            a.supportBlockIndex = null;
+            b.supportBlockIndex = null;
+            a.restTime = 0;
+            b.restTime = 0;
+            return true;
+        }
+
+        function twUpdateDebrisPhysics(delta) {
+            twDebris.forEach(d => twStepDebris(d, delta));
+            // Two inexpensive solver passes are enough for a pool capped at 16
+            // objects and prevent visible interpenetration in small piles.
+            for (let pass = 0; pass < 2; pass++) {
+                for (let i = 0; i < twDebris.length; i++) {
+                    for (let j = i + 1; j < twDebris.length; j++) {
+                        twResolveDebrisPair(twDebris[i], twDebris[j]);
+                    }
+                }
+                // Pair separation can press the lower body into a static floor
+                // or block. A zero-time contact pass restores that constraint
+                // without applying gravity twice in the same frame.
+                twDebris.forEach(d => twStepDebris(d, 0));
             }
         }
 
@@ -8577,8 +8716,7 @@
             });
         }
 
-        function twUpdateAndDrawDebris(d, cx, cy, delta) {
-            twStepDebris(d, delta);
+        function twDrawDebris(d, cx, cy) {
             if (d.alpha <= 0) return;
             twCtx.save();
             twCtx.globalAlpha = d.alpha;
