@@ -91,6 +91,30 @@ test('Monopoly gameplay events use the dedicated effects', () => {
         'an unaffordable purchase remains clickable so its feedback sound can play');
 });
 
+test('Monopoly keeps money sounds private while dice and movement stay shared', () => {
+    const renderStart = gameUiSource.indexOf('function renderAll()');
+    const renderEnd = gameUiSource.indexOf('const MONEY_MS', renderStart);
+    const renderAll = gameUiSource.slice(renderStart, renderEnd);
+    assert.match(renderAll, /owner === E\.me\(\)/,
+        'the purchase sound must only play for the player who bought the property');
+
+    const money = extractFunction(gameUiSource, 'setMoney');
+    assert.match(money, /targetChanged && id === E\.me\(\)/,
+        'incoming and outgoing money sounds must be limited to the local player');
+
+    const init = extractFunction(gameUiSource, 'init');
+    assert.match(init, /E\.on\('dice',\s*\(a, b\) => \(diceAnim = global\.DiceDock\.roll\(a, b\)\)\)/,
+        'every received dice event must run the local physics animation');
+    assert.match(init, /E\.on\('move', animateMove\)/,
+        'every received player movement must use the shared step animation');
+    const moveStart = gameUiSource.indexOf('function animateMove');
+    const moveEnd = gameUiSource.indexOf('function animateTeleport', moveStart);
+    const movement = gameUiSource.slice(moveStart, moveEnd);
+    assert.match(movement, /snd\('tokenStep'/);
+    assert.doesNotMatch(movement, /pid === E\.me\(\)/,
+        'opponent token steps must not be muted');
+});
+
 test('Block Blast resume preserves occupied-cell colors and the saved hand', () => {
     const context = {
         BB_COLS: 8,
