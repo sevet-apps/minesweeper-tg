@@ -449,6 +449,9 @@ img.qmark-img,
     z-index: 10;
     pointer-events: none;
 }
+.board.casino-overlay-active .board-center {
+    z-index: 80;
+}
 
 /* центральная панель (чат + служебная плашка) */
 .center-panel {

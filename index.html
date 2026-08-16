@@ -277,6 +277,10 @@
             isolation: isolate;
             background-color: #1c1c1f;
             border-color: rgba(255, 255, 255, 0.12);
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
         }
         #view-games .game-card > * { position: relative; z-index: 1; }
         #view-games .game-card > div:last-child { color: rgba(255, 255, 255, 0.9) !important; }
@@ -316,6 +320,25 @@
         }
         #view-games .game-card--wordle {
             background: linear-gradient(112deg, rgba(0, 135, 158, .92), rgba(13, 82, 75, .94));
+        }
+        #view-games .game-beta-ribbon {
+            position: absolute;
+            top: 8px;
+            right: -24px;
+            z-index: 2;
+            padding: 2px 28px;
+            color: #fff;
+            background: linear-gradient(135deg, #ff9500, #ff6b00);
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            line-height: 1.2;
+            text-transform: uppercase;
+            transform: rotate(35deg);
+            pointer-events: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
         #view-games .game-card--monopoly {
             background: linear-gradient(112deg, rgba(155, 24, 31, .92), rgba(62, 13, 26, .95));
@@ -2816,8 +2839,8 @@
             </div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--wordle" onclick="startWordle()">
-            <div style="position:absolute; top:8px; right:-24px; background:linear-gradient(135deg, #ff9500, #ff6b00); color:#fff; font-size:9px; font-weight:800; padding:2px 28px; transform:rotate(35deg); letter-spacing:1px; z-index:2; text-transform:uppercase;" data-i18n="beta">БЕТА</div>
+        <div class="card game-card game-card--wordle" onclick="startWordle()" oncontextmenu="return false">
+            <div class="game-beta-ribbon" data-i18n="beta">БЕТА</div>
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/wordle.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="wordle">Вордли</h3>
@@ -4989,7 +5012,6 @@
                             delivered = true;
                             if (data.bb_checkpoint) {
                                 bbServerCheckpoint = data.bb_checkpoint;
-                                if (!bbGameEnded) saveBBState();
                             }
                             break;
                         }
@@ -5004,6 +5026,7 @@
                         break;
                     }
                     bbMoveQueue.shift();
+                    if (!bbGameEnded) saveBBState();
                 }
             } finally {
                 bbMoveProcessing = false;
@@ -5037,6 +5060,7 @@
             // BB moves go through sequential queue to maintain order
             if (game_type === 'bb_best_score' && bbMoveData) {
                 bbMoveQueue.push(payload);
+                saveBBState();
                 processBBMoveQueue();
             } else {
                 // Other games — fire and forget (no server-side grid to sync)
@@ -5236,45 +5260,83 @@
         function showReferralConditions() {
             const overlay = document.getElementById('referralConditionsSheet');
             const sheet = overlay.querySelector('.bottom-sheet');
-            overlay.classList.add('visible');
+            sheet.classList.remove('dragging');
             sheet.style.transform = '';
-            
-            // Add swipe listeners to handle
-            const handle = document.getElementById('referralConditionsHandle');
-            handle.addEventListener('touchstart', refSheetTouchStart, { passive: true });
-            handle.addEventListener('touchmove', refSheetTouchMove, { passive: false });
-            handle.addEventListener('touchend', refSheetTouchEnd);
+            overlay.classList.add('visible');
+            bindReferralSheetGesture(sheet);
         }
         
         let refSheetStartY = 0;
+        let refSheetStartX = 0;
+        let refSheetStartTime = 0;
         let refSheetCurrentY = 0;
         let refSheetDragging = false;
+        let refSheetGestureCandidate = false;
+
+        function bindReferralSheetGesture(sheet) {
+            if (sheet.dataset.refDragBound === '1') return;
+            sheet.dataset.refDragBound = '1';
+            sheet.addEventListener('touchstart', refSheetTouchStart, { passive: true });
+            sheet.addEventListener('touchmove', refSheetTouchMove, { passive: false });
+            sheet.addEventListener('touchend', refSheetTouchEnd);
+            sheet.addEventListener('touchcancel', refSheetTouchEnd);
+        }
+
+        function isReferralSheetControl(target) {
+            return !!target.closest('button, a, input, textarea, select');
+        }
         
         function refSheetTouchStart(e) {
-            refSheetDragging = true;
+            const sheet = e.currentTarget;
+            refSheetGestureCandidate = !isReferralSheetControl(e.target) && sheet.scrollTop <= 0;
+            refSheetDragging = false;
+            refSheetCurrentY = 0;
+            if (!refSheetGestureCandidate) return;
             refSheetStartY = e.touches[0].clientY;
-            const sheet = document.querySelector('#referralConditionsSheet .bottom-sheet');
-            sheet.style.transition = 'none';
+            refSheetStartX = e.touches[0].clientX;
+            refSheetStartTime = performance.now();
         }
         
         function refSheetTouchMove(e) {
-            if (!refSheetDragging) return;
+            if (!refSheetGestureCandidate) return;
+            const deltaY = e.touches[0].clientY - refSheetStartY;
+            const deltaX = e.touches[0].clientX - refSheetStartX;
+            if (!refSheetDragging) {
+                if (Math.abs(deltaY) < 6) return;
+                if (deltaY <= 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
+                    refSheetGestureCandidate = false;
+                    return;
+                }
+                refSheetDragging = true;
+                e.currentTarget.classList.add('dragging');
+            }
             e.preventDefault();
-            refSheetCurrentY = e.touches[0].clientY - refSheetStartY;
-            if (refSheetCurrentY < 0) refSheetCurrentY = 0;
-            const sheet = document.querySelector('#referralConditionsSheet .bottom-sheet');
-            sheet.style.transform = `translateY(${refSheetCurrentY}px)`;
+            refSheetCurrentY = Math.max(0, deltaY);
+            e.currentTarget.style.transform = `translateY(${refSheetCurrentY}px)`;
         }
         
-        function refSheetTouchEnd() {
+        function refSheetTouchEnd(e) {
+            if (!refSheetGestureCandidate && !refSheetDragging) return;
+            const sheet = e.currentTarget;
+            const elapsed = Math.max(1, performance.now() - refSheetStartTime);
+            const velocity = refSheetCurrentY / elapsed;
+            const shouldClose = refSheetDragging &&
+                (refSheetCurrentY > Math.min(120, sheet.offsetHeight * 0.2) || velocity > 0.55);
             refSheetDragging = false;
-            const sheet = document.querySelector('#referralConditionsSheet .bottom-sheet');
-            sheet.style.transition = 'transform 0.3s ease';
-            
-            if (refSheetCurrentY > 100) {
+            refSheetGestureCandidate = false;
+            sheet.classList.remove('dragging');
+
+            if (shouldClose) {
                 hideReferralConditions();
             } else {
                 sheet.style.transform = 'translateY(0)';
+                const cleanup = () => {
+                    if (document.getElementById('referralConditionsSheet').classList.contains('visible')) {
+                        sheet.style.transform = '';
+                    }
+                    sheet.removeEventListener('transitionend', cleanup);
+                };
+                sheet.addEventListener('transitionend', cleanup);
             }
             refSheetCurrentY = 0;
         }
@@ -5282,7 +5344,8 @@
         function hideReferralConditions() {
             const overlay = document.getElementById('referralConditionsSheet');
             const sheet = overlay.querySelector('.bottom-sheet');
-            sheet.style.transition = 'transform 0.3s ease';
+            sheet.classList.remove('dragging');
+            sheet.style.transform = '';
             overlay.classList.remove('visible');
         }
         
@@ -6556,22 +6619,35 @@
                     resetBBToCurrentSession(freshCheckpoint);
                     return false;
                 }
-                bbGrid = data.server_grid.map(row => row.map(cell => cell ? 'bb-c-1' : 0));
-                bbScore = data.server_score || 0;
-                bbDisplayedScore = bbScore;
-                bbCombo = data.combo || 0;
-                bbComboBuffer = data.comboBuffer || 0;
+                const localGrid = bbGrid;
+                const hasPendingMoves = bbMoveQueue.length > 0;
+                if (!hasPendingMoves) {
+                    bbGrid = mergeBBServerGrid(data.server_grid, localGrid);
+                    bbScore = data.server_score || 0;
+                    bbDisplayedScore = bbScore;
+                    bbCombo = data.combo || 0;
+                    bbComboBuffer = data.comboBuffer || 0;
+                }
                 bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
+                bbMoveQueue.forEach(item => { item.session_token = token; });
                 renderBBGrid();
                 updateBBScoreUI();
-                spawnShapes();
+                renderBBShapeSlots();
                 saveBBState();
+                if (hasPendingMoves) processBBMoveQueue();
                 return true;
             } catch(e) {
                 console.error('BB sync error:', e);
                 resetBBToCurrentSession(freshCheckpoint);
                 return false;
             }
+        }
+        function mergeBBServerGrid(serverGrid, localGrid) {
+            return serverGrid.map((row, r) => row.map((cell, c) => {
+                if (!cell) return 0;
+                const localColor = localGrid && localGrid[r] && localGrid[r][c];
+                return localColor || COLORS[(r * BB_COLS + c) % COLORS.length];
+            }));
         }
         function resetBBToCurrentSession(freshCheckpoint) {
             localStorage.removeItem(bbStateKey());
@@ -6883,6 +6959,13 @@
                 const color = COLORS[Math.floor(Math.random() * COLORS.length)];
                 bbShapes.push({ matrix: result[i], color: color, id: i });
                 renderShapePreview(i, result[i], color);
+            }
+        }
+        function renderBBShapeSlots() {
+            for (let i = 0; i < 3; i++) {
+                const shape = bbShapes[i];
+                if (shape) renderShapePreview(i, shape.matrix, shape.color);
+                else document.getElementById(`shape${i}`).innerHTML = '';
             }
         }
         function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
@@ -7567,8 +7650,8 @@
             }
             overlay.classList.add('visible');
         }
-        function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, serverCheckpoint: bbServerCheckpoint }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = data.shapes; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); for(let i=0; i<3; i++) { if(bbShapes[i]) renderShapePreview(i, bbShapes[i].matrix, bbShapes[i].color); else document.getElementById(`shape${i}`).innerHTML = ''; } bbLiveBroadcast(); }
+        function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
+        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;
@@ -7734,7 +7817,12 @@
         let twState = 'start'; 
         let twHue = 0; 
         let twCameraY = 0; 
+        let twCameraX = 0;
+        let twCameraScale = 1;
+        let twCameraTween = null;
         let twPerfectMatchAlpha = 0;
+        let twPerfectWaves = [];
+        let twGameOverRevealPending = false;
         let twCurrentBlock = null;
         let twDirection = 'x'; 
         let twSpeed = 3.0;
@@ -7747,6 +7835,8 @@
 
         const TW_BLOCK_HEIGHT = 35; 
         const TW_BASE_SIZE = 130;
+        const TW_CAMERA_ZOOM_MS = 850;
+        const TW_GAME_OVER_HOLD_MS = 3000;
         const TW_TARGET_FPS = 60; // Целевой FPS для нормализации
         const TW_FRAME_TIME = 1000 / TW_TARGET_FPS; // ~16.67ms
         let twInitialized = false;
@@ -7803,7 +7893,12 @@
             twHue = Math.floor(Math.random() * 360);
             twState = 'start';
             twCameraY = 0;
+            twCameraX = 0;
+            twCameraScale = 1;
+            twCameraTween = null;
             twPerfectMatchAlpha = 0;
+            twPerfectWaves = [];
+            twGameOverRevealPending = false;
             twCurrentBlock = null;
             twCurrentCombo = 0;
             twMaxComboThisGame = 0;
@@ -7850,12 +7945,24 @@
             };
         }
 
-        function twUpdatePhysics(delta) {
+        function twUpdatePhysics(delta, currentTime) {
+            const speedMultiplier = delta / TW_FRAME_TIME;
+
+            if (twPerfectMatchAlpha > 0) {
+                twPerfectMatchAlpha = Math.max(0, twPerfectMatchAlpha - 0.05 * speedMultiplier);
+            }
+            if (twCameraTween) {
+                const progress = Math.min(1, (currentTime - twCameraTween.startedAt) / TW_CAMERA_ZOOM_MS);
+                const eased = 1 - Math.pow(1 - progress, 4);
+                twCameraX = twCameraTween.fromX + (twCameraTween.toX - twCameraTween.fromX) * eased;
+                twCameraY = twCameraTween.fromY + (twCameraTween.toY - twCameraTween.fromY) * eased;
+                twCameraScale = twCameraTween.fromScale +
+                    (twCameraTween.toScale - twCameraTween.fromScale) * eased;
+                if (progress >= 1) twCameraTween = null;
+            }
+
             if (twState !== 'playing' || !twCurrentBlock) return;
             const limit = 360;
-            
-            // Нормализуем скорость по delta time
-            const speedMultiplier = delta / TW_FRAME_TIME;
             
             if (twDirection === 'x') {
                 twCurrentBlock.x += twSpeed * twCurrentBlock.moveDir * speedMultiplier;
@@ -7869,7 +7976,6 @@
 
             const targetY = (twBlocks.length * TW_BLOCK_HEIGHT) - 150;
             if(targetY > 0) twCameraY += (targetY - twCameraY) * 0.05 * speedMultiplier;
-            if(twPerfectMatchAlpha > 0) twPerfectMatchAlpha -= 0.05 * speedMultiplier;
         }
 
         function twHandleAction(e) {
@@ -7904,6 +8010,12 @@
                 twPerfectMatchAlpha = 1.0;
                 twCurrentCombo++;
                 if(twCurrentCombo > twMaxComboThisGame) twMaxComboThisGame = twCurrentCombo;
+                twApplyPerfectGrowth(twCurrentBlock, twCurrentCombo);
+                twPerfectWaves.push({
+                    blockIndex: twBlocks.length,
+                    count: twCurrentCombo >= 4 ? 3 : (twCurrentCombo >= 3 ? 2 : 1),
+                    startedAt: performance.now()
+                });
                 
                 twCommitBlock();
                 return;
@@ -7961,6 +8073,36 @@
             }
         }
 
+        function twPerfectGrowthRate(streak) {
+            if (streak < 5) return 0;
+            if (streak === 5) return 0.10;
+            return 0.12 + (streak - 6) * 0.03;
+        }
+
+        function twApplyPerfectGrowth(block, streak) {
+            const rate = twPerfectGrowthRate(streak);
+            if (!rate) return;
+            const half = TW_BASE_SIZE / 2;
+            const sides = [
+                { axis: 'x', sign: -1, missing: Math.max(0, block.x - block.w / 2 + half) },
+                { axis: 'x', sign: 1,  missing: Math.max(0, half - block.x - block.w / 2) },
+                { axis: 'z', sign: -1, missing: Math.max(0, block.z - block.d / 2 + half) },
+                { axis: 'z', sign: 1,  missing: Math.max(0, half - block.z - block.d / 2) }
+            ].sort((a, b) => b.missing - a.missing);
+            const side = sides[0];
+            if (!side || side.missing <= 0) return;
+            const currentSize = side.axis === 'x' ? block.w : block.d;
+            const growth = Math.min(TW_BASE_SIZE * rate, side.missing, TW_BASE_SIZE - currentSize);
+            if (growth <= 0) return;
+            if (side.axis === 'x') {
+                block.w += growth;
+                block.x += side.sign * growth / 2;
+            } else {
+                block.d += growth;
+                block.z += side.sign * growth / 2;
+            }
+        }
+
         function twCommitBlock() {
             twBlocks.push(twCurrentBlock);
             twScore++;
@@ -7984,31 +8126,42 @@
 
         async function twGameOver() {
             twState = 'gameover';
+            twCurrentBlock = null;
+            twGameOverRevealPending = true;
+            twBeginGameOverCamera();
+            const revealDelay = new Promise(resolve =>
+                setTimeout(resolve, TW_CAMERA_ZOOM_MS + TW_GAME_OVER_HOLD_MS));
             if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');
             
             let isScoreRecord = false;
             let isComboRecord = false;
-            
-            if(twScore > twBestScore) {
-                const accepted = await sendStatToBackend('tower_best', twScore);
-                if(accepted) {
-                    twBestScore = twScore;
-                    localStorage.setItem('tower_best', twBestScore);
-                    saveStatToCloud('tower_best', twBestScore);
-                    document.getElementById('towerBestScore').innerText = twBestScore;
-                    isScoreRecord = true;
+
+            // Saving runs in parallel with the camera reveal. A slow network must
+            // never keep the player staring at the fallen tower indefinitely.
+            const recordSave = (async () => {
+                if(twScore > twBestScore) {
+                    const accepted = await sendStatToBackend('tower_best', twScore);
+                    if(accepted) {
+                        twBestScore = twScore;
+                        localStorage.setItem('tower_best', twBestScore);
+                        saveStatToCloud('tower_best', twBestScore);
+                        document.getElementById('towerBestScore').innerText = twBestScore;
+                        isScoreRecord = true;
+                    }
                 }
-            }
-            
-            if(twMaxComboThisGame > twBestCombo) {
-                const accepted = await sendStatToBackend('tower_combo', twMaxComboThisGame);
-                if(accepted) {
-                    twBestCombo = twMaxComboThisGame;
-                    localStorage.setItem('tower_combo', twBestCombo);
-                    saveStatToCloud('tower_combo', twBestCombo);
-                    isComboRecord = true;
+
+                if(twMaxComboThisGame > twBestCombo) {
+                    const accepted = await sendStatToBackend('tower_combo', twMaxComboThisGame);
+                    if(accepted) {
+                        twBestCombo = twMaxComboThisGame;
+                        localStorage.setItem('tower_combo', twBestCombo);
+                        saveStatToCloud('tower_combo', twBestCombo);
+                        isComboRecord = true;
+                    }
                 }
-            }
+            })().catch(error => console.error('Tower record save error:', error));
+
+            await revealDelay;
 
             const modal = document.getElementById('towerGameOverContent');
             const overlay = document.getElementById('modalTowerGameOver');
@@ -8045,7 +8198,48 @@
                 });
             }
             
-            setTimeout(() => overlay.classList.add('visible'), 500);
+            overlay.classList.add('visible');
+            twGameOverRevealPending = false;
+        }
+
+        function twTowerBounds() {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            twBlocks.forEach((block, index) => {
+                const yLevel = index * TW_BLOCK_HEIGHT;
+                const corners = [
+                    [-block.w / 2, -block.d / 2], [block.w / 2, -block.d / 2],
+                    [block.w / 2, block.d / 2], [-block.w / 2, block.d / 2]
+                ];
+                corners.forEach(([dx, dz]) => {
+                    const x = block.x + dx - block.z - dz;
+                    const topY = (block.x + dx + block.z + dz) * 0.5 - yLevel - TW_BLOCK_HEIGHT;
+                    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, topY); maxY = Math.max(maxY, topY + TW_BLOCK_HEIGHT);
+                });
+            });
+            return { minX, maxX, minY, maxY };
+        }
+
+        function twBeginGameOverCamera() {
+            const bounds = twTowerBounds();
+            if (!Number.isFinite(bounds.minX)) return;
+            const width = Math.max(1, bounds.maxX - bounds.minX);
+            const height = Math.max(1, bounds.maxY - bounds.minY);
+            const targetScale = Math.min(1,
+                (window.innerWidth * 0.84) / (width + 32),
+                (window.innerHeight * 0.72) / (height + 32));
+            const sceneCenterX = (bounds.minX + bounds.maxX) / 2;
+            const sceneCenterY = (bounds.minY + bounds.maxY) / 2;
+            const canvasCenterY = window.innerHeight / 1.5;
+            twCameraTween = {
+                startedAt: performance.now(),
+                fromX: twCameraX,
+                fromY: twCameraY,
+                fromScale: twCameraScale,
+                toX: -sceneCenterX,
+                toY: window.innerHeight / 2 - canvasCenterY - sceneCenterY,
+                toScale: targetScale
+            };
         }
 
         function twRestartGame() {
@@ -8065,7 +8259,8 @@
                 twLastFrameTime = 0;
                 return;
             }
-            if(twState === 'gameover' && twDebris.length === 0 && twPerfectMatchAlpha <= 0) {
+            if(twState === 'gameover' && twDebris.length === 0 && twPerfectMatchAlpha <= 0 &&
+               twPerfectWaves.length === 0 && !twCameraTween && !twGameOverRevealPending) {
                 twAnimationFrameId = null;
                 twLastFrameTime = 0;
                 return;
@@ -8081,11 +8276,16 @@
             // Ограничиваем delta чтобы избежать скачков при паузах
             if (delta > 100) delta = TW_FRAME_TIME;
             
-            twUpdatePhysics(delta);
+            twUpdatePhysics(delta, currentTime);
             twCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
             
             const cx = window.innerWidth / 2;
             const cy = window.innerHeight / 1.5; 
+
+            twCtx.save();
+            twCtx.translate(window.innerWidth / 2, window.innerHeight / 2);
+            twCtx.scale(twCameraScale, twCameraScale);
+            twCtx.translate(-window.innerWidth / 2, -window.innerHeight / 2);
 
             // Draw debris behind blocks
             twDebris.forEach(d => { if (d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
@@ -8096,6 +8296,7 @@
                 let highlight = (i === twBlocks.length - 1 && twPerfectMatchAlpha > 0);
                 twDrawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color, highlight);
             });
+            twDrawPerfectWaves(cx, cy, currentTime);
 
             // Draw current moving block
             if (twCurrentBlock && twState === 'playing') {
@@ -8106,6 +8307,50 @@
             // Draw debris in front of blocks
             twDebris.forEach(d => { if (!d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
             twDebris = twDebris.filter(d => d.alpha > 0);
+            twCtx.restore();
+        }
+
+        function twDrawPerfectWaves(cx, cy, currentTime) {
+            const duration = 480;
+            const delay = 70;
+            twPerfectWaves.forEach(effect => {
+                const block = twBlocks[effect.blockIndex];
+                if (!block) return;
+                const yLevel = effect.blockIndex * TW_BLOCK_HEIGHT;
+                const isoX = block.x - block.z;
+                const isoY = (block.x + block.z) * 0.5;
+                const screenX = cx + isoX + twCameraX;
+                const screenY = cy + isoY - yLevel + twCameraY;
+                for (let i = 0; i < effect.count; i++) {
+                    const elapsed = currentTime - effect.startedAt - i * delay;
+                    if (elapsed < 0 || elapsed > duration) continue;
+                    const progress = elapsed / duration;
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const grow = 3 + eased * 15;
+                    const points = [
+                        twGetIsoPoint(screenX, screenY, -block.w / 2 - grow, -block.d / 2 - grow),
+                        twGetIsoPoint(screenX, screenY, block.w / 2 + grow, -block.d / 2 - grow),
+                        twGetIsoPoint(screenX, screenY, block.w / 2 + grow, block.d / 2 + grow),
+                        twGetIsoPoint(screenX, screenY, -block.w / 2 - grow, block.d / 2 + grow)
+                    ];
+                    twCtx.save();
+                    twCtx.globalAlpha = Math.max(0, 1 - progress);
+                    twCtx.strokeStyle = '#ffffff';
+                    twCtx.lineWidth = 2.5;
+                    twCtx.shadowColor = '#ffffff';
+                    twCtx.shadowBlur = 10;
+                    twCtx.beginPath();
+                    twCtx.moveTo(points[0].x, points[0].y + TW_BLOCK_HEIGHT);
+                    for (let p = 1; p < points.length; p++) {
+                        twCtx.lineTo(points[p].x, points[p].y + TW_BLOCK_HEIGHT);
+                    }
+                    twCtx.closePath();
+                    twCtx.stroke();
+                    twCtx.restore();
+                }
+            });
+            twPerfectWaves = twPerfectWaves.filter(effect =>
+                currentTime - effect.startedAt <= duration + (effect.count - 1) * delay);
         }
         
         function twUpdateAndDrawDebris(d, cx, cy, delta) {
@@ -8125,7 +8370,7 @@
                 twCtx.save();
                 const isoX = (d.x - d.z);
                 const isoY = (d.x + d.z) * 0.5;
-                const screenX = cx + isoX;
+                const screenX = cx + isoX + twCameraX;
                 const screenY = cy + isoY - stackY + twCameraY - (TW_BLOCK_HEIGHT/2);
                 twCtx.translate(screenX, screenY);
                 twCtx.rotate(d.angle);
@@ -8157,7 +8402,7 @@
         function twDrawIsoBlock(cx, cy, x, z, w, d, yLevel, color, highlight) {
             const isoX = (x - z);
             const isoY = (x + z) * 0.5;
-            const screenX = cx + isoX;
+            const screenX = cx + isoX + twCameraX;
             const screenY = cy + isoY - yLevel + twCameraY;
 
             const p_top = twGetIsoPoint(screenX, screenY, -w/2, -d/2);
