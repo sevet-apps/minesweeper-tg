@@ -181,8 +181,35 @@
             this.body.position.set(...initialPosition);
             sceneManager.world.addBody(this.body);
 
+            /* У каждого кубика собственная история контактов. Поэтому два
+               одновременных удара (по одному от каждого кубика) слышны оба,
+               а физический дребезг одного контакта не превращается в треск. */
+            this._surfaceHits = new WeakMap();
+            this.body.addEventListener('collide', event => this._playSurfaceContact(event));
+
             // Sync mesh ← body each frame
             sceneManager.onUpdate(() => this._syncMesh());
+        }
+
+        _playSurfaceContact(event) {
+            const surface = event && event.body;
+            if (!surface || !surface._diceArenaSurface) return;
+
+            const now = (global.performance && global.performance.now)
+                ? global.performance.now() : Date.now();
+            const previous = this._surfaceHits.get(surface) || -Infinity;
+            if (now - previous < 55) return; // защита только от дубля физического события
+            this._surfaceHits.set(surface, now);
+
+            let impact = 0.5;
+            try {
+                if (event.contact && event.contact.getImpactVelocityAlongNormal) {
+                    impact = Math.abs(event.contact.getImpactVelocityAlongNormal());
+                }
+            } catch (_) {}
+            if (impact < 0.025) return;
+            const volume = Math.max(0.22, Math.min(0.9, 0.24 + impact * 0.055));
+            global.MonopolySound?.play('diceContact', { volume });
         }
 
         _syncMesh() {

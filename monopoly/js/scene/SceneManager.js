@@ -145,6 +145,9 @@
 
         _addArenaFloorAndWalls(world) {
             const floorBody = new CANNON.Body({ mass: 0, material: MATERIALS.floor });
+            /* Dice.js отличает границы арены от других статических тел и
+               озвучивает только новые касания пола и боковых стен. */
+            floorBody._diceArenaSurface = 'floor';
             floorBody.addShape(new CANNON.Plane());
             floorBody.quaternion.setFromAxisAngle(
                 new CANNON.Vec3(1, 0, 0), -Math.PI / 2
@@ -164,6 +167,7 @@
             ];
             for (const [half, pos] of walls) {
                 const body = new CANNON.Body({ mass: 0, material: MATERIALS.wall });
+                body._diceArenaSurface = 'wall';
                 body.addShape(new CANNON.Box(new CANNON.Vec3(...half)));
                 body.position.set(...pos);
                 world.addBody(body);

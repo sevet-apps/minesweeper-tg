@@ -8,6 +8,11 @@ const root = path.join(__dirname, '..', '..');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const gameUiSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'game-ui.js'), 'utf8');
 const monopolyCss = fs.readFileSync(path.join(root, 'monopoly', 'css', 'v2.css'), 'utf8');
+const monopolyIndex = fs.readFileSync(path.join(root, 'monopoly', 'index.html'), 'utf8');
+const soundSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'sound.js'), 'utf8');
+const diceSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', 'Dice.js'), 'utf8');
+const sceneSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', 'SceneManager.js'), 'utf8');
+const tradesSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'trades.js'), 'utf8');
 
 function extractFunction(source, name) {
     const start = source.indexOf(`function ${name}`);
@@ -20,6 +25,71 @@ function extractFunction(source, name) {
     }
     throw new Error(`function ${name} is not balanced`);
 }
+
+test('Monopoly sound pack is complete and controlled by the shared setting', () => {
+    const files = [
+        'turn-to-you.wav', 'casino-win.wav', 'trade-select.wav',
+        'insufficient-funds.wav', 'dice-contact.wav', 'inspect.wav',
+        'money-in.wav', 'money-out.wav', 'token-step.wav',
+        'property-purchase.mp3'
+    ];
+    for (const file of files) {
+        const full = path.join(root, 'monopoly', 'assets', 'sounds', file);
+        assert.ok(fs.existsSync(full), `${file} must be included`);
+        assert.ok(fs.statSync(full).size > 1000, `${file} must not be empty`);
+        assert.match(soundSource, new RegExp(file.replace('.', '\\.')));
+    }
+    assert.match(monopolyIndex, /<script src="js\/v2\/sound\.js"><\/script>/);
+    assert.match(indexSource, /id="soundToggle" onclick="toggleSounds\(\)"/);
+    assert.match(indexSource, /localStorage\.setItem\('sounds_enabled', soundsEnabled\)/);
+    assert.match(indexSource, /sounds: 'Звуки'/);
+    assert.match(indexSource, /sounds: 'Sounds'/);
+    assert.match(indexSource, /sounds: '声音'/);
+
+    let plays = 0;
+    class FakeAudio {
+        constructor(src) { this.src = src; this.currentTime = 0; this.volume = 1; }
+        play() { plays++; return Promise.resolve(); }
+        pause() {}
+    }
+    const storage = new Map([['sounds_enabled', 'false']]);
+    const context = {
+        Audio: FakeAudio,
+        localStorage: {
+            getItem: key => storage.get(key) ?? null,
+            setItem: (key, value) => storage.set(key, value)
+        },
+        performance: { now: () => 1000 },
+        addEventListener() {}
+    };
+    context.window = context;
+    vm.createContext(context);
+    vm.runInContext(soundSource, context);
+    context.MonopolySound.play('inspect');
+    assert.equal(plays, 0, 'disabled sounds must stay silent');
+    context.MonopolySound.setEnabled(true);
+    context.MonopolySound.play('inspect');
+    context.MonopolySound.play('inspect');
+    assert.equal(plays, 2, 'the audio pool must allow overlapping short effects');
+});
+
+test('Monopoly gameplay events use the dedicated effects', () => {
+    assert.match(sceneSource, /floorBody\._diceArenaSurface = 'floor'/);
+    assert.match(sceneSource, /body\._diceArenaSurface = 'wall'/);
+    assert.match(diceSource, /this\._surfaceHits = new WeakMap\(\)/);
+    assert.match(diceSource, /this\.body\.addEventListener\('collide'/);
+    assert.match(diceSource, /getImpactVelocityAlongNormal/);
+    assert.match(diceSource, /now - previous < 55/);
+    assert.match(diceSource, /MonopolySound\?\.play\('diceContact'/);
+
+    for (const effect of [
+        'inspect', 'tokenStep', 'propertyPurchase', 'moneyIn', 'moneyOut',
+        'turnToYou', 'insufficient', 'casinoWin'
+    ]) assert.match(gameUiSource, new RegExp(`['"]${effect}['"]`));
+    assert.match(tradesSource, /MonopolySound\?\.play\('tradeSelect'/);
+    assert.match(gameUiSource, /aria-disabled="\$\{afford\(ph\.price\)/,
+        'an unaffordable purchase remains clickable so its feedback sound can play');
+});
 
 test('Block Blast resume preserves occupied-cell colors and the saved hand', () => {
     const context = {

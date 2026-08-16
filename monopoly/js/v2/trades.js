@@ -163,8 +163,10 @@
         const me = E.me(), other = T.composing.withId;
         /* застроенное поле в договор не берём: сервер такую сделку отклонит */
         if ((S.branches[i] || 0) > 0) return true;
-        if (S.owners[i] === me) toggle(T.composing.give, i);
-        else if (S.owners[i] === other) toggle(T.composing.take, i);
+        let changed = false;
+        if (S.owners[i] === me) { toggle(T.composing.give, i); changed = true; }
+        else if (S.owners[i] === other) { toggle(T.composing.take, i); changed = true; }
+        if (changed) global.MonopolySound?.play('tradeSelect', { volume: 0.66 });
         renderCompose();
         refreshBoard();
         return true;

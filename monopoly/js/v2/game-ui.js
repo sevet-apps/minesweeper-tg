@@ -11,6 +11,7 @@
     const fmt = n => n.toLocaleString('ru-RU');
     const DS = '<i class="dsign"></i>';
     const $ = s => document.querySelector(s);
+    const snd = (name, options) => global.MonopolySound?.play(name, options);
     /* PNG-иконки интерфейса (общий помощник живёт в modals.js) */
     const ico = (n, fb, cls) => (global.Modals && global.Modals.ico)
         ? global.Modals.ico(n, fb, cls)
@@ -21,6 +22,7 @@
     let casinoPick = [];          // выбранные числа в казино
     let casinoBet = null;         // введённая ставка (null = ещё не трогали)
     let casinoTick = null;        // «прокрутка» кубика после ставки
+    let casinoWinPlayed = false;  // один эффект на выигрыш, включая джекпот
 
     /* грань кубика 3×3: точки на нужных позициях */
     const DIE_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
@@ -67,6 +69,7 @@
             if (global.Trades && global.Trades.handleTileClick(i)) return;   // режим договора
             if (t.type !== 'prop') return;
             const tw = ev && ev.target && ev.target.closest('.tw');
+            snd('inspect', { volume: 0.62 });
             global.Modals.fieldCard(i, tw && tw.getBoundingClientRect(), tw);
         });
         global.DiceDock.mount(els.dice);
@@ -195,6 +198,7 @@
             const total = Math.abs(steps);
             const hop = () => {
                 k++;
+                snd('tokenStep', { volume: 0.58 });
                 if (k === total) {                        // последний шаг — без подскока
                     ghost.style.animationName = 'none';
                     ghost.style.marginTop = '0px';
@@ -237,6 +241,8 @@
     }
 
     /* ---------- доска + игроки ---------- */
+    let ownersReady = false;
+    let ownerSnapshot = {};
     function renderAll() {
         const S = E.S;
         if (!S || !S.order || !S.order.length) return;   // партия ещё не заполнена
@@ -255,6 +261,20 @@
         global.BoardUI.update(view);
         renderPlayers();
         renderClock();
+
+        /* Покупка и победа на аукционе обе впервые назначают полю владельца.
+           Смена владельца через договор не считается покупкой. Первый
+           снапшот при входе в уже идущую игру намеренно не озвучиваем. */
+        const owners = S.owners || {};
+        let bought = false;
+        if (ownersReady) {
+            for (const [i, owner] of Object.entries(owners)) {
+                if (ownerSnapshot[i] == null && owner != null) bought = true;
+            }
+        }
+        ownerSnapshot = { ...owners };
+        ownersReady = true;
+        if (bought) snd('propertyPurchase', { volume: 0.76, minInterval: 120 });
     }
 
     /* Сумма не переставляется рывком, а быстро добегает до новой:
@@ -265,7 +285,10 @@
     let moneyAnim = {};
     function setMoney(box, id, value, instant) {
         const val = box.querySelector('.pm-val');
-        const st = moneyAnim[id] || (moneyAnim[id] = { shown: value, raf: 0 });
+        const st = moneyAnim[id] || (moneyAnim[id] = { shown: value, target: value, raf: 0 });
+        const targetChanged = st.target !== value;
+        const previousTarget = st.target;
+        st.target = value;
         if (st.raf) cancelAnimationFrame(st.raf);
         st.raf = 0;
 
@@ -276,6 +299,18 @@
             return;
         }
         const from = st.shown;
+        if (targetChanged) {
+            const casinoPayout = value > previousTarget &&
+                lastPhase && lastPhase.phase === 'casino-roll';
+            if (casinoPayout) {
+                if (!casinoWinPlayed) {
+                    casinoWinPlayed = true;
+                    snd('casinoWin', { volume: 0.78, minInterval: 600 });
+                }
+            } else {
+                snd(value > previousTarget ? 'moneyIn' : 'moneyOut', { volume: 0.66 });
+            }
+        }
         box.classList.toggle('up', value > from);
         box.classList.toggle('down', value < from);
         const t0 = performance.now();
@@ -322,8 +357,10 @@
                     <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${p.name}</div>
                     <div class="player-money"><i class="dsign"></i><span class="pm-val"></span></div>
                     <div class="rip-mark"><img src="assets/icons/coffin.png" alt=""> RIP</div>`;
-                card.addEventListener('click', ev =>
-                    global.Modals.playerMenu(id, ev.currentTarget.getBoundingClientRect(), ev.currentTarget));
+                card.addEventListener('click', ev => {
+                    snd('inspect', { volume: 0.62 });
+                    global.Modals.playerMenu(id, ev.currentTarget.getBoundingClientRect(), ev.currentTarget);
+                });
                 els.col.appendChild(card);
                 cardEls[id] = card;
             }
@@ -376,9 +413,16 @@
         if (ph.phase === 'casino' && (!prev || prev.phase !== 'casino')) {
             casinoPick = []; casinoBet = null;
         }
+        if (ph.phase === 'casino-roll' && (!prev || prev.phase !== 'casino-roll')) {
+            casinoWinPlayed = false;
+        }
         const S = E.S;
         const meId = E.me();
         const mine = ph.pid === meId;
+        if (ph.phase === 'await-roll' && mine &&
+            (!prev || prev.phase !== 'await-roll' || prev.pid !== ph.pid)) {
+            snd('turnToYou', { volume: 0.74 });
+        }
         const bar = els.bar;
         /* Наличные берём из актуального состояния: игрок мог заложить поля
            или продать филиалы уже после того, как фаза была объявлена. */
@@ -408,7 +452,8 @@
                         `<div class="service-desc">Вы попали на ${t.name}, и у вас есть право его купить.<br>
                          Если вы откажетесь от покупки, то поле будет выставлено на аукцион.</div>
                          <div class="service-actions">
-                            <button class="btn btn-primary" id="buyBtn" ${afford(ph.price) ? '' : 'disabled'}>Купить за <b>${DS}${fmt(ph.price)}</b></button>
+                            <button class="btn btn-primary${afford(ph.price) ? '' : ' is-disabled'}" id="buyBtn"
+                                    aria-disabled="${afford(ph.price) ? 'false' : 'true'}">Купить за <b>${DS}${fmt(ph.price)}</b></button>
                             <button class="btn btn-secondary" id="aucBtn">Выставить на аукцион</button>
                          </div>`;
                 } else { bar.classList.add('compact'); html = head(''); }
@@ -523,7 +568,13 @@
             mine && (ph.phase === 'casino' || ph.phase === 'casino-roll'));
 
         $('#rollBtn')?.addEventListener('click', () => E.roll());
-        $('#buyBtn')?.addEventListener('click', () => E.buy(ph.ctx));
+        $('#buyBtn')?.addEventListener('click', () => {
+            if (!afford(ph.price)) {
+                snd('insufficient', { volume: 0.72, minInterval: 250 });
+                return;
+            }
+            E.buy(ph.ctx);
+        });
         $('#aucBtn')?.addEventListener('click', () => E.toAuction(ph.ctx));
         $('#raiseBtn')?.addEventListener('click', () => E.auctionRaise());
         $('#passBtn')?.addEventListener('click', () => E.auctionPass());
@@ -582,6 +633,10 @@
                 const hit = ph.picked.indexOf(ph.rolled) >= 0;
                 dice[ph.rolled - 1].classList.remove('dim');
                 dice[ph.rolled - 1].classList.add(hit ? 'hit' : 'miss');
+                if (hit && !casinoWinPlayed) {
+                    casinoWinPlayed = true;
+                    snd('casinoWin', { volume: 0.78, minInterval: 600 });
+                }
                 return;
             }
             dice[Math.floor(Math.random() * 6)].classList.add('flash');
@@ -737,6 +792,7 @@
                 </div>`;
         }
         wrap.querySelector('.mi-settings').innerHTML = `
+            <label class="mi-set"><span>Звуки</span><span class="switch ${global.MonopolySound?.isEnabled() ? 'on' : ''}" id="soundFx"></span></label>
             <label class="mi-set"><span>Скрыть сообщения зрителей</span><span class="switch ${hideSpectators ? 'on' : ''}" id="hideSpec"></span></label>
             <label class="mi-set"><span>Очистить служебные сообщения</span><span class="switch ${hideSystem ? 'on' : ''}" id="hideSys"></span></label>
 `;
@@ -834,6 +890,11 @@
             }, 300);
         }
         wrap.querySelector('.mi-close').onclick = closeMi;
+        wrap.querySelector('#soundFx')?.addEventListener('click', ev => {
+            const on = global.MonopolySound?.setEnabled(!global.MonopolySound.isEnabled());
+            ev.currentTarget.classList.toggle('on', !!on);
+            if (on) snd('inspect', { volume: 0.5 });
+        });
         wrap.querySelector('#hideSpec')?.addEventListener('click', ev => {
             hideSpectators = !hideSpectators;
             ev.currentTarget.classList.toggle('on', hideSpectators);
