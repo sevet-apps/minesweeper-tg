@@ -320,7 +320,12 @@
         }
         #view-games .game-card--wordle {
             background: linear-gradient(112deg, rgba(0, 135, 158, .92), rgba(13, 82, 75, .94));
+            /* Keep the composited ribbon inside the rounded card on iOS. */
+            overflow: hidden;
+            clip-path: inset(0 round 20px);
+            contain: paint;
         }
+        #view-games .game-card--wordle:active { transform: none; }
         #view-games .game-beta-ribbon {
             position: absolute;
             top: 8px;
@@ -4814,6 +4819,10 @@
             if(game==='bb') { try { bbStopSparks(); } catch(_) {} saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
             if(game==='sudoku') saveSudokuState();
             if(game==='tower') { 
+                twGameOverToken++;
+                twGameOverRevealPending = false;
+                twCameraTween = null;
+                document.getElementById('modalTowerGameOver').classList.remove('visible');
                 if(twAnimationFrameId) cancelAnimationFrame(twAnimationFrameId); 
                 twAnimationFrameId = null;
                 twState='start'; 
@@ -7853,6 +7862,7 @@
         let twPerfectMatchAlpha = 0;
         let twPerfectWaves = [];
         let twGameOverRevealPending = false;
+        let twGameOverToken = 0;
         let twCurrentBlock = null;
         let twDirection = 'x'; 
         let twSpeed = 3.0;
@@ -7912,6 +7922,7 @@
         }
 
         function twResetGame() {
+            twGameOverToken++;
             if (twAnimationFrameId) {
                 cancelAnimationFrame(twAnimationFrameId);
                 twAnimationFrameId = null;
@@ -8198,6 +8209,7 @@
         }
 
         async function twGameOver() {
+            const gameOverToken = ++twGameOverToken;
             twState = 'gameover';
             twCurrentBlock = null;
             twGameOverRevealPending = true;
@@ -8235,6 +8247,12 @@
             })().catch(error => console.error('Tower record save error:', error));
 
             await revealDelay;
+
+            const towerScreen = document.getElementById('tower-screen');
+            if (gameOverToken !== twGameOverToken || twState !== 'gameover' ||
+                !towerScreen.classList.contains('visible')) {
+                return;
+            }
 
             const modal = document.getElementById('towerGameOverContent');
             const overlay = document.getElementById('modalTowerGameOver');
@@ -8453,7 +8471,8 @@
             return {
                 x: Math.abs(axisX.x) * hx + Math.abs(axisY.x) * hy + Math.abs(axisZ.x) * hz,
                 y: Math.abs(axisX.y) * hx + Math.abs(axisY.y) * hy + Math.abs(axisZ.y) * hz,
-                z: Math.abs(axisX.z) * hx + Math.abs(axisY.z) * hy + Math.abs(axisZ.z) * hz
+                z: Math.abs(axisX.z) * hx + Math.abs(axisY.z) * hy + Math.abs(axisZ.z) * hz,
+                faceAlignment: Math.max(Math.abs(axisX.y), Math.abs(axisY.y), Math.abs(axisZ.y))
             };
         }
 
@@ -8467,28 +8486,36 @@
                 const shallowPenetration = d.y > topY && nextBottom < topY &&
                     topY - nextBottom <= extents.y;
                 if (!crossedTop && !shallowPenetration) continue;
-                const overlapX = Math.max(0,
-                    Math.min(d.x + extents.x, block.x + block.w / 2) -
-                    Math.max(d.x - extents.x, block.x - block.w / 2));
-                const overlapZ = Math.max(0,
-                    Math.min(d.z + extents.z, block.z + block.d / 2) -
-                    Math.max(d.z - extents.z, block.z - block.d / 2));
+                const overlapMinX = Math.max(d.x - extents.x, block.x - block.w / 2);
+                const overlapMaxX = Math.min(d.x + extents.x, block.x + block.w / 2);
+                const overlapMinZ = Math.max(d.z - extents.z, block.z - block.d / 2);
+                const overlapMaxZ = Math.min(d.z + extents.z, block.z + block.d / 2);
+                const overlapX = Math.max(0, overlapMaxX - overlapMinX);
+                const overlapZ = Math.max(0, overlapMaxZ - overlapMinZ);
                 const supportRatio = (overlapX * overlapZ) / footprintArea;
                 if (supportRatio >= 0.08) {
+                    const centerSupported = d.x >= overlapMinX && d.x <= overlapMaxX &&
+                        d.z >= overlapMinZ && d.z <= overlapMaxZ;
+                    const faceSupported = extents.faceAlignment >= 0.965;
                     return {
                         y: topY + extents.y,
                         supportRatio,
-                        stable: supportRatio >= 0.36,
+                        stable: supportRatio >= 0.36 && centerSupported && faceSupported,
+                        centerSupported,
+                        faceSupported,
                         blockIndex: i,
                         block
                     };
                 }
             }
             if (nextBottom <= 0) {
+                const faceSupported = extents.faceAlignment >= 0.965;
                 return {
                     y: extents.y,
                     supportRatio: 1,
-                    stable: true,
+                    stable: faceSupported,
+                    centerSupported: true,
+                    faceSupported,
                     blockIndex: -1,
                     block: null
                 };
@@ -8534,16 +8561,18 @@
                 d.avy *= landing.stable ? 0.72 : 0.9;
                 d.avz *= landing.stable ? 0.72 : 0.9;
 
-                if (!landing.stable && landing.block) {
-                    const awayX = d.x - landing.block.x;
-                    const awayZ = d.z - landing.block.z;
-                    const length = Math.max(1, Math.hypot(awayX, awayZ));
-                    const slide = 10 + (0.36 - landing.supportRatio) * 35;
+                if (!landing.stable) {
+                    const awayX = landing.block ? d.x - landing.block.x : Math.sin(d.rz);
+                    const awayZ = landing.block ? d.z - landing.block.z : -Math.sin(d.rx);
+                    const length = Math.max(0.001, Math.hypot(awayX, awayZ));
+                    const unsupported = Math.max(0, 0.36 - landing.supportRatio);
+                    const slide = landing.block ? 12 + unsupported * 45 : 3;
                     d.vx += awayX / length * slide;
                     d.vz += awayZ / length * slide;
-                    d.avx += awayZ / length * 0.24;
-                    d.avz -= awayX / length * 0.24;
-                    d.vy = impactSpeed * 0.08;
+                    const contactSpin = landing.faceSupported ? 0.18 : 0.42;
+                    d.avx += awayZ / length * contactSpin;
+                    d.avz -= awayX / length * contactSpin;
+                    d.vy = Math.max(1.5, impactSpeed * 0.08);
                     d.restTime = 0;
                 } else if (impactSpeed > 32) {
                     d.vy = impactSpeed * 0.16;
