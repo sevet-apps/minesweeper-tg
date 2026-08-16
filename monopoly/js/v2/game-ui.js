@@ -266,15 +266,15 @@
            Смена владельца через договор не считается покупкой. Первый
            снапшот при входе в уже идущую игру намеренно не озвучиваем. */
         const owners = S.owners || {};
-        let bought = false;
+        let boughtByMe = false;
         if (ownersReady) {
             for (const [i, owner] of Object.entries(owners)) {
-                if (ownerSnapshot[i] == null && owner != null) bought = true;
+                if (ownerSnapshot[i] == null && owner === E.me()) boughtByMe = true;
             }
         }
         ownerSnapshot = { ...owners };
         ownersReady = true;
-        if (bought) snd('propertyPurchase', { volume: 0.76, minInterval: 120 });
+        if (boughtByMe) snd('propertyPurchase', { volume: 0.76, minInterval: 120 });
     }
 
     /* Сумма не переставляется рывком, а быстро добегает до новой:
@@ -299,7 +299,10 @@
             return;
         }
         const from = st.shown;
-        if (targetChanged) {
+        /* Денежные эффекты приватны: клиент слышит только изменение своего
+           баланса. Передвижение фишек и физика кубиков выше остаются общими
+           и воспроизводятся для действий любого участника матча. */
+        if (targetChanged && id === E.me()) {
             const casinoPayout = value > previousTarget &&
                 lastPhase && lastPhase.phase === 'casino-roll';
             if (casinoPayout) {
