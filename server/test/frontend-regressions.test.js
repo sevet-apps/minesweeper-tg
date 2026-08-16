@@ -101,6 +101,11 @@ test('Tower perfect streak uses the requested growth schedule and one-side cap',
         'record saving must run concurrently with the camera delay');
     assert.doesNotMatch(gameOver, /await recordSave/,
         'a slow score request must not delay the result modal');
+    assert.match(gameOver, /gameOverToken !== twGameOverToken[\s\S]*?!towerScreen\.classList\.contains\('visible'\)/,
+        'a delayed Tower result must be cancelled after the player leaves the game');
+    const closeGame = extractFunction(indexSource, 'closeGame');
+    assert.match(closeGame, /if\(game==='tower'\)[\s\S]*?twGameOverToken\+\+[\s\S]*?twGameOverRevealPending = false/,
+        'closing Tower must invalidate every pending result reveal');
 });
 
 test('Referral terms and Wordle card keep touch-safe UI behavior', () => {
@@ -115,6 +120,10 @@ test('Referral terms and Wordle card keep touch-safe UI behavior', () => {
     assert.match(indexSource, /game-card--wordle" onclick="startWordle\(\)" oncontextmenu="return false"/);
     assert.match(indexSource, /#view-games \.game-beta-ribbon[\s\S]*?pointer-events: none/);
     assert.match(indexSource, /#view-games \.game-card[\s\S]*?-webkit-touch-callout: none/);
+    assert.match(indexSource, /#view-games \.game-card--wordle\s*\{[\s\S]*?clip-path: inset\(0 round 20px\)[\s\S]*?contain: paint/,
+        'the beta ribbon must remain clipped inside the rounded Wordle card');
+    assert.match(indexSource, /#view-games \.game-card--wordle:active\s*\{\s*transform: none/,
+        'holding the Wordle card must not shrink it');
 });
 
 test('Chinese flag and Block Blast counters use the refreshed visual treatment', () => {
@@ -185,6 +194,29 @@ test('Tower growth, debris collisions and waves follow the polished motion model
     for (let i = 0; i < 120; i++) context.twStepDebris(landingDebris, 16.67);
     assert.equal(landingDebris.sleeping, true,
         'a fragment may sleep only after its movement has genuinely settled');
+
+    const tiltedDebris = {
+        x: 58, y: 72, z: 0, w: 40, d: 40,
+        vx: 0, vy: -45, vz: 0,
+        rx: .72, ry: .2, rz: .48,
+        avx: .03, avy: 0, avz: .03,
+        age: 0, restTime: .44, sleeping: false, alpha: 1
+    };
+    const tiltedExtents = context.twDebrisExtents(tiltedDebris);
+    tiltedDebris.y = 35 + tiltedExtents.y + .5;
+    const tiltedLanding = context.twFindDebrisLanding(
+        tiltedDebris, 35.5, 34.5, tiltedExtents);
+    assert.ok(tiltedLanding, 'a tilted fragment must still collide with the tower surface');
+    assert.equal(tiltedLanding.stable, false,
+        'a tilted AABB may not be mistaken for a stable resting face');
+    context.twStepDebris(tiltedDebris, 40);
+    assert.equal(tiltedDebris.sleeping, false,
+        'a leaning fragment on the edge must continue sliding and tumbling');
+    assert.ok(tiltedDebris.vx > 0,
+        'an edge fragment must retain outward motion instead of sticking to the tower');
+    for (let i = 0; i < 90; i++) context.twStepDebris(tiltedDebris, 16.67);
+    assert.ok(tiltedDebris.y - context.twDebrisExtents(tiltedDebris).y < 1,
+        'an unsupported leaning fragment must fall all the way to the floor');
 
     const pair = [0, 20].map((x, index) => ({
         x, y: 17.5, z: 0, w: 40, d: 40,
