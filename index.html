@@ -1285,7 +1285,7 @@
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
         [data-theme="dark"] #themeToggle .switch-circle, [data-theme="dark"] #themeToggleSheet .switch-circle { transform: translateX(30px); }
         #liteToggle.active .switch-circle, #liteToggleSheet.active .switch-circle { transform: translateX(30px); }
-        #vibrationToggle.active .switch-circle { transform: translateX(30px); }
+        #vibrationToggle.active .switch-circle, #soundToggle.active .switch-circle { transform: translateX(30px); }
 
         .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
         
@@ -3422,6 +3422,21 @@
                         <div class="switch-circle"></div> 
                     </div>
                 </div>
+
+                <div class="settings-row-sheet">
+                    <div class="settings-label-sheet">
+                        <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 5 6 9H2v6h4l5 4z"></path>
+                            <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+                            <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+                        </svg>
+                        <span data-i18n="sounds">Звуки</span>
+                    </div>
+                    <div class="theme-switch" id="soundToggle" onclick="toggleSounds()">
+                        <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
+                        <div class="switch-circle"></div>
+                    </div>
+                </div>
             </div>
             
             <!-- Кнопки снизу -->
@@ -3877,6 +3892,18 @@
             applyVibration();
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
+
+        // Общий переключатель звуков, включая отдельное окно Монополии.
+        let soundsEnabled = localStorage.getItem('sounds_enabled') !== 'false';
+        function applySounds() {
+            document.getElementById('soundToggle')?.classList.toggle('active', soundsEnabled);
+        }
+        function toggleSounds() {
+            soundsEnabled = !soundsEnabled;
+            localStorage.setItem('sounds_enabled', soundsEnabled);
+            applySounds();
+            if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
         
         // Settings Sheet with swipe to close
         let sheetStartY = 0;
@@ -3908,6 +3935,8 @@
             bindSettingsSheetGesture(sheet);
             applyLiteMode();
             applyVibration();
+            soundsEnabled = localStorage.getItem('sounds_enabled') !== 'false';
+            applySounds();
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
         }
         
@@ -3985,6 +4014,7 @@
                 theme: 'Тема',
                 simplifiedGraphics: 'Упрощённая графика',
                 vibration: 'Вибрация',
+                sounds: 'Звуки',
                 privacy: 'Политика',
                 privacyTitle: 'Политика конфиденциальности',
                 support: 'Поддержка',
@@ -4215,6 +4245,7 @@
                 theme: 'Theme',
                 simplifiedGraphics: 'Simplified graphics',
                 vibration: 'Vibration',
+                sounds: 'Sounds',
                 privacy: 'Privacy',
                 privacyTitle: 'Privacy Policy',
                 support: 'Support',
@@ -4440,7 +4471,7 @@
             },
             zh: {
                 settings: '设置', language: '语言', appearance: '外观', theme: '主题',
-                simplifiedGraphics: '简化画面', vibration: '振动', privacy: '隐私政策',
+                simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
                 myRecords: '我的纪录', referralProgram: '邀请计划', inviteFriends: '邀请好友并提升排行榜名次',
                 conditions: '规则', conditionsTitle: '邀请计划规则',
