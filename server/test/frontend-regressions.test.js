@@ -124,29 +124,57 @@ test('Chinese flag and Block Blast counters use the refreshed visual treatment',
     assert.match(zhButton, /<circle cx="30" cy="30" r="30" fill="#DE2910"/);
     assert.equal((zhButton.match(/<use href="#zhStar"/g) || []).length, 5,
         'the Chinese flag must contain one large and four small stars');
+    assert.match(zhButton, /translate\(17\.5 30\) scale\(7\.2\)/,
+        'the large star must be vertically centered inside the four-star group');
 
     assert.match(indexSource, /\.bb-line-score\s*\{[\s\S]*?linear-gradient\(100deg,[\s\S]*?background-clip:\s*text/s);
     assert.match(indexSource, /@keyframes bbLineScoreIn\s*\{[\s\S]*?scale\(\.78\)[\s\S]*?scale\(1\)/s);
     assert.match(indexSource, /\.bb-best,[\s\S]*?#bbScoreNum\s*\{[\s\S]*?SF Pro Display/s);
 });
 
-test('Tower debris uses bounded 3D rigid-body physics and waves expose only visible edges', () => {
-    const context = { TW_BLOCK_HEIGHT: 35, Math };
+test('Tower growth, debris collisions and waves follow the polished motion model', () => {
+    const context = {
+        TW_BLOCK_HEIGHT: 35,
+        TW_GROWTH_MS: 420,
+        twBlocks: [{ x: 0, z: 0, w: 130, d: 130 }],
+        Math
+    };
     vm.createContext(context);
+    vm.runInContext(extractFunction(indexSource, 'twGetRenderedBlockGeometry'), context);
+    vm.runInContext(extractFunction(indexSource, 'twFindDebrisLanding'), context);
     vm.runInContext(extractFunction(indexSource, 'twStepDebris'), context);
     vm.runInContext(extractFunction(indexSource, 'twRotateVector'), context);
+
+    const growing = {
+        x: 0, z: 0, w: 120, d: 130,
+        growthTween: { x: 5, z: 0, w: 110, d: 130, startedAt: 100 }
+    };
+    const halfway = context.twGetRenderedBlockGeometry(growing, 310);
+    assert.equal(halfway.w, 115,
+        'perfect bonus must smoothly interpolate through the middle of its growth');
 
     const debris = {
         x: 0, y: 200, z: 0,
         vx: 120, vy: 0, vz: -60,
         rx: 0, ry: 0, rz: 0,
         avx: 2, avy: 1, avz: -1,
-        age: 0, restTime: 0, life: 5, alpha: 1
+        age: 0, restTime: 0, sleeping: false, alpha: 1
     };
     context.twStepDebris(debris, 16.67);
     assert.ok(debris.x > 0 && debris.z < 0, 'detached piece must keep its outward impulse');
     assert.ok(debris.y < 200, 'gravity must pull the detached piece down');
     assert.notEqual(debris.rx, 0, 'the cuboid must tumble on a real 3D axis');
+
+    const landingDebris = {
+        x: 0, y: 54.8, z: 0, w: 40, d: 40,
+        vx: 2, vy: -30, vz: 1,
+        rx: .02, ry: .1, rz: -.02,
+        avx: .1, avy: .1, avz: .1,
+        age: 0, restTime: 0, sleeping: false, alpha: 1
+    };
+    context.twStepDebris(landingDebris, 40);
+    assert.equal(landingDebris.y, 52.5, 'a supported fragment must land on the block top');
+    assert.equal(landingDebris.sleeping, true, 'a slow supported fragment must stay on the tower');
 
     const rotated = context.twRotateVector({ x: 3, y: 4, z: 5 }, .3, .6, .9);
     const length = Math.hypot(rotated.x, rotated.y, rotated.z);
@@ -155,9 +183,15 @@ test('Tower debris uses bounded 3D rigid-body physics and waves expose only visi
     const addDebris = extractFunction(indexSource, 'twAddDebris');
     assert.match(addDebris, /twDebris\.length > 16/,
         'debris pool must stay bounded for mobile performance');
+    assert.match(addDebris, /\(twSpeed - 2\.75\) \* 28/,
+        'lateral inertia must increase with the actual tower speed');
+    assert.doesNotMatch(addDebris, /vx \* 60/,
+        'slow fragments must no longer receive the old constant impulse');
     const waves = extractFunction(indexSource, 'twDrawPerfectWaves');
     assert.match(waves, /const delay = 165/);
-    assert.match(waves, /const cap = 0\.14/);
-    assert.doesNotMatch(waves, /twCtx\.closePath\(\)/,
-        'rear wave edges must not be drawn through the tower');
+    assert.match(waves, /Math\.min\(3, effect\.count\)/,
+        'the effect must never draw more than three waves');
+    assert.match(waves, /pass === 'rear'/);
+    assert.match(waves, /lineTo\(top\.x, top\.y \+ TW_BLOCK_HEIGHT\)/,
+        'rear edges must continue after emerging from behind the cube');
 });

@@ -3368,7 +3368,7 @@
                     EN
                 </button>
                 <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">
-                    <div class="lang-flag"><svg viewBox="0 0 60 60" aria-hidden="true"><defs><path id="zhStar" d="M0-1 .224-.309 .951-.309 .363.118 .588.809 0 .382-.588.809-.363.118-.951-.309-.224-.309Z"/></defs><circle cx="30" cy="30" r="30" fill="#DE2910"/><g fill="#FFDE00"><use href="#zhStar" transform="translate(17 19) scale(7.2)"/><use href="#zhStar" transform="translate(31 10.5) rotate(-122) scale(3.1)"/><use href="#zhStar" transform="translate(39 18) rotate(-93) scale(3.1)"/><use href="#zhStar" transform="translate(38 28) rotate(-65) scale(3.1)"/><use href="#zhStar" transform="translate(30 35.5) rotate(-35) scale(3.1)"/></g></svg></div>
+                    <div class="lang-flag"><svg viewBox="0 0 60 60" aria-hidden="true"><defs><path id="zhStar" d="M0-1 .224-.309 .951-.309 .363.118 .588.809 0 .382-.588.809-.363.118-.951-.309-.224-.309Z"/></defs><circle cx="30" cy="30" r="30" fill="#DE2910"/><g fill="#FFDE00"><use href="#zhStar" transform="translate(17.5 30) scale(7.2)"/><use href="#zhStar" transform="translate(31 18.5) rotate(-130) scale(3.1)"/><use href="#zhStar" transform="translate(39 25) rotate(-103) scale(3.1)"/><use href="#zhStar" transform="translate(39 34) rotate(-80) scale(3.1)"/><use href="#zhStar" transform="translate(31 41) rotate(-51) scale(3.1)"/></g></svg></div>
                     中文
                 </button>
             </div>
@@ -7865,6 +7865,7 @@
 
         const TW_BLOCK_HEIGHT = 35; 
         const TW_BASE_SIZE = 130;
+        const TW_GROWTH_MS = 420;
         const TW_CAMERA_ZOOM_MS = 850;
         const TW_GAME_OVER_HOLD_MS = 3000;
         const TW_TARGET_FPS = 60; // Целевой FPS для нормализации
@@ -8040,11 +8041,20 @@
                 twPerfectMatchAlpha = 1.0;
                 twCurrentCombo++;
                 if(twCurrentCombo > twMaxComboThisGame) twMaxComboThisGame = twCurrentCombo;
+                const growthFrom = {
+                    x: twCurrentBlock.x, z: twCurrentBlock.z,
+                    w: twCurrentBlock.w, d: twCurrentBlock.d
+                };
                 twApplyPerfectGrowth(twCurrentBlock, twCurrentCombo);
+                const effectStartedAt = performance.now();
+                if (growthFrom.x !== twCurrentBlock.x || growthFrom.z !== twCurrentBlock.z ||
+                    growthFrom.w !== twCurrentBlock.w || growthFrom.d !== twCurrentBlock.d) {
+                    twCurrentBlock.growthTween = { ...growthFrom, startedAt: effectStartedAt };
+                }
                 twPerfectWaves.push({
                     blockIndex: twBlocks.length,
-                    count: twCurrentCombo >= 4 ? 3 : (twCurrentCombo >= 3 ? 2 : 1),
-                    startedAt: performance.now()
+                    count: Math.min(3, twCurrentCombo >= 4 ? 3 : (twCurrentCombo >= 3 ? 2 : 1)),
+                    startedAt: effectStartedAt
                 });
                 
                 twCommitBlock();
@@ -8142,26 +8152,45 @@
             twSpawnNextBlock();
         }
 
+        function twGetRenderedBlockGeometry(block, currentTime) {
+            const tween = block.growthTween;
+            if (!tween) return block;
+            const progress = Math.min(1, Math.max(0,
+                (currentTime - tween.startedAt) / TW_GROWTH_MS));
+            const eased = progress * progress * (3 - 2 * progress);
+            return {
+                ...block,
+                x: tween.x + (block.x - tween.x) * eased,
+                z: tween.z + (block.z - tween.z) * eased,
+                w: tween.w + (block.w - tween.w) * eased,
+                d: tween.d + (block.d - tween.d) * eased
+            };
+        }
+
         function twAddDebris(x, z, w, d, vx, vz, isBehind) {
             const direction = Math.sign(vx || vz || 1);
             const startY = twBlocks.length * TW_BLOCK_HEIGHT + TW_BLOCK_HEIGHT / 2;
-            const life = Math.max(3.4, Math.sqrt((2 * startY) / 720) + 2.1);
+            const inputStrength = Math.min(1.25, Math.abs(vx || vz) / 2.5);
+            // At the initial tower speed a cut mostly drops under gravity. The
+            // lateral impulse and tumble grow together with the moving block.
+            const lateralSpeed = Math.max(4, (twSpeed - 2.75) * 28) * inputStrength;
+            const spinSpeed = 0.35 + Math.max(0, twSpeed - 3) * 0.75;
             twDebris.push({
                 x, z, y: startY, w, d,
                 color: twCurrentBlock.color,
-                vx: vx * 60,
-                vy: 25 + Math.random() * 25,
-                vz: vz * 60,
-                rx: (Math.random() - 0.5) * 0.08,
+                vx: vx ? direction * lateralSpeed : 0,
+                vy: 0,
+                vz: vz ? direction * lateralSpeed : 0,
+                rx: (Math.random() - 0.5) * 0.035,
                 ry: (Math.random() - 0.5) * 0.08,
-                rz: (Math.random() - 0.5) * 0.08,
-                avx: (vz ? direction : (Math.random() - 0.5) * 0.35) * (2.2 + Math.random()),
-                avy: (Math.random() - 0.5) * 1.4,
-                avz: (vx ? -direction : (Math.random() - 0.5) * 0.35) * (2.2 + Math.random()),
+                rz: (Math.random() - 0.5) * 0.035,
+                avx: (vz ? direction : (Math.random() - 0.5) * 0.25) * spinSpeed,
+                avy: (Math.random() - 0.5) * spinSpeed * 0.45,
+                avz: (vx ? -direction : (Math.random() - 0.5) * 0.25) * spinSpeed,
                 alpha: 1,
                 age: 0,
                 restTime: 0,
-                life,
+                sleeping: false,
                 isBehind
             });
             // A bounded pool keeps the richer geometry cheap on older phones.
@@ -8303,7 +8332,8 @@
                 twLastFrameTime = 0;
                 return;
             }
-            if(twState === 'gameover' && twDebris.length === 0 && twPerfectMatchAlpha <= 0 &&
+            if(twState === 'gameover' && !twDebris.some(d => !d.sleeping && d.alpha > 0) &&
+               twPerfectMatchAlpha <= 0 &&
                twPerfectWaves.length === 0 && !twCameraTween && !twGameOverRevealPending) {
                 twAnimationFrameId = null;
                 twLastFrameTime = 0;
@@ -8331,16 +8361,19 @@
             twCtx.scale(twCameraScale, twCameraScale);
             twCtx.translate(-window.innerWidth / 2, -window.innerHeight / 2);
 
-            // Draw debris behind blocks
+            // Draw debris and rear wave edges behind the solid tower.
             twDebris.forEach(d => { if (d.isBehind) twUpdateAndDrawDebris(d, cx, cy, delta); });
+            twDrawPerfectWaves(cx, cy, currentTime, 'rear');
 
             // Draw stacked blocks
             twBlocks.forEach((b, i) => {
                 const stackY = i * TW_BLOCK_HEIGHT; 
                 let highlight = (i === twBlocks.length - 1 && twPerfectMatchAlpha > 0);
-                twDrawIsoBlock(cx, cy, b.x, b.z, b.w, b.d, stackY, b.color, highlight);
+                const rendered = twGetRenderedBlockGeometry(b, currentTime);
+                twDrawIsoBlock(cx, cy, rendered.x, rendered.z, rendered.w, rendered.d,
+                    stackY, b.color, highlight);
             });
-            twDrawPerfectWaves(cx, cy, currentTime);
+            twDrawPerfectWaves(cx, cy, currentTime, 'front');
 
             // Draw current moving block
             if (twCurrentBlock && twState === 'playing') {
@@ -8354,18 +8387,20 @@
             twCtx.restore();
         }
 
-        function twDrawPerfectWaves(cx, cy, currentTime) {
+        function twDrawPerfectWaves(cx, cy, currentTime, pass = 'front') {
             const duration = 560;
             const delay = 165;
             twPerfectWaves.forEach(effect => {
-                const block = twBlocks[effect.blockIndex];
-                if (!block) return;
+                const sourceBlock = twBlocks[effect.blockIndex];
+                if (!sourceBlock) return;
+                const block = twGetRenderedBlockGeometry(sourceBlock, currentTime);
                 const yLevel = effect.blockIndex * TW_BLOCK_HEIGHT;
                 const isoX = block.x - block.z;
                 const isoY = (block.x + block.z) * 0.5;
                 const screenX = cx + isoX + twCameraX;
                 const screenY = cy + isoY - yLevel + twCameraY;
-                for (let i = 0; i < effect.count; i++) {
+                const waveCount = Math.min(3, effect.count);
+                for (let i = 0; i < waveCount; i++) {
                     const elapsed = currentTime - effect.startedAt - i * delay;
                     if (elapsed < 0 || elapsed > duration) continue;
                     const progress = elapsed / duration;
@@ -8384,29 +8419,58 @@
                     twCtx.shadowColor = '#ffffff';
                     twCtx.shadowBlur = 10;
                     twCtx.beginPath();
-                    // The tower hides the two rear edges. Keep only short tips
-                    // there so the wave still reads as a square in perspective.
                     const top = points[0], right = points[1];
                     const front = points[2], left = points[3];
-                    const cap = 0.14;
-                    twCtx.moveTo(left.x + (top.x - left.x) * cap,
-                        left.y + (top.y - left.y) * cap + TW_BLOCK_HEIGHT);
-                    twCtx.lineTo(left.x, left.y + TW_BLOCK_HEIGHT);
-                    twCtx.lineTo(front.x, front.y + TW_BLOCK_HEIGHT);
-                    twCtx.lineTo(right.x, right.y + TW_BLOCK_HEIGHT);
-                    twCtx.lineTo(right.x + (top.x - right.x) * cap,
-                        right.y + (top.y - right.y) * cap + TW_BLOCK_HEIGHT);
+                    if (pass === 'rear') {
+                        // Paint the complete rear half first. The tower is drawn
+                        // over it afterwards, so only the portions that have
+                        // actually emerged from behind the cube remain visible.
+                        twCtx.moveTo(left.x, left.y + TW_BLOCK_HEIGHT);
+                        twCtx.lineTo(top.x, top.y + TW_BLOCK_HEIGHT);
+                        twCtx.lineTo(right.x, right.y + TW_BLOCK_HEIGHT);
+                    } else {
+                        twCtx.moveTo(left.x, left.y + TW_BLOCK_HEIGHT);
+                        twCtx.lineTo(front.x, front.y + TW_BLOCK_HEIGHT);
+                        twCtx.lineTo(right.x, right.y + TW_BLOCK_HEIGHT);
+                    }
                     twCtx.stroke();
                     twCtx.restore();
                 }
             });
-            twPerfectWaves = twPerfectWaves.filter(effect =>
-                currentTime - effect.startedAt <= duration + (effect.count - 1) * delay);
+            if (pass === 'front') {
+                twPerfectWaves = twPerfectWaves.filter(effect =>
+                    currentTime - effect.startedAt <= duration +
+                        (Math.min(3, effect.count) - 1) * delay);
+            }
+        }
+
+        function twFindDebrisLanding(d, previousBottom, nextBottom) {
+            for (let i = twBlocks.length - 1; i >= 0; i--) {
+                const block = twBlocks[i];
+                const topY = (i + 1) * TW_BLOCK_HEIGHT;
+                if (previousBottom < topY - 0.01 || nextBottom > topY + 0.01) continue;
+                const overlapX = Math.max(0,
+                    Math.min(d.x + d.w / 2, block.x + block.w / 2) -
+                    Math.max(d.x - d.w / 2, block.x - block.w / 2));
+                const overlapZ = Math.max(0,
+                    Math.min(d.z + d.d / 2, block.z + block.d / 2) -
+                    Math.max(d.z - d.d / 2, block.z - block.d / 2));
+                const supportRatio = (overlapX * overlapZ) / Math.max(1, d.w * d.d);
+                if (supportRatio >= 0.36) {
+                    return { y: topY + TW_BLOCK_HEIGHT / 2, supportRatio, blockIndex: i };
+                }
+            }
+            if (nextBottom <= 0) {
+                return { y: TW_BLOCK_HEIGHT / 2, supportRatio: 1, blockIndex: -1 };
+            }
+            return null;
         }
         
         function twStepDebris(d, delta) {
+            if (d.sleeping) return;
             const dt = Math.min(delta, 40) / 1000;
             d.age += dt;
+            const previousBottom = d.y - TW_BLOCK_HEIGHT / 2;
             d.vy -= 720 * dt;
             d.x += d.vx * dt;
             d.y += d.vy * dt;
@@ -8422,29 +8486,30 @@
             d.avy *= Math.exp(-0.18 * dt);
             d.avz *= Math.exp(-0.18 * dt);
 
-            const floorY = TW_BLOCK_HEIGHT / 2;
-            if (d.y <= floorY) {
-                d.y = floorY;
-                if (Math.abs(d.vy) > 42) {
-                    d.vy = -d.vy * 0.27;
-                    d.vx *= 0.72;
-                    d.vz *= 0.72;
-                    d.avx *= 0.78;
-                    d.avy *= 0.78;
-                    d.avz *= 0.78;
+            const landing = twFindDebrisLanding(
+                d, previousBottom, d.y - TW_BLOCK_HEIGHT / 2);
+            if (landing && d.vy <= 0) {
+                const impactSpeed = Math.abs(d.vy);
+                d.y = landing.y;
+                d.vx *= 0.48;
+                d.vz *= 0.48;
+                d.avx *= 0.55;
+                d.avy *= 0.55;
+                d.avz *= 0.55;
+                if (impactSpeed > 70) {
+                    d.vy = impactSpeed * 0.13;
                 } else {
                     d.vy = 0;
-                    d.restTime += dt;
-                    const floorDrag = Math.exp(-5.5 * dt);
-                    d.vx *= floorDrag;
-                    d.vz *= floorDrag;
-                    d.avx *= floorDrag;
-                    d.avy *= floorDrag;
-                    d.avz *= floorDrag;
+                    d.vx = 0;
+                    d.vz = 0;
+                    d.avx = 0;
+                    d.avy = 0;
+                    d.avz = 0;
+                    d.rx = 0;
+                    d.rz = 0;
+                    d.sleeping = true;
+                    d.supportBlockIndex = landing.blockIndex;
                 }
-            }
-            if (d.age > d.life || d.restTime > 1.15) {
-                d.alpha = Math.max(0, d.alpha - dt * 1.8);
             }
         }
 
