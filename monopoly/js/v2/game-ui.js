@@ -519,6 +519,8 @@
            и до ставки просто не добраться. */
         bar.classList.toggle('overlay',
             mine && (ph.phase === 'casino' || ph.phase === 'casino-roll'));
+        els.board.classList.toggle('casino-overlay-active',
+            mine && (ph.phase === 'casino' || ph.phase === 'casino-roll'));
 
         $('#rollBtn')?.addEventListener('click', () => E.roll());
         $('#buyBtn')?.addEventListener('click', () => E.buy(ph.ctx));
@@ -871,6 +873,14 @@
     }
 
     /* ---------- чат ---------- */
+    function chatIsNearBottom() {
+        return els.chat.scrollHeight - els.chat.scrollTop - els.chat.clientHeight <= 28;
+    }
+    function appendChatMessage(message) {
+        const shouldStickToBottom = chatIsNearBottom();
+        els.chat.appendChild(message);
+        if (shouldStickToBottom) els.chat.scrollTop = els.chat.scrollHeight;
+    }
     function addLog({ pid, text }) {
         const d = document.createElement('div');
         d.className = 'msg';
@@ -879,8 +889,7 @@
             .replace(/@(\S+)/g, (m, n) => nameSpan(n))
             .replace(/\$\s?([\d\s\u00a0]+)/g, '<span class="money"><i class="dsign"></i>$1</span>');
         if (pid && E.S.players[pid]) d.innerHTML = nameSpan(E.S.players[pid].name) + ' ' + d.innerHTML;
-        els.chat.appendChild(d);
-        els.chat.scrollTop = els.chat.scrollHeight;
+        appendChatMessage(d);
     }
     /** Клавиатура на телефоне закрывает нижнюю часть экрана. Страница
         зафиксирована, поэтому сдвигаем саму игру ровно настолько, чтобы поле
@@ -938,8 +947,7 @@
         d.dataset.author = pid;
         d.innerHTML = `<span class="nick-pill" style="--nc:${p.color}">${p.name}</span>
             <span class="utext">${dmTo ? `<span class="dm-tag">лично для ${E.S.players[dmTo].name}:</span>` : ''}${emo(esc(text))}</span>`;
-        els.chat.appendChild(d);
-        els.chat.scrollTop = els.chat.scrollHeight;
+        appendChatMessage(d);
     }
     function esc(s) { return s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
     /** Эмодзи в сообщениях — картинками, чтобы вид был одинаковым везде.
