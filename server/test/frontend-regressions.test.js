@@ -116,3 +116,48 @@ test('Referral terms and Wordle card keep touch-safe UI behavior', () => {
     assert.match(indexSource, /#view-games \.game-beta-ribbon[\s\S]*?pointer-events: none/);
     assert.match(indexSource, /#view-games \.game-card[\s\S]*?-webkit-touch-callout: none/);
 });
+
+test('Chinese flag and Block Blast counters use the refreshed visual treatment', () => {
+    const zhButtonStart = indexSource.indexOf('data-lang="zh"');
+    const zhButtonEnd = indexSource.indexOf('</button>', zhButtonStart);
+    const zhButton = indexSource.slice(zhButtonStart, zhButtonEnd);
+    assert.match(zhButton, /<circle cx="30" cy="30" r="30" fill="#DE2910"/);
+    assert.equal((zhButton.match(/<use href="#zhStar"/g) || []).length, 5,
+        'the Chinese flag must contain one large and four small stars');
+
+    assert.match(indexSource, /\.bb-line-score\s*\{[\s\S]*?linear-gradient\(100deg,[\s\S]*?background-clip:\s*text/s);
+    assert.match(indexSource, /@keyframes bbLineScoreIn\s*\{[\s\S]*?scale\(\.78\)[\s\S]*?scale\(1\)/s);
+    assert.match(indexSource, /\.bb-best,[\s\S]*?#bbScoreNum\s*\{[\s\S]*?SF Pro Display/s);
+});
+
+test('Tower debris uses bounded 3D rigid-body physics and waves expose only visible edges', () => {
+    const context = { TW_BLOCK_HEIGHT: 35, Math };
+    vm.createContext(context);
+    vm.runInContext(extractFunction(indexSource, 'twStepDebris'), context);
+    vm.runInContext(extractFunction(indexSource, 'twRotateVector'), context);
+
+    const debris = {
+        x: 0, y: 200, z: 0,
+        vx: 120, vy: 0, vz: -60,
+        rx: 0, ry: 0, rz: 0,
+        avx: 2, avy: 1, avz: -1,
+        age: 0, restTime: 0, life: 5, alpha: 1
+    };
+    context.twStepDebris(debris, 16.67);
+    assert.ok(debris.x > 0 && debris.z < 0, 'detached piece must keep its outward impulse');
+    assert.ok(debris.y < 200, 'gravity must pull the detached piece down');
+    assert.notEqual(debris.rx, 0, 'the cuboid must tumble on a real 3D axis');
+
+    const rotated = context.twRotateVector({ x: 3, y: 4, z: 5 }, .3, .6, .9);
+    const length = Math.hypot(rotated.x, rotated.y, rotated.z);
+    assert.ok(Math.abs(length - Math.sqrt(50)) < 1e-9, 'rotation must preserve cuboid geometry');
+
+    const addDebris = extractFunction(indexSource, 'twAddDebris');
+    assert.match(addDebris, /twDebris\.length > 16/,
+        'debris pool must stay bounded for mobile performance');
+    const waves = extractFunction(indexSource, 'twDrawPerfectWaves');
+    assert.match(waves, /const delay = 165/);
+    assert.match(waves, /const cap = 0\.14/);
+    assert.doesNotMatch(waves, /twCtx\.closePath\(\)/,
+        'rear wave edges must not be drawn through the tower');
+});
