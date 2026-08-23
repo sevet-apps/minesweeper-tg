@@ -43,16 +43,30 @@
         roll(a)     — одиночный бросок (казино): второй кубик прячем. */
     async function roll(a, b) {
         const single = (b == null);
+        /* Пока Worker подбирает серверно-верную траекторию, старый
+           остановившийся WebGL-кадр остаётся скрытым. Dice.rollTo снимет
+           этот класс лишь после записи нового стартового кадра. */
+        el.classList.add('preparing');
         show(true);
         document.body.classList.add('rolling');
         const second = single && ready && dice && dice.dieB ? dice.dieB : null;
         if (second && second.setVisible) second.setVisible(false);
+        const revealPreparedRoll = () => el.classList.remove('preparing');
         try {
-            if (ready) await dice.rollTo(a, single ? 1 + Math.floor(Math.random() * 6) : b);
-            else await roll2D(a, single ? null : b);
+            if (ready) {
+                await dice.rollTo(
+                    a,
+                    single ? 1 + Math.floor(Math.random() * 6) : b,
+                    { onLaunch: revealPreparedRoll }
+                );
+            } else {
+                revealPreparedRoll();
+                await roll2D(a, single ? null : b);
+            }
         } catch (e) {
             console.warn('DiceDock: rollTo error, 2D-фолбэк —', e.message);
             if (scene && scene.stop) scene.stop();
+            revealPreparedRoll();
             await roll2D(a, single ? null : b);
         }
         /* После остановки кубиков последний WebGL-кадр уже содержит тот же
@@ -64,6 +78,7 @@
         await sleep(650);            // пауза, чтобы увидеть результат
         if (second && second.setVisible) second.setVisible(true);
         document.body.classList.remove('rolling');
+        revealPreparedRoll();
         show(false);
     }
 
