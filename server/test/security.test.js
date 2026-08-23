@@ -52,6 +52,12 @@ test('Block Blast checkpoint restores only server-signed state', () => {
         bbScore: 1234,
         bbCombo: 4,
         bbComboBuffer: 2,
+        bbRevision: 17,
+        bbShapes: [
+            { matrix: [[1, 1]], color: 'bb-c-2', id: 0 },
+            null,
+            { matrix: [[1], [1]], color: 'bb-c-5', id: 2 },
+        ],
         moveCount: 17,
         startTime: now - 60_000,
     };
@@ -60,6 +66,8 @@ test('Block Blast checkpoint restores only server-signed state', () => {
     assert.equal(restored.bbScore, 1234);
     assert.equal(restored.moveCount, 17);
     assert.equal(restored.startTime, session.startTime);
+    assert.equal(restored.bbRevision, 17);
+    assert.deepEqual(restored.bbShapes, session.bbShapes);
     assert.deepEqual(restored.bbGrid, session.bbGrid);
     assert.equal(readCheckpoint(checkpoint, '43', secret, now + 1000), null);
 });
@@ -72,6 +80,12 @@ test('Block Blast checkpoint rejects score injection, bad signature and expiry',
         bbScore: 50,
         bbCombo: 0,
         bbComboBuffer: 0,
+        bbRevision: 3,
+        bbShapes: [
+            { matrix: [[1]], color: 'bb-c-1', id: 0 },
+            { matrix: [[1, 1]], color: 'bb-c-2', id: 1 },
+            { matrix: [[1], [1]], color: 'bb-c-3', id: 2 },
+        ],
         moveCount: 3,
     };
     const checkpoint = createCheckpoint(session, '42', secret, now);

@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 
-const VERSION = 1;
+const VERSION = 2;
 const ROWS = 8;
 const COLS = 8;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +31,37 @@ function decodeGrid(rows) {
     return grid;
 }
 
+function encodeShapes(shapes) {
+    if (!Array.isArray(shapes) || shapes.length !== 3) throw new Error('Invalid BB shapes');
+    return shapes.map(shape => {
+        if (shape === null) return null;
+        const matrix = shape && shape.matrix;
+        if (!Array.isArray(matrix) || matrix.length < 1 || matrix.length > 5) throw new Error('Invalid BB shape');
+        const width = Array.isArray(matrix[0]) ? matrix[0].length : 0;
+        if (width < 1 || width > 5 || !matrix.every(row => Array.isArray(row) && row.length === width && row.every(v => v === 0 || v === 1))) {
+            throw new Error('Invalid BB shape');
+        }
+        const color = typeof shape.color === 'string' && /^bb-c-[1-7]$/.test(shape.color) ? shape.color : 'bb-c-1';
+        return { m: matrix, c: color };
+    });
+}
+
+function decodeShapes(shapes) {
+    if (!Array.isArray(shapes) || shapes.length !== 3) return null;
+    const decoded = [];
+    for (let i = 0; i < shapes.length; i++) {
+        const shape = shapes[i];
+        if (shape === null) { decoded.push(null); continue; }
+        const matrix = shape && shape.m;
+        if (!Array.isArray(matrix) || matrix.length < 1 || matrix.length > 5) return null;
+        const width = Array.isArray(matrix[0]) ? matrix[0].length : 0;
+        if (width < 1 || width > 5 || !matrix.every(row => Array.isArray(row) && row.length === width && row.every(v => v === 0 || v === 1))) return null;
+        if (typeof shape.c !== 'string' || !/^bb-c-[1-7]$/.test(shape.c)) return null;
+        decoded.push({ matrix, color: shape.c, id: i });
+    }
+    return decoded;
+}
+
 function createCheckpoint(session, userId, secret, now = Date.now()) {
     const key = signingKey(secret);
     if (!key) return null;
@@ -42,6 +73,8 @@ function createCheckpoint(session, userId, secret, now = Date.now()) {
         c: session.bbCombo,
         b: session.bbComboBuffer,
         m: session.moveCount,
+        r: session.bbRevision || 0,
+        h: encodeShapes(session.bbShapes || [null, null, null]),
         a: session.startTime,
         t: now,
     };
@@ -64,11 +97,15 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
     let payload;
     try { payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')); } catch (_) { return null; }
     const grid = decodeGrid(payload && payload.g);
-    if (!payload || payload.v !== VERSION || payload.u !== String(userId) || !grid) return null;
+    if (!payload || (payload.v !== 1 && payload.v !== VERSION) || payload.u !== String(userId) || !grid) return null;
     if (!Number.isInteger(payload.s) || payload.s < 0 || payload.s > 1_500_000_000) return null;
     if (!Number.isInteger(payload.c) || payload.c < 0 || payload.c > 1_000_000) return null;
     if (!Number.isInteger(payload.b) || payload.b < 0 || payload.b > 3) return null;
     if (!Number.isInteger(payload.m) || payload.m < 0 || payload.m > 1_000_000) return null;
+    const revision = payload.v === 1 ? payload.m : payload.r;
+    if (!Number.isInteger(revision) || revision < 0 || revision > 1_000_000) return null;
+    const shapes = payload.v === 1 ? null : decodeShapes(payload.h);
+    if (payload.v === VERSION && !shapes) return null;
     if (!Number.isFinite(payload.t) || payload.t > now + MAX_FUTURE_SKEW_MS || now - payload.t > MAX_AGE_MS) return null;
     const startTime = Number.isFinite(payload.a)
         && payload.a <= payload.t
@@ -83,9 +120,11 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
         bbCombo: payload.c,
         bbComboBuffer: payload.b,
         moveCount: payload.m,
+        bbRevision: revision,
+        bbShapes: shapes,
         startTime,
         issuedAt: payload.t,
     };
 }
 
-module.exports = { createCheckpoint, readCheckpoint, encodeGrid, decodeGrid };
+module.exports = { createCheckpoint, readCheckpoint, encodeGrid, decodeGrid, encodeShapes, decodeShapes };

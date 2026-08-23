@@ -5,6 +5,7 @@ const http = require('http');
 const { Server } = require("socket.io"); 
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const path = require('path');
 const { verifyTelegramInitData } = require('./telegram-init-data');
 const { createCheckpoint: createBBCheckpoint, readCheckpoint: readBBCheckpoint } = require('./block-blast-checkpoint');
 const MonopolyEngine = require('./monopoly-engine');
@@ -112,6 +113,72 @@ function authMiddleware(req, res, next) {
     next();
 }
 
+/** Нативное окно Telegram для отправки приглашения. Prepared messages
+    сохраняют кнопку Mini App и custom emoji, чего обычная share/url-ссылка
+    сделать не умеет. */
+app.post('/prepare-share', authMiddleware, async (req, res) => {
+    if (!BOT_TOKEN) return res.status(503).json({ error: 'Bot is unavailable' });
+    const kind = req.body && req.body.kind;
+    const userId = Number(req.telegramUser.id);
+    let text, url, title, entities;
+    if (kind === 'referral') {
+        url = `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`;
+        text = `✨ Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!\n${url}`;
+        title = 'Приглашение в Spark';
+        entities = [{ type: 'custom_emoji', offset: 0, length: 2,
+            custom_emoji_id: '5271604874419647061' }];
+    } else if (kind === 'monopoly') {
+        const roomId = String(req.body.room_id || '').toUpperCase();
+        if (!/^[A-Z0-9]{4,8}$/.test(roomId))
+            return res.status(400).json({ error: 'Invalid room' });
+        url = `https://t.me/spark_game_bot/sparkapp?startapp=mono_${roomId}`;
+        text = `🎲 Заходи в мою комнату в Монополии Spark! Код комнаты: ${roomId}`;
+        title = 'Приглашение в Монополию';
+        entities = [];
+    } else {
+        return res.status(400).json({ error: 'Unknown share type' });
+    }
+
+    const result = {
+        type: 'article', id: crypto.randomBytes(12).toString('hex'), title,
+        thumbnail_url: kind === 'monopoly'
+            ? 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/monopoly.png'
+            : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png',
+        input_message_content: { message_text: text, entities },
+        reply_markup: { inline_keyboard: [[{ text: kind === 'monopoly' ? '🎲 Войти в комнату' : '🎮 Играть', url }]] },
+    };
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/savePreparedInlineMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId, result,
+                allow_user_chats: true, allow_bot_chats: false,
+                allow_group_chats: true, allow_channel_chats: false,
+            }),
+        });
+        let payload = await response.json();
+        /* Некоторые аккаунты не могут отправлять custom emoji. Оставляем
+           само приглашение рабочим, если Telegram отклонил только entity. */
+        if (!payload.ok && entities.length) {
+            result.input_message_content.entities = [];
+            const retry = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/savePreparedInlineMessage`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId, result,
+                    allow_user_chats: true, allow_bot_chats: false,
+                    allow_group_chats: true, allow_channel_chats: false,
+                }),
+            });
+            payload = await retry.json();
+        }
+        if (!payload.ok) throw new Error(payload.description || 'Telegram rejected prepared message');
+        res.json({ id: payload.result.id, fallback_url: url, fallback_text: text.split('\n')[0] });
+    } catch (error) {
+        console.error('[share] prepare:', error.message);
+        res.status(502).json({ error: 'Could not prepare share', fallback_url: url });
+    }
+});
+
 // ============================
 // SECURITY: Rate limiting (in-memory)
 // ============================
@@ -217,7 +284,7 @@ function createSessionToken(userId, gameType, startTime) {
 app.post('/game-session/start', authMiddleware, (req, res) => {
     const user = req.telegramUser;
     const userId = String(user.id);
-    const { game_type } = req.body;
+    const { game_type, new_game = false } = req.body;
     
     if (!checkRateLimit(userId, 'save-stat')) {
         return res.status(429).json({ error: 'Too many requests' });
@@ -228,9 +295,14 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
         return res.status(400).json({ error: 'Invalid game type' });
     }
     
+    const key = `${userId}:${game_type}`;
+    const current = gameSessions.get(key);
+    if (game_type === 'bb_best_score' && current && !new_game) {
+        return res.json(bbSessionResponse(current, userId, { resumed: true }));
+    }
+
     const startTime = Date.now();
     const token = createSessionToken(userId, game_type, startTime);
-    const key = `${userId}:${game_type}`;
     
     const session = {
         startTime, 
@@ -243,9 +315,14 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
             bbScore: 0,
             bbCombo: 0,
             bbComboBuffer: 0,
+            bbRevision: 0,
+            bbShapes: [null, null, null],
+            bbEnded: false,
+            bbRestorable: !new_game,
             bbMoveResults: new Map()
         } : {})
     };
+    if (game_type === 'bb_best_score') bbGenerateShapes(session);
     gameSessions.set(key, session);
     
     // Cleanup old sessions (older than 24h)
@@ -254,12 +331,9 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
         if (now - v.startTime > 86400000) gameSessions.delete(k);
     }
     
-    res.json({
-        session_token: token,
-        ...(game_type === 'bb_best_score' ? {
-            bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
-        } : {})
-    });
+    res.json(game_type === 'bb_best_score'
+        ? bbSessionResponse(session, userId, { resumed: false })
+        : { session_token: token });
 });
 
 // ============================
@@ -295,6 +369,8 @@ function bbLineScore(k, N) {
 
 // All valid shapes (serialized for fast lookup)
 const BB_VALID_SHAPES = new Set();
+const BB_SHAPE_LIST = [];
+const BB_COLORS = ['bb-c-1', 'bb-c-2', 'bb-c-3', 'bb-c-4', 'bb-c-5', 'bb-c-6', 'bb-c-7'];
 function initValidShapes() {
     const SHAPES = [
         [[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],
@@ -313,7 +389,10 @@ function initValidShapes() {
         [[0,1,0],[0,1,0],[1,1,1]],[[1,0,0],[1,1,1],[1,0,0]],[[1,1,1],[0,1,0],[0,1,0]],[[0,0,1],[1,1,1],[0,0,1]],
         [[1,1,0],[0,1,1],[0,1,0]],[[0,1],[0,1],[1,0]],[[1,0],[1,0],[0,1]],[[0,1],[1,0],[1,0]],[[1,0],[0,1],[0,1]]
     ];
-    for (const s of SHAPES) BB_VALID_SHAPES.add(JSON.stringify(s));
+    for (const s of SHAPES) {
+        BB_VALID_SHAPES.add(JSON.stringify(s));
+        BB_SHAPE_LIST.push(s);
+    }
 }
 initValidShapes();
 
@@ -327,6 +406,52 @@ function bbCanPlace(grid, matrix, r, c) {
         }
     }
     return true;
+}
+
+function bbCanPlaceAnywhere(grid, matrix) {
+    for (let r = 0; r < BB_ROWS; r++) {
+        for (let c = 0; c < BB_COLS; c++) {
+            if (bbCanPlace(grid, matrix, r, c)) return true;
+        }
+    }
+    return false;
+}
+
+function bbGenerateShapes(session) {
+    // The last 15 shapes are the same hard set the client unlocks at 10k.
+    const unlocked = session.bbScore >= 10_000 ? BB_SHAPE_LIST : BB_SHAPE_LIST.slice(0, 41);
+    const placeable = unlocked.filter(matrix => bbCanPlaceAnywhere(session.bbGrid, matrix));
+    const pool = placeable.length ? placeable : [BB_SHAPE_LIST[0]];
+    const candidates = [...pool];
+    session.bbShapes = Array.from({ length: 3 }, (_, id) => {
+        const pickFrom = candidates.length ? candidates : pool;
+        const pick = crypto.randomInt(pickFrom.length);
+        const matrix = pickFrom[pick];
+        if (candidates.length) candidates.splice(pick, 1);
+        return { matrix, color: BB_COLORS[crypto.randomInt(BB_COLORS.length)], id };
+    });
+}
+
+function bbPublicState(session) {
+    return {
+        server_score: session.bbScore,
+        server_grid: session.bbGrid,
+        combo: session.bbCombo,
+        comboBuffer: session.bbComboBuffer,
+        revision: session.bbRevision || 0,
+        shapes: session.bbShapes,
+        finished: !!session.bbEnded,
+    };
+}
+
+function bbSessionResponse(session, userId, extra = {}) {
+    return {
+        ok: true,
+        session_token: session.token,
+        bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET),
+        ...bbPublicState(session),
+        ...extra,
+    };
 }
 
 function bbPlaceAndScore(session, matrix, r, c) {
@@ -404,6 +529,9 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     if (!session || session.token !== session_token) {
         return res.json({ ok: false, reason: 'invalid_session' });
     }
+    if (game_type === 'bb_best_score' && session.bbEnded) {
+        return res.json({ ok: false, reason: 'session_finished', ...bbPublicState(session) });
+    }
 
     // A response may be lost after the move was already accepted. Return the
     // cached result before anti-spam checks so a safe retry is truly idempotent.
@@ -425,7 +553,7 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
     
     // === BB Server-side validation ===
     if (game_type === 'bb_best_score' && move_data && typeof move_data === 'object' && move_data.matrix) {
-        const { matrix, r, c, move_id } = move_data;
+        const { matrix, r, c, move_id, revision, slot } = move_data;
 
         if (typeof move_id !== 'string' || move_id.length < 6 || move_id.length > 80) {
             return res.json({ ok: false, reason: 'invalid_move_id' });
@@ -433,6 +561,18 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         if (!session.bbMoveResults) session.bbMoveResults = new Map();
         const previousResult = session.bbMoveResults.get(move_id);
         if (previousResult) return res.json(previousResult);
+
+        if (!Number.isInteger(revision) || revision !== session.bbRevision) {
+            return res.json({
+                ok: false,
+                reason: 'stale_session',
+                ...bbPublicState(session),
+                bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET),
+            });
+        }
+        if (!Number.isInteger(slot) || slot < 0 || slot > 2) {
+            return res.json({ ok: false, reason: 'invalid_slot' });
+        }
         
         // Validate matrix format
         if (!Array.isArray(matrix) || matrix.length === 0 || matrix.length > 5) {
@@ -446,6 +586,10 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         // Validate shape exists in game
         if (!BB_VALID_SHAPES.has(JSON.stringify(matrix))) {
             return res.json({ ok: false, reason: 'invalid_shape' });
+        }
+        const offered = session.bbShapes && session.bbShapes[slot];
+        if (!offered || JSON.stringify(offered.matrix) !== JSON.stringify(matrix)) {
+            return res.json({ ok: false, reason: 'shape_not_offered', ...bbPublicState(session) });
         }
         
         // Validate position
@@ -462,14 +606,16 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         
         // Simulate placement and scoring
         bbPlaceAndScore(session, matrix, r, c);
+        // Once the first authoritative move is accepted, an older signed
+        // checkpoint must never be allowed to roll this live branch back.
+        session.bbRestorable = false;
+        session.bbShapes[slot] = null;
+        if (session.bbShapes.every(shape => shape === null)) bbGenerateShapes(session);
         session.moveCount++;
+        session.bbRevision++;
         session.lastMoveTime = now;
         
-        const result = {
-            ok: true,
-            server_score: session.bbScore,
-            bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
-        };
+        const result = bbSessionResponse(session, userId);
         session.bbMoveResults.set(move_id, result);
         if (session.bbMoveResults.size > 128) {
             session.bbMoveResults.delete(session.bbMoveResults.keys().next().value);
@@ -512,23 +658,33 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     const restored = readBBCheckpoint(checkpoint, userId, GAME_SESSION_SECRET);
     if (!restored) return res.json({ ok: false, reason: 'invalid_checkpoint' });
 
+    // A checkpoint may restore a session only immediately after a server
+    // restart. It must never roll back an already active game on another device.
+    if (!session.bbRestorable) {
+        return res.json({
+            ok: false,
+            reason: 'stale_session',
+            ...bbPublicState(session),
+            bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET),
+        });
+    }
+
     session.bbGrid = restored.bbGrid;
     session.bbScore = restored.bbScore;
     session.bbCombo = restored.bbCombo;
     session.bbComboBuffer = restored.bbComboBuffer;
     session.moveCount = restored.moveCount;
+    session.bbRevision = restored.bbRevision;
+    session.bbShapes = restored.bbShapes;
+    if (!Array.isArray(session.bbShapes) || session.bbShapes.length !== 3 || session.bbShapes.every(shape => shape === null)) {
+        bbGenerateShapes(session);
+    }
     session.startTime = restored.startTime;
     session.lastMoveTime = Date.now();
     session.bbMoveResults = new Map();
+    session.bbRestorable = false;
     console.log(`BB session restored for user ${userId}: score=${session.bbScore}, moves=${session.moveCount}`);
-    res.json({
-        ok: true,
-        server_score: session.bbScore,
-        server_grid: session.bbGrid,
-        combo: session.bbCombo,
-        comboBuffer: session.bbComboBuffer,
-        bb_checkpoint: createBBCheckpoint(session, userId, GAME_SESSION_SECRET)
-    });
+    res.json(bbSessionResponse(session, userId));
 });
 
 // ============================  
@@ -721,6 +877,16 @@ app.get('/api/profile/:id', async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase.from('users').select('*').eq('telegram_id', id).single();
     if (error) return res.status(200).json({});
+    /* Repair legacy rows produced before inline/online checkers shared one
+       counter. A player can never have more wins than completed games. */
+    const wins = Number(data.checkers_wins_pve) || 0;
+    const total = Number(data.checkers_total) || 0;
+    if (wins > total) {
+        data.checkers_total = wins;
+        const repaired = await supabase.from('users')
+            .update({ checkers_total: wins }).eq('telegram_id', id);
+        if (repaired.error) console.error('[checkers] profile repair:', repaired.error.message);
+    }
     res.json(data);
 });
 
@@ -732,7 +898,7 @@ const GAME_NAMES = {
     'saper_best_8': { ru: 'Сапёр 8×8', category: 'Лучшее время' },
     'saper_best_10': { ru: 'Сапёр 10×10', category: 'Лучшее время' },
     'saper_best_15': { ru: 'Сапёр 15×15', category: 'Лучшее время' },
-    'checkers_wins_pve': { ru: 'Шашки', category: 'Победы PvE' },
+    'checkers_wins_pve': { ru: 'Шашки', category: 'Победы' },
     'sudoku_wins': { ru: 'Судоку', category: 'Победы' },
     'tower_best': { ru: 'Башня', category: 'Лучший результат' },
     'tower_combo': { ru: 'Башня', category: 'Лучшее комбо' },
@@ -862,8 +1028,13 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         
         req.body.score = score;
         
+        // Keep the terminal BB marker briefly: another open device must learn
+        // that this run is over instead of resurrecting an older checkpoint.
+        if (game_type === 'bb_best_score' || game_type === 'bb_tournament_score') {
+            session.bbEnded = true;
+            session.finishedAt = Date.now();
         // Session used — delete it (but keep for tower_combo if tower_best was just saved)
-        if (game_type !== 'tower_best') {
+        } else if (game_type !== 'tower_best') {
             gameSessions.delete(key);
         } else {
             // Mark session as used for tower_best, but keep alive briefly for tower_combo
@@ -874,12 +1045,19 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     
     // ---- COUNTER HANDLING: server-side increment ----
     if (isCounter) {
-        let { data: checkUser } = await supabase.from('users').select(game_type).eq('telegram_id', user_id).single();
+        const counterSelect = game_type === 'checkers_total' || game_type === 'checkers_wins_pve'
+            ? 'checkers_total, checkers_wins_pve' : game_type;
+        let { data: checkUser } = await supabase.from('users').select(counterSelect).eq('telegram_id', user_id).single();
         const currentVal = checkUser ? (checkUser[game_type] || 0) : 0;
         // Server increments by 1 regardless of what client sends
         // This prevents both COUNTER_JUMP false positives and cheating
         const updateData = { username: username, photo_url: photo_url };
         updateData[game_type] = currentVal + 1;
+        if (game_type === 'checkers_wins_pve') {
+            updateData.checkers_total = Math.max(Number(checkUser?.checkers_total) || 0, currentVal + 1);
+        } else if (game_type === 'checkers_total') {
+            updateData.checkers_total = Math.max(currentVal + 1, Number(checkUser?.checkers_wins_pve) || 0);
+        }
         
         if (!checkUser) {
             const { error } = await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
@@ -1441,6 +1619,7 @@ const TURN_TIME_LIMIT = 60000; // 60 секунд на ход
 
 // Track online users (users with app open)
 const onlineUsers = new Map(); // socket.id -> { oderId, odername, connectedAt }
+const statsMessages = new Map();
 
 // BB Live streaming
 const bbLiveStreamers = new Map(); // oderId -> { socketId, username, grid, score, combo }
@@ -1599,6 +1778,7 @@ io.on('connection', (socket) => {
         rooms.set(roomCode, {
             players: [{ 
                 id: socket.id, 
+                oderId: onlineUsers.get(socket.id)?.oderId || null,
                 name: username, 
                 avatar: photo_url,
                 color: 'white'
@@ -1623,6 +1803,7 @@ io.on('connection', (socket) => {
         
         const newPlayer = { 
             id: socket.id, 
+            oderId: onlineUsers.get(socket.id)?.oderId || null,
             name: userData.username, 
             avatar: userData.photo_url,
             color: 'black'
@@ -1714,6 +1895,8 @@ io.on('connection', (socket) => {
 
         // Оповещаем соперника о таймауте
         socket.to(roomCode).emit('opponent_timeout');
+        const winner = room.players.find(p => p.id !== socket.id);
+        recordRoomCheckersResult(room, winner?.color);
         
         // Завершаем игру
         cleanupRoom(roomCode);
@@ -1725,6 +1908,8 @@ io.on('connection', (socket) => {
         if (!room) return;
 
         socket.to(roomCode).emit('opponent_left');
+        const winner = room.players.find(p => p.id !== socket.id);
+        recordRoomCheckersResult(room, winner?.color);
         cleanupRoom(roomCode);
     });
 
@@ -1733,7 +1918,10 @@ io.on('connection', (socket) => {
         const room = rooms.get(roomCode);
         if (!room) return;
 
+        if (winner !== 'white' && winner !== 'black') return;
+
         io.to(roomCode).emit('game_finished', { winner });
+        recordRoomCheckersResult(room, winner);
         cleanupRoom(roomCode);
     });
 
@@ -2234,6 +2422,8 @@ io.on('connection', (socket) => {
         rooms.forEach((room, code) => {
             const index = room.players.findIndex(p => p.id === socket.id);
             if (index !== -1) {
+                const winner = room.players.find(p => p.id !== socket.id);
+                recordRoomCheckersResult(room, winner?.color);
                 room.players.splice(index, 1);
                 socket.to(code).emit('opponent_disconnected');
                 cleanupRoom(code);
@@ -2319,6 +2509,7 @@ function startTurnTimer(roomCode) {
             io.to(timedOutPlayer.id).emit('timeout_loss');
             // Сообщаем победителю
             io.to(winner.id).emit('opponent_timeout');
+            recordRoomCheckersResult(currentRoom, winner.color);
         }
 
         cleanupRoom(roomCode);
@@ -2620,28 +2811,41 @@ function countPieces(board, color) {
     return count;
 }
 
-// Функция для обновления статистики игр в шашки
-async function incrementCheckersGames(oderId) {
-    try {
-        // Получаем текущее значение
-        const { data } = await supabase
-            .from('users')
-            .select('checkers_total_pvp')
-            .eq('telegram_id', oderId)
-            .single();
-        
-        const current = data?.checkers_total_pvp || 0;
-        
-        // Обновляем
-        await supabase
-            .from('users')
-            .update({ checkers_total_pvp: current + 1 })
-            .eq('telegram_id', oderId);
-            
-        console.log(`Checkers games updated for user ${oderId}: ${current + 1}`);
-    } catch (e) {
-        console.error('Error updating checkers stats:', e.message);
-    }
+let checkersStatsChain = Promise.resolve();
+async function recordInlineCheckersResult(playerIds, winnerId) {
+    const run = async () => {
+        for (const oderId of [...new Set(playerIds.map(String))]) {
+            try {
+                const { data, error } = await supabase.from('users')
+                    .select('checkers_total, checkers_wins_pve')
+                    .eq('telegram_id', oderId).single();
+                if (error) throw error;
+                const oldWins = Number(data?.checkers_wins_pve) || 0;
+                const wins = oldWins + (oderId === String(winnerId) ? 1 : 0);
+                /* Выравниваем уже повреждённые записи заодно: число партий
+                   никогда не может быть меньше числа побед. */
+                const total = Math.max((Number(data?.checkers_total) || 0) + 1, wins);
+                const saved = await supabase.from('users')
+                    .update({ checkers_total: total, checkers_wins_pve: wins })
+                    .eq('telegram_id', oderId);
+                if (saved.error) throw saved.error;
+            } catch (e) {
+                console.error('Error updating inline checkers stats:', e.message);
+            }
+        }
+    };
+    const result = checkersStatsChain.then(run, run);
+    checkersStatsChain = result.catch(() => {});
+    return result;
+}
+
+function recordRoomCheckersResult(room, winnerColor) {
+    if (!room || room.statsRecorded || room.status !== 'playing') return;
+    const players = room.players.filter(p => p.oderId);
+    const winner = players.find(p => p.color === winnerColor);
+    if (players.length !== 2 || !winner) return;
+    room.statsRecorded = true;
+    void recordInlineCheckersResult(players.map(p => p.oderId), winner.oderId);
 }
 
 function getUserDisplayName(user) {
@@ -2698,6 +2902,17 @@ const GAME_CONFIG = {
     'рефералы': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
     'referrals': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
 };
+const GAME_ICON_BY_COLUMN = {
+    bb_best_score: 'block-blast.png', saper_wins: 'minesweeper.png',
+    saper_best_6: 'minesweeper.png', tower_best: 'tower.png',
+    sudoku_wins: 'sudoku.png', checkers_wins_pve: 'checkers.png',
+    wordle_wins: 'wordle.png',
+};
+function gameThumbnail(config) {
+    if (!config || config.isReferral) return null;
+    const file = GAME_ICON_BY_COLUMN[config.column];
+    return file ? `https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/${file}` : null;
+}
 
 // Получить топ-3 + пользователя (с Premium эмодзи для бота)
 async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
@@ -2750,7 +2965,9 @@ async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
     // Добавляем информацию о пользователе если он не в топ-3
     if (userRank && userRank > 3 && userData) {
         text += `\n━━━━━━━━━━━━━━━\n`;
-        text += `📍 Вы: #${userRank} — <b>${userData[column]}</b>`;
+        const pin = usePremiumEmoji
+            ? '<tg-emoji emoji-id="5258509201306557640">📍</tg-emoji>' : '📍';
+        text += `${pin} Вы: #${userRank} — <b>${userData[column]}</b>`;
     } else if (userRank && userRank <= 3) {
         text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
     }
@@ -2823,7 +3040,9 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
     
     if (userRank && userRank > 3 && userData) {
         text += `\n━━━━━━━━━━━━━━━\n`;
-        text += `📍 Вы: #${userRank} — <b>${userData.score}</b>`;
+        const pin = usePremiumEmoji
+            ? '<tg-emoji emoji-id="5258509201306557640">📍</tg-emoji>' : '📍';
+        text += `${pin} Вы: #${userRank} — <b>${userData.score}</b>`;
     } else if (userRank && userRank <= 3) {
         text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
     }
@@ -2842,6 +3061,48 @@ let bot = null;
 
 if (BOT_TOKEN) {
     bot = new TelegramBot(BOT_TOKEN, { polling: true });
+
+    const START_COPY = {
+        ru: `${EMOJI.game} <b>Добро пожаловать в Spark Games!</b>\n` +
+            `Играйте в крутые игры и соревнуйтесь с друзьями!\n\n` +
+            `${EMOJI.chart} <b>Топы:</b> @spark_game_bot [игра]\n\n` +
+            `${EMOJI.joystick} <b>Игры в чате:</b>\n` +
+            `• @spark_game_bot крестики\n• @spark_game_bot шашки\n\n` +
+            `<blockquote>${EMOJI.play} <b>Открыть игры:</b> нажмите кнопку ниже</blockquote>`,
+        en: `${EMOJI.game} <b>Welcome to Spark Games!</b>\n` +
+            `Play great games and compete with friends!\n\n` +
+            `${EMOJI.chart} <b>Leaderboards:</b> @spark_game_bot [game]\n\n` +
+            `${EMOJI.joystick} <b>Games in chat:</b>\n` +
+            `• @spark_game_bot tic-tac-toe\n• @spark_game_bot checkers\n\n` +
+            `<blockquote>${EMOJI.play} <b>Open games:</b> tap the button below</blockquote>`,
+        zh: `${EMOJI.game} <b>欢迎来到 Spark Games！</b>\n` +
+            `畅玩精彩游戏，与好友一较高下！\n\n` +
+            `${EMOJI.chart} <b>排行榜：</b>@spark_game_bot [游戏]\n\n` +
+            `${EMOJI.joystick} <b>聊天内游戏：</b>\n` +
+            `• @spark_game_bot 井字棋\n• @spark_game_bot 跳棋\n\n` +
+            `<blockquote>${EMOJI.play} <b>打开游戏：</b>点击下方按钮</blockquote>`,
+    };
+    const START_BUTTON = { ru: '🎮 Играть', en: '🎮 Play', zh: '🎮 开始游戏' };
+    function botLanguage(code) {
+        const c = String(code || '').toLowerCase();
+        if (c.startsWith('ru')) return 'ru';
+        if (c.startsWith('zh')) return 'zh';
+        if (c.startsWith('en')) return 'en';
+        return null;
+    }
+    function startWebAppUrl(param) {
+        return param ? `${WEBAPP_URL}?tgWebAppStartParam=${encodeURIComponent(param)}` : WEBAPP_URL;
+    }
+    async function sendStartGreeting(chatId, lang, param) {
+        const options = {
+            caption: START_COPY[lang], parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{
+                text: START_BUTTON[lang], web_app: { url: startWebAppUrl(param) },
+            }]] },
+        };
+        return bot.sendAnimation(chatId,
+            path.join(__dirname, '..', 'assets', 'media', 'bot-welcome.mp4'), options);
+    }
     
     // Register admin tournament management commands (/admin)
     registerAdminBot({ bot, supabase });
@@ -2882,6 +3143,7 @@ if (BOT_TOKEN) {
                 id: tttId,
                 title: 'Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -2903,6 +3165,7 @@ if (BOT_TOKEN) {
                 id: chId,
                 title: 'Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/checkers.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -2913,7 +3176,7 @@ if (BOT_TOKEN) {
             // 3. Топы игр
             const topGames = [
                 { key: 'bb_best_score', name: 'Блок Бласт' },
-                { key: 'saper_best_6', name: 'Сапёр' },
+                { key: 'saper_wins', name: 'Сапёр' },
                 { key: 'tower_best', name: 'Башня' },
                 { key: 'sudoku_wins', name: 'Судоку' },
                 { key: 'checkers_wins_pve', name: 'Шашки' },
@@ -2932,6 +3195,7 @@ if (BOT_TOKEN) {
                         id: resultId,
                         title: `Топ ${game.name}`,
                         description: `Показать топ игроков в ${game.name}`,
+                        thumbnail_url: gameThumbnail(config),
                         input_message_content: {
                             message_text: `⏳ Загрузка топа ${game.name}...`,
                             parse_mode: 'HTML'
@@ -2963,6 +3227,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: '❌⭕ Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -2987,6 +3252,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: '⚪⚫ Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/checkers.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -3026,6 +3292,7 @@ if (BOT_TOKEN) {
                         id: resultId,
                         title: `Топ ${matchedGame.name}`,
                         description: 'Нажмите чтобы отправить топ в чат',
+                        ...(gameThumbnail(matchedGame) ? { thumbnail_url: gameThumbnail(matchedGame) } : {}),
                         input_message_content: {
                             message_text: text,
                             parse_mode: 'HTML'
@@ -3054,6 +3321,7 @@ if (BOT_TOKEN) {
                             id: resultId,
                             title: `${config.name}`,
                             description: `Показать топ ${config.name}`,
+                            ...(gameThumbnail(config) ? { thumbnail_url: gameThumbnail(config) } : {}),
                             input_message_content: {
                                 message_text: `⏳ Загрузка...`,
                                 parse_mode: 'HTML'
@@ -3214,6 +3482,62 @@ if (BOT_TOKEN) {
         const data = callbackQuery.data;
         const user = callbackQuery.from;
         const inlineMessageId = callbackQuery.inline_message_id;
+
+        if (data && data.startsWith('start_lang_') && callbackQuery.message) {
+            const parts = data.split('_');
+            const lang = ['ru', 'en', 'zh'].includes(parts[2]) ? parts[2] : 'en';
+            const param = parts.slice(3).join('_');
+            try { await bot.deleteMessage(callbackQuery.message.chat.id, callbackQuery.message.message_id); } catch (_) {}
+            await sendStartGreeting(callbackQuery.message.chat.id, lang, param);
+            try { await bot.answerCallbackQuery(callbackQuery.id); } catch (_) {}
+            return;
+        }
+
+        if (data && (data === 'stats_main' || data.startsWith('stats_online_')) && callbackQuery.message) {
+            if (String(user.id) !== String(OWNER_ID)) {
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Нет доступа' }); } catch (_) {}
+                return;
+            }
+            const chatId = callbackQuery.message.chat.id;
+            if (data === 'stats_main') {
+                const original = statsMessages.get(chatId) || 'Статистика устарела. Отправьте /stats ещё раз.';
+                await bot.editMessageText(original, {
+                    chat_id: chatId, message_id: callbackQuery.message.message_id,
+                    parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
+                        { text: '👥 Кто сейчас онлайн', callback_data: 'stats_online_0' },
+                    ]] },
+                });
+            } else {
+                const unique = new Map();
+                for (const entry of onlineUsers.values()) {
+                    const id = String(entry.oderId || '');
+                    if (!id) continue;
+                    const previous = unique.get(id);
+                    if (!previous || entry.connectedAt < previous.connectedAt) unique.set(id, entry);
+                }
+                const list = [...unique.values()].sort((a, b) => a.connectedAt - b.connectedAt);
+                const pageSize = 8;
+                const maxPage = Math.max(0, Math.ceil(list.length / pageSize) - 1);
+                const requestedPage = parseInt(data.replace('stats_online_', ''), 10) || 0;
+                const page = Math.max(0, Math.min(maxPage, requestedPage));
+                const rows = list.slice(page * pageSize, (page + 1) * pageSize).map((entry, index) => {
+                    const name = cleanName(entry.odername) || 'Без имени';
+                    const mins = Math.max(0, Math.floor((Date.now() - entry.connectedAt) / 60000));
+                    return `${page * pageSize + index + 1}. <b>${name.replace(/[<>&]/g, '')}</b> — <code>${entry.oderId}</code> · ${mins} мин`;
+                });
+                const nav = [];
+                if (page > 0) nav.push({ text: '←', callback_data: `stats_online_${page - 1}` });
+                nav.push({ text: `${page + 1}/${maxPage + 1}`, callback_data: `stats_online_${page}` });
+                if (page < maxPage) nav.push({ text: '→', callback_data: `stats_online_${page + 1}` });
+                await bot.editMessageText(
+                    `👥 <b>Сейчас онлайн: ${list.length}</b>\n\n${rows.join('\n') || 'Сейчас никого нет.'}`,
+                    { chat_id: chatId, message_id: callbackQuery.message.message_id, parse_mode: 'HTML',
+                        reply_markup: { inline_keyboard: [nav, [{ text: '‹ Назад к статистике', callback_data: 'stats_main' }]] } },
+                );
+            }
+            try { await bot.answerCallbackQuery(callbackQuery.id); } catch (_) {}
+            return;
+        }
         
         /* Проверка игрока монополии: сообщение приходит владельцу в личку,
            поэтому inline_message_id у него нет — обрабатываем до общей проверки. */
@@ -3255,6 +3579,12 @@ if (BOT_TOKEN) {
                 try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра не найдена или истекла' }); } catch(e) {}
                 return;
             }
+            if (game.processing) {
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ход уже обрабатывается' }); } catch (_) {}
+                return;
+            }
+            game.processing = true;
+            try {
             
             const userName = getUserDisplayName(user);
             
@@ -3370,6 +3700,9 @@ if (BOT_TOKEN) {
                 try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра уже завершена!' }); } catch(e) {}
                 return;
             }
+            } finally {
+                game.processing = false;
+            }
         }
         
         // === ШАШКИ ===
@@ -3384,12 +3717,18 @@ if (BOT_TOKEN) {
                 try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра не найдена или истекла' }); } catch(e) {}
                 return;
             }
+            if (game.processing) {
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ход уже обрабатывается' }); } catch (_) {}
+                return;
+            }
+            game.processing = true;
+            try {
             
             const userName = getUserDisplayName(user);
             
             // Ожидание второго игрока
             if (game.status === 'waiting') {
-                if (user.id === game.playerWhite.id) {
+                if (String(user.id) === String(game.playerWhite.id)) {
                     try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ожидайте соперника!' }); } catch(e) {}
                     return;
                 }
@@ -3422,8 +3761,8 @@ if (BOT_TOKEN) {
             
             // Игра идёт
             if (game.status === 'playing') {
-                const isWhite = user.id === game.playerWhite.id;
-                const isBlack = user.id === game.playerBlack?.id;
+                const isWhite = String(user.id) === String(game.playerWhite.id);
+                const isBlack = String(user.id) === String(game.playerBlack?.id);
                 
                 if (!isWhite && !isBlack) {
                     try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Вы не участвуете в этой игре!' }); } catch(e) {}
@@ -3446,6 +3785,11 @@ if (BOT_TOKEN) {
                     
                     // Клик на свою шашку - меняем выбор
                     if (cell.type === 'piece' && cell.color === playerColor) {
+                        const nextOptions = getValidMoves(game.board, row, col, playerColor);
+                        if (mustCapture && nextOptions.captures.length === 0) {
+                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Выберите шашку, которая может бить!' }); } catch (_) {}
+                            return;
+                        }
                         game.selected = { r: row, c: col };
                         try {
                             await bot.editMessageReplyMarkup(getCheckersKeyboard(game.board, game.gameId, game.selected), {
@@ -3518,9 +3862,10 @@ if (BOT_TOKEN) {
                         const winnerName = playerColor === 'white' ? game.playerWhiteName : game.playerBlackName;
                         const winnerSymbol = playerColor === 'white' ? '⚪' : '⚫';
                         
-                        // Обновляем статистику обоих игроков
-                        await incrementCheckersGames(game.playerWhite.id);
-                        await incrementCheckersGames(game.playerBlack.id);
+                        await recordInlineCheckersResult(
+                            [game.playerWhite.id, game.playerBlack.id],
+                            playerColor === 'white' ? game.playerWhite.id : game.playerBlack.id,
+                        );
                         
                         try {
                             await bot.editMessageText(
@@ -3587,6 +3932,9 @@ if (BOT_TOKEN) {
             if (game.status === 'finished') {
                 try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра уже завершена!' }); } catch(e) {}
                 return;
+            }
+            } finally {
+                game.processing = false;
             }
         }
         
@@ -3665,7 +4013,7 @@ if (BOT_TOKEN) {
                 .eq('activity_type', 'inline_command');
             
             // Онлайн сейчас
-            const onlineNow = onlineUsers.size;
+            const onlineNow = new Set([...onlineUsers.values()].map(x => String(x.oderId))).size;
             
             const statsMessage = 
                 `<tg-emoji emoji-id="5258513401784573443">📊</tg-emoji> Общее количество пользователей: <b>${totalUsers || 0}</b>\n\n` +
@@ -3678,7 +4026,12 @@ if (BOT_TOKEN) {
                 `<tg-emoji emoji-id="5258093637450866522">🎮</tg-emoji> Инлайн команд за день: <b>${inlineDay || 0}</b>\n\n` +
                 `<tg-emoji emoji-id="5323761960829862762">🟢</tg-emoji> Онлайн сейчас: <b>${onlineNow}</b>`;
             
-            bot.sendMessage(chatId, statsMessage, { parse_mode: 'HTML' });
+            statsMessages.set(chatId, statsMessage);
+            bot.sendMessage(chatId, statsMessage, {
+                parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
+                    { text: `👥 Кто онлайн (${onlineNow})`, callback_data: 'stats_online_0' },
+                ]] },
+            });
             
         } catch (e) {
             console.error('Stats error:', e);
@@ -3745,33 +4098,18 @@ if (BOT_TOKEN) {
     });
     
     // Команда /start
-    bot.onText(/\/start(.*)/, (msg, match) => {
+    bot.onText(/\/start(.*)/, async (msg, match) => {
         const chatId = msg.chat.id;
-        const param = match[1].trim();
-        
-        // Build web_app URL with ref param if present
-        let webAppUrl = WEBAPP_URL;
-        if (param && param.startsWith('ref_')) {
-            webAppUrl += `?tgWebAppStartParam=${param}`;
-        }
-        
-        bot.sendMessage(chatId, 
-            `${EMOJI.game} <b>Добро пожаловать в Spark Games!</b>\n` +
-            `Играйте в крутые игры и соревнуйтесь с друзьями!\n\n` +
-            `${EMOJI.chart} <b>Топы:</b> @spark_game_bot [игра]\n\n` +
-            `${EMOJI.joystick} <b>Игры в чате:</b>\n` +
-            `• @spark_game_bot крестики\n` +
-            `• @spark_game_bot шашки\n\n` +
-            `<blockquote>${EMOJI.play} <b>Открыть игры:</b> нажмите кнопку ниже</blockquote>`,
-            { 
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: [[
-                        { text: '🎮 Играть', web_app: { url: webAppUrl } }
-                    ]]
-                }
-            }
-        );
+        const param = String(match[1] || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32);
+        const lang = botLanguage(msg.from && msg.from.language_code);
+        if (lang) return sendStartGreeting(chatId, lang, param);
+        return bot.sendMessage(chatId, 'Choose your language · Выберите язык · 请选择语言', {
+            reply_markup: { inline_keyboard: [[
+                { text: '🇷🇺 Русский', callback_data: `start_lang_ru_${param}` },
+                { text: '🇺🇸 English', callback_data: `start_lang_en_${param}` },
+                { text: '🇨🇳 中文', callback_data: `start_lang_zh_${param}` },
+            ]] },
+        });
     });
     
     // Команда /top [игра] - с Premium эмодзи!

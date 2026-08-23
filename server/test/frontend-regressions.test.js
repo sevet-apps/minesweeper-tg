@@ -115,7 +115,7 @@ test('Monopoly keeps money sounds private while dice and movement stay shared', 
         'opponent token steps must not be muted');
 });
 
-test('Block Blast resume preserves occupied-cell colors and the saved hand', () => {
+test('Block Blast resume preserves colors and follows the canonical server hand', () => {
     const context = {
         BB_COLS: 8,
         COLORS: ['bb-c-1', 'bb-c-2', 'bb-c-3', 'bb-c-4', 'bb-c-5', 'bb-c-6', 'bb-c-7']
@@ -135,28 +135,22 @@ test('Block Blast resume preserves occupied-cell colors and the saved hand', () 
     assert.match(syncBody, /renderBBShapeSlots\(\)/);
     assert.doesNotMatch(syncBody, /spawnShapes\(\)/);
     assert.match(indexSource, /pendingMoves:\s*bbMoveQueue\.map/);
+    assert.match(indexSource, /revision:\s*bbRevision/);
+    assert.match(indexSource, /move_data\.revision = bbRevision \+ bbMoveQueue\.length/);
+    assert.match(indexSource, /showBBStaleSession\(data\)/);
+    assert.match(indexSource, /id="modalBBStale"/);
+    assert.match(indexSource, /bbInputLocked/);
     assert.ok(indexSource.indexOf('bbMoveQueue.shift();') < indexSource.indexOf('if (!bbGameEnded) saveBBState();'));
 });
 
-test('Monopoly chat only follows new messages when already near the bottom', () => {
-    const chat = {
-        scrollHeight: 500,
-        scrollTop: 100,
-        clientHeight: 200,
-        appendChild() { this.scrollHeight += 50; }
-    };
-    const context = { els: { chat } };
-    vm.createContext(context);
-    vm.runInContext(extractFunction(gameUiSource, 'chatIsNearBottom'), context);
-    vm.runInContext(extractFunction(gameUiSource, 'appendChatMessage'), context);
-
-    context.appendChatMessage({});
-    assert.equal(chat.scrollTop, 100, 'reading position must stay unchanged');
-
-    chat.scrollHeight = 500;
-    chat.scrollTop = 280;
-    context.appendChatMessage({});
-    assert.equal(chat.scrollTop, 550, 'chat should follow messages from the bottom');
+test('Monopoly chat pauses auto-follow during reading and resumes after five seconds', () => {
+    const pause = extractFunction(gameUiSource, 'pauseChatFollow');
+    const append = extractFunction(gameUiSource, 'appendChatMessage');
+    assert.match(pause, /chatFollow = false/);
+    assert.match(pause, /setTimeout\(scrollChatToBottom, 5000\)/);
+    assert.match(append, /if \(chatFollow\) els\.chat\.scrollTop = els\.chat\.scrollHeight/);
+    assert.match(gameUiSource, /\['pointerdown', 'touchmove', 'wheel'\]/,
+        'mouse and touch reading gestures must both pause following');
 });
 
 test('Monopoly casino raises the complete center stacking context', () => {
@@ -216,8 +210,8 @@ test('Referral terms and Wordle card keep touch-safe UI behavior', () => {
     assert.match(indexSource, /#view-games \.game-card[\s\S]*?-webkit-touch-callout: none/);
     assert.match(indexSource, /#view-games \.game-card--wordle\s*\{[\s\S]*?clip-path: inset\(0 round 20px\)[\s\S]*?contain: paint/,
         'the beta ribbon must remain clipped inside the rounded Wordle card');
-    assert.match(indexSource, /#view-games \.game-card--wordle:active\s*\{\s*transform: none/,
-        'holding the Wordle card must not shrink it');
+    assert.doesNotMatch(indexSource, /#view-games \.game-card--wordle:active\s*\{\s*transform: none/,
+        'holding Wordle must use the same pressed scale as every other game card');
 });
 
 test('Chinese flag and Block Blast counters use the refreshed visual treatment', () => {
@@ -232,7 +226,27 @@ test('Chinese flag and Block Blast counters use the refreshed visual treatment',
 
     assert.match(indexSource, /\.bb-line-score\s*\{[\s\S]*?linear-gradient\(100deg,[\s\S]*?background-clip:\s*text/s);
     assert.match(indexSource, /@keyframes bbLineScoreIn\s*\{[\s\S]*?scale\(\.78\)[\s\S]*?scale\(1\)/s);
+    assert.doesNotMatch(indexSource, /@keyframes bbLineScoreRainbow/,
+        'the rainbow is a fixed gradient and must not shimmer');
     assert.match(indexSource, /\.bb-best,[\s\S]*?#bbScoreNum\s*\{[\s\S]*?SF Pro Display/s);
+});
+
+test('Wordle rejects empty/corrupt targets and can use the larger iPad board', () => {
+    const context = { WORDLE_WORD_RE: /^[А-ЯЁ]{5}$/ };
+    vm.createContext(context);
+    vm.runInContext(extractFunction(indexSource, 'isValidWordleTarget'), context);
+    assert.equal(context.isValidWordleTarget(''), false);
+    assert.equal(context.isValidWordleTarget('   '), false);
+    assert.equal(context.isValidWordleTarget('ИСКРА'), true);
+    assert.equal(context.isValidWordleTarget('слово'), true);
+    assert.equal(context.isValidWordleTarget('12345'), false);
+
+    const init = extractFunction(indexSource, 'initWordle');
+    assert.match(init, /filter\(isValidWordleTarget\)/);
+    assert.match(init, /\|\| 'ИСКРА'/,
+        'even a corrupt or empty dictionary must produce a real five-letter target');
+    assert.match(indexSource, /Math\.min\(82, heightSize, widthSize\)/,
+        'portrait tablets may expand the board into the available space');
 });
 
 test('Tower growth, debris collisions and waves follow the polished motion model', () => {

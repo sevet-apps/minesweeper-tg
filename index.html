@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glass App v37.0</title>
+    <meta property="og:title" content="Spark Games">
+    <meta property="og:description" content="Играй, соревнуйся с друзьями и поднимайся в рейтингах Spark.">
+    <meta property="og:image" content="https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png">
+    <meta property="og:image:width" content="640">
+    <meta property="og:image:height" content="640">
+    <meta property="og:type" content="website">
+    <title>Spark Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
@@ -119,6 +125,29 @@
             min-height: 100%;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* The app initializes behind the branded opening animation.  The
+           element is removed after playback, so it cannot keep decoding or
+           intercept touches while a game is running. */
+        .app-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483646;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            background: #000;
+            pointer-events: all;
+        }
+        .app-loader video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: 50% 50%;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .app-loader { display: none; }
         }
         
         /* Background Pattern */
@@ -325,7 +354,6 @@
             clip-path: inset(0 round 20px);
             contain: paint;
         }
-        #view-games .game-card--wordle:active { transform: none; }
         #view-games .game-beta-ribbon {
             position: absolute;
             top: 8px;
@@ -861,26 +889,20 @@
             background: linear-gradient(100deg,
                 #ff3b30 0%, #ff9500 15%, #ffdd00 30%, #34c759 45%,
                 #00c7ff 60%, #5856d6 75%, #af52de 88%, #ff2d75 100%);
-            background-size: 220% 100%;
+            background-size: 100% 100%;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,.72))
                 drop-shadow(0 0 7px rgba(255,255,255,.2));
             transform: translate(-50%, -50%);
-            animation:
-                bbLineScoreIn .28s cubic-bezier(.18, 1.32, .34, 1) both,
-                bbLineScoreRainbow 1.1s linear infinite;
+            animation: bbLineScoreIn .28s cubic-bezier(.18, 1.32, .34, 1) both;
             will-change: transform, opacity;
         }
         .bb-line-score.big { font-size: 43px; }
         @keyframes bbLineScoreIn {
             0%   { opacity: 0; transform: translate(-50%,-50%) scale(.78); }
             100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-        }
-        @keyframes bbLineScoreRainbow {
-            from { background-position: 100% 50%; }
-            to { background-position: -120% 50%; }
         }
         body.lite-mode .bb-line-score {
             animation: bbLineScoreIn .22s cubic-bezier(.18, 1.2, .34, 1) both;
@@ -2666,6 +2688,40 @@
     </style>
 </head>
 <body>
+    <div class="app-loader" id="appLoader" aria-hidden="true">
+        <video id="appLoaderVideo" autoplay muted playsinline preload="auto">
+            <source src="assets/media/app-loader.mp4" type="video/mp4">
+        </video>
+    </div>
+    <script>
+        (function () {
+            var root = document.getElementById('appLoader');
+            var video = document.getElementById('appLoaderVideo');
+            if (!root || !video) return;
+            var removed = false;
+            var remove = function () {
+                if (removed) return;
+                removed = true;
+                try {
+                    video.pause();
+                    video.querySelectorAll('source').forEach(function (source) { source.remove(); });
+                    video.removeAttribute('src');
+                    video.load();
+                } catch (e) {}
+                root.remove();
+            };
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                remove();
+                return;
+            }
+            video.addEventListener('ended', remove, { once: true });
+            video.addEventListener('error', remove, { once: true });
+            /* A network or decoder failure must never lock the application. */
+            window.setTimeout(remove, 8000);
+            var play = video.play();
+            if (play && typeof play.catch === 'function') play.catch(remove);
+        })();
+    </script>
     <div id="bgPattern"></div>
     
     <div id="view-leaderboard" class="screen">
@@ -3255,6 +3311,7 @@
     <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2 data-i18n="waitingOpponent">Ожидание...</h2><p style="color:#8e8e93;" data-i18n="roomCode">Код комнаты:</p><div style="font-size:32px; font-weight:800; letter-spacing:5px; margin:10px 0; color:var(--accent);" id="displayRoomCode">-----</div><p style="font-size:14px; color:#8e8e93;" data-i18n="shareCode">Передай этот код другу</p><button style="margin-top:10px; background:none; border:none; color:#ff3b30; font-size:16px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" onclick="refreshBBFromServer()" data-i18n="refresh">Обновить</button></div></div>
     <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
@@ -4056,6 +4113,9 @@
                 recordNotBeat: 'Рекорд не побит',
                 recordSaveFailed: 'Результат ожидает отправки',
                 recordSaveRetry: 'Мы автоматически повторим сохранение при следующем запуске.',
+                bbSessionOutdated: 'Сессия устарела',
+                bbSessionOutdatedText: 'Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.',
+                refresh: 'Обновить',
                 tryAgain: 'Попробуйте ещё раз!',
                 victory: 'Победа!',
                 defeat: 'Поражение',
@@ -4088,7 +4148,7 @@
                 bestTime8: 'Лучшее время 8x8',
                 bestTime10: 'Лучшее время 10x10',
                 bestTime15: 'Лучшее время 15x15',
-                winsVsBot: 'Побед над роботом',
+                winsVsBot: 'Победы',
                 bestScore: 'Рекорд очков',
                 towerHeight: 'Высота башни',
                 cleanSeries: 'Чистая серия',
@@ -4287,6 +4347,9 @@
                 recordNotBeat: 'Record not beaten',
                 recordSaveFailed: 'Result pending upload',
                 recordSaveRetry: 'We will retry saving it automatically the next time you open the game.',
+                bbSessionOutdated: 'Session is outdated',
+                bbSessionOutdatedText: 'This game was continued on another device. Refresh it to keep playing.',
+                refresh: 'Refresh',
                 tryAgain: 'Try again!',
                 victory: 'Victory!',
                 defeat: 'Defeat',
@@ -4319,7 +4382,7 @@
                 bestTime8: 'Best time 8x8',
                 bestTime10: 'Best time 10x10',
                 bestTime15: 'Best time 15x15',
-                winsVsBot: 'Wins vs bot',
+                winsVsBot: 'Wins',
                 bestScore: 'Best score',
                 towerHeight: 'Tower height',
                 cleanSeries: 'Clean series',
@@ -4482,13 +4545,14 @@
                 score: '得分', best: '最佳', wins: '胜场', time: '时间', newRecord: '新纪录！',
                 recordNotBeat: '未打破纪录', recordSaveFailed: '结果等待上传',
                 recordSaveRetry: '下次打开游戏时会自动重试保存。', tryAgain: '再试一次！', victory: '胜利！', defeat: '失败', draw: '平局',
+                bbSessionOutdated: '游戏进度已过期', bbSessionOutdatedText: '此游戏已在另一台设备上继续。请刷新后再继续游戏。', refresh: '刷新',
                 youWon: '您赢了！', robotDefeated: '机器人已被击败。', robotWon: '机器人获胜。',
                 whiteWon: '白方获胜！', blackWon: '黑方获胜！', sudokuSolved: '数独完成！', towerFell: '塔倒了',
                 dig: '挖掘', flag: '旗帜', yourTurn: '轮到您', opponentTurn: '对手回合', white: '白方', black: '黑方',
                 waitingOpponent: '等待中…', roomCode: '房间代码：', shareCode: '将此代码发给好友',
                 opponentDisconnected: '对手已断开连接', opponentTimeout: '对手时间已用完', opponentLeft: '对手已离开游戏',
                 totalGames: '总场次', numWins: '获胜次数', bestTime6: '6×6 最佳时间', bestTime8: '8×8 最佳时间',
-                bestTime10: '10×10 最佳时间', bestTime15: '15×15 最佳时间', winsVsBot: '战胜机器人',
+                bestTime10: '10×10 最佳时间', bestTime15: '15×15 最佳时间', winsVsBot: '胜场',
                 bestScore: '最高得分', towerHeight: '塔高', cleanSeries: '连续完美', place: '名', points: '分', gamesPlayed: '场',
                 foundUnfinished: '发现未完成的游戏', continue: '继续', cancel: '取消', close: '关闭', cool: '太棒了',
                 exitGame: '退出游戏？', exitConfirm: '确定要退出吗？本局将计为失败。', yesExit: '确认退出',
@@ -4862,7 +4926,6 @@
                 clearInterval(checkersTimerInterval);
                 checkersTimerInterval=null;
                 isOnlineGame = false;
-                isPvE = false;
                 onlineRoomCode = null;
                 onlineMyColor = null;
             }
@@ -4982,20 +5045,21 @@
         // --- ANTI-CHEAT: Game Session Tracking ---
         let activeSessionTokens = {}; // game_type -> token
         
-        async function startGameSession(game_type) {
+        async function startGameSession(game_type, options = {}) {
             try {
                 const resp = await fetch(`${API_BASE_URL}/game-session/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
-                    body: JSON.stringify({ game_type })
+                    body: JSON.stringify({ game_type, new_game: !!options.newGame })
                 });
                 const data = await resp.json();
                 if (data.session_token) activeSessionTokens[game_type] = data.session_token;
                 if (game_type === 'bb_best_score') {
                     bbServerCheckpoint = data.bb_checkpoint || null;
-                    saveBBState();
                 }
+                return data;
             } catch(e) { console.error('Session start error:', e); }
+            return null;
         }
         
         let moveCounter = 0;
@@ -5032,6 +5096,10 @@
                     const started = await startResp.json().catch(() => null);
                     if (!startResp.ok || !started || !started.session_token) return false;
                     activeSessionTokens.bb_best_score = started.session_token;
+                    if (started.resumed) {
+                        showBBStaleSession(started);
+                        return false;
+                    }
                     if (!checkpoint) {
                         bbServerCheckpoint = started.bb_checkpoint || null;
                         return true;
@@ -5059,6 +5127,7 @@
             if (bbMoveProcessing || bbMoveQueue.length === 0) return;
             bbMoveProcessing = true;
             let shouldRetry = false;
+            let stopQueue = false;
             try {
                 while (bbMoveQueue.length > 0) {
                     const move = bbMoveQueue[0];
@@ -5080,19 +5149,23 @@
                         }
                         if (resp.ok && data && data.ok) {
                             delivered = true;
-                            if (data.bb_checkpoint) {
-                                bbServerCheckpoint = data.bb_checkpoint;
-                            }
+                            acceptBBServerMove(data);
                             break;
                         }
-                        if (data && (data.reason === 'invalid_session' || data.reason === 'occupied')) {
+                        if (data && (data.reason === 'stale_session' || data.reason === 'session_finished' || data.reason === 'occupied' || data.reason === 'shape_not_offered')) {
+                            showBBStaleSession(data);
+                            stopQueue = true;
+                            break;
+                        }
+                        if (data && data.reason === 'invalid_session') {
                             if (await recoverBBServerSession()) continue;
+                            if (bbInputLocked) stopQueue = true;
                         }
                         console.error('BB move rejected:', data && data.reason);
                         break;
                     }
                     if (!delivered) {
-                        shouldRetry = true;
+                        shouldRetry = !stopQueue;
                         break;
                     }
                     bbMoveQueue.shift();
@@ -5101,6 +5174,7 @@
             } finally {
                 bbMoveProcessing = false;
             }
+            if (stopQueue) bbMoveQueue = [];
             if (shouldRetry && !bbMoveRetryTimer) {
                 bbMoveRetryTimer = setTimeout(() => {
                     bbMoveRetryTimer = null;
@@ -5129,6 +5203,7 @@
             
             // BB moves go through sequential queue to maintain order
             if (game_type === 'bb_best_score' && bbMoveData) {
+                move_data.revision = bbRevision + bbMoveQueue.length;
                 bbMoveQueue.push(payload);
                 saveBBState();
                 processBBMoveQueue();
@@ -5215,11 +5290,30 @@
             return `https://t.me/${BOT_USERNAME}/${APP_NAME}?startapp=ref_${user.id}`;
         }
         
-        function shareReferralLink() {
+        async function sharePreparedMessage(kind, roomId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/prepare-share`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData || '' },
+                    body: JSON.stringify({ kind, room_id: roomId || null }),
+                });
+                const prepared = await response.json();
+                if (!response.ok || !prepared.id) throw new Error(prepared.error || 'prepare failed');
+                if (typeof tg.shareMessage === 'function') {
+                    await tg.shareMessage(prepared.id);
+                    return true;
+                }
+                throw new Error('shareMessage unavailable');
+            } catch (error) {
+                console.warn('Prepared share unavailable:', error.message);
+                return false;
+            }
+        }
+
+        async function shareReferralLink() {
             const link = getReferralLink();
             const text = '🎮 Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!';
-            
-            // Используем Telegram API для шаринга
+            if (await sharePreparedMessage('referral')) return;
             if (tg.openTelegramLink) {
                 tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
             } else {
@@ -5451,6 +5545,11 @@
             // alert('start_param: ' + (startParam || 'НЕ НАЙДЕН') + '\n\nHash: ' + window.location.hash.substring(0, 100));
             
             console.log('Final start_param:', startParam);
+
+            if (startParam && /^mono_[A-Za-z0-9]{4,8}$/.test(startParam)) {
+                window.__monoInviteRoom = startParam.slice(5).toUpperCase();
+                setTimeout(openMonopolyGame, 0);
+            }
             
             if (startParam && startParam.startsWith('ref_')) {
                 const referrerId = startParam.replace('ref_', '');
@@ -6013,6 +6112,7 @@
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
+        let checkersGameFinished = false;
         let moveHistory = [], historyIndex = -1, isViewingHistory = false;
         let checkersTimerInterval = null, checkersTimeLeft = 60, checkersTimerStartedAt = null;
         let serverTimeOffset = 0; // Разница между серверным и локальным временем
@@ -6038,9 +6138,18 @@
         function cancelOnlineWait() { document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
 
         function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function launchCheckers(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('checkers-screen').classList.add('visible');setTimeout(initCheckers,50);}
+        function launchCheckers(){
+            const choices = document.querySelectorAll('#ch-offline-panel .segment-item');
+            const activeChoice = document.querySelector('#ch-offline-panel .segment-item.active');
+            isPvE = activeChoice === choices[1];
+            isOnlineGame = false;
+            document.getElementById('modalCheckers').classList.remove('visible');
+            document.getElementById('checkers-screen').classList.add('visible');
+            setTimeout(initCheckers,50);
+        }
         function initCheckers(){
             turn='white';selectedPiece=null;forcedPiece=null;
+            checkersGameFinished=false;
             moveHistory=[];historyIndex=-1;isViewingHistory=false;
             clearInterval(checkersTimerInterval);checkersTimerInterval=null;
             document.getElementById('checkersTimer').style.display=isOnlineGame?'block':'none';
@@ -6183,13 +6292,13 @@
             if(cell.piece&&cell.piece.color===turn){if(forcedPiece&&(forcedPiece.r!==r||forcedPiece.c!==c))return;if(selectedPiece){const p=board[selectedPiece.r][selectedPiece.c].el.querySelector('.checker');if(p)p.classList.remove('selected');board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));}selectedPiece={r,c};cell.el.querySelector('.checker').classList.add('selected');highlightMoves(r,c);if(vibrationEnabled) tg.HapticFeedback.selectionChanged();return;}if(!cell.piece&&selectedPiece){const moves=getValidMoves(selectedPiece.r,selectedPiece.c,board);const move=moves.find(m=>m.toR===r&&m.toC===c);if(move)executeMove(move, true);}
         }
         function highlightMoves(r,c){const moves=getValidMoves(r,c,board);moves.forEach(m=>board[m.toR][m.toC].el.classList.add('highlight'));}
-        function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return caps.length>0?caps:moves;}
+        function getValidMoves(r,c,b){const p=b[r][c].piece;if(!p)return[];const moves=[],dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];dirs.forEach(d=>{let dist=1;while(true){let nr=r+d[0]*dist,nc=c+d[1]*dist;if(nr<0||nr>=8||nc<0||nc>=8)break;if(!b[nr][nc].piece){if(!p.isKing){const fwd=(p.color==='white'&&d[0]===-1)||(p.color==='black'&&d[0]===1);if(fwd&&dist===1&&!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});break;}else{if(!forcedPiece)moves.push({fromR:r,fromC:c,toR:nr,toC:nc,isCapture:false});}}else{if(b[nr][nc].piece.color===p.color)break;let jr=nr+d[0],jc=nc+d[1];if(jr>=0&&jr<8&&jc>=0&&jc<8&&!b[jr][jc].piece){if(p.isKing){let fd=1;while(true){let fr=nr+d[0]*fd,fc=nc+d[1]*fd;if(fr<0||fr>=8||fc<0||fc>=8||b[fr][fc].piece)break;moves.push({fromR:r,fromC:c,toR:fr,toC:fc,isCapture:true,midR:nr,midC:nc});fd++;}}else{moves.push({fromR:r,fromC:c,toR:jr,toC:jc,isCapture:true,midR:nr,midC:nc});}}break;}dist++;if(!p.isKing)break;}});const caps=moves.filter(m=>m.isCapture);return forcedPiece?caps:moves;}
         
         function executeMove(m, isLocal = true){
             const p=board[m.fromR][m.fromC].piece;
             if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
             board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);updateHistoryButtons();if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,500);return;}}}else{if(vibrationEnabled) tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
-            checkWin(); 
+            if(checkWin()) return;
             if(isPvE && isLocal) reportGameMove('checkers_wins_pve');
             // Для онлайн игры turn придёт от сервера через move_confirmed/opponent_move
             if(!isOnlineGame) { 
@@ -6203,12 +6312,18 @@
             if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,600);
         }
         function hasAnyMoves(color) { for(let r=0; r<BOARD_SIZE; r++) { for(let c=0; c<BOARD_SIZE; c++) { const cell = board[r][c]; if (cell.piece && cell.piece.color === color) { const moves = getValidMoves(r, c, board); if (moves.length > 0) return true; } } } return false; }
-        function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0)endGame('white');else if(wc===0)endGame('black');}
+        function checkWin(){let wc=0,bc=0;board.forEach(r=>r.forEach(c=>{if(c.piece)c.piece.color==='white'?wc++:bc++}));if(bc===0){endGame('white');return true;}if(wc===0){endGame('black');return true;}return false;}
         
         function endGame(w){
+            if(checkersGameFinished) return;
+            checkersGameFinished=true;
             clearInterval(checkersTimerInterval);checkersTimerInterval=null;
-            let tot=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',tot); sendStatToBackend('checkers_total', tot); 
-            if(isPvE&&w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
+            // Онлайн-матчи учитываются сервером ровно один раз для обоих игроков.
+            // Локальная игра вдвоём не должна попадать в персональную статистику.
+            if(isPvE){
+                const tot=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',tot); sendStatToBackend('checkers_total', tot);
+                if(w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
+            }
             if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText'),btn=document.getElementById('resBtn');
             if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText=t('victory');txt.innerText=t('youWon');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText=t('defeat');txt.innerText=t('noMovesOrPieces'); } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText=t('victory');txt.innerText=t('robotDefeated');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText=t('defeat');txt.innerText=t('robotWon'); } } else{ tit.innerText=w==='white'?t('whiteWon'):t('blackWon');txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
             btn.innerText=t('close'); btn.onclick=()=>{ closeResult(); closeGame('checkers'); };
@@ -6324,6 +6439,9 @@
         // 'tournament' — same gameplay, score goes to tournament_scores with multiplier
         let bbMode = 'original';
         let bbGameEnded = false; // true after game-over until next new/resumed game
+        let bbRevision = 0;
+        let bbInputLocked = false;
+        let bbStaleServerState = null;
         const BB_PARTNER_DEFAULT_CTA = 'https://t.me/phantomio_bot?start=spark';
         // Master kill-switch for the BB Tournament mode UI. Set to true to re-enable
         // mode-select screen, segmented leaderboard switcher, x1.5 multiplier UI, etc.
@@ -6360,6 +6478,75 @@
             if (el) el.innerText = getDisplayedBest();
         }
 
+        function normalizedBBShapes(shapes) {
+            if (!Array.isArray(shapes) || shapes.length !== 3) return null;
+            return shapes.map((shape, id) => shape ? {
+                matrix: shape.matrix,
+                color: shape.color || COLORS[id % COLORS.length],
+                id,
+            } : null);
+        }
+
+        function applyBBAuthoritativeState(data) {
+            if (!data || !Array.isArray(data.server_grid)) return false;
+            const localGrid = bbGrid;
+            bbGrid = mergeBBServerGrid(data.server_grid, localGrid);
+            bbScore = Number(data.server_score) || 0;
+            bbDisplayedScore = bbScore;
+            bbCombo = Number(data.combo) || 0;
+            bbComboBuffer = Number(data.comboBuffer) || 0;
+            bbRevision = Number.isInteger(data.revision) ? data.revision : 0;
+            const shapes = normalizedBBShapes(data.shapes);
+            if (shapes) bbShapes = shapes;
+            bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
+            renderBBGrid();
+            updateBBScoreUI();
+            renderBBShapeSlots();
+            saveBBState();
+            return true;
+        }
+
+        function acceptBBServerMove(data) {
+            bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
+            if (Number.isInteger(data.revision)) bbRevision = data.revision;
+            const shapes = normalizedBBShapes(data.shapes);
+            if (shapes) {
+                bbShapes = shapes;
+                renderBBShapeSlots();
+            }
+            // Local clearing animations finish asynchronously. Reconcile after
+            // them so the visible score can never drift from the server score.
+            const acceptedRevision = bbRevision;
+            setTimeout(() => {
+                if (bbGameEnded || bbRevision !== acceptedRevision || !Number.isFinite(Number(data.server_score))) return;
+                bbScore = Number(data.server_score);
+                bbDisplayedScore = bbScore;
+                updateBBScoreUI();
+                saveBBState();
+            }, 1200);
+        }
+
+        function showBBStaleSession(data) {
+            bbInputLocked = true;
+            bbStaleServerState = data || null;
+            document.getElementById('modalBBStale').classList.add('visible');
+        }
+
+        function refreshBBFromServer() {
+            document.getElementById('modalBBStale').classList.remove('visible');
+            bbMoveQueue = [];
+            if (bbStaleServerState?.finished) {
+                localStorage.removeItem(bbStateKey());
+                bbStaleServerState = null;
+                bbInputLocked = false;
+                newGameBB();
+                return;
+            }
+            applyBBAuthoritativeState(bbStaleServerState);
+            bbStaleServerState = null;
+            bbInputLocked = false;
+        }
+
         // Entry point from the game card on the home screen.
         // When BB_TOURNAMENT_ENABLED is false, behaves like before: prompts to
         // resume if a save exists, otherwise starts a new game directly.
@@ -6367,16 +6554,46 @@
             let pending = null;
             try { pending = JSON.parse(localStorage.getItem('bb_pending_result') || 'null'); } catch (_) {}
             if (!pending || !pending.checkpoint || !Number.isFinite(Number(pending.score))) return false;
+
+            const clearPending = () => {
+                localStorage.removeItem('bb_pending_result');
+                if (pending.stateKey) localStorage.removeItem(pending.stateKey);
+            };
+
+            // A successful response can be lost after Supabase has already
+            // persisted the record. In that case the profile is enough to
+            // acknowledge the pending result without resurrecting a finished
+            // run or counting anything twice.
+            if ((pending.gameType || 'bb_best_score') === 'bb_best_score') {
+                try {
+                    const user = tg.initDataUnsafe.user;
+                    const profileResp = user && await fetch(`${API_BASE_URL}/api/profile/${user.id}`);
+                    const profile = profileResp?.ok ? await profileResp.json() : null;
+                    const persistedBest = Number(profile?.bb_best_score);
+                    if (Number.isFinite(persistedBest) && persistedBest >= Number(pending.score)) {
+                        saveStatToCloud('bb_best_score', persistedBest);
+                        clearPending();
+                        return true;
+                    }
+                } catch (_) {}
+            }
+
             bbServerCheckpoint = pending.checkpoint;
             bbMoveQueue = [];
-            if (!(await recoverBBServerSession())) return false;
+            // Keep the final session token in the durable retry record. The
+            // server accepts repeated saves for that same authoritative run,
+            // which also covers a DB error after the board was marked ended.
+            if (pending.sessionToken) {
+                activeSessionTokens.bb_best_score = pending.sessionToken;
+            } else if (!(await recoverBBServerSession())) {
+                return false;
+            }
             const result = await sendStatToBackend(pending.gameType || 'bb_best_score', Number(pending.score));
             if (!result) return false;
             if (Number.isFinite(Number(result.best_score))) {
                 saveStatToCloud('bb_best_score', Number(result.best_score));
             }
-            localStorage.removeItem('bb_pending_result');
-            if (pending.stateKey) localStorage.removeItem(pending.stateKey);
+            clearPending();
             return true;
         }
 
@@ -6387,7 +6604,25 @@
                 if (hasBBSave('original')) {
                     document.getElementById('modalBBResume').classList.add('visible');
                 } else {
-                    newGameBB();
+                    // Ask the server before creating anything. This is what
+                    // makes a computer game appear on the same account's phone.
+                    bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
+                    bbShapes = [];
+                    const started = await startGameSession('bb_best_score');
+                    if (!started) return;
+                    if (started.finished) {
+                        newGameBB();
+                    } else if (started.resumed) {
+                        bbGameEnded = false;
+                        applyBBAuthoritativeState(started);
+                        document.getElementById('modalBBResume').classList.add('visible');
+                    } else {
+                        bbGameEnded = false;
+                        bbInputLocked = false;
+                        try { bbInitSounds(); } catch(_) {}
+                        document.getElementById('bb-screen').classList.add('visible');
+                        applyBBAuthoritativeState(started);
+                    }
                 }
                 return;
             }
@@ -6655,6 +6890,7 @@
 
         async function resumeBB() {
             bbGameEnded = false;
+            bbInputLocked = true;
             try { bbInitSounds(); } catch(_) {}
             // When tournament mode is disabled, force original mode and hide all tournament HUD
             if (!BB_TOURNAMENT_ENABLED) {
@@ -6666,16 +6902,44 @@
             document.getElementById('bb-screen').classList.add('visible');
             restoreBBState();
             const resumeCheckpoint = bbServerCheckpoint;
-            await startGameSession('bb_best_score');
-            const freshCheckpoint = bbServerCheckpoint;
+            const localRevision = bbRevision;
+            const started = await startGameSession('bb_best_score');
+            if (!started) return;
+            if (started.finished) {
+                localStorage.removeItem(bbStateKey());
+                bbInputLocked = false;
+                newGameBB();
+                return;
+            }
+            if (started.resumed) {
+                // Pending offline moves can still be delivered only when their
+                // base revision is exactly the current server revision.
+                if (bbMoveQueue.length > 0 && started.revision === localRevision) {
+                    bbServerCheckpoint = started.bb_checkpoint || resumeCheckpoint;
+                    bbMoveQueue.forEach(item => { item.session_token = started.session_token; });
+                    bbInputLocked = false;
+                    processBBMoveQueue();
+                } else if (bbMoveQueue.length > 0) {
+                    // Another device (or a response that arrived before this
+                    // device closed) advanced the canonical branch. Do not
+                    // replay the old queue over it; let the player refresh.
+                    showBBStaleSession(started);
+                } else {
+                    applyBBAuthoritativeState(started);
+                    bbInputLocked = false;
+                }
+                return;
+            }
+            const freshSession = started;
             bbServerCheckpoint = resumeCheckpoint;
-            await syncBBSession(freshCheckpoint);
+            await syncBBSession(freshSession);
+            bbInputLocked = false;
         }
-        async function syncBBSession(freshCheckpoint) {
+        async function syncBBSession(freshSession) {
             // Backend uses 'bb_best_score' as the session key for both modes
             const token = activeSessionTokens['bb_best_score'];
             if (!token || !bbServerCheckpoint) {
-                resetBBToCurrentSession(freshCheckpoint);
+                resetBBToCurrentSession(freshSession);
                 return false;
             }
             try {
@@ -6686,19 +6950,22 @@
                 });
                 const data = await resp.json().catch(() => null);
                 if (!resp.ok || !data || !data.ok || !Array.isArray(data.server_grid)) {
-                    resetBBToCurrentSession(freshCheckpoint);
+                    if (data?.reason === 'stale_session') {
+                        showBBStaleSession(data);
+                        return false;
+                    }
+                    resetBBToCurrentSession(freshSession);
                     return false;
                 }
                 const localGrid = bbGrid;
                 const hasPendingMoves = bbMoveQueue.length > 0;
                 if (!hasPendingMoves) {
-                    bbGrid = mergeBBServerGrid(data.server_grid, localGrid);
-                    bbScore = data.server_score || 0;
-                    bbDisplayedScore = bbScore;
-                    bbCombo = data.combo || 0;
-                    bbComboBuffer = data.comboBuffer || 0;
+                    applyBBAuthoritativeState(data);
                 }
                 bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
+                bbRevision = Number.isInteger(data.revision) ? data.revision : bbRevision;
+                const serverShapes = normalizedBBShapes(data.shapes);
+                if (serverShapes) bbShapes = serverShapes;
                 bbMoveQueue.forEach(item => { item.session_token = token; });
                 renderBBGrid();
                 updateBBScoreUI();
@@ -6708,7 +6975,7 @@
                 return true;
             } catch(e) {
                 console.error('BB sync error:', e);
-                resetBBToCurrentSession(freshCheckpoint);
+                resetBBToCurrentSession(freshSession);
                 return false;
             }
         }
@@ -6719,11 +6986,16 @@
                 return localColor || COLORS[(r * BB_COLS + c) % COLORS.length];
             }));
         }
-        function resetBBToCurrentSession(freshCheckpoint) {
+        function resetBBToCurrentSession(freshSession) {
             localStorage.removeItem(bbStateKey());
-            bbServerCheckpoint = freshCheckpoint || null;
+            if (freshSession && Array.isArray(freshSession.server_grid)) {
+                applyBBAuthoritativeState(freshSession);
+                return;
+            }
+            bbServerCheckpoint = freshSession?.bb_checkpoint || null;
             bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
+            bbRevision = 0;
             bbShapes = [];
             renderBBGrid();
             updateBBScoreUI();
@@ -6742,11 +7014,12 @@
             document.getElementById('bb-screen').classList.add('visible');
             initBB();
         }
-        function initBB() {
+        async function initBB() {
             if (bbMoveRetryTimer) clearTimeout(bbMoveRetryTimer);
             bbMoveRetryTimer = null;
             bbMoveQueue = []; bbMoveProcessing = false;
             bbServerCheckpoint = null;
+            bbRevision = 0; bbInputLocked = true;
             bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
             bbIsAnimating = false;
@@ -6754,10 +7027,12 @@
             bbLastComboFilled = -1;
             document.getElementById('bbBestScore').innerText = getDisplayedBest();
             renderBBGrid();
-            spawnShapes();
-            saveBBState();
             // Both modes share the SAME backend session ('bb_best_score')
-            startGameSession('bb_best_score');
+            const started = await startGameSession('bb_best_score', { newGame: true });
+            if (started) {
+                applyBBAuthoritativeState(started);
+                bbInputLocked = false;
+            }
         }
         
         // === BB SOUND SYSTEM (custom samples via Web Audio) ===
@@ -7044,7 +7319,7 @@
 
         // --- FIXED DRAG FUNCTION ---
         function startDrag(e, slotId, matrix, color) { 
-            if(bbIsAnimating) return; 
+            if(bbIsAnimating || bbInputLocked) return;
             e.preventDefault(); 
             bbPlayPickup();
             const touch = e.touches ? e.touches[0] : e; 
@@ -7225,7 +7500,7 @@
             const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
             if(dragData.validPos) { 
                 placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
-                reportGameMove('bb_best_score', { matrix: dragData.matrix, r: dragData.validPos.r, c: dragData.validPos.c });
+                reportGameMove('bb_best_score', { matrix: dragData.matrix, r: dragData.validPos.r, c: dragData.validPos.c, slot: dragData.slotId });
                 document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
                 const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
                 /* координаты клеток, куда легла фигура — там и покажем очки */
@@ -7234,8 +7509,7 @@
                     if (v) placedCells.push({ r: dragData.validPos.r + i, c: dragData.validPos.c + j });
                 }));
                 const linesCleared = checkLines(dragData.color, placedCells); 
-                if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } else { updateComboBar(); } } if(bbShapes.every(s => s === null)) spawnShapes(); checkGameOver(); saveBBState(); } 
-                else { if(bbShapes.every(s => s === null)) spawnShapes(); } 
+                if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } else { updateComboBar(); } } checkGameOver(); saveBBState(); }
             } 
         }
 
@@ -7552,6 +7826,7 @@
                 } else {
                     localStorage.setItem('bb_pending_result', JSON.stringify({
                         gameType, score: bbScore, checkpoint: bbServerCheckpoint,
+                        sessionToken: activeSessionTokens.bb_best_score || '',
                         stateKey: bbStateKey(), savedAt: Date.now()
                     }));
                 }
@@ -7574,6 +7849,7 @@
                 } else {
                     localStorage.setItem('bb_pending_result', JSON.stringify({
                         gameType: 'bb_best_score', score: bbScore, checkpoint: bbServerCheckpoint,
+                        sessionToken: activeSessionTokens.bb_best_score || '',
                         stateKey: bbStateKey(), savedAt: Date.now()
                     }));
                 }
@@ -7720,8 +7996,8 @@
             }
             overlay.classList.add('visible');
         }
-        function saveBBState() { if(bbGameEnded) return; if(bbShapes.every(s=>s===null)) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { const data = JSON.parse(localStorage.getItem(bbStateKey())); if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
+        function saveBBState() { if(bbGameEnded) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, revision: bbRevision, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
+        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;
@@ -8981,6 +9257,11 @@
         let wordleGuesses = [];
         let wordleCurrentGuess = '';
         let wordleGameOver = false;
+        const WORDLE_WORD_RE = /^[А-ЯЁ]{5}$/;
+        function isValidWordleTarget(value) {
+            return typeof value === 'string' && WORDLE_WORD_RE.test(value.toUpperCase());
+        }
+
         // =============================================
         // MONOPOLY LOBBY & MULTIPLAYER
         // =============================================
@@ -9007,7 +9288,9 @@
             const frame = document.getElementById('monopolyFrame');
             const safeTop = monoSafeTop();
             const bottom = 20;
-            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${window.__monoDebug ? '&debug=1' : ''}`;
+            const invite = window.__monoInviteRoom
+                ? `&invite=${encodeURIComponent(window.__monoInviteRoom)}` : '';
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${invite}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
         }
 
@@ -9073,6 +9356,13 @@
                 // владеет приложение — игра лежит в iframe и до Telegram
                 // достучаться не может.
                 setMonopolyBackButton(!!data.show);
+            } else if (data.type === 'monopoly_invite') {
+                sharePreparedMessage('monopoly', data.roomId).then(shared => {
+                    if (shared) return;
+                    const link = `https://t.me/${BOT_USERNAME}/${APP_NAME}?startapp=mono_${encodeURIComponent(data.roomId)}`;
+                    const text = `🎲 Заходи в мою комнату в Монополии Spark! Код комнаты: ${data.roomId}`;
+                    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
+                });
             } else if (data.type === 'monopoly_fullscreen') {
                 setMonopolyFullscreen(!!data.on);
             } else if (data.type === 'monopoly_exit') {
@@ -9653,7 +9943,7 @@
         }
         
         function saveWordleGame() {
-            if (wordleGameOver) return;
+            if (wordleGameOver || !isValidWordleTarget(wordleTarget)) return;
             const gameState = {
                 target: wordleTarget,
                 guesses: wordleGuesses,
@@ -9671,7 +9961,14 @@
             
             try {
                 const gameState = JSON.parse(savedGame);
-                wordleTarget = gameState.target;
+                if (!isValidWordleTarget(gameState.target) || !Array.isArray(gameState.guesses)) {
+                    throw new Error('Invalid saved Wordle game');
+                }
+                const savedGuesses = gameState.guesses
+                    .map(guess => String(guess || '').toUpperCase())
+                    .filter(isValidWordleTarget)
+                    .slice(0, 5);
+                wordleTarget = gameState.target.toUpperCase();
                 wordleGuesses = [];
                 wordleCurrentGuess = '';
                 wordleGameOver = false;
@@ -9683,7 +9980,7 @@
                 document.getElementById('wordleMessage').className = 'wordle-message';
                 
                 // Replay all guesses to restore board state
-                for (const guess of gameState.guesses) {
+                for (const guess of savedGuesses) {
                     wordleCurrentGuess = guess;
                     updateWordleCurrentRow();
                     const result = checkWordleGuess(guess);
@@ -9713,10 +10010,11 @@
 
         function initWordle() {
             clearWordleSave(); // Clear any saved game when starting new
-            const pool = (WORDLE_ANSWERS_EXTENDED && WORDLE_ANSWERS_EXTENDED.length > 0)
+            const sourcePool = (WORDLE_ANSWERS_EXTENDED && WORDLE_ANSWERS_EXTENDED.length > 0)
                 ? WORDLE_ANSWERS_EXTENDED
                 : WORDLE_WORDS;
-            wordleTarget = pool[Math.floor(Math.random() * pool.length)].toUpperCase();
+            const pool = sourcePool.map(word => String(word || '').toUpperCase()).filter(isValidWordleTarget);
+            wordleTarget = pool[Math.floor(Math.random() * pool.length)] || 'ИСКРА';
             wordleGuesses = [];
             wordleCurrentGuess = '';
             wordleGameOver = false;
@@ -9804,7 +10102,7 @@
                 const reserved = keyboard.offsetHeight + message.offsetHeight + 16;
                 const heightSize = Math.floor((container.clientHeight - reserved - boardGap * 5) / 6);
                 const widthSize = Math.floor((container.clientWidth - 40 - boardGap * 4) / 5);
-                const tileSize = Math.max(24, Math.min(54, heightSize, widthSize));
+                const tileSize = Math.max(24, Math.min(82, heightSize, widthSize));
                 screen.style.setProperty('--wordle-board-gap', `${boardGap}px`);
                 screen.style.setProperty('--wordle-tile-size', `${tileSize}px`);
             });

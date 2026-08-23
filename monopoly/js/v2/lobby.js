@@ -417,6 +417,7 @@
         $('#lbWaitCode').textContent = roomId;
         $('#lbWaitPrivate').style.display = isPrivate ? '' : 'none';
         $('#lbStart').style.display = isHost ? '' : 'none';
+        $('#lbInvite').style.display = isHost ? '' : 'none';
         $('#lbWaitHint').textContent = isHost
             ? `${net().S && net().S.teams ? 'Команда 1 против команды 2 · ' : ''}Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
                 botsAllowed ? ' · за матч с ботами очки не начисляются' : ''}`
@@ -574,6 +575,11 @@
             navigator.clipboard && navigator.clipboard.writeText(code);
             toast('Код скопирован');
         };
+        $('#lbInvite').onclick = () => {
+            const roomId = $('#lbWaitCode').textContent;
+            try { parent.postMessage({ type: 'monopoly_invite', roomId }, '*'); }
+            catch (_) { toast('Не удалось открыть отправку', true); }
+        };
         $('#lbStart').onclick = () => net().socket().emit('m2:start');
         $('#lbLeave').onclick = leaveRoom;
 
@@ -581,7 +587,8 @@
         addEventListener('orientationchange', () => setTimeout(applySafeInsets, 250));
 
         renderRooms();                       // сразу показываем уточку
-        ensureNet().then(refreshRooms).catch(showServerDown);
+        const invitedRoom = String(QS.get('invite') || '').trim().toUpperCase();
+        ensureNet().then(() => invitedRoom ? joinRoom(invitedRoom) : refreshRooms()).catch(showServerDown);
         setInterval(refreshRooms, 10000);
         syncBackButton();
     }

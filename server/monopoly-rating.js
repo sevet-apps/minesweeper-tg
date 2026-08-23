@@ -88,7 +88,9 @@ function makeRating(opts) {
     const log = (opts && opts.log) || console.log;
 
     const cache = new Map();      // uid -> запись
+    const pendingLoads = new Map();
     let tableOk = true;
+    let applyChain = Promise.resolve();
 
     function blank(uid) {
         return {
@@ -101,37 +103,59 @@ function makeRating(opts) {
 
     async function load(uid) {
         if (cache.has(uid)) return cache.get(uid);
-        let rec = blank(uid);
-        if (supabase && tableOk) {
-            try {
-                const { data, error } = await supabase
-                    .from('monopoly_rating').select('*').eq('uid', uid).maybeSingle();
-                if (error && error.code === '42P01') {   // таблицы нет
-                    tableOk = false;
-                    log('[rating] таблицы monopoly_rating нет — работаю в памяти');
-                } else if (data) {
-                    rec = Object.assign(rec, data, {
-                        history: Array.isArray(data.history) ? data.history : [],
-                        unfairCount: data.unfair_count | 0,
-                    });
-                }
-            } catch (e) { log('[rating] load:', e.message); }
-        }
-        cache.set(uid, rec);
-        return rec;
+        if (pendingLoads.has(uid)) return pendingLoads.get(uid);
+        const pending = (async () => {
+            let rec = blank(uid);
+            if (supabase && tableOk) {
+                try {
+                    const { data, error } = await supabase
+                        .from('monopoly_rating').select('*').eq('uid', uid).maybeSingle();
+                    if (error && error.code === '42P01') {   // таблицы нет
+                        tableOk = false;
+                        log('[rating] таблицы monopoly_rating нет — работаю в памяти');
+                    } else if (error) {
+                        log('[rating] load:', error.message || error.code || String(error));
+                    } else if (data) {
+                        rec = Object.assign(rec, data, {
+                            history: Array.isArray(data.history) ? data.history : [],
+                            unfairCount: data.unfair_count | 0,
+                        });
+                    }
+                } catch (e) { log('[rating] load:', e.message); }
+            }
+            cache.set(uid, rec);
+            return rec;
+        })();
+        pendingLoads.set(uid, pending);
+        try { return await pending; }
+        finally { pendingLoads.delete(uid); }
     }
 
     async function save(rec) {
         cache.set(rec.uid, rec);
         if (!supabase || !tableOk) return;
         try {
-            await supabase.from('monopoly_rating').upsert({
+            const base = {
                 uid: rec.uid, points: rec.points, games: rec.games, wins: rec.wins,
                 bankrupted: rec.bankrupted, streak: rec.streak, banned: rec.banned,
                 checked: rec.checked, history: rec.history,
-                unfair_count: rec.unfairCount | 0,
                 updated_at: new Date().toISOString(),
+            };
+            let { error } = await supabase.from('monopoly_rating').upsert({
+                ...base, unfair_count: rec.unfairCount | 0,
             }, { onConflict: 'uid' });
+            /* Старые развёртывания таблицы могли не иметь нового столбца.
+               Раньше Supabase возвращал error, который код молча игнорировал,
+               из-за чего очки после рестарта выглядели «сброшенными». */
+            if (error && (error.code === '42703' || error.code === 'PGRST204'
+                || /unfair_count/i.test(error.message || ''))) {
+                ({ error } = await supabase.from('monopoly_rating')
+                    .upsert(base, { onConflict: 'uid' }));
+            }
+            if (error) {
+                if (error.code === '42P01') tableOk = false;
+                log('[rating] save:', error.message || error.code || String(error));
+            }
         } catch (e) { log('[rating] save:', e.message); }
     }
 
@@ -156,7 +180,7 @@ function makeRating(opts) {
     /* ---------- начисление за партию ----------
        players: [{ uid, name, winner, bankruptedCount }]
        Возвращает разбор по каждому игроку для красивого окна на клиенте. */
-    async function applyMatch(match) {
+    async function applyMatchUnlocked(match) {
         const { players, rounds, durationMs, withBots, teamMode } = match;
         const n = players.length;
         const counts = matchCounts({ players: n, rounds, durationMs });
@@ -230,6 +254,16 @@ function makeRating(opts) {
             minRounds: roundsNeeded(n),
             players: result,
         };
+    }
+
+    /** Матчи завершаются асинхронно. Последовательная запись исключает гонку,
+        при которой два почти одновременных результата загружали старые очки
+        и последний upsert затирал начисление предыдущего. */
+    function applyMatch(match) {
+        const run = () => applyMatchUnlocked(match);
+        const result = applyChain.then(run, run);
+        applyChain = result.catch(() => {});
+        return result;
     }
 
     /* ---------- проверки ---------- */
