@@ -143,7 +143,7 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         type: 'article', id: crypto.randomBytes(12).toString('hex'), title,
         thumbnail_url: kind === 'monopoly'
             ? 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/monopoly.png'
-            : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png',
+            : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823',
         input_message_content: { message_text: text, entities },
         reply_markup: { inline_keyboard: [[{ text: kind === 'monopoly' ? '🎲 Войти в комнату' : '🎮 Играть', url }]] },
     };

@@ -2,15 +2,35 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta property="og:title" content="Spark Games">
     <meta property="og:description" content="Играй, соревнуйся с друзьями и поднимайся в рейтингах Spark.">
-    <meta property="og:image" content="https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png">
+    <meta property="og:image" content="https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823">
     <meta property="og:image:width" content="640">
     <meta property="og:image:height" content="640">
     <meta property="og:type" content="website">
     <title>Spark Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        /* Paint Telegram's own safe-area chrome before the first video frame.
+           Otherwise a white 9:16 animation is framed by black host bars until
+           the much larger application script reaches its initialization. */
+        (function () {
+            var miniApp = window.Telegram && window.Telegram.WebApp;
+            if (!miniApp) return;
+            window.setSparkTelegramChrome = function (color) {
+                try { if (miniApp.setHeaderColor) miniApp.setHeaderColor(color); } catch (e) {}
+                try { if (miniApp.setBackgroundColor) miniApp.setBackgroundColor(color); } catch (e) {}
+                try { if (miniApp.setBottomBarColor) miniApp.setBottomBarColor(color); } catch (e) {}
+            };
+            window.setSparkTelegramChrome('#ffffff');
+            try { miniApp.expand(); } catch (e) {}
+            try {
+                if (['ios', 'android', 'android_x'].indexOf(miniApp.platform) !== -1
+                    && miniApp.requestFullscreen) miniApp.requestFullscreen();
+            } catch (e) {}
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
@@ -133,11 +153,14 @@
         .app-loader {
             position: fixed;
             inset: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             z-index: 2147483646;
             display: grid;
             place-items: center;
             overflow: hidden;
-            background: #000;
+            background: #fff;
             pointer-events: all;
         }
         .app-loader video {
@@ -145,6 +168,7 @@
             height: 100%;
             object-fit: contain;
             object-position: 50% 50%;
+            background: #fff;
         }
         @media (prefers-reduced-motion: reduce) {
             .app-loader { display: none; }
@@ -2709,6 +2733,9 @@
                     video.load();
                 } catch (e) {}
                 root.remove();
+                var miniApp = window.Telegram && window.Telegram.WebApp;
+                var color = miniApp && miniApp.colorScheme === 'dark' ? '#000000' : '#f2f2f7';
+                if (window.setSparkTelegramChrome) window.setSparkTelegramChrome(color);
             };
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 remove();
@@ -3913,7 +3940,15 @@
             socket.on('error_message', (msg) => { alert(msg); document.getElementById('modalLoading').classList.remove('visible'); });
         }
 
-        function applyTheme() { updateBackgroundPatterns(); document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); if(tg.headerColor) tg.headerColor = isDark ? '#000000' : '#f2f2f7'; if(tg.backgroundColor) tg.backgroundColor = isDark ? '#000000' : '#f2f2f7'; }
+        function applyTheme() {
+            updateBackgroundPatterns();
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            /* Keep the opening frame white; its cleanup restores the selected
+               app theme after the video has fully disappeared. */
+            if (!document.getElementById('appLoader') && window.setSparkTelegramChrome) {
+                window.setSparkTelegramChrome(isDark ? '#000000' : '#f2f2f7');
+            }
+        }
         function toggleTheme() { isDark = !isDark; applyTheme(); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         
         function applyLiteMode() { 
