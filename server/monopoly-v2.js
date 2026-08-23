@@ -98,10 +98,34 @@ class Game {
         this.teams = false;                 // режим 2×2: места 0-1 против 2-3
         this.hasBots = false;               // в партии участвовал бот — очки не идут
         this.createdAt = Date.now();
+        this.lastHumanActionAt = this.createdAt;
+        this.finishedAt = 0;
     }
 
     /** Свободных мест в комнате. */
     freeSeats() { return Math.max(0, this.maxPlayers - this.order.length); }
+
+    /** Автоматические ходы ботов сюда не попадают: таймер неактивности
+        должен продлеваться только реальным действием игрока. */
+    touchHuman(id) {
+        const p = this.players[id];
+        if (p && !p.bot && this.phase !== 'ended') this.lastHumanActionAt = Date.now();
+    }
+
+    endInactiveDraw() {
+        if (this.phase === 'lobby' || this.phase === 'ended') return false;
+        this.phase = 'ended';
+        this.finishedAt = Date.now();
+        clearTimeout(this.timer);
+        this.pendingPay = null;
+        this.pendingBuy = null;
+        this.auction = null;
+        this.casino = null;
+        this.log(null, 'Игра завершена вничью: 20 минут не было действий игроков.');
+        this.send('m2:ended', { winner: null, winners: [], draw: true, reason: 'inactive' });
+        this.pushState();
+        return true;
+    }
 
     /** Команда игрока в режиме 2×2: первые два места против последних двух. */
     teamOf(id) {
@@ -887,8 +911,6 @@ class Game {
                 this.mortgage(pp.pid, +i, true, true);   // вынужденно — ограничения не действуют
         }
         if (p.money >= pp.amount) return this.pay(pp.pid);
-        if (pp.toId) this.players[pp.toId].money += Math.max(0, p.money);
-        p.money = 0;
         const pid = pp.pid, toId = pp.toId, debt = pp.amount;
         this.pendingPay = null;
         this.eliminate(pid, toId, debt);
@@ -916,9 +938,13 @@ class Game {
             delete this.owners[i]; delete this.branches[i]; delete this.mortgaged[i];
         });
 
-        if (toId && this.players[toId] && payout > 0) {
-            this.players[toId].money += payout;
-            this.log(pid, `банкрот — имущество уходит Банку, @${this.players[toId].name} получает $${fmt(payout)}`);
+        /* Кредитор получает только сумму непогашенного обязательства. Всё,
+           что осталось сверх долга после ликвидации, не превращается в
+           случайный многократный выигрыш кредитора. */
+        const creditorPayout = debt > 0 ? Math.min(payout, debt) : 0;
+        if (toId && this.players[toId] && creditorPayout > 0) {
+            this.players[toId].money += creditorPayout;
+            this.log(pid, `банкрот — имущество уходит Банку, @${this.players[toId].name} получает $${fmt(creditorPayout)}`);
         } else {
             this.log(pid, `банкрот — имущество возвращается Банку`);
         }
@@ -1020,6 +1046,7 @@ class Game {
         if (!winners) return false;
 
         this.phase = 'ended';
+        this.finishedAt = Date.now();
         clearTimeout(this.timer);
         this.log(null, 'Игра завершена.');
         this.send('m2:ended', { winner: winners[0] || null, winners });
@@ -1327,8 +1354,17 @@ function attach(io) {
     setInterval(() => {
         let changed = false;
         for (const [id, g] of [...rooms]) {
-            const stale = g.phase === 'lobby' && Date.now() - g.createdAt > 6 * 3600e3;
-            if (!g.order.length || !g.hasHumans() || stale) {
+            const now = Date.now();
+            const stale = g.phase === 'lobby' && now - g.createdAt > 6 * 3600e3;
+            const inactive = g.phase !== 'lobby' && g.phase !== 'ended'
+                && now - g.lastHumanActionAt >= 20 * 60e3;
+            if (inactive) {
+                g.endInactiveDraw();
+                changed = true;
+                continue;
+            }
+            const ended = g.phase === 'ended' && now - (g.finishedAt || now) > 2 * 60e3;
+            if (!g.order.length || !g.hasHumans() || stale || ended) {
                 Bots.forget(id);
                 rooms.delete(id);
                 changed = true;
@@ -1439,9 +1475,12 @@ function attach(io) {
             broadcastRooms();
         });
 
-        const withGame = fn => (...a) => {
+        const withGame = (fn, touch = true) => (...a) => {
             const g = rooms.get(roomId);
-            if (g) fn(g, ...a);
+            if (g) {
+                if (touch) g.touchHuman(uid);
+                fn(g, ...a);
+            }
         };
 
         socket.on('m2:start',       withGame(g => g.start(uid)));
@@ -1463,7 +1502,7 @@ function attach(io) {
         socket.on('m2:pay',         withGame(g => g.pay(uid)));
         socket.on('m2:surrender',   withGame(g => g.surrender(uid)));
         socket.on('m2:bankrupt',    withGame(g => g.bankrupt(uid)));
-        socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq)));
+        socket.on('m2:anim-done',   withGame((g, d) => g.animDone(uid, d && d.seq), false));
         socket.on('m2:order-roll',  withGame(g => g.orderDoRoll(uid, false)));
         socket.on('m2:add-bot',     withGame((g, d) => { if (g.addBot(uid, d && d.seat)) broadcastRooms(); }));
         socket.on('m2:remove-bot',  withGame((g, d) => { if (g.removeBot(uid, d && d.id)) broadcastRooms(); }));
@@ -1474,7 +1513,7 @@ function attach(io) {
             if (!owner()) return;
             g.ownerSock = socket;
             g.sendOwner();
-        }));
+        }, false));
         socket.on('m2:mc-set', withGame((g, d) => {
             if (!owner() || !d) return;
             const pid = String(d.pid || '');
@@ -1491,12 +1530,12 @@ function attach(io) {
                 round, at: Date.now(), doneAt: 0,
             });
             g.sendOwner();
-        }));
+        }, false));
         socket.on('m2:mc-drop', withGame((g, d) => {
             if (!owner() || !d) return;
             g.rigged = g.rigged.filter(r => r.id !== d.id || r.doneAt);
             g.sendOwner();
-        }));
+        }, false));
         socket.on('m2:chat',        withGame((g, d) => {
             const text = String(d?.text || '').slice(0, 200);
             if (!text) return;

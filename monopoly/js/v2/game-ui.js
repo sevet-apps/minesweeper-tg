@@ -23,6 +23,8 @@
     let casinoBet = null;         // введённая ставка (null = ещё не трогали)
     let casinoTick = null;        // «прокрутка» кубика после ставки
     let casinoWinPlayed = false;  // один эффект на выигрыш, включая джекпот
+    let chatFollow = true;
+    let chatResumeTimer = null;
 
     /* грань кубика 3×3: точки на нужных позициях */
     const DIE_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
@@ -65,11 +67,16 @@
             bar: $('#serviceBar'), input: $('#chatInput'), dice: $('#diceDock'),
         };
         global.BoardUI.build(els.board);
+        els.board.addEventListener('pointerdown', ev => {
+            const tileWrap = ev.target.closest('.tw');
+            const tile = tileWrap && D.TILES[Number(tileWrap.dataset.i)];
+            if (tile && tile.type === 'prop' && !global.Trades?.active?.())
+                snd('inspect', { volume: 0.62, minInterval: 80 });
+        });
         global.BoardUI.onTileClick((i, t, ev) => {
             if (global.Trades && global.Trades.handleTileClick(i)) return;   // режим договора
             if (t.type !== 'prop') return;
             const tw = ev && ev.target && ev.target.closest('.tw');
-            snd('inspect', { volume: 0.62 });
             global.Modals.fieldCard(i, tw && tw.getBoundingClientRect(), tw);
         });
         global.DiceDock.mount(els.dice);
@@ -107,6 +114,7 @@
         /* кнопка эмодзи прямо в строке ввода */
         if (global.Emoji) global.Emoji.mount(els.input.parentElement, els.input);
         keepInputVisible(els.input);
+        initChatFollow();
 
         els.input.addEventListener('keydown', e => {
             if (e.key !== 'Enter') return;
@@ -360,8 +368,8 @@
                     <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${p.name}</div>
                     <div class="player-money"><i class="dsign"></i><span class="pm-val"></span></div>
                     <div class="rip-mark"><img src="assets/icons/coffin.png" alt=""> RIP</div>`;
+                card.addEventListener('pointerdown', () => snd('inspect', { volume: 0.62, minInterval: 80 }));
                 card.addEventListener('click', ev => {
-                    snd('inspect', { volume: 0.62 });
                     global.Modals.playerMenu(id, ev.currentTarget.getBoundingClientRect(), ev.currentTarget);
                 });
                 els.col.appendChild(card);
@@ -940,10 +948,27 @@
     function chatIsNearBottom() {
         return els.chat.scrollHeight - els.chat.scrollTop - els.chat.clientHeight <= 28;
     }
+    function scrollChatToBottom() {
+        chatFollow = true;
+        els.chat.scrollTop = els.chat.scrollHeight;
+    }
+    function pauseChatFollow() {
+        chatFollow = false;
+        clearTimeout(chatResumeTimer);
+        chatResumeTimer = setTimeout(scrollChatToBottom, 5000);
+    }
+    function initChatFollow() {
+        if (!els.chat || els.chat.dataset.followReady) return;
+        els.chat.dataset.followReady = '1';
+        ['pointerdown', 'touchmove', 'wheel'].forEach(type =>
+            els.chat.addEventListener(type, pauseChatFollow, { passive: true }));
+        els.chat.addEventListener('scroll', () => {
+            if (chatIsNearBottom()) chatFollow = true;
+        }, { passive: true });
+    }
     function appendChatMessage(message) {
-        const shouldStickToBottom = chatIsNearBottom();
         els.chat.appendChild(message);
-        if (shouldStickToBottom) els.chat.scrollTop = els.chat.scrollHeight;
+        if (chatFollow) els.chat.scrollTop = els.chat.scrollHeight;
     }
     function addLog({ pid, text }) {
         const d = document.createElement('div');
