@@ -255,12 +255,30 @@
             const finish = moveEnder(ghost, resolve, pid, to);
             const c0 = tileCenter(from), c1 = tileCenter(to);
             if (!c0 || !c1) return finish();
-            ghost.animate([
-                { left: c0.x + 'px', top: c0.y + 'px', transform: 'translate(-50%,-50%) scale(1)' },
-                { transform: 'translate(-50%,-50%) translateY(-46px) scale(1.55)', offset: .5 },
-                { left: c1.x + 'px', top: c1.y + 'px', transform: 'translate(-50%,-50%) scale(1)' },
-            ], { duration: 950, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
-            setTimeout(finish, 1000);
+            /* left/top фиксируем один раз. Сам полёт идёт только через
+               transform и поэтому остаётся в compositor-потоке Safari —
+               без layout на каждом кадре и без эффекта «10 FPS». */
+            ghost.style.left = c0.x + 'px';
+            ghost.style.top = c0.y + 'px';
+            const dx = c1.x - c0.x;
+            const dy = c1.y - c0.y;
+            const pose = (x, y, scale) =>
+                `translate3d(-50%, -50%, 0) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+            const flight = ghost.animate([
+                { transform: pose(0, 0, 1) },
+                { transform: pose(dx * .5, dy * .5 - 46, 1.55), offset: .5 },
+                { transform: pose(dx, dy, 1) },
+            ], {
+                duration: 950,
+                easing: 'cubic-bezier(.45,.05,.35,1)',
+                fill: 'forwards',
+            });
+            const completed = flight.finished;
+            if (completed && typeof completed.then === 'function') {
+                completed.then(finish, finish);
+            } else {
+                flight.onfinish = finish;
+            }
         });
     }
 

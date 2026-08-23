@@ -140,6 +140,32 @@ test('Monopoly mobile roll keeps expensive work off the UI thread', () => {
     assert.match(diceDockSource, /if \(scene\.start\) scene\.start\(\)/);
     assert.match(diceDockSource, /if \(scene && scene\.stop\) scene\.stop\(\)/,
         'the hidden WebGL canvas must not keep rendering');
+    assert.match(diceDockSource, /el\.classList\.add\('preparing'\)/);
+    assert.match(diceDockSource, /\{ onLaunch: revealPreparedRoll \}/,
+        'the old settled dice frame must stay hidden until the new roll is painted');
+    assert.match(diceSource, /this\._syncMesh\(\)/,
+        'applying a roll seed must synchronously update the visible mesh');
+    assert.ok(
+        diceSource.indexOf('if (this.sm.renderOnce) this.sm.renderOnce();') <
+        diceSource.indexOf("if (typeof onLaunch === 'function')"),
+        'the prepared WebGL frame must be rendered before the dock is revealed');
+    assert.match(monopolyCss, /#diceDock\.preparing canvas\s*\{\s*opacity:\s*0/);
+});
+
+test('Monopoly teleport remains compositor-only on mobile Safari', () => {
+    const teleport = gameUiSource.slice(
+        gameUiSource.indexOf('function animateTeleport'),
+        gameUiSource.indexOf('/* ---------- доска + игроки ---------- */'));
+    assert.match(teleport, /const dx = c1\.x - c0\.x/);
+    assert.match(teleport, /translate3d\(-50%, -50%, 0\) translate3d\(\$\{x\}px, \$\{y\}px, 0\)/);
+    assert.match(teleport, /completed\.then\(finish, finish\)/);
+    assert.match(teleport, /flight\.onfinish = finish/,
+        'older WebViews must still finish the teleport cleanly');
+    assert.doesNotMatch(teleport, /\{ left: c0\.x/,
+        'left/top must not be animated because they trigger layout on every frame');
+    assert.doesNotMatch(teleport, /setTimeout\(finish, 1000\)/,
+        'completion must follow the real compositor animation rather than a timer');
+    assert.match(monopolyCss, /\.move-ghost\s*\{[^}]*will-change:\s*transform/s);
 });
 
 test('Monopoly primes low-latency audio and batches token layout reads', () => {

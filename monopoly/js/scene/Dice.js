@@ -260,6 +260,11 @@
             this.body.quaternion.set(...seed.quat);
             this.body.velocity.set(...seed.vel);
             this.body.angularVelocity.set(...seed.angVel);
+            /* Не ждём следующего physics-frame: док может стать видимым
+               сразу после подготовки броска, поэтому его первый кадр уже
+               обязан содержать новую стартовую позицию, а не прошлый
+               остановившийся результат. */
+            this._syncMesh();
         }
 
         isSettled() {
@@ -556,14 +561,14 @@
          *
          * @param {number} targetA  1..6
          * @param {number} targetB  1..6
-         * @param {object} throwParams  { dirHint, strength } from swipe
+         * @param {object} throwParams  { dirHint, strength, onLaunch } from swipe
          * @returns {Promise<{a,b,sum,doubles,retries}>}
          */
         async rollTo(targetA, targetB, throwParams = {}) {
             if (this.isRolling) return;
             this.isRolling = true;
 
-            const { dirHint = 0, strength = 1.0 } = throwParams;
+            const { dirHint = 0, strength = 1.0, onLaunch = null } = throwParams;
 
             let foundSeedA = null;
             let foundSeedB = null;
@@ -631,6 +636,13 @@
             // Apply seeds to real dice and let physics play live
             this.dieA.applyRollSeed(foundSeedA);
             this.dieB.applyRollSeed(foundSeedB);
+            /* Сначала синхронно кладём свежий стартовый кадр в WebGL-буфер,
+               и только затем DiceDock открывает canvas. Так браузер ни на
+               один compositing-frame не увидит старые выпавшие грани. */
+            if (this.sm.renderOnce) this.sm.renderOnce();
+            if (typeof onLaunch === 'function') {
+                try { onLaunch(); } catch (_) {}
+            }
 
             // Wait for settle in the live world
             const result = await this._waitForSettle();
