@@ -19,20 +19,26 @@ test('branded videos are bundled and the app loader releases all resources', () 
     assert.match(client, /<source src="assets\/media\/app-loader\.mp4" type="video\/mp4">/);
     assert.match(client, /<meta name="theme-color" content="#ffffff">[\s\S]*?<script src="https:\/\/telegram\.org\/js\/telegram-web-app\.js"><\/script>/,
         'the document itself must be white before Telegram or the video decoder loads');
-    assert.doesNotMatch(client, /<video id="appLoaderVideo"[^>]*\bautoplay\b/,
-        'the decoder must seek past the supplied black intro before playback');
+    assert.match(client, /<video id="appLoaderVideo"[^>]*\bautoplay\b[^>]*\bmuted\b[^>]*\bplaysinline\b/,
+        'mobile WebKit must receive native muted autoplay without a pre-play seek');
     assert.match(client, /object-fit:\s*contain/);
-    assert.match(client, /\.app-loader video[\s\S]*?visibility:\s*hidden/);
+    assert.match(client, /\.app-loader::after[\s\S]*?background:\s*#fff/,
+        'a full-screen white cover must hide the black source frames before playback reaches white');
+    assert.match(client, /\.app-loader\.video-visible::after\s*\{\s*display:\s*none/);
+    assert.match(client, /\.app-loader\.ending-black\s*\{\s*background:\s*#000/,
+        'the final star wipe must paint contain-letterboxes black on every aspect ratio');
     assert.doesNotMatch(client, /viewport-fit=cover/,
         'Telegram already supplies the mobile safe area; viewport-fit would apply it twice');
     assert.match(client, /setSparkTelegramChrome\('#ffffff'\)[\s\S]*?requestFullscreen/,
         'Telegram safe areas must be painted before the opening animation');
     assert.match(client, /background:\s*#fff;[\s\S]*?\.app-loader video/,
         'the opening animation must not have black letterbox bars');
-    assert.match(client, /video\.addEventListener\('seeked', beginFromWhiteFrame[\s\S]*?video\.currentTime\s*=\s*Math\.min\(0\.30/,
-        'the video must stay hidden until it reaches its first white frame');
-    assert.match(client, /video\.currentTime\s*>=\s*5\.05[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
-        'Telegram safe areas must join the final black star wipe');
+    assert.doesNotMatch(client, /video\.currentTime\s*=/,
+        'programmatic pre-play seeking can stall muted autoplay on iOS');
+    assert.match(client, /video\.currentTime\s*>=\s*0\.30[\s\S]*?classList\.add\('video-visible'\)/,
+        'the black intro stays covered until the decoder reaches a real white frame');
+    assert.match(client, /video\.currentTime\s*>=\s*4\.90[\s\S]*?classList\.add\('ending-black'\)[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
+        'letterboxes and Telegram safe areas must join the final black star wipe');
     assert.match(client, /root\.remove\(\)[\s\S]*?setSparkTelegramChrome\(color\)/,
         'Telegram chrome must return to the app theme after playback');
     assert.match(client, /video\.querySelectorAll\('source'\)[\s\S]*?source\.remove\(\)/);
