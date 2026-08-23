@@ -18,7 +18,8 @@ test('branded videos are bundled and the app loader releases all resources', () 
     }
     assert.match(client, /<source src="assets\/media\/app-loader\.mp4" type="video\/mp4">/);
     assert.match(client, /object-fit:\s*contain/);
-    assert.match(client, /viewport-fit=cover/);
+    assert.doesNotMatch(client, /viewport-fit=cover/,
+        'Telegram already supplies the mobile safe area; viewport-fit would apply it twice');
     assert.match(client, /setSparkTelegramChrome\('#ffffff'\)[\s\S]*?requestFullscreen/,
         'Telegram safe areas must be painted before the opening animation');
     assert.match(client, /background:\s*#fff;[\s\S]*?\.app-loader video/,
