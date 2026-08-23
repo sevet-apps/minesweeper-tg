@@ -33,6 +33,23 @@ function seededRandom(seed) {
     };
 }
 
+function unlockedHardShapeCount(score, hardShapeCount) {
+    const count = Math.max(0, Number(hardShapeCount) || 0);
+    const points = Number(score) || 0;
+    if (points < HARD_UNLOCK_START) return 0;
+    return Math.min(count, 1 + Math.floor((points - HARD_UNLOCK_START) / HARD_UNLOCK_STEP));
+}
+
+function isShapeUnlocked(matrix, score, shapeList, baseShapeCount = 41) {
+    if (!Array.isArray(shapeList)) return false;
+    const signature = JSON.stringify(matrix);
+    const index = shapeList.findIndex(shape => JSON.stringify(shape) === signature);
+    if (index < 0) return false;
+    const baseCount = Math.max(0, Math.min(shapeList.length, Number(baseShapeCount) || 0));
+    if (index < baseCount) return true;
+    return index < baseCount + unlockedHardShapeCount(score, shapeList.length - baseCount);
+}
+
 function canPlace(grid, matrix, row, col) {
     for (let r = 0; r < matrix.length; r++) {
         for (let c = 0; c < matrix[r].length; c++) {
@@ -97,9 +114,7 @@ function generateHand({ grid, score = 0, shapeList, baseShapeCount = 41, colors,
     const random = seededRandom(seed);
     const baseShapes = shapeList.slice(0, baseShapeCount);
     const hardShapes = shapeList.slice(baseShapeCount);
-    const hardKinds = score < HARD_UNLOCK_START
-        ? 0
-        : Math.min(hardShapes.length, 1 + Math.floor((score - HARD_UNLOCK_START) / HARD_UNLOCK_STEP));
+    const hardKinds = unlockedHardShapeCount(score, hardShapes.length);
     const includeDiagonals = random() < 0.35;
     const pool = baseShapes.filter(matrix => includeDiagonals || !DIAGONAL_SIGNATURES.has(JSON.stringify(matrix)))
         .concat(hardShapes.slice(0, hardKinds));
@@ -126,4 +141,30 @@ function generateHand({ grid, score = 0, shapeList, baseShapeCount = 41, colors,
     }));
 }
 
-module.exports = { advanceSeed, bestPlacement, canPlace, generateHand, normalizeSeed, seededRandom };
+function repairLockedShapes({ shapes, grid, score = 0, shapeList, baseShapeCount = 41, colors, seed }) {
+    if (!Array.isArray(shapes) || shapes.length !== 3) return { repaired: false, shapes };
+    const invalidSlots = [];
+    shapes.forEach((shape, slot) => {
+        if (shape && !isShapeUnlocked(shape.matrix, score, shapeList, baseShapeCount)) invalidSlots.push(slot);
+    });
+    if (!invalidSlots.length) return { repaired: false, shapes };
+
+    const replacements = generateHand({ grid, score, shapeList, baseShapeCount, colors, seed });
+    const repairedShapes = shapes.slice();
+    for (const slot of invalidSlots) repairedShapes[slot] = { ...replacements[slot], id: slot };
+    return { repaired: true, shapes: repairedShapes };
+}
+
+module.exports = {
+    HARD_UNLOCK_START,
+    HARD_UNLOCK_STEP,
+    advanceSeed,
+    bestPlacement,
+    canPlace,
+    generateHand,
+    isShapeUnlocked,
+    normalizeSeed,
+    repairLockedShapes,
+    seededRandom,
+    unlockedHardShapeCount,
+};

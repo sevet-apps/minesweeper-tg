@@ -26,6 +26,14 @@ function extractFunction(source, name) {
     throw new Error(`function ${name} is not balanced`);
 }
 
+test('every inline application script remains syntactically valid', () => {
+    const blocks = [...indexSource.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
+    assert.ok(blocks.length >= 3);
+    blocks.forEach((match, index) => {
+        assert.doesNotThrow(() => new vm.Script(match[1], { filename: `index-inline-${index}.js` }));
+    });
+});
+
 test('Monopoly sound pack is complete and controlled by the shared setting', () => {
     const files = [
         'turn-to-you.wav', 'casino-win.wav', 'trade-select.wav',

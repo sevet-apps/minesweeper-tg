@@ -8,7 +8,11 @@ const crypto = require('crypto');
 const path = require('path');
 const { verifyTelegramInitData } = require('./telegram-init-data');
 const { createCheckpoint: createBBCheckpoint, readCheckpoint: readBBCheckpoint } = require('./block-blast-checkpoint');
-const { advanceSeed: advanceBBHandSeed, generateHand: generateBBHand } = require('./block-blast-hand');
+const {
+    advanceSeed: advanceBBHandSeed,
+    generateHand: generateBBHand,
+    repairLockedShapes: repairBBLockedShapes,
+} = require('./block-blast-hand');
 const MonopolyEngine = require('./monopoly-engine');
 const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
 
@@ -299,6 +303,7 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
     const key = `${userId}:${game_type}`;
     const current = gameSessions.get(key);
     if (game_type === 'bb_best_score' && current && !new_game) {
+        bbRepairLegacyShapes(current);
         return res.json(bbSessionResponse(current, userId, { resumed: true }));
     }
 
@@ -426,6 +431,34 @@ function bbGenerateShapes(session, seed) {
         colors: BB_COLORS,
         seed,
     });
+}
+
+/**
+ * Checkpoints created by the first server-side hand implementation briefly
+ * unlocked every hard shape at 10,000 points.  Those checkpoints are signed,
+ * so they are authentic, but their remaining hand can violate the restored
+ * 100,000,000 + 10,000,000-per-shape progression.  Replace only the illegal
+ * occupied slots: consumed (null) slots stay consumed and a resume can never
+ * turn one remaining piece back into a fresh hand of three.
+ */
+function bbRepairLegacyShapes(session) {
+    if (!Array.isArray(session.bbShapes) || session.bbShapes.length !== 3) return false;
+    const seed = Number.isInteger(session.bbNextHandSeed)
+        ? session.bbNextHandSeed >>> 0
+        : bbFreshHandSeed();
+    const repaired = repairBBLockedShapes({
+        shapes: session.bbShapes,
+        grid: session.bbGrid,
+        score: session.bbScore,
+        shapeList: BB_SHAPE_LIST,
+        baseShapeCount: 41,
+        colors: BB_COLORS,
+        seed,
+    });
+    if (!repaired.repaired) return false;
+    session.bbShapes = repaired.shapes;
+    session.bbNextHandSeed = advanceBBHandSeed(seed);
+    return true;
 }
 
 function bbPublicState(session) {
@@ -681,6 +714,8 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     if (!Array.isArray(session.bbShapes) || session.bbShapes.length !== 3 || session.bbShapes.every(shape => shape === null)) {
         bbGenerateShapes(session, session.bbNextHandSeed);
         session.bbNextHandSeed = advanceBBHandSeed(session.bbNextHandSeed);
+    } else {
+        bbRepairLegacyShapes(session);
     }
     session.startTime = restored.startTime;
     session.lastMoveTime = Date.now();
