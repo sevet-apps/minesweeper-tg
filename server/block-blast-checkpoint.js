@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 
-const VERSION = 2;
+const VERSION = 3;
 const ROWS = 8;
 const COLS = 8;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -75,6 +75,7 @@ function createCheckpoint(session, userId, secret, now = Date.now()) {
         m: session.moveCount,
         r: session.bbRevision || 0,
         h: encodeShapes(session.bbShapes || [null, null, null]),
+        n: session.bbNextHandSeed >>> 0,
         a: session.startTime,
         t: now,
     };
@@ -97,7 +98,7 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
     let payload;
     try { payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')); } catch (_) { return null; }
     const grid = decodeGrid(payload && payload.g);
-    if (!payload || (payload.v !== 1 && payload.v !== VERSION) || payload.u !== String(userId) || !grid) return null;
+    if (!payload || ![1, 2, VERSION].includes(payload.v) || payload.u !== String(userId) || !grid) return null;
     if (!Number.isInteger(payload.s) || payload.s < 0 || payload.s > 1_500_000_000) return null;
     if (!Number.isInteger(payload.c) || payload.c < 0 || payload.c > 1_000_000) return null;
     if (!Number.isInteger(payload.b) || payload.b < 0 || payload.b > 3) return null;
@@ -105,7 +106,9 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
     const revision = payload.v === 1 ? payload.m : payload.r;
     if (!Number.isInteger(revision) || revision < 0 || revision > 1_000_000) return null;
     const shapes = payload.v === 1 ? null : decodeShapes(payload.h);
-    if (payload.v === VERSION && !shapes) return null;
+    if (payload.v >= 2 && !shapes) return null;
+    const nextHandSeed = payload.v >= 3 ? payload.n : null;
+    if (payload.v >= 3 && (!Number.isInteger(nextHandSeed) || nextHandSeed < 0 || nextHandSeed > 0xffffffff)) return null;
     if (!Number.isFinite(payload.t) || payload.t > now + MAX_FUTURE_SKEW_MS || now - payload.t > MAX_AGE_MS) return null;
     const startTime = Number.isFinite(payload.a)
         && payload.a <= payload.t
@@ -122,6 +125,7 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
         moveCount: payload.m,
         bbRevision: revision,
         bbShapes: shapes,
+        bbNextHandSeed: nextHandSeed,
         startTime,
         issuedAt: payload.t,
     };
