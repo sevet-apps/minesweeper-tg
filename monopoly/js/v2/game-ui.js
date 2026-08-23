@@ -152,6 +152,18 @@
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
 
+    function readTileCenters() {
+        const centers = new Array(40);
+        document.querySelectorAll('.tw[data-i] .tile').forEach(tile => {
+            const wrap = tile.closest('.tw');
+            const index = Number(wrap && wrap.dataset.i);
+            if (!Number.isInteger(index)) return;
+            const r = tile.getBoundingClientRect();
+            centers[index] = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        });
+        return centers;
+    }
+
     /** Общий финал для обеих анимаций.
         Пока фишка летит, её убирают с доски и рисуют призрак. В онлайне
         состояние с сервера приходит раньше, чем призрак долетает, поэтому
@@ -196,7 +208,11 @@
 
             const per = STEP_MS;                          // спокойный темп, не зависит от длины пути
             let k = 0;
-            const c0 = tileCenter(from);
+            /* Все геометрические чтения выполняются одним пакетом до первой
+               записи позиции. Раньше каждый шаг заставлял Safari синхронно
+               пересчитывать layout всей доски. */
+            const centers = readTileCenters();
+            const c0 = centers[from];
             if (!c0) return finish();
             ghost.style.left = c0.x + 'px'; ghost.style.top = c0.y + 'px';
             ghost.style.transitionDuration = per + 'ms';
@@ -213,7 +229,7 @@
                     ghost.style.transitionTimingFunction = 'cubic-bezier(.25,.9,.3,1)';
                 }
                 const idx = ((from + k * dir) % 40 + 40) % 40;
-                const c = tileCenter(idx);
+                const c = centers[idx];
                 if (!c) return finish();
                 ghost.style.left = c.x + 'px'; ghost.style.top = c.y + 'px';
                 if (k < total) setTimeout(hop, per);

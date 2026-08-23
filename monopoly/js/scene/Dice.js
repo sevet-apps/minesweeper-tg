@@ -150,17 +150,26 @@
         }));
     }
 
+    /* Геометрия и шесть текстур полностью одинаковы у обоих кубиков.
+       Раньше они создавались и загружались в GPU дважды. */
+    let sharedGeometry = null;
+    let sharedMaterials = null;
+    function dieVisualResources() {
+        if (!sharedGeometry) {
+            sharedGeometry = makeRoundedBoxGeometry(DIE_SIZE, DIE_SIZE * 0.075, 40)
+                || new THREE.BoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE, 1, 1, 1);
+        }
+        if (!sharedMaterials) sharedMaterials = makeDieMaterials();
+        return { geometry: sharedGeometry, materials: sharedMaterials };
+    }
+
     class Die {
         constructor(sceneManager, initialPosition) {
             this.sm = sceneManager;
 
             // Geometry with slightly rounded corners (chamfer via smaller box)
-            const geom = makeRoundedBoxGeometry(DIE_SIZE, DIE_SIZE * 0.075, 40) || new THREE.BoxGeometry(
-                DIE_SIZE, DIE_SIZE, DIE_SIZE,
-                1, 1, 1
-            );
-            const mats = makeDieMaterials();
-            this.mesh = new THREE.Mesh(geom, mats);
+            const visual = dieVisualResources();
+            this.mesh = new THREE.Mesh(visual.geometry, visual.materials);
             this.mesh.castShadow = true;
             this.mesh.receiveShadow = false;
             this.sm.scene.add(this.mesh);
@@ -280,9 +289,75 @@
             this.lastResult = null;      // { a, b, sum, doubles }
             this.lastRetryCount = 0;
             this._onResult = null;
+            this._seedWorker = null;
+            this._seedWorkerSeq = 0;
+            this._seedWorkerPending = new Map();
+            this._initSeedWorker();
         }
 
         onResult(cb) { this._onResult = cb; }
+
+        _initSeedWorker() {
+            if (typeof global.Worker !== 'function') return;
+            try {
+                const worker = new global.Worker('js/scene/dice-worker.js');
+                worker.onmessage = event => {
+                    const msg = event.data || {};
+                    const pending = this._seedWorkerPending.get(msg.id);
+                    if (!pending) return;
+                    this._seedWorkerPending.delete(msg.id);
+                    if (msg.error) pending.reject(new Error(msg.error));
+                    else pending.resolve(msg);
+                };
+                worker.onerror = event => {
+                    const error = new Error((event && event.message) || 'dice worker failed');
+                    this._seedWorkerPending.forEach(pending => pending.reject(error));
+                    this._seedWorkerPending.clear();
+                    try { worker.terminate(); } catch (_) {}
+                    if (this._seedWorker === worker) this._seedWorker = null;
+                };
+                this._seedWorker = worker;
+                global.addEventListener?.('pagehide', () => {
+                    try { worker.terminate(); } catch (_) {}
+                    if (this._seedWorker === worker) this._seedWorker = null;
+                }, { once: true });
+            } catch (_) {
+                this._seedWorker = null;
+            }
+        }
+
+        _findSeedsInWorker(targetA, targetB, dirHint, strength) {
+            if (!this._seedWorker) return Promise.reject(new Error('dice worker unavailable'));
+            const id = ++this._seedWorkerSeq;
+            return new Promise((resolve, reject) => {
+                this._seedWorkerPending.set(id, { resolve, reject });
+                try {
+                    this._seedWorker.postMessage({
+                        id, targetA, targetB, dirHint, strength,
+                        dieSize: DIE_SIZE,
+                        arena: {
+                            width: this.sm.arena.width,
+                            depth: this.sm.arena.depth,
+                            height: this.sm.arena.height,
+                            floorY: this.sm.arena.floorY,
+                        },
+                    });
+                } catch (error) {
+                    this._seedWorkerPending.delete(id);
+                    reject(error);
+                }
+            });
+        }
+
+        _yieldSeedSearch() {
+            return new Promise(resolve => {
+                if (typeof global.requestIdleCallback === 'function') {
+                    global.requestIdleCallback(() => resolve(), { timeout: 20 });
+                } else {
+                    setTimeout(resolve, 0);
+                }
+            });
+        }
 
         /**
          * Generate a random roll seed.
@@ -494,32 +569,48 @@
             let foundSeedB = null;
             let totalAttempts = 0;
 
-            outer:
-            for (let outer = 0; outer < MAX_OUTER_RETRIES; outer++) {
-                // --- Step 1: find seedA ---
-                let seedA = null;
-                for (let i = 0; i < MAX_INNER_RETRIES; i++) {
-                    totalAttempts++;
-                    const s = this._generateSeed(DIE_A_X, dirHint, strength);
-                    const r = this._simulateSingle(s);
-                    if (r.valid && r.face === targetA) { seedA = s; break; }
-                }
-                if (!seedA) continue;
+            /* Самый дорогой этап — сотни/тысячи шагов Cannon для поиска
+               траекторий с нужными серверными значениями — выполняется вне
+               UI-потока. На старых WebView остаётся порционный fallback. */
+            try {
+                const prepared = await this._findSeedsInWorker(
+                    targetA, targetB, dirHint, strength);
+                foundSeedA = prepared.seedA || null;
+                foundSeedB = prepared.seedB || null;
+                totalAttempts = Number(prepared.attempts) || 0;
+            } catch (_) {}
 
-                // --- Steps 2+3: find seedB, verify combined ---
-                for (let j = 0; j < MAX_INNER_RETRIES; j++) {
-                    totalAttempts++;
-                    const sB = this._generateSeed(DIE_B_X, -dirHint * 0.5, strength);
-                    const rB = this._simulateSingle(sB);
-                    if (!(rB.valid && rB.face === targetB)) continue;
+            if (!foundSeedA || !foundSeedB) {
+                outer:
+                for (let outer = 0; outer < MAX_OUTER_RETRIES; outer++) {
+                    // --- Step 1: find seedA ---
+                    let seedA = null;
+                    for (let i = 0; i < MAX_INNER_RETRIES; i++) {
+                        totalAttempts++;
+                        const s = this._generateSeed(DIE_A_X, dirHint, strength);
+                        const r = this._simulateSingle(s);
+                        await this._yieldSeedSearch();
+                        if (r.valid && r.face === targetA) { seedA = s; break; }
+                    }
+                    if (!seedA) continue;
 
-                    // Verify together (collisions may change outcome)
-                    const combined = this._simulateHeadless(seedA, sB);
-                    if (combined.valid &&
-                        combined.a === targetA && combined.b === targetB) {
-                        foundSeedA = seedA;
-                        foundSeedB = sB;
-                        break outer;
+                    // --- Steps 2+3: find seedB, verify combined ---
+                    for (let j = 0; j < MAX_INNER_RETRIES; j++) {
+                        totalAttempts++;
+                        const sB = this._generateSeed(DIE_B_X, -dirHint * 0.5, strength);
+                        const rB = this._simulateSingle(sB);
+                        await this._yieldSeedSearch();
+                        if (!(rB.valid && rB.face === targetB)) continue;
+
+                        // Verify together (collisions may change outcome)
+                        const combined = this._simulateHeadless(seedA, sB);
+                        await this._yieldSeedSearch();
+                        if (combined.valid &&
+                            combined.a === targetA && combined.b === targetB) {
+                            foundSeedA = seedA;
+                            foundSeedB = sB;
+                            break outer;
+                        }
                     }
                 }
             }
@@ -562,22 +653,25 @@
         _waitForSettle() {
             return new Promise((resolve) => {
                 let settledFrames = 0;
-                const check = () => {
+                let started = false;
+                const stop = this.sm.onUpdate(() => {
+                    if (!started) return;
                     if (this.dieA.isSettled() && this.dieB.isSettled()) {
                         settledFrames++;
                         if (settledFrames >= SETTLE_FRAMES_REQUIRED) {
-                            const a = this.dieA.getTopFace();
-                            const b = this.dieB.getTopFace();
-                            resolve({ a, b });
-                            return;
+                            stop();
+                            resolve({
+                                a: this.dieA.getTopFace(),
+                                b: this.dieB.getTopFace(),
+                            });
                         }
                     } else {
                         settledFrames = 0;
                     }
-                    requestAnimationFrame(check);
-                };
-                // Small initial delay so dice have time to actually start moving
-                setTimeout(() => requestAnimationFrame(check), 200);
+                });
+                setTimeout(() => { started = true; }, 200);
+                /* SceneManager уже вызывает этот наблюдатель в своём rAF.
+                   Отдельная параллельная rAF-цепочка больше не нужна. */
             });
         }
 

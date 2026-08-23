@@ -12,6 +12,8 @@ const monopolyIndex = fs.readFileSync(path.join(root, 'monopoly', 'index.html'),
 const soundSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'sound.js'), 'utf8');
 const diceSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', 'Dice.js'), 'utf8');
 const sceneSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', 'SceneManager.js'), 'utf8');
+const diceDockSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'dice-dock.js'), 'utf8');
+const diceWorkerSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', 'dice-worker.js'), 'utf8');
 const tradesSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'trades.js'), 'utf8');
 
 function extractFunction(source, name) {
@@ -121,6 +123,38 @@ test('Monopoly keeps money sounds private while dice and movement stay shared', 
     assert.match(movement, /snd\('tokenStep'/);
     assert.doesNotMatch(movement, /pid === E\.me\(\)/,
         'opponent token steps must not be muted');
+});
+
+test('Monopoly mobile roll keeps expensive work off the UI thread', () => {
+    assert.doesNotThrow(() => new vm.Script(diceWorkerSource, { filename: 'dice-worker.js' }));
+    assert.match(diceSource, /new global\.Worker\('js\/scene\/dice-worker\.js'\)/);
+    assert.match(diceSource, /await this\._findSeedsInWorker\(/);
+    assert.match(diceSource, /await this\._yieldSeedSearch\(\)/,
+        'the no-Worker fallback must yield between headless simulations');
+    assert.match(diceWorkerSource, /importScripts\('\.\.\/\.\.\/libs\/cannon\.min\.js'\)/);
+    assert.match(diceWorkerSource, /simulatePair\(seedA, seedB/,
+        'the worker must still verify both authoritative values together');
+
+    assert.match(sceneSource, /stop\(\) \{/);
+    assert.match(sceneSource, /cancelAnimationFrame\(this\._rafId\)/);
+    assert.match(diceDockSource, /if \(scene\.start\) scene\.start\(\)/);
+    assert.match(diceDockSource, /if \(scene && scene\.stop\) scene\.stop\(\)/,
+        'the hidden WebGL canvas must not keep rendering');
+});
+
+test('Monopoly primes low-latency audio and batches token layout reads', () => {
+    assert.match(soundSource, /createBufferSource\(\)/);
+    assert.match(soundSource, /decodeAudioData/);
+    assert.match(soundSource, /const CRITICAL = Object\.freeze\(\['diceContact', 'tokenStep', 'inspect'\]\)/);
+    assert.match(soundSource, /const pool = poolFor\(name\)/,
+        'HTMLAudio remains available as a compatibility fallback');
+
+    const movement = gameUiSource.slice(
+        gameUiSource.indexOf('function animateMove'),
+        gameUiSource.indexOf('function animateTeleport'));
+    assert.match(movement, /const centers = readTileCenters\(\)/);
+    assert.doesNotMatch(movement, /tileCenter\(idx\)/,
+        'each token hop must reuse cached geometry instead of forcing layout');
 });
 
 test('Block Blast resume preserves colors and follows the canonical server hand', () => {

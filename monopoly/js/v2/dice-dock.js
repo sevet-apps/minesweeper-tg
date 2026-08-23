@@ -19,7 +19,6 @@
             el.classList.add('show');
             scene = new global.SceneManager(container);
             dice = new global.Dice(scene);     // класс сам содержит оба кубика
-            scene.start();
             ready = true;
             el.classList.remove('show');
         } catch (e) {
@@ -32,7 +31,12 @@
     function show(v) {
         if (!el) return;
         el.classList.toggle('show', !!v);
-        if (v && scene && scene._onResize) scene._onResize();
+        if (v && scene) {
+            if (scene._onResize) scene._onResize();
+            if (scene.start) scene.start();
+        } else if (scene && scene.stop) {
+            scene.stop();
+        }
     }
 
     /** roll(a, b) — обычный бросок двух кубиков.
@@ -48,7 +52,14 @@
             else await roll2D(a, single ? null : b);
         } catch (e) {
             console.warn('DiceDock: rollTo error, 2D-фолбэк —', e.message);
+            if (scene && scene.stop) scene.stop();
             await roll2D(a, single ? null : b);
+        }
+        /* После остановки кубиков последний WebGL-кадр уже содержит тот же
+           результат. Не тратим ещё 650 мс на перерисовку неподвижной сцены. */
+        if (ready && scene) {
+            if (scene.stop) scene.stop();
+            if (scene.renderOnce) scene.renderOnce();
         }
         await sleep(650);            // пауза, чтобы увидеть результат
         if (second && second.setVisible) second.setVisible(true);

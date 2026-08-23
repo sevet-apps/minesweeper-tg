@@ -41,12 +41,17 @@
             this.scene = new THREE.Scene();
             this.scene.background = null; // CSS handles background
 
+            /* На Retina-экранах MSAA поверх devicePixelRatio=2 почти не
+               меняет картинку, но в несколько раз увеличивает fill-rate.
+               Оставляем MSAA на обычных экранах, а на Retina сглаживание уже
+               обеспечивает сама плотность пикселей. */
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
             this.renderer = new THREE.WebGLRenderer({
-                antialias: true,
+                antialias: pixelRatio < 1.5,
                 alpha:     true,
                 powerPreference: 'high-performance',
             });
-            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.setPixelRatio(pixelRatio);
             this.renderer.setSize(this.width, this.height);
             this.renderer.shadowMap.enabled = true;
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -81,9 +86,8 @@
 
             this.clock = new THREE.Clock();
             this.running = false;
+            this._rafId = 0;
             this.updateCallbacks = [];
-            this._fpsSamples = [];
-            this._lastFpsUpdate = 0;
             this.currentFps = 0;
 
             this._onResize = this._onResize.bind(this);
@@ -198,36 +202,49 @@
             return world;
         }
 
-        onUpdate(fn) { this.updateCallbacks.push(fn); }
+        onUpdate(fn) {
+            this.updateCallbacks.push(fn);
+            return () => {
+                const i = this.updateCallbacks.indexOf(fn);
+                if (i >= 0) this.updateCallbacks.splice(i, 1);
+            };
+        }
 
         start() {
             if (this.running) return;
             this.running = true;
+            this.clock.start();
             this._tick();
+        }
+
+        stop() {
+            if (!this.running && !this._rafId) return;
+            this.running = false;
+            if (this._rafId) cancelAnimationFrame(this._rafId);
+            this._rafId = 0;
+            this.clock.stop();
+        }
+
+        renderOnce() {
+            this.renderer.render(this.scene, this.camera);
         }
 
         _tick() {
             if (!this.running) return;
-            requestAnimationFrame(() => this._tick());
+            this._rafId = requestAnimationFrame(() => this._tick());
             const dt = Math.min(this.clock.getDelta(), 1/30);
-            this.world.step(1/60, dt, 3);
+            this.world.step(1/60, dt, 2);
             for (const fn of this.updateCallbacks) fn(dt);
             this.renderer.render(this.scene, this.camera);
-
-            this._fpsSamples.push(dt);
-            if (this._fpsSamples.length > 30) this._fpsSamples.shift();
-            const now = performance.now();
-            if (now - this._lastFpsUpdate > 500) {
-                const avg = this._fpsSamples.reduce((a,b) => a+b, 0)
-                          / this._fpsSamples.length;
-                this.currentFps = Math.round(1 / avg);
-                this._lastFpsUpdate = now;
-            }
+            if (dt > 0) this.currentFps = Math.round(1 / dt);
         }
 
         _onResize() {
-            this.width  = this.container.clientWidth;
-            this.height = this.container.clientHeight;
+            const width = this.container.clientWidth;
+            const height = this.container.clientHeight;
+            if (!width || !height || (width === this.width && height === this.height)) return;
+            this.width = width;
+            this.height = height;
             this.camera.aspect = this.width / this.height;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(this.width, this.height);
