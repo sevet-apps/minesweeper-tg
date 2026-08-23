@@ -17,13 +17,22 @@ test('branded videos are bundled and the app loader releases all resources', () 
         assert.ok(fs.statSync(file).size > 50_000, `${name} must contain the supplied animation`);
     }
     assert.match(client, /<source src="assets\/media\/app-loader\.mp4" type="video\/mp4">/);
+    assert.match(client, /<meta name="theme-color" content="#ffffff">[\s\S]*?<script src="https:\/\/telegram\.org\/js\/telegram-web-app\.js"><\/script>/,
+        'the document itself must be white before Telegram or the video decoder loads');
+    assert.doesNotMatch(client, /<video id="appLoaderVideo"[^>]*\bautoplay\b/,
+        'the decoder must seek past the supplied black intro before playback');
     assert.match(client, /object-fit:\s*contain/);
+    assert.match(client, /\.app-loader video[\s\S]*?visibility:\s*hidden/);
     assert.doesNotMatch(client, /viewport-fit=cover/,
         'Telegram already supplies the mobile safe area; viewport-fit would apply it twice');
     assert.match(client, /setSparkTelegramChrome\('#ffffff'\)[\s\S]*?requestFullscreen/,
         'Telegram safe areas must be painted before the opening animation');
     assert.match(client, /background:\s*#fff;[\s\S]*?\.app-loader video/,
         'the opening animation must not have black letterbox bars');
+    assert.match(client, /video\.addEventListener\('seeked', beginFromWhiteFrame[\s\S]*?video\.currentTime\s*=\s*Math\.min\(0\.30/,
+        'the video must stay hidden until it reaches its first white frame');
+    assert.match(client, /video\.currentTime\s*>=\s*5\.05[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
+        'Telegram safe areas must join the final black star wipe');
     assert.match(client, /root\.remove\(\)[\s\S]*?setSparkTelegramChrome\(color\)/,
         'Telegram chrome must return to the app theme after playback');
     assert.match(client, /video\.querySelectorAll\('source'\)[\s\S]*?source\.remove\(\)/);
@@ -63,6 +72,14 @@ test('Block Blast retries a final save without forking the authoritative session
     assert.equal((client.match(/sessionToken:\s*activeSessionTokens\.bb_best_score/g) || []).length, 2);
     assert.match(server, /session\.bbRestorable = false;[\s\S]*?session\.bbShapes\[slot\] = null/);
     assert.match(server, /session\.bbEnded = true;[\s\S]*?session\.finishedAt = Date\.now\(\)/);
+    assert.match(server, /generateBBHand\([\s\S]*?seed/,
+        'shape ranking and randomness must remain authoritative on the server');
+    assert.match(client, /bbShapes\.every\(shape => shape === null\)[\s\S]*?generateSeededBBHand\(bbNextHandSeed,/,
+        'the next signed hand must render locally without a network gap');
+    assert.match(client, /acceptBBServerMove\(data, bbMoveQueue\.length > 1\)/,
+        'older queued acknowledgements must not replace an already predicted next hand');
+    assert.match(client, /dragData && dragData\.slotId === slotId[\s\S]*?preview\.style\.opacity = 0/,
+        'an in-flight server render must not reveal the held source shape');
 });
 
 test('finished Monopoly rooms and impossible checkers counters are repaired server-side', () => {

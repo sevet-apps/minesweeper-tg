@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ffffff">
+    <style>html, body { margin: 0; background: #ffffff; }</style>
     <meta property="og:title" content="Spark Games">
     <meta property="og:description" content="Играй, соревнуйся с друзьями и поднимайся в рейтингах Spark.">
     <meta property="og:image" content="https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823">
@@ -17,13 +19,16 @@
            the much larger application script reaches its initialization. */
         (function () {
             var miniApp = window.Telegram && window.Telegram.WebApp;
-            if (!miniApp) return;
             window.setSparkTelegramChrome = function (color) {
+                var themeColor = document.querySelector('meta[name="theme-color"]');
+                if (themeColor) themeColor.setAttribute('content', color);
+                if (!miniApp) return;
                 try { if (miniApp.setHeaderColor) miniApp.setHeaderColor(color); } catch (e) {}
                 try { if (miniApp.setBackgroundColor) miniApp.setBackgroundColor(color); } catch (e) {}
                 try { if (miniApp.setBottomBarColor) miniApp.setBottomBarColor(color); } catch (e) {}
             };
             window.setSparkTelegramChrome('#ffffff');
+            if (!miniApp) return;
             try { miniApp.expand(); } catch (e) {}
             try {
                 if (['ios', 'android', 'android_x'].indexOf(miniApp.platform) !== -1
@@ -169,6 +174,7 @@
             object-fit: contain;
             object-position: 50% 50%;
             background: #fff;
+            visibility: hidden;
         }
         @media (prefers-reduced-motion: reduce) {
             .app-loader { display: none; }
@@ -2713,7 +2719,7 @@
 </head>
 <body>
     <div class="app-loader" id="appLoader" aria-hidden="true">
-        <video id="appLoaderVideo" autoplay muted playsinline preload="auto">
+        <video id="appLoaderVideo" muted playsinline preload="auto">
             <source src="assets/media/app-loader.mp4" type="video/mp4">
         </video>
     </div>
@@ -2723,9 +2729,12 @@
             var video = document.getElementById('appLoaderVideo');
             if (!root || !video) return;
             var removed = false;
+            var animationFrame = 0;
+            var blackChrome = false;
             var remove = function () {
                 if (removed) return;
                 removed = true;
+                if (animationFrame) window.cancelAnimationFrame(animationFrame);
                 try {
                     video.pause();
                     video.querySelectorAll('source').forEach(function (source) { source.remove(); });
@@ -2745,8 +2754,34 @@
             video.addEventListener('error', remove, { once: true });
             /* A network or decoder failure must never lock the application. */
             window.setTimeout(remove, 8000);
-            var play = video.play();
-            if (play && typeof play.catch === 'function') play.catch(remove);
+            var syncTelegramChrome = function () {
+                if (removed) return;
+                /* The supplied animation turns fully black at the end. Paint
+                   Telegram's top and bottom safe areas at the same moment so
+                   the expanding star reads as one continuous full-screen wipe. */
+                if (!blackChrome && video.currentTime >= 5.05) {
+                    blackChrome = true;
+                    if (window.setSparkTelegramChrome) window.setSparkTelegramChrome('#000000');
+                }
+                animationFrame = window.requestAnimationFrame(syncTelegramChrome);
+            };
+            var beginFromWhiteFrame = function () {
+                if (removed) return;
+                video.style.visibility = 'visible';
+                animationFrame = window.requestAnimationFrame(syncTelegramChrome);
+                var play = video.play();
+                if (play && typeof play.catch === 'function') play.catch(remove);
+            };
+            var seekPastBlackIntro = function () {
+                if (removed) return;
+                video.addEventListener('seeked', beginFromWhiteFrame, { once: true });
+                /* Frames 0.00-0.20 in the supplied MP4 are black; 0.30 is the
+                   first clean white frame. Keep the video hidden while seeking. */
+                try { video.currentTime = Math.min(0.30, Math.max(0, video.duration || 0.30)); }
+                catch (e) { remove(); }
+            };
+            if (video.readyState >= 1) seekPastBlackIntro();
+            else video.addEventListener('loadedmetadata', seekPastBlackIntro, { once: true });
         })();
     </script>
     <div id="bgPattern"></div>
@@ -5184,7 +5219,7 @@
                         }
                         if (resp.ok && data && data.ok) {
                             delivered = true;
-                            acceptBBServerMove(data);
+                            acceptBBServerMove(data, bbMoveQueue.length > 1);
                             break;
                         }
                         if (data && (data.reason === 'stale_session' || data.reason === 'session_finished' || data.reason === 'occupied' || data.reason === 'shape_not_offered')) {
@@ -6368,6 +6403,7 @@
         
         /* --- BLOCK BLAST (FIXED) --- */
         const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false, bbLastComboFilled=-1;
+        let bbNextHandSeed = null;
         let bbServerCheckpoint = null;
 
         // ===================== BLOCK BLAST SCORING CONFIG =====================
@@ -6533,6 +6569,7 @@
             bbRevision = Number.isInteger(data.revision) ? data.revision : 0;
             const shapes = normalizedBBShapes(data.shapes);
             if (shapes) bbShapes = shapes;
+            if (Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
             bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
             renderBBGrid();
             updateBBScoreUI();
@@ -6541,14 +6578,15 @@
             return true;
         }
 
-        function acceptBBServerMove(data) {
+        function acceptBBServerMove(data, preserveOptimisticHand = false) {
             bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
             if (Number.isInteger(data.revision)) bbRevision = data.revision;
             const shapes = normalizedBBShapes(data.shapes);
-            if (shapes) {
+            if (shapes && !preserveOptimisticHand) {
                 bbShapes = shapes;
                 renderBBShapeSlots();
             }
+            if (!preserveOptimisticHand && Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
             // Local clearing animations finish asynchronously. Reconcile after
             // them so the visible score can never drift from the server score.
             const acceptedRevision = bbRevision;
@@ -7001,6 +7039,7 @@
                 bbRevision = Number.isInteger(data.revision) ? data.revision : bbRevision;
                 const serverShapes = normalizedBBShapes(data.shapes);
                 if (serverShapes) bbShapes = serverShapes;
+                if (Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
                 bbMoveQueue.forEach(item => { item.session_token = token; });
                 renderBBGrid();
                 updateBBScoreUI();
@@ -7031,6 +7070,7 @@
             bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
             bbRevision = 0;
+            bbNextHandSeed = Number.isInteger(freshSession?.next_hand_seed) ? freshSession.next_hand_seed >>> 0 : null;
             bbShapes = [];
             renderBBGrid();
             updateBBScoreUI();
@@ -7054,7 +7094,7 @@
             bbMoveRetryTimer = null;
             bbMoveQueue = []; bbMoveProcessing = false;
             bbServerCheckpoint = null;
-            bbRevision = 0; bbInputLocked = true;
+            bbRevision = 0; bbNextHandSeed = null; bbInputLocked = true;
             bbGrid = Array(BB_ROWS).fill().map(() => Array(BB_COLS).fill(0));
             bbScore = 0; bbDisplayedScore = 0; bbCombo = 0; bbComboBuffer = 0;
             bbIsAnimating = false;
@@ -7120,7 +7160,6 @@
         function getCellFast(r, c) { return (bbCellCache[r] && bbCellCache[r][c]) || document.querySelector(`.bb-cell[data-r="${r}"][data-c="${c}"]`); }
         function countFreeCells() { let free = 0; for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { if(bbGrid[r][c] === 0) free++; } } return free; }
         
-        function shapeSize(m) { return m.reduce((a, row) => a + row.reduce((s, v) => s + v, 0), 0); }
         function shapeDims(m) { return [m.length, m[0].length]; }
         function isRectShape(m) {
             const [rows, cols] = shapeDims(m);
@@ -7187,16 +7226,6 @@
             return 0; // Doesn't help
         }
         
-        // Check if a shape can be placed anywhere on the board
-        function canPlaceAnywhere(matrix) {
-            for (let r = 0; r <= BB_ROWS - matrix.length; r++) {
-                for (let c = 0; c <= BB_COLS - (matrix[0]?.length || 0); c++) {
-                    if (canPlace(matrix, r, c)) return true;
-                }
-            }
-            return false;
-        }
-
         // Diagonal strip shapes (2- and 3-long) — spawned less often
         const DIAGONAL_SHAPES = [
             [[0, 1], [1, 0]],
@@ -7260,86 +7289,56 @@
             return { fits: best >= 0, lines: Math.max(0, best) };
         }
 
+        function normalizeBBHandSeed(seed) {
+            return Number.isInteger(seed) ? seed >>> 0 : 0;
+        }
+        function advanceBBHandSeed(seed) {
+            let value = (normalizeBBHandSeed(seed) + 0x9e3779b9) >>> 0;
+            value = Math.imul(value ^ (value >>> 16), 0x21f0aaad);
+            value = Math.imul(value ^ (value >>> 15), 0x735a2d97);
+            return (value ^ (value >>> 15)) >>> 0;
+        }
+        function seededBBRandom(seed) {
+            let state = normalizeBBHandSeed(seed);
+            return function () {
+                state = (state + 0x6d2b79f5) >>> 0;
+                let value = state;
+                value = Math.imul(value ^ (value >>> 15), value | 1);
+                value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+                return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+        function generateSeededBBHand(seed, scoreForUnlocks = bbScore) {
+            const random = seededBBRandom(seed);
+            const includeDiagonals = random() < 0.35;
+            const pool = SHAPES.filter(matrix => includeDiagonals || !isDiagonalShape(matrix))
+                .concat(unlockedHardShapes(scoreForUnlocks));
+            const ranked = pool.map(matrix => ({ matrix, ...bestPlacementResult(matrix) }));
+            const placeable = ranked.filter(item => item.fits);
+            const lineClearers = placeable.filter(item => item.lines >= 1);
+            const multiClearers = placeable.filter(item => item.lines >= 2);
+            const fallback = SHAPES[0];
+            const pick = items => items.length ? items[Math.floor(random() * items.length)].matrix : fallback;
+            const matrices = [];
+            matrices.push(pick(multiClearers.length ? multiClearers : (lineClearers.length ? lineClearers : placeable)));
+            let second = (lineClearers.length ? lineClearers : placeable).filter(item => item.matrix !== matrices[0]);
+            if (!second.length) second = lineClearers.length ? lineClearers : placeable;
+            matrices.push(pick(second));
+            let third = placeable.filter(item => item.matrix !== matrices[0] && item.matrix !== matrices[1]);
+            if (!third.length) third = placeable;
+            matrices.push(pick(third));
+            return matrices.map((matrix, id) => ({
+                matrix,
+                color: COLORS[Math.floor(random() * COLORS.length)],
+                id,
+            }));
+        }
         function spawnShapes() {
-            bbShapes = [];
-            const score = bbScore;
-
-            // === POOL: uniform rules at any score (no score-based weighting).
-            // Diagonal strips get a reduced chance via thinning: they're only
-            // present in the pool ~35% of the time.
-            const includeDiagonals = Math.random() < 0.35;
-            const pool = [];
-            for (const m of SHAPES) {
-                if (isDiagonalShape(m) && !includeDiagonals) continue;
-                pool.push(m);
-            }
-            for (const m of unlockedHardShapes(score)) pool.push(m);
-
-            // === RANK all pool shapes by what their BEST placement achieves.
-            // ranked: [{ m, fits, lines }]
-            const ranked = [];
-            for (const m of pool) {
-                const res = bestPlacementResult(m);
-                ranked.push({ m, fits: res.fits, lines: res.lines });
-            }
-            const placeable = ranked.filter(x => x.fits);
-            const lineClearers = placeable.filter(x => x.lines >= 1);
-            const multiClearers = placeable.filter(x => x.lines >= 2);
-
-            // === PICK 3 SHAPES ("max smart" mode) ===
-            // Slot 0: the strongest helper available — prefers multi-line
-            //         clearers, then single-line, then any placeable.
-            // Slot 1: a line clearer if any exist (variety pick).
-            // Slot 2: mostly random placeable ("one not-so-great is fine"),
-            //         but still guaranteed to fit the current board.
-            const result = [];
-            const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)].m;
-
-            // Slot 0 — best possible help
-            if (multiClearers.length > 0)      result.push(pickRandom(multiClearers));
-            else if (lineClearers.length > 0)  result.push(pickRandom(lineClearers));
-            else if (placeable.length > 0)     result.push(pickRandom(placeable));
-            else                               result.push(SHAPES[0]); // 1x1 fallback
-
-            // Slot 1 — another helper (avoid exact duplicate of slot 0 when possible)
-            {
-                let candidates = lineClearers.length > 0 ? lineClearers : placeable;
-                let filtered = candidates.filter(x => x.m !== result[0]);
-                if (filtered.length === 0) filtered = candidates;
-                if (filtered.length > 0) result.push(pickRandom(filtered));
-                else result.push(SHAPES[0]);
-            }
-
-            // Slot 2 — free pick among placeable (the "allowed to be meh" slot)
-            {
-                let candidates = placeable.length > 0 ? placeable : ranked;
-                let filtered = candidates.filter(x => x.m !== result[0] && x.m !== result[1]);
-                if (filtered.length === 0) filtered = candidates;
-                if (filtered.length > 0) result.push(pickRandom(filtered));
-                else result.push(SHAPES[0]);
-            }
-
-            // === GUARANTEE: every shape must fit the CURRENT board. ===
-            // (Note: after placing one shape the board changes; guaranteeing
-            // sequential placement of all three is exponentially harder and
-            // gets re-checked naturally on each spawn — this pass ensures the
-            // hand at least starts fully playable.)
-            for (let i = 0; i < result.length; i++) {
-                if (!canPlaceAnywhere(result[i])) {
-                    // Swap in the smallest placeable shape available
-                    const small = [...SHAPES].sort((a, b) => shapeSize(a) - shapeSize(b));
-                    for (const s of small) {
-                        if (canPlaceAnywhere(s)) { result[i] = s; break; }
-                    }
-                }
-            }
-
-            // Assign colors and render (original mechanism)
-            for (let i = 0; i < 3; i++) {
-                const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-                bbShapes.push({ matrix: result[i], color: color, id: i });
-                renderShapePreview(i, result[i], color);
-            }
+            const seedValues = new Uint32Array(1);
+            if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(seedValues);
+            else seedValues[0] = Math.floor(Math.random() * 0x100000000);
+            bbShapes = generateSeededBBHand(seedValues[0]);
+            renderBBShapeSlots();
         }
         function renderBBShapeSlots() {
             for (let i = 0; i < 3; i++) {
@@ -7348,14 +7347,17 @@
                 else document.getElementById(`shape${i}`).innerHTML = '';
             }
         }
-        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
-        let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0;
+        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); if (dragData && dragData.slotId === slotId) preview.style.opacity = 0; container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
+        let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0; let bbLastTouchDragStart = 0;
         function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
 
         // --- FIXED DRAG FUNCTION ---
         function startDrag(e, slotId, matrix, color) { 
-            if(bbIsAnimating || bbInputLocked) return;
-            e.preventDefault(); 
+            if(bbIsAnimating || bbInputLocked || dragData) return;
+            if (e.type === 'mousedown' && Date.now() - bbLastTouchDragStart < 800) return;
+            if (e.type === 'touchstart') bbLastTouchDragStart = Date.now();
+            e.preventDefault();
+            e.stopPropagation();
             bbPlayPickup();
             const touch = e.touches ? e.touches[0] : e; 
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
@@ -7391,14 +7393,14 @@
             touchOffsetY = shapePixelH / 2; 
             moveGhost(touch.clientX, touch.clientY); 
             const preview = document.querySelector(`#shape${slotId} .bb-shape-preview`); if(preview) preview.style.opacity = 0; 
-            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd); 
+            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onTouchEnd); document.addEventListener('touchcancel', onTouchEnd); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onTouchEnd);
         }
 
         // Множитель движения - фигура двигается быстрее пальца (только мобилки)
         const DRAG_MULTIPLIER = 1.3;
         
         let lastPlacementRow = -1, lastPlacementCol = -1;
-        function onTouchMove(e) { e.preventDefault(); queueMove(e.touches[0].clientX, e.touches[0].clientY); }
+        function onTouchMove(e) { if (!dragData || !e.touches || !e.touches[0]) return; e.preventDefault(); queueMove(e.touches[0].clientX, e.touches[0].clientY); }
         function onMouseMove(e) { e.preventDefault(); queueMove(e.clientX, e.clientY); }
         // Coalesce high-frequency pointer events (120Hz on ProMotion) into a
         // single style write + placement check per animation frame.
@@ -7529,23 +7531,42 @@
         function onTouchEnd(e) { 
             lastPlacementRow = -1; lastPlacementCol = -1;
             bbStopSparks();
-            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd); 
-            if(dragGhost) dragGhost.remove(); 
+            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('touchcancel', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd);
+            if (!dragData) return;
+            const completedDrag = dragData;
+            dragData = null;
+            if(dragGhost) dragGhost.remove();
+            dragGhost = null;
             for(let rr=0;rr<BB_ROWS;rr++){for(let cc=0;cc<BB_COLS;cc++){const c=bbCellCache[rr]&&bbCellCache[rr][cc];if(!c)continue;if(c.classList.contains('pre-clear')){c.classList.remove('pre-clear');c.style.transition='';c.style.background='';c.style.boxShadow='';c.style.removeProperty('--pc-glow');c.style.removeProperty('--pc-glow-soft')}if(c.classList.contains('bb-shadow')){c.classList.remove('bb-shadow','bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7');c.style.removeProperty('--bb-shadow-col');c.style.removeProperty('--bb-shadow-edge')}}} 
-            const original = document.querySelector(`#shape${dragData.slotId} .bb-shape-preview`); if(original) original.style.opacity = 1; 
-            if(dragData.validPos) { 
-                placeShape(dragData.matrix, dragData.validPos.r, dragData.validPos.c, dragData.color); 
-                reportGameMove('bb_best_score', { matrix: dragData.matrix, r: dragData.validPos.r, c: dragData.validPos.c, slot: dragData.slotId });
-                document.getElementById(`shape${dragData.slotId}`).innerHTML = ''; 
-                const container = document.getElementById(`shape${dragData.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[dragData.slotId] = null; 
+            if(completedDrag.validPos) {
+                placeShape(completedDrag.matrix, completedDrag.validPos.r, completedDrag.validPos.c, completedDrag.color);
+                reportGameMove('bb_best_score', { matrix: completedDrag.matrix, r: completedDrag.validPos.r, c: completedDrag.validPos.c, slot: completedDrag.slotId });
+                document.getElementById(`shape${completedDrag.slotId}`).innerHTML = '';
+                const container = document.getElementById(`shape${completedDrag.slotId}`); container.ontouchstart = null; container.onmousedown = null; bbShapes[completedDrag.slotId] = null;
                 /* координаты клеток, куда легла фигура — там и покажем очки */
                 const placedCells = [];
-                dragData.matrix.forEach((row, i) => row.forEach((v, j) => {
-                    if (v) placedCells.push({ r: dragData.validPos.r + i, c: dragData.validPos.c + j });
+                completedDrag.matrix.forEach((row, i) => row.forEach((v, j) => {
+                    if (v) placedCells.push({ r: completedDrag.validPos.r + i, c: completedDrag.validPos.c + j });
                 }));
-                const linesCleared = checkLines(dragData.color, placedCells); 
+                const linesCleared = checkLines(completedDrag.color, placedCells);
+                if (bbShapes.every(shape => shape === null) && Number.isInteger(bbNextHandSeed)) {
+                    let authoritativeScore = bbScore;
+                    if (linesCleared > 0) {
+                        authoritativeScore += bbLineScore(linesCleared, bbCombo);
+                        if (countFreeCells() === BB_ROWS * BB_COLS) {
+                            authoritativeScore += 500 * (bbCombo > 0 ? bbCombo : 1);
+                        }
+                    }
+                    bbShapes = generateSeededBBHand(bbNextHandSeed, authoritativeScore);
+                    bbNextHandSeed = advanceBBHandSeed(bbNextHandSeed);
+                    renderBBShapeSlots();
+                    saveBBState();
+                }
                 if(linesCleared === 0) { if (bbCombo > 0) { bbComboBuffer--; if(bbComboBuffer <= 0) { bbCombo = 0; updateBBScoreUI(); } else { updateComboBar(); } } checkGameOver(); saveBBState(); }
-            } 
+            } else {
+                const original = document.querySelector(`#shape${completedDrag.slotId} .bb-shape-preview`);
+                if(original) original.style.opacity = 1;
+            }
         }
 
         function placeShape(matrix, r, c, color) { 
@@ -8031,8 +8052,8 @@
             }
             overlay.classList.add('visible');
         }
-        function saveBBState() { if(bbGameEnded) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, revision: bbRevision, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
+        function saveBBState() { if(bbGameEnded) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, revision: bbRevision, nextHandSeed: bbNextHandSeed, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
+        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbNextHandSeed = Number.isInteger(data.nextHandSeed) ? data.nextHandSeed >>> 0 : null; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;

@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { verifyTelegramInitData } = require('./telegram-init-data');
 const { createCheckpoint: createBBCheckpoint, readCheckpoint: readBBCheckpoint } = require('./block-blast-checkpoint');
+const { advanceSeed: advanceBBHandSeed, generateHand: generateBBHand } = require('./block-blast-hand');
 const MonopolyEngine = require('./monopoly-engine');
 const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
 
@@ -317,12 +318,16 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
             bbComboBuffer: 0,
             bbRevision: 0,
             bbShapes: [null, null, null],
+            bbNextHandSeed: null,
             bbEnded: false,
             bbRestorable: !new_game,
             bbMoveResults: new Map()
         } : {})
     };
-    if (game_type === 'bb_best_score') bbGenerateShapes(session);
+    if (game_type === 'bb_best_score') {
+        bbGenerateShapes(session, bbFreshHandSeed());
+        session.bbNextHandSeed = bbFreshHandSeed();
+    }
     gameSessions.set(key, session);
     
     // Cleanup old sessions (older than 24h)
@@ -408,27 +413,18 @@ function bbCanPlace(grid, matrix, r, c) {
     return true;
 }
 
-function bbCanPlaceAnywhere(grid, matrix) {
-    for (let r = 0; r < BB_ROWS; r++) {
-        for (let c = 0; c < BB_COLS; c++) {
-            if (bbCanPlace(grid, matrix, r, c)) return true;
-        }
-    }
-    return false;
+function bbFreshHandSeed() {
+    return crypto.randomBytes(4).readUInt32LE(0);
 }
 
-function bbGenerateShapes(session) {
-    // The last 15 shapes are the same hard set the client unlocks at 10k.
-    const unlocked = session.bbScore >= 10_000 ? BB_SHAPE_LIST : BB_SHAPE_LIST.slice(0, 41);
-    const placeable = unlocked.filter(matrix => bbCanPlaceAnywhere(session.bbGrid, matrix));
-    const pool = placeable.length ? placeable : [BB_SHAPE_LIST[0]];
-    const candidates = [...pool];
-    session.bbShapes = Array.from({ length: 3 }, (_, id) => {
-        const pickFrom = candidates.length ? candidates : pool;
-        const pick = crypto.randomInt(pickFrom.length);
-        const matrix = pickFrom[pick];
-        if (candidates.length) candidates.splice(pick, 1);
-        return { matrix, color: BB_COLORS[crypto.randomInt(BB_COLORS.length)], id };
+function bbGenerateShapes(session, seed) {
+    session.bbShapes = generateBBHand({
+        grid: session.bbGrid,
+        score: session.bbScore,
+        shapeList: BB_SHAPE_LIST,
+        baseShapeCount: 41,
+        colors: BB_COLORS,
+        seed,
     });
 }
 
@@ -440,6 +436,7 @@ function bbPublicState(session) {
         comboBuffer: session.bbComboBuffer,
         revision: session.bbRevision || 0,
         shapes: session.bbShapes,
+        next_hand_seed: session.bbNextHandSeed,
         finished: !!session.bbEnded,
     };
 }
@@ -610,7 +607,11 @@ app.post('/game-session/move', authMiddleware, (req, res) => {
         // checkpoint must never be allowed to roll this live branch back.
         session.bbRestorable = false;
         session.bbShapes[slot] = null;
-        if (session.bbShapes.every(shape => shape === null)) bbGenerateShapes(session);
+        if (session.bbShapes.every(shape => shape === null)) {
+            const handSeed = session.bbNextHandSeed;
+            bbGenerateShapes(session, handSeed);
+            session.bbNextHandSeed = advanceBBHandSeed(handSeed);
+        }
         session.moveCount++;
         session.bbRevision++;
         session.lastMoveTime = now;
@@ -676,8 +677,10 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     session.moveCount = restored.moveCount;
     session.bbRevision = restored.bbRevision;
     session.bbShapes = restored.bbShapes;
+    session.bbNextHandSeed = restored.bbNextHandSeed ?? bbFreshHandSeed();
     if (!Array.isArray(session.bbShapes) || session.bbShapes.length !== 3 || session.bbShapes.every(shape => shape === null)) {
-        bbGenerateShapes(session);
+        bbGenerateShapes(session, session.bbNextHandSeed);
+        session.bbNextHandSeed = advanceBBHandSeed(session.bbNextHandSeed);
     }
     session.startTime = restored.startTime;
     session.lastMoveTime = Date.now();
