@@ -1076,6 +1076,8 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     z-index: 60;                /* поверх служебных панелей, включая жеребьёвку */
     visibility: hidden;
     pointer-events: none;
+    contain: layout paint;
+    isolation: isolate;
 }
 #diceDock.show { visibility: visible; }
 #diceDock canvas { width: 100% !important; height: 100% !important; }
