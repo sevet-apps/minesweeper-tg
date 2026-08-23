@@ -18,6 +18,13 @@ test('branded videos are bundled and the app loader releases all resources', () 
     }
     assert.match(client, /<source src="assets\/media\/app-loader\.mp4" type="video\/mp4">/);
     assert.match(client, /object-fit:\s*contain/);
+    assert.match(client, /viewport-fit=cover/);
+    assert.match(client, /setSparkTelegramChrome\('#ffffff'\)[\s\S]*?requestFullscreen/,
+        'Telegram safe areas must be painted before the opening animation');
+    assert.match(client, /background:\s*#fff;[\s\S]*?\.app-loader video/,
+        'the opening animation must not have black letterbox bars');
+    assert.match(client, /root\.remove\(\)[\s\S]*?setSparkTelegramChrome\(color\)/,
+        'Telegram chrome must return to the app theme after playback');
     assert.match(client, /video\.querySelectorAll\('source'\)[\s\S]*?source\.remove\(\)/);
     assert.match(client, /video\.pause\(\)[\s\S]*?video\.load\(\)[\s\S]*?root\.remove\(\)/);
     assert.match(client, /window\.setTimeout\(remove, 8000\)/,
@@ -43,7 +50,9 @@ test('Telegram sharing and inline results use the supplied branding', () => {
     assert.match(server, /GAME_ICON_BY_COLUMN[\s\S]*?block-blast\.png[\s\S]*?checkers\.png[\s\S]*?wordle\.png/);
     assert.match(server, /if \(!config \|\| config\.isReferral\) return null/,
         'the referral leaderboard must remain the one icon-free result');
-    assert.match(client, /property="og:image" content="https:\/\/sevet-apps\.github\.io\/minesweeper-tg\/assets\/spark-logo\.png"/);
+    assert.match(client, /property="og:image" content="https:\/\/sevet-apps\.github\.io\/minesweeper-tg\/assets\/spark-logo\.png\?v=20260823"/);
+    assert.match(server, /spark-logo\.png\?v=20260823/,
+        'prepared-message thumbnails must bypass Telegram image caches');
 });
 
 test('Block Blast retries a final save without forking the authoritative session', () => {
