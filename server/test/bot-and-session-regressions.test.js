@@ -8,6 +8,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..', '..');
 const client = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const server = fs.readFileSync(path.join(root, 'server', 'index.js'), 'utf8');
+const richMessages = fs.readFileSync(path.join(root, 'server', 'telegram-rich-messages.js'), 'utf8');
 const monopoly = fs.readFileSync(path.join(root, 'server', 'monopoly-v2.js'), 'utf8');
 
 test('branded videos are bundled and the app loader releases all resources', () => {
@@ -90,6 +91,19 @@ test('inline games, referral links and account language use the new app identity
     assert.match(client, /code\.startsWith\('zh'\)[\s\S]*?code\.startsWith\('en'\)/);
     assert.match(client, /checking: 'Checking\.\.\.'[\s\S]*?welcome: 'Welcome!'/);
     assert.match(client, /t\('checking'\)[\s\S]*?t\('welcome'\)/);
+});
+
+test('inline games use Telegram rich messages with in-message buttons and classic fallback', () => {
+    assert.match(server, /require\('\.\/telegram-rich-messages'\)/);
+    assert.match(richMessages, /input_message_content:\s*richMessageContent\(richHtml\)/);
+    assert.match(server, /telegramBotApi\('answerInlineQuery'[\s\S]*?fallbackResults/);
+    assert.match(server, /telegramBotApi\('editMessageText'[\s\S]*?richMessageContent\(richHtml\)/);
+    assert.match(server, /editTTTInlineMessage\([\s\S]*?editCheckersInlineMessage\(/);
+    assert.doesNotMatch(
+        server.slice(server.indexOf('// === КРЕСТИКИ-НОЛИКИ ===')),
+        /bot\.editMessageReplyMarkup\(/,
+        'checkers selections must update the embedded rich board, not only a classic keyboard',
+    );
 });
 
 test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete', () => {
