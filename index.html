@@ -194,6 +194,12 @@
             transform-origin: 50% 50%;
             background: #fff;
         }
+        @media (max-aspect-ratio: 4 / 5) {
+            /* The supplied animation already has generous white margins.
+               Pull it back slightly on phones so the Spark wordmark doesn't
+               feel cropped or oversized; landscape/tablet cover stays as-is. */
+            .app-loader video { transform: scale(.94); }
+        }
         .app-loader.ending-black video { background: #000; }
         @media (prefers-reduced-motion: reduce) {
             .app-loader { display: none; }
@@ -1374,6 +1380,7 @@
         }
         .profile-favorite-icon { width: 28px; height: 28px; border-radius: 9px; object-fit: cover; }
         .profile-favorite-copy { min-width: 0; line-height: 1.15; }
+        .profile-favorite-label { margin-bottom: 3px; color: #8e8e93; font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
         .profile-favorite-name { font-size: 14px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .profile-favorite-time { margin-top: 3px; color: #8e8e93; font-size: 12px; }
 
@@ -1389,7 +1396,10 @@
             border: 1px solid var(--glass-border);
             border-radius: 15px;
             background: var(--toggle-bg);
-            touch-action: pan-y;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         .profile-segment-glider {
             position: absolute;
@@ -1438,10 +1448,12 @@
         .record-time { display: block; margin-top: 4px; color: #8e8e93; font-size: 12px; }
         .record-score { font-size: 15px; font-weight: 750; color: var(--accent); min-width: 54px; text-align: right; }
         .record-rank { font-size: 13px; font-weight: 650; color: var(--text-color); min-width: 54px; text-align: right; }
-        .record-chevron { width: 18px; height: 18px; color: #8e8e93; transition: transform .36s cubic-bezier(.2,1.15,.3,1); }
+        .record-chevron { width: 18px; height: 18px; color: #8e8e93; transition: transform .58s cubic-bezier(.16,1,.3,1); }
         .record-row.open .record-chevron { transform: rotate(90deg); }
-        .record-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 0; opacity: 0; overflow: hidden; padding: 0 13px; transition: max-height .42s cubic-bezier(.2,.9,.3,1), opacity .24s ease, padding .32s ease; }
-        .record-row.open .record-details { max-height: 540px; opacity: 1; padding: 0 13px 13px; }
+        .record-details { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .58s cubic-bezier(.16,1,.3,1), opacity .38s ease; }
+        .record-details-inner { min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 13px; transition: padding .58s cubic-bezier(.16,1,.3,1); }
+        .record-row.open .record-details { grid-template-rows: 1fr; opacity: 1; }
+        .record-row.open .record-details-inner { padding: 0 13px 13px; }
         .record-detail { min-width: 0; padding: 11px; border-radius: 12px; background: var(--toggle-bg); }
         .record-detail-label { color: #8e8e93; font-size: 11px; line-height: 1.25; }
         .record-detail-value { margin-top: 5px; font-size: 15px; font-weight: 750; overflow-wrap: anywhere; }
@@ -3301,7 +3313,8 @@
             <div class="profile-favorite" id="profileFavorite">
                 <img class="profile-favorite-icon" id="profileFavoriteIcon" src="assets/game-icons/minesweeper.png" alt="">
                 <div class="profile-favorite-copy">
-                    <div class="profile-favorite-name" id="profileFavoriteName" data-i18n="favoriteGame">Любимая игра</div>
+                    <div class="profile-favorite-label" data-i18n="favoriteGame">Любимая игра</div>
+                    <div class="profile-favorite-name" id="profileFavoriteName">—</div>
                     <div class="profile-favorite-time" id="profileFavoriteTime">—</div>
                 </div>
             </div>
@@ -3360,7 +3373,7 @@
                             <span class="record-score" id="rec-bb">--</span><span class="record-rank" id="rank-bb"></span>
                             <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                         </button>
-                        <div class="record-details" id="details-bb"></div>
+                        <div class="record-details"><div class="record-details-inner" id="details-bb"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="saper">
                         <button class="record-summary" onclick="toggleProfileGameStats('saper')">
@@ -3369,7 +3382,7 @@
                             <span class="record-score" id="rec-saper">--</span><span class="record-rank" id="rank-saper"></span>
                             <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                         </button>
-                        <div class="record-details" id="details-saper"></div>
+                        <div class="record-details"><div class="record-details-inner" id="details-saper"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="tower">
                         <button class="record-summary" onclick="toggleProfileGameStats('tower')">
@@ -3378,7 +3391,7 @@
                             <span class="record-score" id="rec-tower">--</span><span class="record-rank" id="rank-tower"></span>
                             <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                         </button>
-                        <div class="record-details" id="details-tower"></div>
+                        <div class="record-details"><div class="record-details-inner" id="details-tower"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="sudoku">
                         <button class="record-summary" onclick="toggleProfileGameStats('sudoku')">
@@ -3387,7 +3400,7 @@
                             <span class="record-score" id="rec-sudoku">--</span><span class="record-rank" id="rank-sudoku"></span>
                             <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                         </button>
-                        <div class="record-details" id="details-sudoku"></div>
+                        <div class="record-details"><div class="record-details-inner" id="details-sudoku"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="checkers">
                         <button class="record-summary" onclick="toggleProfileGameStats('checkers')">
@@ -3396,7 +3409,7 @@
                             <span class="record-score" id="rec-checkers">--</span><span class="record-rank" id="rank-checkers"></span>
                             <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                         </button>
-                        <div class="record-details" id="details-checkers"></div>
+                        <div class="record-details"><div class="record-details-inner" id="details-checkers"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="wordle">
                         <button class="record-summary" onclick="toggleProfileGameStats('wordle')">
@@ -3405,7 +3418,7 @@
                             <span class="record-score" id="rec-wordle">--</span><span class="record-rank" id="rank-wordle"></span>
                             <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                         </button>
-                        <div class="record-details" id="details-wordle"></div>
+                        <div class="record-details"><div class="record-details-inner" id="details-wordle"></div></div>
                     </div>
                 </div>
             </div>
@@ -5400,7 +5413,7 @@
             const hasTime = favorite && (times[favorite] || 0) > 0;
             const config = PROFILE_GAMES[hasTime ? favorite : 'saper'];
             document.getElementById('profileFavoriteIcon').src = config.icon;
-            document.getElementById('profileFavoriteName').textContent = hasTime ? t(config.nameKey) : t('favoriteGame');
+            document.getElementById('profileFavoriteName').textContent = hasTime ? t(config.nameKey) : '—';
             document.getElementById('profileFavoriteTime').textContent = hasTime ? formatPlaytime(times[favorite]) : t('noPlaytime');
         }
         function playProfileGoal(game) {

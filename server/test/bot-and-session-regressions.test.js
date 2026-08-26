@@ -24,6 +24,8 @@ test('branded videos are bundled and the app loader releases all resources', () 
         'mobile WebKit must receive native muted autoplay without a pre-play seek');
     assert.match(client, /\.app-loader video\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?object-fit:\s*cover;[\s\S]*?object-position:\s*50% 50%;[\s\S]*?transform:\s*scale\(1\.08\)/,
         'the portrait source must be centered and cover every portrait or landscape viewport');
+    assert.match(client, /@media \(max-aspect-ratio:\s*4 \/ 5\)[\s\S]*?\.app-loader video\s*\{\s*transform:\s*scale\(\.94\)/,
+        'phone-sized portrait screens must pull the oversized wordmark back slightly');
     assert.match(client, /\.app-loader::after[\s\S]*?background:\s*#fff/,
         'a full-screen white cover must hide the black source frames before playback reaches white');
     assert.match(client, /\.app-loader\.video-visible::after\s*\{\s*display:\s*none/);
@@ -79,6 +81,8 @@ test('inline games, referral links and account language use the new app identity
     for (const file of [checkersIcon, tttIcon]) {
         assert.ok(fs.existsSync(file), `${path.basename(file)} must be bundled`);
         assert.ok(fs.statSync(file).size > 100_000, `${path.basename(file)} must contain the supplied artwork`);
+        const png = fs.readFileSync(file);
+        assert.equal(png[25], 6, `${path.basename(file)} must use RGBA instead of a baked black background`);
     }
     assert.match(server, /assets\/inline-icons\/checkers-versus\.png/);
     assert.match(server, /assets\/inline-icons\/tic-tac-toe\.png/);
@@ -99,6 +103,14 @@ test('inline games use Telegram rich messages with in-message buttons and classi
     assert.match(server, /telegramBotApi\('answerInlineQuery'[\s\S]*?fallbackResults/);
     assert.match(server, /telegramBotApi\('editMessageText'[\s\S]*?richMessageContent\(richHtml\)/);
     assert.match(server, /editTTTInlineMessage\([\s\S]*?editCheckersInlineMessage\(/);
+    assert.match(server, /ensureTTTInlineGame\(inlineMessageId, gameId\)/);
+    assert.match(server, /ensureCheckersInlineGame\(inlineMessageId, gameId\)/);
+    assert.match(server, /topData = await getTopsForGames\([\s\S]*?const readyTopGames = topGames\.map/,
+        'rich leaderboard results must contain data before Telegram sends them');
+    assert.doesNotMatch(server, /Загружаем актуальный топ игроков|Загрузка топа/,
+        'a rich inline result cannot depend on chosen_inline_result to replace a loading shell');
+    assert.match(richMessages, /function richCheckersHtml[\s\S]*?<table bordered compact>/,
+        'checkers should render as a compact table rather than rounded button rows');
     assert.doesNotMatch(
         server.slice(server.indexOf('// === КРЕСТИКИ-НОЛИКИ ===')),
         /bot\.editMessageReplyMarkup\(/,
@@ -111,6 +123,11 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
         'iOS must not inflate profile sheet text after a relayout');
     assert.match(client, /id="profileOverviewTab"[\s\S]*?id="profileStatsTab"/);
     assert.match(client, /initProfileSegmentDrag[\s\S]*?setPointerCapture[\s\S]*?--profile-tab-progress/);
+    assert.match(client, /\.profile-segment\s*\{[\s\S]*?touch-action:\s*none[\s\S]*?-webkit-touch-callout:\s*none/,
+        'a held horizontal profile drag must not be stolen by native scrolling or callouts');
+    assert.match(client, /profile-favorite-label[\s\S]*?data-i18n="favoriteGame"/);
+    assert.match(client, /\.record-details\s*\{[\s\S]*?grid-template-rows:\s*0fr[\s\S]*?\.record-row\.open \.record-details\s*\{\s*grid-template-rows:\s*1fr/,
+        'expanded game statistics should animate their real content height smoothly');
     assert.match(client, /data-profile-game="saper"[\s\S]*?id="details-saper"/);
     assert.match(client, /saper_best_6[\s\S]*?saper_best_8[\s\S]*?saper_best_10[\s\S]*?saper_best_15/);
     assert.match(client, /visibilitychange[\s\S]*?pagehide/);
