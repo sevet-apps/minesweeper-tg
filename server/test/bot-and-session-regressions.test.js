@@ -21,12 +21,13 @@ test('branded videos are bundled and the app loader releases all resources', () 
         'the document itself must be white before Telegram or the video decoder loads');
     assert.match(client, /<video id="appLoaderVideo"[^>]*\bautoplay\b[^>]*\bmuted\b[^>]*\bplaysinline\b/,
         'mobile WebKit must receive native muted autoplay without a pre-play seek');
-    assert.match(client, /object-fit:\s*contain/);
+    assert.match(client, /\.app-loader video\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?object-fit:\s*cover;[\s\S]*?object-position:\s*50% 50%;[\s\S]*?transform:\s*scale\(1\.08\)/,
+        'the portrait source must be centered and cover every portrait or landscape viewport');
     assert.match(client, /\.app-loader::after[\s\S]*?background:\s*#fff/,
         'a full-screen white cover must hide the black source frames before playback reaches white');
     assert.match(client, /\.app-loader\.video-visible::after\s*\{\s*display:\s*none/);
     assert.match(client, /\.app-loader\.ending-black\s*\{\s*background:\s*#000/,
-        'the final star wipe must paint contain-letterboxes black on every aspect ratio');
+        'the final star wipe must paint the full viewport black on every aspect ratio');
     assert.doesNotMatch(client, /viewport-fit=cover/,
         'Telegram already supplies the mobile safe area; viewport-fit would apply it twice');
     assert.match(client, /setSparkTelegramChrome\('#ffffff'\)[\s\S]*?requestFullscreen/,
@@ -38,7 +39,7 @@ test('branded videos are bundled and the app loader releases all resources', () 
     assert.match(client, /video\.currentTime\s*>=\s*0\.30[\s\S]*?classList\.add\('video-visible'\)/,
         'the black intro stays covered until the decoder reaches a real white frame');
     assert.match(client, /video\.currentTime\s*>=\s*4\.90[\s\S]*?classList\.add\('ending-black'\)[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
-        'letterboxes and Telegram safe areas must join the final black star wipe');
+        'Telegram safe areas must join the final black star wipe');
     assert.match(client, /root\.remove\(\)[\s\S]*?setSparkTelegramChrome\(color\)/,
         'Telegram chrome must return to the app theme after playback');
     assert.match(client, /video\.querySelectorAll\('source'\)[\s\S]*?source\.remove\(\)/);
@@ -69,6 +70,48 @@ test('Telegram sharing and inline results use the supplied branding', () => {
     assert.match(client, /property="og:image" content="https:\/\/sevet-apps\.github\.io\/minesweeper-tg\/assets\/spark-logo\.png\?v=20260823"/);
     assert.match(server, /spark-logo\.png\?v=20260823/,
         'prepared-message thumbnails must bypass Telegram image caches');
+});
+
+test('inline games, referral links and account language use the new app identity', () => {
+    const checkersIcon = path.join(root, 'assets', 'inline-icons', 'checkers-versus.png');
+    const tttIcon = path.join(root, 'assets', 'inline-icons', 'tic-tac-toe.png');
+    for (const file of [checkersIcon, tttIcon]) {
+        assert.ok(fs.existsSync(file), `${path.basename(file)} must be bundled`);
+        assert.ok(fs.statSync(file).size > 100_000, `${path.basename(file)} must contain the supplied artwork`);
+    }
+    assert.match(server, /assets\/inline-icons\/checkers-versus\.png/);
+    assert.match(server, /assets\/inline-icons\/tic-tac-toe\.png/);
+    assert.match(server, /spark_game_bot\/spark\?startapp=ref_/);
+    assert.doesNotMatch(server, /spark_game_bot\/sparkapp\?startapp=ref_/);
+    assert.match(client, /const REFERRAL_APP_NAME = 'spark'/);
+    assert.match(client, /languageStorageKey = languageUserId \? `language_\$\{languageUserId\}`/);
+    assert.match(client, /legacyOwner === languageUserId/,
+        'a language left by another Telegram account must not override the current account');
+    assert.match(client, /code\.startsWith\('zh'\)[\s\S]*?code\.startsWith\('en'\)/);
+    assert.match(client, /checking: 'Checking\.\.\.'[\s\S]*?welcome: 'Welcome!'/);
+    assert.match(client, /t\('checking'\)[\s\S]*?t\('welcome'\)/);
+});
+
+test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete', () => {
+    assert.match(client, /-webkit-text-size-adjust:\s*100%/,
+        'iOS must not inflate profile sheet text after a relayout');
+    assert.match(client, /id="profileOverviewTab"[\s\S]*?id="profileStatsTab"/);
+    assert.match(client, /initProfileSegmentDrag[\s\S]*?setPointerCapture[\s\S]*?--profile-tab-progress/);
+    assert.match(client, /data-profile-game="saper"[\s\S]*?id="details-saper"/);
+    assert.match(client, /saper_best_6[\s\S]*?saper_best_8[\s\S]*?saper_best_10[\s\S]*?saper_best_15/);
+    assert.match(client, /visibilitychange[\s\S]*?pagehide/);
+    assert.doesNotMatch(client.slice(client.indexOf('Lightweight profile playtime tracking'), client.indexOf('Profile overview\/statistics switch')), /setInterval\(/,
+        'playtime tracking must remain event-driven and add no recurring timer');
+    assert.match(client, /sSessionReady=startGameSession\('saper_best_' \+ sCols\)/);
+    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key, Number\(sTimer\.toFixed\(2\)\)\)/,
+        'fast Minesweeper wins must wait for their signed session before saving the time');
+
+    for (const category of ['saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15']) {
+        assert.match(server, new RegExp(`\\{ key: '${category}', asc: true \\}`));
+    }
+    assert.match(server, /Promise\.all\(categories\.map/);
+    assert.match(server, /\.gt\(cat\.key, 0\)/);
+    assert.match(server, /goal = \{[\s\S]*?place: targetPlace[\s\S]*?gap:/);
 });
 
 test('Block Blast retries a final save without forking the authoritative session', () => {
