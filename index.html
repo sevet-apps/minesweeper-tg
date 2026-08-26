@@ -136,6 +136,8 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
         }
         
         body { 
@@ -179,12 +181,17 @@
         .app-loader.video-visible::after { display: none; }
         .app-loader.ending-black { background: #000; }
         .app-loader video {
-            position: relative;
+            position: absolute;
+            inset: 0;
             z-index: 1;
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            min-width: 0;
+            min-height: 0;
+            object-fit: cover;
             object-position: 50% 50%;
+            transform: scale(1.08);
+            transform-origin: 50% 50%;
             background: #fff;
         }
         .app-loader.ending-black video { background: #000; }
@@ -1353,14 +1360,91 @@
 
         .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
         
-        .records-section { width: 100%; margin-top: 10px; }
-        .records-title { font-size: 13px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; padding-left: 4px; }
-        .records-table { background: var(--glass-bg); border-radius: 16px; border: 1px solid var(--glass-border); overflow: hidden; }
-        .record-row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 0.5px solid rgba(128,128,128,0.2); }
-        .record-row:last-child { border-bottom: none; }
-        .record-game { flex: 1; font-size: 16px; font-weight: 500; }
-        .record-score { font-size: 16px; font-weight: 700; color: var(--accent); min-width: 70px; text-align: right; }
-        .record-rank { font-size: 14px; font-weight: 600; color: white; min-width: 65px; text-align: right; padding-left: 10px; }
+        .profile-favorite {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 330px;
+            min-height: 42px;
+            margin: -8px auto 18px;
+            padding: 8px 14px 8px 9px;
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            background: var(--glass-bg);
+        }
+        .profile-favorite-icon { width: 28px; height: 28px; border-radius: 9px; object-fit: cover; }
+        .profile-favorite-copy { min-width: 0; line-height: 1.15; }
+        .profile-favorite-name { font-size: 14px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-favorite-time { margin-top: 3px; color: #8e8e93; font-size: 12px; }
+
+        .profile-segment {
+            --profile-tab-progress: 0;
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            width: 100%;
+            height: 46px;
+            margin: 0 0 18px;
+            padding: 4px;
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            background: var(--toggle-bg);
+            touch-action: pan-y;
+        }
+        .profile-segment-glider {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            left: 4px;
+            width: calc(50% - 4px);
+            border-radius: 11px;
+            background: var(--glass-bg);
+            box-shadow: 0 3px 12px rgba(0,0,0,.12);
+            transform: translateX(calc(var(--profile-tab-progress) * 100%));
+            transition: transform .42s cubic-bezier(.18, 1.35, .36, 1);
+            will-change: transform;
+        }
+        .profile-segment.dragging .profile-segment-glider { transition: none; }
+        .profile-segment-btn {
+            position: relative;
+            z-index: 1;
+            border: 0;
+            background: transparent;
+            color: #8e8e93;
+            font: inherit;
+            font-size: 15px;
+            font-weight: 750;
+            cursor: pointer;
+            transition: color .22s ease, transform .22s ease;
+            outline: none;
+        }
+        .profile-segment-btn.active { color: var(--text-color); }
+        .profile-segment-btn:active { transform: scale(.96); }
+        .profile-segment-btn:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 11px; }
+        .profile-panel { width: 100%; padding-bottom: 100px; }
+        .profile-panel[hidden] { display: none; }
+        .profile-panel.panel-enter { animation: profilePanelEnter .34s cubic-bezier(.2,.9,.3,1); }
+        @keyframes profilePanelEnter { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+        .records-section { width: 100%; }
+        .records-title { font-size: 13px; font-weight: 650; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; padding-left: 4px; }
+        .records-table { display: grid; gap: 10px; }
+        .record-row { overflow: hidden; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; }
+        .record-summary { width: 100%; min-height: 68px; display: flex; align-items: center; gap: 12px; padding: 11px 13px; border: 0; outline: none; background: transparent; color: var(--text-color); text-align: left; cursor: pointer; font: inherit; }
+        .record-summary:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 15px; }
+        .record-icon { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 12px; object-fit: cover; }
+        .record-game-wrap { flex: 1; min-width: 0; }
+        .record-game { display: block; font-size: 16px; font-weight: 700; }
+        .record-time { display: block; margin-top: 4px; color: #8e8e93; font-size: 12px; }
+        .record-score { font-size: 15px; font-weight: 750; color: var(--accent); min-width: 54px; text-align: right; }
+        .record-rank { font-size: 13px; font-weight: 650; color: var(--text-color); min-width: 54px; text-align: right; }
+        .record-chevron { width: 18px; height: 18px; color: #8e8e93; transition: transform .36s cubic-bezier(.2,1.15,.3,1); }
+        .record-row.open .record-chevron { transform: rotate(90deg); }
+        .record-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 0; opacity: 0; overflow: hidden; padding: 0 13px; transition: max-height .42s cubic-bezier(.2,.9,.3,1), opacity .24s ease, padding .32s ease; }
+        .record-row.open .record-details { max-height: 540px; opacity: 1; padding: 0 13px 13px; }
+        .record-detail { min-width: 0; padding: 11px; border-radius: 12px; background: var(--toggle-bg); }
+        .record-detail-label { color: #8e8e93; font-size: 11px; line-height: 1.25; }
+        .record-detail-value { margin-top: 5px; font-size: 15px; font-weight: 750; overflow-wrap: anywhere; }
         .record-rank.top1 { color: #FFD700; }
         .record-rank.top2 { color: #C0C0C0; }
         .record-rank.top3 { color: #CD7F32; }
@@ -1369,31 +1453,44 @@
         [data-theme="light"] .record-rank.top2 { color: #808080; }
         [data-theme="light"] .record-rank.top3 { color: #A05A20; }
 
+        .nearest-goals { width: 100%; margin-bottom: 18px; }
+        .nearest-goals-list { display: grid; gap: 9px; }
+        .nearest-goal { display: flex; align-items: center; gap: 12px; min-height: 70px; padding: 12px; border: 1px solid var(--glass-border); border-radius: 16px; background: var(--glass-bg); }
+        .nearest-goal-icon { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; }
+        .nearest-goal-copy { flex: 1; min-width: 0; }
+        .nearest-goal-title { font-size: 14px; font-weight: 750; }
+        .nearest-goal-subtitle { margin-top: 4px; color: #8e8e93; font-size: 12px; }
+        .nearest-goal-play { height: 36px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 750; cursor: pointer; }
+        .nearest-goals-empty { padding: 22px 16px; border: 1px solid var(--glass-border); border-radius: 16px; background: var(--glass-bg); color: #8e8e93; text-align: center; font-size: 14px; }
+
         /* Referral Section */
-        .referral-section {
-            width: 100%;
-            margin-top: 20px;
-            margin-bottom: 100px;
-        }
+        .referral-section { width: 100%; }
         .referral-card {
+            position: relative;
+            overflow: hidden;
             background: var(--glass-bg);
-            border-radius: 16px;
-            padding: 20px;
+            background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 18%, var(--glass-bg)), var(--glass-bg) 62%);
+            border-radius: 20px;
+            padding: 19px;
             border: 1px solid var(--glass-border);
+            border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--glass-border));
         }
+        .referral-card::before { content:''; position:absolute; width:150px; height:150px; right:-65px; top:-75px; border-radius:50%; background:color-mix(in srgb,var(--accent) 22%,transparent); filter:blur(2px); pointer-events:none; }
         .referral-header {
+            position: relative;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         .referral-title {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 780;
             line-height: 1.3;
             flex: 1;
             padding-right: 15px;
         }
+        .referral-subtitle { margin-top: 6px; color: #8e8e93; font-size: 13px; line-height: 1.35; }
         .referral-conditions-btn {
             background: var(--toggle-bg);
             border: none;
@@ -1417,7 +1514,7 @@
             border-radius: 14px;
             color: white;
             font-size: 17px;
-            font-weight: 600;
+            font-weight: 750;
             cursor: pointer;
         }
         .referral-copy-btn {
@@ -1440,6 +1537,7 @@
         .referral-stat-box {
             flex: 1;
             background: var(--glass-bg);
+            background: color-mix(in srgb, var(--glass-bg) 82%, transparent);
             border-radius: 12px;
             padding: 12px;
             text-align: center;
@@ -2775,10 +2873,9 @@
                 if (removed) return;
                 if (video.currentTime >= 0.30) root.classList.add('video-visible');
                 /* The supplied animation turns fully black at the end. Paint
-                   the letterbox area and Telegram's own top/bottom chrome at
-                   the start of the star wipe.  With object-fit:contain this
-                   preserves the complete logo, while the final black frame
-                   still fills every aspect ratio without white strips. */
+                   Telegram's own top/bottom chrome at the start of the star
+                   wipe. The video itself uses a centered cover crop, so the
+                   animation fills portrait and landscape tablets alike. */
                 if (!blackChrome && video.currentTime >= 4.90) {
                     blackChrome = true;
                     root.classList.add('ending-black');
@@ -3200,56 +3297,43 @@
         <div class="profile-big-header" id="profileBigHeader"> 
             <img id="user-avatar" src="" alt="" class="avatar"> 
             <h2 id="user-name" style="margin:0;">Loading...</h2> 
-            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p> 
-        </div>
-
-            <div class="records-section">
-                <div class="records-title" data-i18n="myRecords">Мои рекорды</div>
-                <div class="records-table" id="recordsTable">
-                    <div class="record-row">
-                        <div class="record-game" data-i18n="blockBlast">Блок Бласт</div>
-                        <div class="record-score" id="rec-bb">--</div>
-                        <div class="record-rank" id="rank-bb">--</div>
-                    </div>
-                    <div class="record-row">
-                        <div class="record-game" data-i18n="minesweeper">Сапёр</div>
-                        <div class="record-score" id="rec-saper">--</div>
-                        <div class="record-rank" id="rank-saper">--</div>
-                    </div>
-                    <div class="record-row">
-                        <div class="record-game" data-i18n="tower">Башня</div>
-                        <div class="record-score" id="rec-tower">--</div>
-                        <div class="record-rank" id="rank-tower">--</div>
-                    </div>
-                    <div class="record-row">
-                        <div class="record-game" data-i18n="sudoku">Судоку</div>
-                        <div class="record-score" id="rec-sudoku">--</div>
-                        <div class="record-rank" id="rank-sudoku">--</div>
-                    </div>
-                    <div class="record-row">
-                        <div class="record-game" data-i18n="checkers">Шашки</div>
-                        <div class="record-score" id="rec-checkers">--</div>
-                        <div class="record-rank" id="rank-checkers">--</div>
-                    </div>
-                    <div class="record-row">
-                        <div class="record-game" data-i18n="wordle">Вордли</div>
-                        <div class="record-score" id="rec-wordle">--</div>
-                        <div class="record-rank" id="rank-wordle">--</div>
-                    </div>
+            <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p>
+            <div class="profile-favorite" id="profileFavorite">
+                <img class="profile-favorite-icon" id="profileFavoriteIcon" src="assets/game-icons/minesweeper.png" alt="">
+                <div class="profile-favorite-copy">
+                    <div class="profile-favorite-name" id="profileFavoriteName" data-i18n="favoriteGame">Любимая игра</div>
+                    <div class="profile-favorite-time" id="profileFavoriteTime">—</div>
                 </div>
             </div>
-            
-            <!-- Referral Section -->
+        </div>
+
+        <div class="profile-segment" id="profileSegment" role="tablist" aria-label="Profile sections">
+            <div class="profile-segment-glider"></div>
+            <button class="profile-segment-btn active" id="profileOverviewTab" role="tab" aria-selected="true" onclick="setProfileSection('overview')" data-i18n="overview">Обзор</button>
+            <button class="profile-segment-btn" id="profileStatsTab" role="tab" aria-selected="false" onclick="setProfileSection('stats')" data-i18n="statistics">Статистика</button>
+        </div>
+
+        <div class="profile-panel" id="profileOverviewPanel" role="tabpanel">
+            <div class="nearest-goals">
+                <div class="records-title" data-i18n="nearestGoals">Ближайшие цели</div>
+                <div class="nearest-goals-list" id="nearestGoalsList">
+                    <div class="nearest-goals-empty" data-i18n="goalsLoading">Подбираем ближайшие цели…</div>
+                </div>
+            </div>
+
             <div class="referral-section">
                 <div class="records-title" data-i18n="referralProgram">Реферальная программа</div>
                 <div class="referral-card">
                     <div class="referral-header">
-                        <div class="referral-title" data-i18n="inviteFriends">Приглашайте друзей и поднимайтесь выше в топе</div>
+                        <div>
+                            <div class="referral-title" data-i18n="inviteFriends">Приглашайте друзей и поднимайтесь выше в топе</div>
+                            <div class="referral-subtitle" data-i18n="referralCompactText">Одна ссылка — и весь прогресс приглашений всегда под рукой.</div>
+                        </div>
                         <button class="referral-conditions-btn" onclick="showReferralConditions()" data-i18n="conditions">Условия</button>
                     </div>
                     <div class="referral-buttons">
                         <button class="referral-invite-btn" onclick="shareReferralLink()" data-i18n="invite">Пригласить</button>
-                        <button class="referral-copy-btn" onclick="copyReferralLink()">
+                        <button class="referral-copy-btn" onclick="copyReferralLink()" aria-label="Copy referral link">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -3257,18 +3341,71 @@
                         </button>
                     </div>
                     <div class="referral-stats">
-                        <div class="referral-stat-box">
-                            <div class="referral-stat-value" id="referral-count">0</div>
-                            <div class="referral-stat-label" data-i18n="invited">Приглашено</div>
-                        </div>
-                        <div class="referral-stat-box">
-                            <div class="referral-stat-value" id="referral-active">0</div>
-                            <div class="referral-stat-label" data-i18n="activated">Зачтено</div>
-                        </div>
-                        <div class="referral-stat-box">
-                            <div class="referral-stat-value" id="referral-rank">--</div>
-                            <div class="referral-stat-label" data-i18n="rankInTop">Место</div>
-                        </div>
+                        <div class="referral-stat-box"><div class="referral-stat-value" id="referral-count">0</div><div class="referral-stat-label" data-i18n="invited">Приглашено</div></div>
+                        <div class="referral-stat-box"><div class="referral-stat-value" id="referral-active">0</div><div class="referral-stat-label" data-i18n="activated">Зачтено</div></div>
+                        <div class="referral-stat-box"><div class="referral-stat-value" id="referral-rank">--</div><div class="referral-stat-label" data-i18n="rankInTop">Место</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-panel" id="profileStatsPanel" role="tabpanel" hidden>
+            <div class="records-section">
+                <div class="records-title" data-i18n="myRecords">Мои рекорды</div>
+                <div class="records-table" id="recordsTable">
+                    <div class="record-row" data-profile-game="bb">
+                        <button class="record-summary" onclick="toggleProfileGameStats('bb')">
+                            <img class="record-icon" src="assets/game-icons/block-blast.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="blockBlast">Блок Бласт</span><span class="record-time" id="time-bb">—</span></span>
+                            <span class="record-score" id="rec-bb">--</span><span class="record-rank" id="rank-bb"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details" id="details-bb"></div>
+                    </div>
+                    <div class="record-row" data-profile-game="saper">
+                        <button class="record-summary" onclick="toggleProfileGameStats('saper')">
+                            <img class="record-icon" src="assets/game-icons/minesweeper.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="minesweeper">Сапёр</span><span class="record-time" id="time-saper">—</span></span>
+                            <span class="record-score" id="rec-saper">--</span><span class="record-rank" id="rank-saper"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details" id="details-saper"></div>
+                    </div>
+                    <div class="record-row" data-profile-game="tower">
+                        <button class="record-summary" onclick="toggleProfileGameStats('tower')">
+                            <img class="record-icon" src="assets/game-icons/tower.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="tower">Башня</span><span class="record-time" id="time-tower">—</span></span>
+                            <span class="record-score" id="rec-tower">--</span><span class="record-rank" id="rank-tower"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details" id="details-tower"></div>
+                    </div>
+                    <div class="record-row" data-profile-game="sudoku">
+                        <button class="record-summary" onclick="toggleProfileGameStats('sudoku')">
+                            <img class="record-icon" src="assets/game-icons/sudoku.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="sudoku">Судоку</span><span class="record-time" id="time-sudoku">—</span></span>
+                            <span class="record-score" id="rec-sudoku">--</span><span class="record-rank" id="rank-sudoku"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details" id="details-sudoku"></div>
+                    </div>
+                    <div class="record-row" data-profile-game="checkers">
+                        <button class="record-summary" onclick="toggleProfileGameStats('checkers')">
+                            <img class="record-icon" src="assets/game-icons/checkers.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="checkers">Шашки</span><span class="record-time" id="time-checkers">—</span></span>
+                            <span class="record-score" id="rec-checkers">--</span><span class="record-rank" id="rank-checkers"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details" id="details-checkers"></div>
+                    </div>
+                    <div class="record-row" data-profile-game="wordle">
+                        <button class="record-summary" onclick="toggleProfileGameStats('wordle')">
+                            <img class="record-icon" src="assets/game-icons/wordle.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="wordle">Вордли</span><span class="record-time" id="time-wordle">—</span></span>
+                            <span class="record-score" id="rec-wordle">--</span><span class="record-rank" id="rank-wordle"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details" id="details-wordle"></div>
                     </div>
                 </div>
             </div>
@@ -3858,12 +3995,12 @@
         async function checkSubscription() {
             const btn = document.getElementById('checkSubBtn');
             btn.classList.add('loading');
-            btn.innerText = 'Проверяем...';
+            btn.innerText = t('checking');
             
             const user = tg.initDataUnsafe.user;
             if (!user) {
                 btn.classList.remove('loading');
-                btn.innerText = 'Проверить подписку';
+                btn.innerText = t('checkSub');
                 return;
             }
             
@@ -3875,7 +4012,7 @@
                     isSubscribed = true;
                     document.getElementById('subscriptionModal').classList.remove('visible');
                     if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
-                    showToast('Добро пожаловать!', 'welcome');
+                    showToast(t('welcome'), 'welcome');
                 } else {
                     if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');
                     // Не показываем toast, так как модалка всё равно видна
@@ -3886,7 +4023,7 @@
             }
             
             btn.classList.remove('loading');
-            btn.innerText = 'Проверить подписку';
+            btn.innerText = t('checkSub');
         }
 
         function initApp() {
@@ -3932,6 +4069,7 @@
                 isOnlineGame = true;
                 isPvE = false;
                 document.getElementById('checkers-screen').classList.add('visible');
+                beginGamePlaytime('checkers');
                 initCheckers(); 
                 const boardEl = document.getElementById('checkersBoard');
                 boardEl.classList.remove('rotated'); 
@@ -4153,9 +4291,28 @@
             overlay.classList.remove('visible');
         }
         
-        // Language
-        let currentLang = localStorage.getItem('language') || 'ru';
-        if (!['ru', 'en', 'zh'].includes(currentLang)) currentLang = 'ru';
+        // Language is stored per Telegram account. A single device can be
+        // shared by several accounts, so a global localStorage value must not
+        // force Russian UI on a new English/Chinese user.
+        const languageUser = tg.initDataUnsafe.user;
+        const languageUserId = languageUser && String(languageUser.id);
+        const languageStorageKey = languageUserId ? `language_${languageUserId}` : 'language';
+        const telegramLanguage = (() => {
+            const code = String(languageUser && languageUser.language_code || '').toLowerCase();
+            if (code.startsWith('zh')) return 'zh';
+            if (code.startsWith('en')) return 'en';
+            return 'ru';
+        })();
+        let currentLang = localStorage.getItem(languageStorageKey);
+        if (!currentLang && languageUserId) {
+            const legacyOwner = localStorage.getItem('language_owner');
+            const legacyLanguage = localStorage.getItem('language');
+            if (legacyOwner === languageUserId && ['ru', 'en', 'zh'].includes(legacyLanguage)) {
+                currentLang = legacyLanguage;
+                localStorage.setItem(languageStorageKey, currentLang);
+            }
+        }
+        if (!['ru', 'en', 'zh'].includes(currentLang)) currentLang = telegramLanguage;
         const translations = {
             ru: {
                 settings: 'Настройки',
@@ -4172,6 +4329,16 @@
                 tops: 'Топ',
                 games: 'Игры',
                 myRecords: 'Мои рекорды',
+                overview: 'Обзор',
+                statistics: 'Статистика',
+                favoriteGame: 'Любимая игра',
+                noPlaytime: 'Начните играть — время появится здесь',
+                nearestGoals: 'Ближайшие цели',
+                goalsLoading: 'Подбираем ближайшие цели…',
+                noGoals: 'Сыграйте первую игру — здесь появятся цели.',
+                totalTime: 'Время в игре',
+                goalPlace: 'До места №{place}: {gap}',
+                referralCompactText: 'Одна ссылка — и весь прогресс приглашений всегда под рукой.',
                 referralProgram: 'Реферальная программа',
                 inviteFriends: 'Приглашайте друзей и поднимайтесь выше в топе',
                 conditions: 'Условия',
@@ -4263,6 +4430,8 @@
                 subscribeText: 'Чтобы играть, подпишитесь на наш новостной канал. Там только полезная информация о новых обновлениях и развитии приложения.',
                 goToChannel: 'Перейти на канал',
                 checkSub: 'Проверить подписку',
+                checking: 'Проверяем...',
+                welcome: 'Добро пожаловать!',
                 // Tops titles
                 topsBlockBlast: 'Топ Блок Бласт',
                 topsMinesweeper: 'Топ Сапёр',
@@ -4406,6 +4575,16 @@
                 tops: 'Top',
                 games: 'Games',
                 myRecords: 'My Records',
+                overview: 'Overview',
+                statistics: 'Statistics',
+                favoriteGame: 'Favorite game',
+                noPlaytime: 'Start playing to track time here',
+                nearestGoals: 'Nearest goals',
+                goalsLoading: 'Finding your nearest goals…',
+                noGoals: 'Play your first game to unlock goals.',
+                totalTime: 'Time played',
+                goalPlace: 'To place #{place}: {gap}',
+                referralCompactText: 'One link keeps all your invitation progress close at hand.',
                 referralProgram: 'Referral Program',
                 inviteFriends: 'Invite friends and climb the top',
                 conditions: 'Terms',
@@ -4497,6 +4676,8 @@
                 subscribeText: 'To play, subscribe to our news channel. Only useful information about updates and app development.',
                 goToChannel: 'Go to channel',
                 checkSub: 'Check subscription',
+                checking: 'Checking...',
+                welcome: 'Welcome!',
                 // Tops titles
                 topsBlockBlast: 'Block Blast Top',
                 topsMinesweeper: 'Minesweeper Top',
@@ -4629,7 +4810,10 @@
                 settings: '设置', language: '语言', appearance: '外观', theme: '主题',
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
-                myRecords: '我的纪录', referralProgram: '邀请计划', inviteFriends: '邀请好友并提升排行榜名次',
+                myRecords: '我的纪录', overview: '概览', statistics: '统计', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
+                nearestGoals: '最近目标', goalsLoading: '正在查找最近目标…', noGoals: '完成第一局后，这里会显示目标。',
+                totalTime: '游戏时长', goalPlace: '距离第 {place} 名：{gap}', referralCompactText: '一个链接即可随时查看全部邀请进度。',
+                referralProgram: '邀请计划', inviteFriends: '邀请好友并提升排行榜名次',
                 conditions: '规则', conditionsTitle: '邀请计划规则',
                 conditionsText: '使用您的专属链接邀请好友，并参加邀请排行榜。', invite: '邀请', invited: '已邀请',
                 activated: '已计入', rankInTop: '名次', blockBlast: '方块爆破', minesweeper: '扫雷', tower: '叠塔',
@@ -4651,7 +4835,7 @@
                 exitGame: '退出游戏？', exitConfirm: '确定要退出吗？本局将计为失败。', yesExit: '确认退出',
                 chooseDifficulty: '选择难度', subscribeChannel: '订阅频道',
                 subscribeText: '要开始游戏，请订阅我们的新闻频道。频道只发布应用更新和开发动态。',
-                goToChannel: '前往频道', checkSub: '检查订阅', topsBlockBlast: '方块爆破排行榜',
+                goToChannel: '前往频道', checkSub: '检查订阅', checking: '正在检查...', welcome: '欢迎！', topsBlockBlast: '方块爆破排行榜',
                 topsMinesweeper: '扫雷排行榜', topsTower: '叠塔排行榜', topsSudoku: '数独排行榜',
                 topsCheckers: '跳棋排行榜', topsWordle: '猜词排行榜', topsReferrals: '邀请排行榜',
                 tapToStart: '点击开始', refCondition2: '好友首次通过链接进入后将永久归属于您的邀请。',
@@ -4708,7 +4892,9 @@
         function setLanguage(lang) {
             if (!['ru', 'en', 'zh'].includes(lang)) return;
             currentLang = lang;
+            localStorage.setItem(languageStorageKey, lang);
             localStorage.setItem('language', lang);
+            if (languageUserId) localStorage.setItem('language_owner', languageUserId);
             applyLanguage();
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.lang === lang);
@@ -4998,10 +5184,11 @@
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
-            if(game==='tower') { document.getElementById('tower-screen').classList.add('visible'); initTower(); }
+            if(game==='tower') { document.getElementById('tower-screen').classList.add('visible'); beginGamePlaytime('tower'); initTower(); }
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); 
         }
         function closeGame(game) { 
+            stopGamePlaytime(game);
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
             if(game==='bb') { try { bbStopSparks(); } catch(_) {} saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
@@ -5030,6 +5217,228 @@
             }
         }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalWordleGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); }
+
+        // --- Lightweight profile playtime tracking ---
+        // There is deliberately no ticking interval. Time is accumulated only
+        // on open/close, visibility changes and page unload.
+        const PROFILE_GAMES = {
+            bb:       { nameKey: 'blockBlast', icon: 'assets/game-icons/block-blast.png' },
+            saper:    { nameKey: 'minesweeper', icon: 'assets/game-icons/minesweeper.png' },
+            tower:    { nameKey: 'tower', icon: 'assets/game-icons/tower.png' },
+            sudoku:   { nameKey: 'sudoku', icon: 'assets/game-icons/sudoku.png' },
+            checkers: { nameKey: 'checkers', icon: 'assets/game-icons/checkers.png' },
+            wordle:   { nameKey: 'wordle', icon: 'assets/game-icons/wordle.png' },
+            monopoly: { nameKey: 'monopoly', icon: 'assets/game-icons/monopoly.png' }
+        };
+        const playtimeUser = tg.initDataUnsafe.user;
+        const playtimeStorageKey = `spark_playtime_${playtimeUser ? playtimeUser.id : 'guest'}`;
+        let activePlaytime = null;
+        function readPlaytime() {
+            try {
+                const data = JSON.parse(localStorage.getItem(playtimeStorageKey) || '{}');
+                return data && typeof data === 'object' ? data : {};
+            } catch (_) { return {}; }
+        }
+        function writePlaytime(data) {
+            try { localStorage.setItem(playtimeStorageKey, JSON.stringify(data)); } catch (_) {}
+        }
+        function flushGamePlaytime(pause) {
+            if (!activePlaytime || !activePlaytime.startedAt) return;
+            const now = Date.now();
+            const elapsed = Math.max(0, Math.min(now - activePlaytime.startedAt, 12 * 60 * 60 * 1000));
+            const totals = readPlaytime();
+            totals[activePlaytime.game] = Math.round((Number(totals[activePlaytime.game]) || 0) + elapsed);
+            writePlaytime(totals);
+            activePlaytime.startedAt = pause ? null : now;
+        }
+        function beginGamePlaytime(game) {
+            if (!PROFILE_GAMES[game]) return;
+            if (activePlaytime && activePlaytime.game === game) {
+                if (!activePlaytime.startedAt && !document.hidden) activePlaytime.startedAt = Date.now();
+                return;
+            }
+            flushGamePlaytime(true);
+            activePlaytime = { game, startedAt: document.hidden ? null : Date.now() };
+        }
+        function stopGamePlaytime(game) {
+            if (!activePlaytime || (game && activePlaytime.game !== game)) return;
+            flushGamePlaytime(true);
+            activePlaytime = null;
+        }
+        function playtimeSnapshot() {
+            const totals = readPlaytime();
+            if (activePlaytime && activePlaytime.startedAt) {
+                totals[activePlaytime.game] = (Number(totals[activePlaytime.game]) || 0) + Math.max(0, Date.now() - activePlaytime.startedAt);
+            }
+            return totals;
+        }
+        function formatPlaytime(milliseconds) {
+            const minutes = Math.floor((Number(milliseconds) || 0) / 60000);
+            const hours = Math.floor(minutes / 60);
+            const rest = minutes % 60;
+            if (hours > 0) return currentLang === 'zh' ? `${hours}小时 ${rest}分钟` : `${hours} ${currentLang === 'en' ? 'h' : 'ч'} ${rest} ${currentLang === 'en' ? 'min' : 'мин'}`;
+            if (minutes > 0) return currentLang === 'zh' ? `${minutes}分钟` : `${minutes} ${currentLang === 'en' ? 'min' : 'мин'}`;
+            return currentLang === 'zh' ? '< 1分钟' : `< 1 ${currentLang === 'en' ? 'min' : 'мин'}`;
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (!activePlaytime) return;
+            if (document.hidden) flushGamePlaytime(true);
+            else if (!activePlaytime.startedAt) activePlaytime.startedAt = Date.now();
+        });
+        window.addEventListener('pagehide', () => flushGamePlaytime(true));
+
+        // --- Profile overview/statistics switch ---
+        let currentProfileSection = 'overview';
+        let profileRankData = {};
+        function setProfileSection(section) {
+            if (section !== 'overview' && section !== 'stats') return;
+            currentProfileSection = section;
+            const stats = section === 'stats';
+            const segment = document.getElementById('profileSegment');
+            segment.style.setProperty('--profile-tab-progress', stats ? '1' : '0');
+            document.getElementById('profileOverviewTab').classList.toggle('active', !stats);
+            document.getElementById('profileStatsTab').classList.toggle('active', stats);
+            document.getElementById('profileOverviewTab').setAttribute('aria-selected', String(!stats));
+            document.getElementById('profileStatsTab').setAttribute('aria-selected', String(stats));
+            const showPanel = document.getElementById(stats ? 'profileStatsPanel' : 'profileOverviewPanel');
+            const hidePanel = document.getElementById(stats ? 'profileOverviewPanel' : 'profileStatsPanel');
+            hidePanel.hidden = true;
+            showPanel.hidden = false;
+            showPanel.classList.remove('panel-enter');
+            void showPanel.offsetWidth;
+            showPanel.classList.add('panel-enter');
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+        (function initProfileSegmentDrag() {
+            const segment = document.getElementById('profileSegment');
+            let pointerId = null, startX = 0, startProgress = 0, progress = 0, horizontal = false, suppressClick = false;
+            segment.addEventListener('pointerdown', event => {
+                if (event.button !== undefined && event.button !== 0) return;
+                pointerId = event.pointerId;
+                startX = event.clientX;
+                startProgress = currentProfileSection === 'stats' ? 1 : 0;
+                progress = startProgress;
+                horizontal = false;
+                segment.setPointerCapture(pointerId);
+            });
+            segment.addEventListener('pointermove', event => {
+                if (event.pointerId !== pointerId) return;
+                const dx = event.clientX - startX;
+                if (!horizontal && Math.abs(dx) < 5) return;
+                horizontal = true;
+                segment.classList.add('dragging');
+                const travel = Math.max(1, segment.clientWidth / 2);
+                progress = Math.max(0, Math.min(1, startProgress + dx / travel));
+                segment.style.setProperty('--profile-tab-progress', String(progress));
+            });
+            const finish = event => {
+                if (event.pointerId !== pointerId) return;
+                if (segment.hasPointerCapture(pointerId)) segment.releasePointerCapture(pointerId);
+                segment.classList.remove('dragging');
+                pointerId = null;
+                if (horizontal) {
+                    suppressClick = true;
+                    setProfileSection(progress >= .5 ? 'stats' : 'overview');
+                    setTimeout(() => { suppressClick = false; }, 0);
+                }
+            };
+            segment.addEventListener('pointerup', finish);
+            segment.addEventListener('pointercancel', finish);
+            segment.addEventListener('click', event => {
+                if (!suppressClick) return;
+                event.preventDefault();
+                event.stopPropagation();
+                suppressClick = false;
+            }, true);
+        })();
+
+        function toggleProfileGameStats(game) {
+            document.querySelectorAll('.record-row[data-profile-game]').forEach(row => {
+                row.classList.toggle('open', row.dataset.profileGame === game && !row.classList.contains('open'));
+            });
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+        function detailCard(label, value) {
+            return `<div class="record-detail"><div class="record-detail-label">${label}</div><div class="record-detail-value">${value}</div></div>`;
+        }
+        function rankText(data) { return data && data.rank ? `#${data.rank}` : '—'; }
+        function localNumber(key) { return Number(localStorage.getItem(key)) || 0; }
+        function bestTimeText(key) {
+            const value = Number(localStorage.getItem(key));
+            return value > 0 ? `${value.toFixed(2)} ${t('sec')}` : '—';
+        }
+        function renderProfileStatsDetails() {
+            const times = playtimeSnapshot();
+            Object.keys(PROFILE_GAMES).forEach(game => {
+                const el = document.getElementById(`time-${game}`);
+                if (el) el.textContent = `${t('totalTime')}: ${(times[game] || 0) > 0 ? formatPlaytime(times[game]) : '—'}`;
+            });
+            const value = key => localNumber(key).toLocaleString(currentLocale());
+            const valueOrDash = key => localNumber(key) > 0 ? value(key) : '—';
+            const blocks = {
+                bb: [detailCard(t('bestScore'), valueOrDash('bb_best_score')), detailCard(t('totalGames'), valueOrDash('bb_total_games')), detailCard(t('top'), rankText(profileRankData.bb_best_score)), detailCard(t('totalTime'), (times.bb || 0) > 0 ? formatPlaytime(times.bb) : '—')],
+                saper: [
+                    detailCard(`6×6 · ${rankText(profileRankData.saper_best_6)}`, bestTimeText('saper_best_6')),
+                    detailCard(`8×8 · ${rankText(profileRankData.saper_best_8)}`, bestTimeText('saper_best_8')),
+                    detailCard(`10×10 · ${rankText(profileRankData.saper_best_10)}`, bestTimeText('saper_best_10')),
+                    detailCard(`15×15 · ${rankText(profileRankData.saper_best_15)}`, bestTimeText('saper_best_15')),
+                    detailCard(t('numWins'), valueOrDash('saper_wins')), detailCard(t('totalTime'), (times.saper || 0) > 0 ? formatPlaytime(times.saper) : '—')
+                ],
+                tower: [detailCard(t('towerHeight'), valueOrDash('tower_best')), detailCard(t('cleanSeries'), valueOrDash('tower_combo')), detailCard(t('top'), rankText(profileRankData.tower_best)), detailCard(t('totalTime'), (times.tower || 0) > 0 ? formatPlaytime(times.tower) : '—')],
+                sudoku: [detailCard(t('numWins'), valueOrDash('sudoku_wins')), detailCard(t('top'), rankText(profileRankData.sudoku_wins)), detailCard(t('totalTime'), (times.sudoku || 0) > 0 ? formatPlaytime(times.sudoku) : '—')],
+                checkers: [detailCard(t('totalGames'), valueOrDash('checkers_total')), detailCard(t('winsVsBot'), valueOrDash('checkers_wins_pve')), detailCard(t('top'), rankText(profileRankData.checkers_wins_pve)), detailCard(t('totalTime'), (times.checkers || 0) > 0 ? formatPlaytime(times.checkers) : '—')],
+                wordle: [detailCard(t('numWins'), valueOrDash('wordle_wins')), detailCard(t('top'), rankText(profileRankData.wordle_wins)), detailCard(t('totalTime'), (times.wordle || 0) > 0 ? formatPlaytime(times.wordle) : '—')]
+            };
+            Object.entries(blocks).forEach(([game, cards]) => {
+                const el = document.getElementById(`details-${game}`);
+                if (el) el.innerHTML = cards.join('');
+            });
+        }
+        function updateFavoriteGame() {
+            const times = playtimeSnapshot();
+            const favorite = Object.keys(PROFILE_GAMES).sort((a,b) => (times[b] || 0) - (times[a] || 0))[0];
+            const hasTime = favorite && (times[favorite] || 0) > 0;
+            const config = PROFILE_GAMES[hasTime ? favorite : 'saper'];
+            document.getElementById('profileFavoriteIcon').src = config.icon;
+            document.getElementById('profileFavoriteName').textContent = hasTime ? t(config.nameKey) : t('favoriteGame');
+            document.getElementById('profileFavoriteTime').textContent = hasTime ? formatPlaytime(times[favorite]) : t('noPlaytime');
+        }
+        function playProfileGoal(game) {
+            const tab = document.querySelector('.tab-item[data-tab="games"]');
+            switchTab('games', tab);
+            if (game === 'bb') startBlockBlastCheck();
+            else if (game === 'saper' || game === 'checkers' || game === 'tower') openGameModal(game);
+            else if (game === 'sudoku') startSudokuCheck();
+            else if (game === 'wordle') startWordle();
+        }
+        function renderNearestGoals() {
+            const container = document.getElementById('nearestGoalsList');
+            const candidates = [
+                ['bb_best_score','bb'], ['saper_wins','saper'], ['tower_best','tower'],
+                ['sudoku_wins','sudoku'], ['checkers_wins_pve','checkers'], ['wordle_wins','wordle']
+            ].map(([key, game]) => ({ key, game, data: profileRankData[key] }))
+             .filter(item => item.data && item.data.goal)
+             .sort((a,b) => (a.data.rank - a.data.goal.place) - (b.data.rank - b.data.goal.place))
+             .slice(0, 3);
+            container.innerHTML = '';
+            if (!candidates.length) {
+                const empty = document.createElement('div');
+                empty.className = 'nearest-goals-empty';
+                empty.textContent = t('noGoals');
+                container.appendChild(empty);
+                return;
+            }
+            candidates.forEach(item => {
+                const config = PROFILE_GAMES[item.game];
+                const isTime = item.key.startsWith('saper_best_');
+                const gap = isTime ? `${Number(item.data.goal.gap).toFixed(2)} ${t('sec')}` : Math.ceil(item.data.goal.gap).toLocaleString(currentLocale());
+                const row = document.createElement('div');
+                row.className = 'nearest-goal';
+                row.innerHTML = `<img class="nearest-goal-icon" src="${config.icon}" alt=""><div class="nearest-goal-copy"><div class="nearest-goal-title">${t(config.nameKey)}</div><div class="nearest-goal-subtitle">${t('goalPlace').replace('{place}', item.data.goal.place).replace('{gap}', gap)}</div></div><button class="nearest-goal-play" type="button">${t('play')}</button>`;
+                row.querySelector('button').addEventListener('click', () => playProfileGoal(item.game));
+                container.appendChild(row);
+            });
+        }
         
         function loadProfile() { 
             const user = tg.initDataUnsafe.user || { first_name: "Player", username: "user" }; 
@@ -5062,6 +5471,8 @@
             document.getElementById('rec-wordle').innerText = wordleScore > 0 ? wordleScore + ' ' + t('winsShort') : '--';
             
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = bbScore || 0;
+            updateFavoriteGame();
+            renderProfileStatsDetails();
             
             // Load ranks from server
             loadUserRanks();
@@ -5099,11 +5510,18 @@
         
         async function loadUserRanks() {
             const user = tg.initDataUnsafe.user;
-            if (!user) return;
+            if (!user) {
+                profileRankData = {};
+                ['bb','saper','tower','sudoku','checkers','wordle'].forEach(game => updateRankDisplay(`rank-${game}`, null));
+                renderProfileStatsDetails();
+                renderNearestGoals();
+                return;
+            }
             
             try {
                 const res = await fetch(`${API_BASE_URL}/user-ranks?user_id=${user.id}`);
                 const ranks = await res.json();
+                profileRankData = ranks && typeof ranks === 'object' ? ranks : {};
                 
                 updateRankDisplay('rank-bb', ranks.bb_best_score);
                 updateRankDisplay('rank-saper', ranks.saper_wins);
@@ -5111,6 +5529,8 @@
                 updateRankDisplay('rank-sudoku', ranks.sudoku_wins);
                 updateRankDisplay('rank-checkers', ranks.checkers_wins_pve);
                 updateRankDisplay('rank-wordle', ranks.wordle_wins);
+                renderProfileStatsDetails();
+                renderNearestGoals();
             } catch(e) {
                 console.log('Failed to load ranks:', e);
             }
@@ -5121,7 +5541,7 @@
             if (!el) return;
             
             if (!rankData || !rankData.rank) {
-                el.innerText = '--';
+                el.innerText = '';
                 el.className = 'record-rank';
                 return;
             }
@@ -5376,11 +5796,12 @@
         // --- REFERRAL SYSTEM ---
         const BOT_USERNAME = 'spark_game_bot';
         const APP_NAME = 'sparkapp';
+        const REFERRAL_APP_NAME = 'spark';
         
         function getReferralLink() {
             const user = tg.initDataUnsafe.user;
             if (!user) return '';
-            return `https://t.me/${BOT_USERNAME}/${APP_NAME}?startapp=ref_${user.id}`;
+            return `https://t.me/${BOT_USERNAME}/${REFERRAL_APP_NAME}?startapp=ref_${user.id}`;
         }
         
         async function sharePreparedMessage(kind, roomId) {
@@ -6191,17 +6612,17 @@
         }
 
         /* --- SAPER WITH MS TIMER --- */
-        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0;
+        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0, sSessionReady=null;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
+        function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); beginGamePlaytime('saper'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} startGameSession('saper_best_' + sCols); }
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} sSessionReady=startGameSession('saper_best_' + sCols); }
         function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}reportGameMove('saper_best_' + sCols);if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key = `saper_best_${sRows}`; let b=parseFloat(localStorage.getItem(key)||9999); const timeAccepted = await sendStatToBackend(`saper_best_${sRows}`, sTimer); if(timeAccepted && sTimer<b) saveStatToCloud(key, sTimer); let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); sendStatToBackend('saper_wins', w); showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(2)} ${t('seconds')}`, t('cool'), () => { closeResult(); closeGame('saper'); }); } }
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key = `saper_best_${sRows}`; let b=parseFloat(localStorage.getItem(key)||9999); await sSessionReady; const timeResult = await sendStatToBackend(key, Number(sTimer.toFixed(2))); if(timeResult){ const serverBest=Number(timeResult.best_score); if(Number.isFinite(serverBest)) saveStatToCloud(key,serverBest); else if(sTimer<b) saveStatToCloud(key,Number(sTimer.toFixed(2))); } let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); sendStatToBackend('saper_wins', w); showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(2)} ${t('seconds')}`, t('cool'), () => { closeResult(); closeGame('saper'); }); } }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
@@ -6238,6 +6659,7 @@
             isOnlineGame = false;
             document.getElementById('modalCheckers').classList.remove('visible');
             document.getElementById('checkers-screen').classList.add('visible');
+            beginGamePlaytime('checkers');
             setTimeout(initCheckers,50);
         }
         function initCheckers(){
@@ -6717,6 +7139,7 @@
                         bbInputLocked = false;
                         try { bbInitSounds(); } catch(_) {}
                         document.getElementById('bb-screen').classList.add('visible');
+                        beginGamePlaytime('bb');
                         applyBBAuthoritativeState(started);
                     }
                 }
@@ -6996,6 +7419,7 @@
             }
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
+            beginGamePlaytime('bb');
             restoreBBState();
             const resumeCheckpoint = bbServerCheckpoint;
             const localRevision = bbRevision;
@@ -7110,6 +7534,7 @@
             }
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
+            beginGamePlaytime('bb');
             initBB();
         }
         async function initBB() {
@@ -8213,9 +8638,9 @@
         /* --- SUDOKU LOGIC --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1;
         function startSudokuCheck() { if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); else document.getElementById('modalSudoku').classList.add('visible'); }
-        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); restoreSudokuState(); startGameSession('sudoku_wins'); }
+        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); restoreSudokuState(); startGameSession('sudoku_wins'); }
         function selectSudokuDiff(diff, btn, index) { selectedSudoDiff = diff; const glider = document.getElementById('sudokuGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); generateSudoku(selectedSudoDiff); startGameSession('sudoku_wins'); }
+        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); generateSudoku(selectedSudoDiff); startGameSession('sudoku_wins'); }
         function generateSudoku(holes) {
             if (holes === 30) currentSudoMode = 1; else if (holes === 40) currentSudoMode = 2; else currentSudoMode = 3;
             sudoBoard = Array(81).fill(0); sudoSolution = Array(81).fill(0); sudoLives = 3; sudoFilled = 0; activeDigit = null; document.querySelectorAll('.num-btn').forEach(b => { b.classList.remove('active-digit', 'disabled'); });
@@ -9371,11 +9796,13 @@
                 ? `&invite=${encodeURIComponent(window.__monoInviteRoom)}` : '';
             frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${invite}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
+            beginGamePlaytime('monopoly');
         }
 
         function closeMonopolyGame() {
             setMonopolyBackButton(false);
             document.getElementById('monopoly-game').classList.remove('visible');
+            stopGamePlaytime('monopoly');
             // Unload the iframe so the game fully resets next open
             document.getElementById('monopolyFrame').src = 'about:blank';
             // Drop any pending resume payload — it belongs to the closed session
@@ -9807,6 +10234,7 @@
                 document.getElementById('monopolyFrame').src = `monopoly/index.html?${params.toString()}`;
                 document.getElementById('monopoly-lobby').classList.remove('visible');
                 document.getElementById('monopoly-game').classList.add('visible');
+                beginGamePlaytime('monopoly');
             });
 
             socket.on('monopoly_room_list', ({ rooms }) => {
@@ -9879,6 +10307,7 @@
                 }
                 document.getElementById('monopoly-lobby').classList.remove('visible');
                 document.getElementById('monopoly-game').classList.add('visible');
+                beginGamePlaytime('monopoly');
                 hideMonoRejoinBanner();
             });
         }
@@ -9957,6 +10386,7 @@
 
         function startWordle() {
             document.getElementById('wordle-screen').classList.add('visible');
+            beginGamePlaytime('wordle');
             wordleWins = parseInt(localStorage.getItem('wordle_wins') || 0);
             document.getElementById('wordleWins').innerText = wordleWins;
             // Kick off both dictionary loads in parallel; initWordle uses the

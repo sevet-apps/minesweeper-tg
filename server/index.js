@@ -127,7 +127,7 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
     const userId = Number(req.telegramUser.id);
     let text, url, title, entities;
     if (kind === 'referral') {
-        url = `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`;
+        url = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
         text = `✨ Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!\n${url}`;
         title = 'Приглашение в Spark';
         entities = [{ type: 'custom_emoji', offset: 0, length: 2,
@@ -1300,8 +1300,11 @@ app.get('/leaderboard', async (req, res) => {
     ];
     if (!allowed.includes(category)) return res.json([]); 
     const isTime = category.includes('best') && category.includes('saper');
-    const { data, error } = await supabase.from('users').select(`telegram_id, username, photo_url, ${category}`).not(category, 'is', null).order(category, { ascending: isTime }).limit(50);
-    if (error) return res.json([]);
+    const { data, error } = await supabase.from('users').select(`telegram_id, username, photo_url, ${category}`).not(category, 'is', null).gt(category, 0).order(category, { ascending: isTime }).limit(50);
+    if (error) {
+        console.error(`[leaderboard] ${category}:`, error.message);
+        return res.status(500).json({ error: 'Leaderboard unavailable' });
+    }
     const result = data.map(u => ({ user_id: u.telegram_id, username: u.username, photo_url: u.photo_url, score: u[category] }));
     res.json(result);
 });
@@ -1426,34 +1429,59 @@ app.get('/user-ranks', async (req, res) => {
     
     const categories = [
         { key: 'bb_best_score', asc: false },
+        { key: 'bb_total_games', asc: false },
+        { key: 'saper_best_6', asc: true },
         { key: 'saper_best_8', asc: true },
+        { key: 'saper_best_10', asc: true },
+        { key: 'saper_best_15', asc: true },
         { key: 'saper_wins', asc: false },
         { key: 'tower_best', asc: false },
+        { key: 'tower_combo', asc: false },
         { key: 'sudoku_wins', asc: false },
+        { key: 'checkers_total', asc: false },
         { key: 'checkers_wins_pve', asc: false },
         { key: 'wordle_wins', asc: false }
     ];
-    
-    const ranks = {};
-    
-    for (const cat of categories) {
-        const { data } = await supabase
+
+    const milestones = [1, 3, 10, 25, 50, 100];
+    const entries = await Promise.all(categories.map(async cat => {
+        const { data, error } = await supabase
             .from('users')
             .select(`telegram_id, ${cat.key}`)
             .not(cat.key, 'is', null)
             .gt(cat.key, 0)
             .order(cat.key, { ascending: cat.asc });
-        
-        if (data) {
-            const idx = data.findIndex(u => String(u.telegram_id) === String(user_id));
-            const userEntry = data.find(u => String(u.telegram_id) === String(user_id));
-            ranks[cat.key] = {
-                rank: idx >= 0 ? idx + 1 : null,
-                score: userEntry ? userEntry[cat.key] : null,
-                total: data.length
-            };
+        if (error) {
+            console.error(`[user-ranks] ${cat.key}:`, error.message);
+            return [cat.key, { rank: null, score: null, total: 0, goal: null }];
         }
-    }
+        const rows = data || [];
+        const idx = rows.findIndex(u => String(u.telegram_id) === String(user_id));
+        const userEntry = idx >= 0 ? rows[idx] : null;
+        const rank = idx >= 0 ? idx + 1 : null;
+        let goal = null;
+        if (rank && rank > 1) {
+            const targetPlace = milestones.filter(place => place < rank).pop() || 1;
+            const targetEntry = rows[targetPlace - 1];
+            if (targetEntry) {
+                const score = Number(userEntry[cat.key]);
+                const targetScore = Number(targetEntry[cat.key]);
+                const rawGap = cat.asc ? score - targetScore : targetScore - score;
+                goal = {
+                    place: targetPlace,
+                    score: targetScore,
+                    gap: Math.max(cat.asc ? 0.01 : 1, rawGap + (cat.asc ? 0.01 : 1))
+                };
+            }
+        }
+        return [cat.key, {
+            rank,
+            score: userEntry ? userEntry[cat.key] : null,
+            total: rows.length,
+            goal
+        }];
+    }));
+    const ranks = Object.fromEntries(entries);
     
     res.json(ranks);
 });
@@ -2905,7 +2933,7 @@ async function editInlineMessageWithPlayButton(inlineMessageId, text, userId) {
                 inline_keyboard: [[
                     { 
                         text: '🎮 Играть', 
-                        url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}`
+                        url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`
                     }
                 ]]
             }
@@ -3181,7 +3209,7 @@ if (BOT_TOKEN) {
                 id: tttId,
                 title: 'Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -3203,7 +3231,7 @@ if (BOT_TOKEN) {
                 id: chId,
                 title: 'Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/checkers.png',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -3240,7 +3268,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}` }
                             ]]
                         }
                     });
@@ -3265,7 +3293,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: '❌⭕ Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -3290,7 +3318,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: '⚪⚫ Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/checkers.png',
+                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
                 input_message_content: {
                     message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
                     parse_mode: 'HTML'
@@ -3337,7 +3365,7 @@ if (BOT_TOKEN) {
                         },
                         reply_markup: {
                             inline_keyboard: [[
-                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
+                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}` }
                             ]]
                         }
                     });
@@ -3366,7 +3394,7 @@ if (BOT_TOKEN) {
                             },
                             reply_markup: {
                                 inline_keyboard: [[
-                                    { text: '🎮 Играть', url: `https://t.me/spark_game_bot/sparkapp?startapp=ref_${userId}` }
+                                    { text: '🎮 Играть', url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}` }
                                 ]]
                             }
                         });
