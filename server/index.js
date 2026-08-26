@@ -11,6 +11,7 @@ const {
     createRichInlineArticle,
     escapeRichHtml,
     richActionHtml,
+    richCheckersHtml,
     richGameHtml,
     richMessageContent,
 } = require('./telegram-rich-messages');
@@ -151,7 +152,7 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Unknown share type' });
     }
 
-    const actionText = kind === 'monopoly' ? '🎲 Войти в комнату' : '🎮 Играть';
+    const actionText = kind === 'monopoly' ? '🎲 Войти в комнату' : 'Открыть Spark';
     const richText = kind === 'monopoly'
         ? `🎲 <b>Монополия Spark</b>\nКомната <code>${roomId}</code> уже ждёт игроков.`
         : '✨ <b>Spark Games</b>\nИграй, соревнуйся с друзьями и поднимайся в топах.';
@@ -162,7 +163,13 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         thumbnailUrl: kind === 'monopoly'
             ? 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/monopoly.png'
             : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823',
-        richHtml: richActionHtml(richText, { text: actionText, url, style: 'primary' }),
+        richHtml: richActionHtml(richText, {
+            text: actionText,
+            url,
+            // A green button keeps the referral action readable in Telegram
+            // themes where a primary button becomes white-on-white.
+            style: kind === 'referral' ? 'success' : 'primary',
+        }),
         fallbackText: text,
         fallbackReplyMarkup: { inline_keyboard: [[{ text: actionText, url }]] },
     });
@@ -2973,9 +2980,7 @@ function tttRichHtml(text, board, gameId) {
 
 function checkersRichHtml(text, board, gameId, selectedPos = null) {
     const keyboard = getCheckersKeyboard(board, gameId, selectedPos);
-    return richGameHtml(text, keyboard, {
-        styleForButton: (button) => button.text === '🟢' ? 'success' : '',
-    });
+    return richCheckersHtml(text, keyboard);
 }
 
 function editTTTInlineMessage(inlineMessageId, text, board, gameId) {
@@ -3039,55 +3044,39 @@ function gameThumbnail(config) {
     return file ? `https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/${file}` : null;
 }
 
-// Получить топ-3 + пользователя (с Premium эмодзи для бота)
-async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
+function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true) {
     const { column, name, isHigherBetter } = gameConfig;
     const emojis = usePremiumEmoji ? EMOJI : EMOJI_INLINE;
-    
-    // Получаем топ-3
-    const { data: top3 } = await supabase
-        .from('users')
-        .select(`telegram_id, username, ${column}`)
-        .not(column, 'is', null)
-        .gt(column, 0)
-        .order(column, { ascending: !isHigherBetter })
-        .limit(3);
-    
-    if (!top3 || top3.length === 0) {
+    const allUsers = (users || [])
+        .filter(user => Number(user[column]) > 0)
+        .sort((left, right) => isHigherBetter
+            ? Number(right[column]) - Number(left[column])
+            : Number(left[column]) - Number(right[column]));
+    const top3 = allUsers.slice(0, 3);
+
+    if (top3.length === 0) {
         return { text: `<b>${name}</b>\n\nПока нет результатов`, userRank: null };
     }
-    
-    // Получаем все для определения места пользователя
-    const { data: allUsers } = await supabase
-        .from('users')
-        .select(`telegram_id, username, ${column}`)
-        .not(column, 'is', null)
-        .gt(column, 0)
-        .order(column, { ascending: !isHigherBetter });
-    
+
     let userRank = null;
     let userData = null;
-    
-    if (userId && allUsers) {
+    if (userId) {
         const userIndex = allUsers.findIndex(u => String(u.telegram_id) === String(userId));
         if (userIndex >= 0) {
             userRank = userIndex + 1;
             userData = allUsers[userIndex];
         }
     }
-    
-    // Формируем текст
+
     const medals = [emojis.first, emojis.second, emojis.third];
     let text = `<b>${name} — Топ игроков</b>\n\n`;
-    
     top3.forEach((user, index) => {
         const medal = medals[index];
         const score = user[column];
         const username = escapeRichHtml(user.username || 'Игрок');
         text += `${medal} ${username} — <b>${score}</b>\n`;
     });
-    
-    // Добавляем информацию о пользователе если он не в топ-3
+
     if (userRank && userRank > 3 && userData) {
         text += `\n━━━━━━━━━━━━━━━\n`;
         const pin = usePremiumEmoji
@@ -3096,8 +3085,28 @@ async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
     } else if (userRank && userRank <= 3) {
         text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
     }
-    
     return { text, userRank };
+}
+
+// One query is enough for every top shown by an empty inline request. This
+// keeps the rich result fast enough for Telegram while still including the
+// sender's exact place below the top three.
+async function getTopsForGames(gameConfigs, userId, usePremiumEmoji = true) {
+    const uniqueConfigs = [...new Map(gameConfigs.map(config => [config.column, config])).values()];
+    const columns = uniqueConfigs.map(config => config.column);
+    const { data, error } = await supabase.from('users')
+        .select(['telegram_id', 'username', ...columns].join(', '));
+    if (error) throw error;
+    return new Map(uniqueConfigs.map(config => [
+        config.column,
+        formatTopForGame(config, userId, data, usePremiumEmoji),
+    ]));
+}
+
+// Получить топ-3 + пользователя (с Premium эмодзи для бота)
+async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
+    const tops = await getTopsForGames([gameConfig], userId, usePremiumEmoji);
+    return tops.get(gameConfig.column);
 }
 
 // Получить топ рефералов (только активированные)
@@ -3180,6 +3189,91 @@ const WEBAPP_URL = 'https://sevet-apps.github.io/minesweeper-tg/';
 
 // Кэш для хранения данных inline запросов
 const inlineCache = new Map();
+
+function scheduleInlineGameCleanup(store, inlineMessageId, game) {
+    setTimeout(() => {
+        if (store.get(inlineMessageId) === game) store.delete(inlineMessageId);
+    }, 30 * 60 * 1000);
+}
+
+function createTTTInlineGame(inlineMessageId, gameId, creator, creatorName) {
+    const game = {
+        board: createTTTBoard(),
+        playerX: creator,
+        playerO: null,
+        playerXName: creatorName,
+        playerOName: null,
+        currentTurn: 'X',
+        gameId,
+        status: 'waiting',
+    };
+    tttGames.set(inlineMessageId, game);
+    scheduleInlineGameCleanup(tttGames, inlineMessageId, game);
+    return game;
+}
+
+function createCheckersInlineGame(inlineMessageId, gameId, creator, creatorName) {
+    const game = {
+        board: createCheckersBoard(),
+        playerWhite: creator,
+        playerBlack: null,
+        playerWhiteName: creatorName,
+        playerBlackName: null,
+        currentTurn: 'white',
+        selected: null,
+        gameId,
+        status: 'waiting',
+    };
+    checkersGames.set(inlineMessageId, game);
+    scheduleInlineGameCleanup(checkersGames, inlineMessageId, game);
+    return game;
+}
+
+async function resolveInlineCreator(gameId, type) {
+    const cached = inlineCache.get(gameId);
+    if (cached?.creator) {
+        return { creator: cached.creator, creatorName: cached.creatorName };
+    }
+
+    // Rich inline results don't currently provide inline_message_id in
+    // chosen_inline_result. Keep enough identity in the signed-by-us result
+    // id to lazily create the waiting game on its first callback instead.
+    const prefix = type === 'ttt' ? 'ttt' : 'ch';
+    const match = String(gameId).match(new RegExp(`^${prefix}_(\\d+)_`));
+    if (!match) return null;
+    const creatorId = Number(match[1]);
+    let username = '';
+    try {
+        const { data } = await supabase.from('users')
+            .select('username').eq('telegram_id', String(creatorId)).maybeSingle();
+        username = cleanName(data?.username);
+    } catch (error) {
+        console.warn('Inline creator lookup failed:', error.message);
+    }
+    const creator = { id: creatorId, ...(username ? { username } : {}) };
+    return {
+        creator,
+        creatorName: escapeRichHtml(username ? `@${username}` : 'Игрок'),
+    };
+}
+
+async function ensureTTTInlineGame(inlineMessageId, gameId) {
+    const existing = tttGames.get(inlineMessageId);
+    if (existing) return existing;
+    const seed = await resolveInlineCreator(gameId, 'ttt');
+    return seed ? createTTTInlineGame(
+        inlineMessageId, gameId, seed.creator, seed.creatorName,
+    ) : null;
+}
+
+async function ensureCheckersInlineGame(inlineMessageId, gameId) {
+    const existing = checkersGames.get(inlineMessageId);
+    if (existing) return existing;
+    const seed = await resolveInlineCreator(gameId, 'checkers');
+    return seed ? createCheckersInlineGame(
+        inlineMessageId, gameId, seed.creator, seed.creatorName,
+    ) : null;
+}
 
 // Инициализация бота
 let bot = null;
@@ -3312,30 +3406,47 @@ if (BOT_TOKEN) {
                 { key: 'wordle_wins', name: 'Вордли' }
             ];
             
-            for (const game of topGames) {
-                const config = Object.values(GAME_CONFIG).find(c => c.column === game.key);
-                if (config) {
-                    const resultId = `top_${game.key}_${Date.now()}`;
-                    inlineCache.set(resultId, { gameConfig: config, userId });
-                    setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
-                    
-                    const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
-                    const loadingText = `⏳ <b>${game.name}</b>\n\nЗагружаем актуальный топ игроков…`;
-                    addRichResult({
-                        id: resultId,
-                        title: `Топ ${game.name}`,
-                        description: `Показать топ игроков в ${game.name}`,
-                        thumbnailUrl: gameThumbnail(config),
-                        richHtml: richActionHtml(loadingText, {
-                            text: '🎮 Играть', url: playUrl, style: 'primary',
-                        }),
-                        fallbackText: `⏳ Загрузка топа ${game.name}...`,
-                        fallbackReplyMarkup: {
-                            inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
-                        },
-                    });
-                }
+            // Rich inline results don't yield inline_message_id in
+            // chosen_inline_result without a classic reply markup. Therefore
+            // the selected rich message can't be repaired afterwards: send
+            // the real leaderboard immediately instead of a loading shell.
+            const topConfigs = topGames.map(game =>
+                Object.values(GAME_CONFIG).find(config => config.column === game.key));
+            let topData = new Map();
+            try {
+                topData = await getTopsForGames(topConfigs.filter(Boolean), userId, false);
+            } catch (error) {
+                console.error('Inline leaderboards error:', error.message);
             }
+            const readyTopGames = topGames.map((game, index) => {
+                const config = topConfigs[index];
+                if (!config) return null;
+                const result = topData.get(config.column);
+                return {
+                    game,
+                    config,
+                    text: result?.text || `<b>${game.name}</b>\n\nТоп временно недоступен`,
+                };
+            });
+
+            readyTopGames.filter(Boolean).forEach(({ game, config, text }, index) => {
+                const resultId = `top_${game.key}_${Date.now()}_${index}`;
+                inlineCache.set(resultId, { gameConfig: config, userId });
+                setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
+                const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
+                const replyMarkup = { inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]] };
+                addRichResult({
+                    id: resultId,
+                    title: `Топ ${game.name}`,
+                    description: `Показать топ игроков в ${game.name}`,
+                    thumbnailUrl: gameThumbnail(config),
+                    richHtml: richActionHtml(text, {
+                        text: '🎮 Играть', url: playUrl, style: 'primary',
+                    }),
+                    fallbackText: text,
+                    fallbackReplyMarkup: replyMarkup,
+                });
+            });
         } 
         // Крестики-нолики
         else if (queryText.includes('крестики') || queryText.includes('нолики') || queryText.includes('ttt') || queryText.includes('xo')) {
@@ -3441,16 +3552,25 @@ if (BOT_TOKEN) {
                         setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                         
                         const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
-                        const loadingText = `⏳ <b>${config.name}</b>\n\nЗагружаем актуальный топ игроков…`;
+                        let topText;
+                        try {
+                            const top = config.isReferral
+                                ? await getTopForReferrals(userId, false)
+                                : await getTopForGame(config, userId, false);
+                            topText = top.text;
+                        } catch (error) {
+                            console.error(`Inline ${config.column} suggestion error:`, error.message);
+                            topText = `<b>${config.name}</b>\n\nТоп временно недоступен`;
+                        }
                         addRichResult({
                             id: resultId,
                             title: `${config.name}`,
                             description: `Показать топ ${config.name}`,
                             thumbnailUrl: gameThumbnail(config),
-                            richHtml: richActionHtml(loadingText, {
+                            richHtml: richActionHtml(topText, {
                                 text: '🎮 Играть', url: playUrl, style: 'primary',
                             }),
-                            fallbackText: '⏳ Загрузка...',
+                            fallbackText: topText,
                             fallbackReplyMarkup: {
                                 inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
                             },
@@ -3702,8 +3822,9 @@ if (BOT_TOKEN) {
             const parts = data.split('_');
             const row = parseInt(parts[parts.length - 2]);
             const col = parseInt(parts[parts.length - 1]);
+            const gameId = parts.slice(1, -2).join('_');
             
-            const game = tttGames.get(inlineMessageId);
+            const game = await ensureTTTInlineGame(inlineMessageId, gameId);
             
             if (!game) {
                 try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра не найдена или истекла' }); } catch(e) {}
@@ -3832,8 +3953,9 @@ if (BOT_TOKEN) {
             const parts = data.split('_');
             const row = parseInt(parts[parts.length - 2]);
             const col = parseInt(parts[parts.length - 1]);
+            const gameId = parts.slice(1, -2).join('_');
             
-            const game = checkersGames.get(inlineMessageId);
+            const game = await ensureCheckersInlineGame(inlineMessageId, gameId);
             
             if (!game) {
                 try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра не найдена или истекла' }); } catch(e) {}

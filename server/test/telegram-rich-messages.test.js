@@ -8,6 +8,7 @@ const {
     escapeRichHtml,
     keyboardToRichHtml,
     richActionHtml,
+    richCheckersHtml,
     richGameHtml,
     richMessageContent,
 } = require('../telegram-rich-messages');
@@ -72,6 +73,24 @@ test('an 8 by 8 checkers board stays within Telegram rich row limits', () => {
     const html = keyboardToRichHtml(keyboard);
     assert.equal((html.match(/<tg-button-row/g) || []).length, 8);
     assert.equal((html.match(/type="callback_data"/g) || []).length, 64);
+});
+
+test('checkers rich message is a compact square board with coordinates', () => {
+    const keyboard = {
+        inline_keyboard: Array.from({ length: 8 }, (_, row) =>
+            Array.from({ length: 8 }, (_, col) => ({
+                text: (row + col) % 2 ? (row < 3 ? '⚫' : '·') : ' ',
+                callback_data: `ch_ch_42_100_${row}_${col}`,
+            }))),
+    };
+    const html = richCheckersHtml('<b>Шашки</b>', keyboard);
+    assert.match(html, /<table bordered compact>/);
+    assert.equal((html.match(/<tr>/g) || []).length, 10);
+    assert.equal((html.match(/type="callback_data"/g) || []).length, 32);
+    assert.match(html, /<th>a<\/th>[\s\S]*<th>h<\/th>/);
+    assert.match(html, /<th>8<\/th>[\s\S]*<th>1<\/th>/);
+    assert.match(html, />□<\/td>/);
+    assert.match(html, />■<\/tg-button>/);
 });
 
 test('inline articles expose a rich message and retain a classic fallback', () => {
