@@ -7,6 +7,13 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const path = require('path');
 const { verifyTelegramInitData } = require('./telegram-init-data');
+const {
+    createRichInlineArticle,
+    escapeRichHtml,
+    richActionHtml,
+    richGameHtml,
+    richMessageContent,
+} = require('./telegram-rich-messages');
 const { createCheckpoint: createBBCheckpoint, readCheckpoint: readBBCheckpoint } = require('./block-blast-checkpoint');
 const {
     advanceSeed: advanceBBHandSeed,
@@ -125,7 +132,7 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
     if (!BOT_TOKEN) return res.status(503).json({ error: 'Bot is unavailable' });
     const kind = req.body && req.body.kind;
     const userId = Number(req.telegramUser.id);
-    let text, url, title, entities;
+    let text, url, title, entities, roomId;
     if (kind === 'referral') {
         url = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
         text = `✨ Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!\n${url}`;
@@ -133,7 +140,7 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         entities = [{ type: 'custom_emoji', offset: 0, length: 2,
             custom_emoji_id: '5271604874419647061' }];
     } else if (kind === 'monopoly') {
-        const roomId = String(req.body.room_id || '').toUpperCase();
+        roomId = String(req.body.room_id || '').toUpperCase();
         if (!/^[A-Z0-9]{4,8}$/.test(roomId))
             return res.status(400).json({ error: 'Invalid room' });
         url = `https://t.me/spark_game_bot/sparkapp?startapp=mono_${roomId}`;
@@ -144,37 +151,45 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Unknown share type' });
     }
 
-    const result = {
-        type: 'article', id: crypto.randomBytes(12).toString('hex'), title,
-        thumbnail_url: kind === 'monopoly'
+    const actionText = kind === 'monopoly' ? '🎲 Войти в комнату' : '🎮 Играть';
+    const richText = kind === 'monopoly'
+        ? `🎲 <b>Монополия Spark</b>\nКомната <code>${roomId}</code> уже ждёт игроков.`
+        : '✨ <b>Spark Games</b>\nИграй, соревнуйся с друзьями и поднимайся в топах.';
+    const prepared = createRichInlineArticle({
+        id: crypto.randomBytes(12).toString('hex'),
+        title,
+        description: kind === 'monopoly' ? `Комната ${roomId}` : 'Приглашение в Spark Games',
+        thumbnailUrl: kind === 'monopoly'
             ? 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/monopoly.png'
             : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823',
-        input_message_content: { message_text: text, entities },
-        reply_markup: { inline_keyboard: [[{ text: kind === 'monopoly' ? '🎲 Войти в комнату' : '🎮 Играть', url }]] },
-    };
+        richHtml: richActionHtml(richText, { text: actionText, url, style: 'primary' }),
+        fallbackText: text,
+        fallbackReplyMarkup: { inline_keyboard: [[{ text: actionText, url }]] },
+    });
+    prepared.fallback.input_message_content.entities = entities;
+    if (entities.length) delete prepared.fallback.input_message_content.parse_mode;
+    const savePrepared = (result) => fetch(`https://api.telegram.org/bot${BOT_TOKEN}/savePreparedInlineMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: userId, result,
+            allow_user_chats: true, allow_bot_chats: false,
+            allow_group_chats: true, allow_channel_chats: false,
+        }),
+    });
     try {
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/savePreparedInlineMessage`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: userId, result,
-                allow_user_chats: true, allow_bot_chats: false,
-                allow_group_chats: true, allow_channel_chats: false,
-            }),
-        });
+        let response = await savePrepared(prepared.rich);
         let payload = await response.json();
-        /* Некоторые аккаунты не могут отправлять custom emoji. Оставляем
-           само приглашение рабочим, если Telegram отклонил только entity. */
-        if (!payload.ok && entities.length) {
-            result.input_message_content.entities = [];
-            const retry = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/savePreparedInlineMessage`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: userId, result,
-                    allow_user_chats: true, allow_bot_chats: false,
-                    allow_group_chats: true, allow_channel_chats: false,
-                }),
-            });
-            payload = await retry.json();
+        /* Rich Messages требуют свежего клиента и Bot API 10.3. Если новый
+           формат временно недоступен, сохраняем прежний HTML-вариант. */
+        if (!payload.ok) {
+            response = await savePrepared(prepared.fallback);
+            payload = await response.json();
+        }
+        /* Некоторые аккаунты не могут отправлять custom emoji. */
+        if (!payload.ok && prepared.fallback.input_message_content.entities.length) {
+            prepared.fallback.input_message_content.entities = [];
+            response = await savePrepared(prepared.fallback);
+            payload = await response.json();
         }
         if (!payload.ok) throw new Error(payload.description || 'Telegram rejected prepared message');
         res.json({ id: payload.result.id, fallback_url: url, fallback_text: text.split('\n')[0] });
@@ -2919,31 +2934,75 @@ function getUserDisplayName(user) {
     return tgDisplayName(user);
 }
 
-// Helper function to edit inline message with play button
-async function editInlineMessageWithPlayButton(inlineMessageId, text, userId) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
-    const response = await fetch(url, {
+async function telegramBotApi(method, payload) {
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            inline_message_id: inlineMessageId,
-            text: text,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [[
-                    { 
-                        text: '🎮 Играть', 
-                        url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`
-                    }
-                ]]
-            }
-        })
+        body: JSON.stringify(payload),
     });
-    const result = await response.json();
+    return response.json();
+}
+
+async function editRichInlineMessage(inlineMessageId, richHtml, fallbackText, fallbackReplyMarkup) {
+    let result = await telegramBotApi('editMessageText', {
+        inline_message_id: inlineMessageId,
+        ...richMessageContent(richHtml),
+    });
     if (!result.ok) {
-        console.error('Edit message API error:', result.description);
+        result = await telegramBotApi('editMessageText', {
+            inline_message_id: inlineMessageId,
+            text: fallbackText,
+            parse_mode: 'HTML',
+            ...(fallbackReplyMarkup ? { reply_markup: fallbackReplyMarkup } : {}),
+        });
+    }
+    if (!result.ok) {
+        console.error('Edit inline message API error:', result.description);
     }
     return result;
+}
+
+function tttRichHtml(text, board, gameId) {
+    const keyboard = getTTTKeyboard(board, gameId);
+    return richGameHtml(text, keyboard, {
+        isDisabled: (button) => button.text !== TTT_EMPTY,
+        styleForButton: (button) => button.text === TTT_X ? 'danger' :
+            (button.text === TTT_O ? 'primary' : ''),
+    });
+}
+
+function checkersRichHtml(text, board, gameId, selectedPos = null) {
+    const keyboard = getCheckersKeyboard(board, gameId, selectedPos);
+    return richGameHtml(text, keyboard, {
+        styleForButton: (button) => button.text === '🟢' ? 'success' : '',
+    });
+}
+
+function editTTTInlineMessage(inlineMessageId, text, board, gameId) {
+    const keyboard = getTTTKeyboard(board, gameId);
+    return editRichInlineMessage(inlineMessageId, tttRichHtml(text, board, gameId), text, keyboard);
+}
+
+function editCheckersInlineMessage(inlineMessageId, text, board, gameId, selectedPos = null) {
+    const keyboard = getCheckersKeyboard(board, gameId, selectedPos);
+    return editRichInlineMessage(
+        inlineMessageId,
+        checkersRichHtml(text, board, gameId, selectedPos),
+        text,
+        keyboard,
+    );
+}
+
+// Helper function to edit inline leaderboard/help message with an in-message button.
+async function editInlineMessageWithPlayButton(inlineMessageId, text, userId) {
+    const url = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
+    const replyMarkup = { inline_keyboard: [[{ text: '🎮 Играть', url }]] };
+    return editRichInlineMessage(
+        inlineMessageId,
+        richActionHtml(text, { text: '🎮 Играть', url, style: 'primary' }),
+        text,
+        replyMarkup,
+    );
 }
 
 // Конфигурация игр для inline режима
@@ -3024,7 +3083,7 @@ async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
     top3.forEach((user, index) => {
         const medal = medals[index];
         const score = user[column];
-        const username = user.username || 'Игрок';
+        const username = escapeRichHtml(user.username || 'Игрок');
         text += `${medal} ${username} — <b>${score}</b>\n`;
     });
     
@@ -3100,7 +3159,7 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
     
     top3.forEach((user, index) => {
         const medal = medals[index];
-        const username = user.username || 'Игрок';
+        const username = escapeRichHtml(user.username || 'Игрок');
         text += `${medal} ${username} — <b>${user.score}</b>\n`;
     });
     
@@ -3190,10 +3249,16 @@ if (BOT_TOKEN) {
         const user = query.from;
         
         const results = [];
+        const fallbackResults = [];
+        const addRichResult = (options) => {
+            const pair = createRichInlineArticle(options);
+            results.push(pair.rich);
+            fallbackResults.push(pair.fallback);
+        };
         
         // Если запрос пустой - показываем все доступные команды
         if (!queryText) {
-            const userName = getUserDisplayName(user);
+            const userName = escapeRichHtml(getUserDisplayName(user));
             
             // 1. Крестики-нолики
             const tttId = `ttt_${userId}_${Date.now()}`;
@@ -3204,17 +3269,16 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(tttId), 10 * 60 * 1000);
             
-            results.push({
-                type: 'article',
+            const tttInviteText = `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+            const tttInviteKeyboard = getTTTKeyboard(createTTTBoard(), tttId);
+            addRichResult({
                 id: tttId,
                 title: 'Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
-                input_message_content: {
-                    message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
-                    parse_mode: 'HTML'
-                },
-                reply_markup: getTTTKeyboard(createTTTBoard(), tttId)
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
+                richHtml: tttRichHtml(tttInviteText, createTTTBoard(), tttId),
+                fallbackText: tttInviteText,
+                fallbackReplyMarkup: tttInviteKeyboard,
             });
             
             // 2. Шашки
@@ -3226,17 +3290,16 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(chId), 10 * 60 * 1000);
             
-            results.push({
-                type: 'article',
+            const checkersInviteText = `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
+            const checkersInviteKeyboard = getCheckersKeyboard(createCheckersBoard(), chId);
+            addRichResult({
                 id: chId,
                 title: 'Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
-                input_message_content: {
-                    message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
-                    parse_mode: 'HTML'
-                },
-                reply_markup: getCheckersKeyboard(createCheckersBoard(), chId)
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
+                richHtml: checkersRichHtml(checkersInviteText, createCheckersBoard(), chId),
+                fallbackText: checkersInviteText,
+                fallbackReplyMarkup: checkersInviteKeyboard,
             });
             
             // 3. Топы игр
@@ -3256,21 +3319,20 @@ if (BOT_TOKEN) {
                     inlineCache.set(resultId, { gameConfig: config, userId });
                     setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                     
-                    results.push({
-                        type: 'article',
+                    const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
+                    const loadingText = `⏳ <b>${game.name}</b>\n\nЗагружаем актуальный топ игроков…`;
+                    addRichResult({
                         id: resultId,
                         title: `Топ ${game.name}`,
                         description: `Показать топ игроков в ${game.name}`,
-                        thumbnail_url: gameThumbnail(config),
-                        input_message_content: {
-                            message_text: `⏳ Загрузка топа ${game.name}...`,
-                            parse_mode: 'HTML'
+                        thumbnailUrl: gameThumbnail(config),
+                        richHtml: richActionHtml(loadingText, {
+                            text: '🎮 Играть', url: playUrl, style: 'primary',
+                        }),
+                        fallbackText: `⏳ Загрузка топа ${game.name}...`,
+                        fallbackReplyMarkup: {
+                            inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
                         },
-                        reply_markup: {
-                            inline_keyboard: [[
-                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}` }
-                            ]]
-                        }
                     });
                 }
             }
@@ -3278,7 +3340,7 @@ if (BOT_TOKEN) {
         // Крестики-нолики
         else if (queryText.includes('крестики') || queryText.includes('нолики') || queryText.includes('ttt') || queryText.includes('xo')) {
             const gameId = `ttt_${userId}_${Date.now()}`;
-            const userName = getUserDisplayName(user);
+            const userName = escapeRichHtml(getUserDisplayName(user));
             
             // Сохраняем данные создателя игры
             inlineCache.set(gameId, {
@@ -3288,23 +3350,22 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(gameId), 10 * 60 * 1000);
             
-            results.push({
-                type: 'article',
+            const inviteText = `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+            const inviteKeyboard = getTTTKeyboard(createTTTBoard(), gameId);
+            addRichResult({
                 id: gameId,
                 title: '❌⭕ Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
-                input_message_content: {
-                    message_text: `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
-                    parse_mode: 'HTML'
-                },
-                reply_markup: getTTTKeyboard(createTTTBoard(), gameId)
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
+                richHtml: tttRichHtml(inviteText, createTTTBoard(), gameId),
+                fallbackText: inviteText,
+                fallbackReplyMarkup: inviteKeyboard,
             });
         }
         // Шашки
         else if (queryText.includes('шашки') || queryText.includes('checkers')) {
             const gameId = `ch_${userId}_${Date.now()}`;
-            const userName = getUserDisplayName(user);
+            const userName = escapeRichHtml(getUserDisplayName(user));
             
             inlineCache.set(gameId, {
                 type: 'checkers',
@@ -3313,17 +3374,16 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(gameId), 10 * 60 * 1000);
             
-            results.push({
-                type: 'article',
+            const inviteText = `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
+            const inviteKeyboard = getCheckersKeyboard(createCheckersBoard(), gameId);
+            addRichResult({
                 id: gameId,
                 title: '⚪⚫ Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
-                thumbnail_url: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
-                input_message_content: {
-                    message_text: `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`,
-                    parse_mode: 'HTML'
-                },
-                reply_markup: getCheckersKeyboard(createCheckersBoard(), gameId)
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
+                richHtml: checkersRichHtml(inviteText, createCheckersBoard(), gameId),
+                fallbackText: inviteText,
+                fallbackReplyMarkup: inviteKeyboard,
             });
         }
         else {
@@ -3353,21 +3413,19 @@ if (BOT_TOKEN) {
                     inlineCache.set(resultId, { gameConfig: matchedGame, userId });
                     setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                     
-                    results.push({
-                        type: 'article',
+                    const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
+                    addRichResult({
                         id: resultId,
                         title: `Топ ${matchedGame.name}`,
                         description: 'Нажмите чтобы отправить топ в чат',
-                        ...(gameThumbnail(matchedGame) ? { thumbnail_url: gameThumbnail(matchedGame) } : {}),
-                        input_message_content: {
-                            message_text: text,
-                            parse_mode: 'HTML'
+                        thumbnailUrl: gameThumbnail(matchedGame),
+                        richHtml: richActionHtml(text, {
+                            text: '🎮 Играть', url: playUrl, style: 'primary',
+                        }),
+                        fallbackText: text,
+                        fallbackReplyMarkup: {
+                            inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
                         },
-                        reply_markup: {
-                            inline_keyboard: [[
-                                { text: '🎮 Играть', url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}` }
-                            ]]
-                        }
                     });
                 } catch (e) {
                     console.error('Inline query error:', e);
@@ -3382,21 +3440,20 @@ if (BOT_TOKEN) {
                         inlineCache.set(resultId, { gameConfig: config, userId });
                         setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                         
-                        results.push({
-                            type: 'article',
+                        const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
+                        const loadingText = `⏳ <b>${config.name}</b>\n\nЗагружаем актуальный топ игроков…`;
+                        addRichResult({
                             id: resultId,
                             title: `${config.name}`,
                             description: `Показать топ ${config.name}`,
-                            ...(gameThumbnail(config) ? { thumbnail_url: gameThumbnail(config) } : {}),
-                            input_message_content: {
-                                message_text: `⏳ Загрузка...`,
-                                parse_mode: 'HTML'
+                            thumbnailUrl: gameThumbnail(config),
+                            richHtml: richActionHtml(loadingText, {
+                                text: '🎮 Играть', url: playUrl, style: 'primary',
+                            }),
+                            fallbackText: '⏳ Загрузка...',
+                            fallbackReplyMarkup: {
+                                inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
                             },
-                            reply_markup: {
-                                inline_keyboard: [[
-                                    { text: '🎮 Играть', url: `https://t.me/spark_game_bot/spark?startapp=ref_${userId}` }
-                                ]]
-                            }
                         });
                     }
                 }
@@ -3404,7 +3461,22 @@ if (BOT_TOKEN) {
         }
         
         try {
-            await bot.answerInlineQuery(query.id, results, { cache_time: 0 });
+            const richAnswer = await telegramBotApi('answerInlineQuery', {
+                inline_query_id: query.id,
+                results,
+                cache_time: 0,
+            });
+            if (!richAnswer.ok) {
+                console.warn('Rich inline query rejected, retrying classic format:', richAnswer.description);
+                const fallbackAnswer = await telegramBotApi('answerInlineQuery', {
+                    inline_query_id: query.id,
+                    results: fallbackResults,
+                    cache_time: 0,
+                });
+                if (!fallbackAnswer.ok) {
+                    console.error('Answer inline query API error:', fallbackAnswer.description);
+                }
+            }
         } catch (e) {
             console.error('Answer inline query error:', e.message);
         }
@@ -3452,13 +3524,9 @@ if (BOT_TOKEN) {
             setTimeout(() => tttGames.delete(inlineMessageId), 30 * 60 * 1000);
             
             try {
-                await bot.editMessageText(
-                    `${EMOJI.joystick} <b>${cached.creatorName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`,
-                    {
-                        inline_message_id: inlineMessageId,
-                        parse_mode: 'HTML',
-                        reply_markup: getTTTKeyboard(createTTTBoard(), resultId)
-                    }
+                const text = `${EMOJI.joystick} <b>${cached.creatorName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+                await editTTTInlineMessage(
+                    inlineMessageId, text, createTTTBoard(), resultId,
                 );
             } catch (e) {
                 console.error('TTT edit error:', e.message);
@@ -3483,13 +3551,9 @@ if (BOT_TOKEN) {
             setTimeout(() => checkersGames.delete(inlineMessageId), 30 * 60 * 1000);
             
             try {
-                await bot.editMessageText(
-                    `${EMOJI.joystick} <b>${cached.creatorName}</b> хочет сыграть в шашки!\n\nНажмите на любую шашку, чтобы принять вызов.`,
-                    {
-                        inline_message_id: inlineMessageId,
-                        parse_mode: 'HTML',
-                        reply_markup: getCheckersKeyboard(createCheckersBoard(), resultId)
-                    }
+                const text = `${EMOJI.joystick} <b>${cached.creatorName}</b> хочет сыграть в шашки!\n\nНажмите на любую шашку, чтобы принять вызов.`;
+                await editCheckersInlineMessage(
+                    inlineMessageId, text, createCheckersBoard(), resultId,
                 );
             } catch (e) {
                 console.error('Checkers edit error:', e.message);
@@ -3652,7 +3716,7 @@ if (BOT_TOKEN) {
             game.processing = true;
             try {
             
-            const userName = getUserDisplayName(user);
+            const userName = escapeRichHtml(getUserDisplayName(user));
             
             // Если игра ждёт второго игрока
             if (game.status === 'waiting') {
@@ -3673,13 +3737,11 @@ if (BOT_TOKEN) {
                 const firstSymbol = firstIsX ? '❌' : '⭕';
                 
                 try {
-                    await bot.editMessageText(
+                    await editTTTInlineMessage(
+                        inlineMessageId,
                         `${EMOJI.joystick} <b>Крестики-нолики</b>\n\n${game.playerXName} (❌) vs ${game.playerOName} (⭕)\n\nПервый ход: ${firstPlayerName} (${firstSymbol})`,
-                        {
-                            inline_message_id: inlineMessageId,
-                            parse_mode: 'HTML',
-                            reply_markup: getTTTKeyboard(game.board, game.gameId)
-                        }
+                        game.board,
+                        game.gameId,
                     );
                     await bot.answerCallbackQuery(callbackQuery.id, { text: `Игра началась! Ход ${firstPlayerName}` });
                 } catch (e) {
@@ -3728,11 +3790,7 @@ if (BOT_TOKEN) {
                     }
                     
                     try {
-                        await bot.editMessageText(resultText, {
-                            inline_message_id: inlineMessageId,
-                            parse_mode: 'HTML',
-                            reply_markup: getTTTKeyboard(game.board, game.gameId)
-                        });
+                        await editTTTInlineMessage(inlineMessageId, resultText, game.board, game.gameId);
                         await bot.answerCallbackQuery(callbackQuery.id, { text: winner === 'draw' ? 'Ничья!' : 'Победа!' });
                     } catch (e) {
                         console.error('Edit error:', e.message);
@@ -3747,13 +3805,11 @@ if (BOT_TOKEN) {
                 const nextSymbol = game.currentTurn === 'X' ? '❌' : '⭕';
                 
                 try {
-                    await bot.editMessageText(
+                    await editTTTInlineMessage(
+                        inlineMessageId,
                         `${EMOJI.joystick} <b>Крестики-нолики</b>\n\n${game.playerXName} (❌) vs ${game.playerOName} (⭕)\n\nХод: ${nextPlayerName} (${nextSymbol})`,
-                        {
-                            inline_message_id: inlineMessageId,
-                            parse_mode: 'HTML',
-                            reply_markup: getTTTKeyboard(game.board, game.gameId)
-                        }
+                        game.board,
+                        game.gameId,
                     );
                     await bot.answerCallbackQuery(callbackQuery.id);
                 } catch (e) {
@@ -3790,7 +3846,7 @@ if (BOT_TOKEN) {
             game.processing = true;
             try {
             
-            const userName = getUserDisplayName(user);
+            const userName = escapeRichHtml(getUserDisplayName(user));
             
             // Ожидание второго игрока
             if (game.status === 'waiting') {
@@ -3810,13 +3866,11 @@ if (BOT_TOKEN) {
                 const firstSymbol = whiteFirst ? '⚪' : '⚫';
                 
                 try {
-                    await bot.editMessageText(
+                    await editCheckersInlineMessage(
+                        inlineMessageId,
                         `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nПервый ход: ${firstPlayerName} (${firstSymbol})`,
-                        {
-                            inline_message_id: inlineMessageId,
-                            parse_mode: 'HTML',
-                            reply_markup: getCheckersKeyboard(game.board, game.gameId)
-                        }
+                        game.board,
+                        game.gameId,
                     );
                     await bot.answerCallbackQuery(callbackQuery.id, { text: `Игра началась! Ход ${firstPlayerName}` });
                 } catch (e) {
@@ -3858,9 +3912,13 @@ if (BOT_TOKEN) {
                         }
                         game.selected = { r: row, c: col };
                         try {
-                            await bot.editMessageReplyMarkup(getCheckersKeyboard(game.board, game.gameId, game.selected), {
-                                inline_message_id: inlineMessageId
-                            });
+                            await editCheckersInlineMessage(
+                                inlineMessageId,
+                                `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nХод: ${userName} — выберите клетку`,
+                                game.board,
+                                game.gameId,
+                                game.selected,
+                            );
                             await bot.answerCallbackQuery(callbackQuery.id);
                         } catch (e) {}
                         return;
@@ -3892,9 +3950,13 @@ if (BOT_TOKEN) {
                         if (moreCaps.length > 0) {
                             game.selected = { r: row, c: col };
                             try {
-                                await bot.editMessageReplyMarkup(getCheckersKeyboard(game.board, game.gameId, game.selected), {
-                                    inline_message_id: inlineMessageId
-                                });
+                                await editCheckersInlineMessage(
+                                    inlineMessageId,
+                                    `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\n${userName}: бейте ещё`,
+                                    game.board,
+                                    game.gameId,
+                                    game.selected,
+                                );
                                 await bot.answerCallbackQuery(callbackQuery.id, { text: 'Бей ещё!' });
                             } catch (e) {}
                             return;
@@ -3934,13 +3996,11 @@ if (BOT_TOKEN) {
                         );
                         
                         try {
-                            await bot.editMessageText(
+                            await editCheckersInlineMessage(
+                                inlineMessageId,
                                 `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\n${EMOJI.trophy} <b>${winnerName}</b> победил! ${winnerSymbol}`,
-                                {
-                                    inline_message_id: inlineMessageId,
-                                    parse_mode: 'HTML',
-                                    reply_markup: getCheckersKeyboard(game.board, game.gameId)
-                                }
+                                game.board,
+                                game.gameId,
                             );
                             await bot.answerCallbackQuery(callbackQuery.id, { text: 'Победа!' });
                         } catch (e) {}
@@ -3954,13 +4014,11 @@ if (BOT_TOKEN) {
                     const nextSymbol = opponentColor === 'white' ? '⚪' : '⚫';
                     
                     try {
-                        await bot.editMessageText(
+                        await editCheckersInlineMessage(
+                            inlineMessageId,
                             `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nХод: ${nextName} (${nextSymbol})`,
-                            {
-                                inline_message_id: inlineMessageId,
-                                parse_mode: 'HTML',
-                                reply_markup: getCheckersKeyboard(game.board, game.gameId)
-                            }
+                            game.board,
+                            game.gameId,
                         );
                         await bot.answerCallbackQuery(callbackQuery.id);
                     } catch (e) {}
@@ -3983,9 +4041,13 @@ if (BOT_TOKEN) {
                         
                         game.selected = { r: row, c: col };
                         try {
-                            await bot.editMessageReplyMarkup(getCheckersKeyboard(game.board, game.gameId, game.selected), {
-                                inline_message_id: inlineMessageId
-                            });
+                            await editCheckersInlineMessage(
+                                inlineMessageId,
+                                `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nХод: ${userName} — выберите клетку`,
+                                game.board,
+                                game.gameId,
+                                game.selected,
+                            );
                             await bot.answerCallbackQuery(callbackQuery.id, { text: 'Выберите куда ходить' });
                         } catch (e) {}
                     } else {
