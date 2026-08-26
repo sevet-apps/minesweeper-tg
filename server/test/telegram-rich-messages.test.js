@@ -84,13 +84,14 @@ test('checkers rich message is a compact square board with coordinates', () => {
             }))),
     };
     const html = richCheckersHtml('<b>Шашки</b>', keyboard);
-    assert.match(html, /<table bordered compact>/);
+    assert.match(html, /<table compact>/);
+    assert.doesNotMatch(html, /\bbordered\b/);
     assert.equal((html.match(/<tr>/g) || []).length, 10);
     assert.equal((html.match(/type="callback_data"/g) || []).length, 32);
     assert.match(html, /<th>a<\/th>[\s\S]*<th>h<\/th>/);
     assert.match(html, /<th>8<\/th>[\s\S]*<th>1<\/th>/);
-    assert.match(html, />□<\/td>/);
-    assert.match(html, />■<\/tg-button>/);
+    assert.match(html, /<code>　<\/code>/);
+    assert.doesNotMatch(html, /[□■]/);
 });
 
 test('inline articles expose a rich message and retain a classic fallback', () => {

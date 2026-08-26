@@ -22,10 +22,12 @@ test('branded videos are bundled and the app loader releases all resources', () 
         'the document itself must be white before Telegram or the video decoder loads');
     assert.match(client, /<video id="appLoaderVideo"[^>]*\bautoplay\b[^>]*\bmuted\b[^>]*\bplaysinline\b/,
         'mobile WebKit must receive native muted autoplay without a pre-play seek');
-    assert.match(client, /\.app-loader video\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?object-fit:\s*cover;[\s\S]*?object-position:\s*50% 50%;[\s\S]*?transform:\s*scale\(1\.08\)/,
-        'the portrait source must be centered and cover every portrait or landscape viewport');
-    assert.match(client, /@media \(max-aspect-ratio:\s*4 \/ 5\)[\s\S]*?\.app-loader video\s*\{\s*transform:\s*scale\(\.94\)/,
-        'phone-sized portrait screens must pull the oversized wordmark back slightly');
+    assert.match(client, /\.app-loader video\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?object-fit:\s*contain;[\s\S]*?object-position:\s*50% 50%;[\s\S]*?transform:\s*none/,
+        'the portrait source must stay centered and uncropped while the logo is visible');
+    assert.match(client, /\.app-loader\.star-wipe video\s*\{[\s\S]*?object-fit:\s*cover;[\s\S]*?transform:\s*scale\(1\.02\)/,
+        'only the final solid star wipe may cover the viewport');
+    assert.doesNotMatch(client, /@media \(max-aspect-ratio:\s*4 \/ 5\)[\s\S]*?\.app-loader video/,
+        'portrait sizing must not shrink the whole video element and reveal side bars');
     assert.match(client, /\.app-loader::after[\s\S]*?background:\s*#fff/,
         'a full-screen white cover must hide the black source frames before playback reaches white');
     assert.match(client, /\.app-loader\.video-visible::after\s*\{\s*display:\s*none/);
@@ -41,8 +43,10 @@ test('branded videos are bundled and the app loader releases all resources', () 
         'programmatic pre-play seeking can stall muted autoplay on iOS');
     assert.match(client, /video\.currentTime\s*>=\s*0\.30[\s\S]*?classList\.add\('video-visible'\)/,
         'the black intro stays covered until the decoder reaches a real white frame');
-    assert.match(client, /video\.currentTime\s*>=\s*4\.90[\s\S]*?classList\.add\('ending-black'\)[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
-        'Telegram safe areas must join the final black star wipe');
+    assert.match(client, /video\.currentTime\s*>=\s*4\.82[\s\S]*?classList\.add\('star-wipe'\)[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
+        'Telegram safe areas and cover sizing must join the final star wipe');
+    assert.match(client, /video\.currentTime\s*>=\s*5\.38[\s\S]*?classList\.add\('ending-black'\)/,
+        'the outer background turns black only once the source itself is almost fully black');
     assert.match(client, /root\.remove\(\)[\s\S]*?setSparkTelegramChrome\(color\)/,
         'Telegram chrome must return to the app theme after playback');
     assert.match(client, /video\.querySelectorAll\('source'\)[\s\S]*?source\.remove\(\)/);
@@ -86,6 +90,9 @@ test('inline games, referral links and account language use the new app identity
     }
     assert.match(server, /assets\/inline-icons\/checkers-versus\.png/);
     assert.match(server, /assets\/inline-icons\/tic-tac-toe\.png/);
+    assert.match(server, /checkers-versus\.png\?v=20260827-2/,
+        'Telegram must receive a fresh URL after the transparent thumbnail replaces its cached copy');
+    assert.match(server, /tic-tac-toe\.png\?v=20260827-2/);
     assert.match(server, /spark_game_bot\/spark\?startapp=ref_/);
     assert.doesNotMatch(server, /spark_game_bot\/sparkapp\?startapp=ref_/);
     assert.match(client, /const REFERRAL_APP_NAME = 'spark'/);
@@ -109,8 +116,13 @@ test('inline games use Telegram rich messages with in-message buttons and classi
         'rich leaderboard results must contain data before Telegram sends them');
     assert.doesNotMatch(server, /Загружаем актуальный топ игроков|Загрузка топа/,
         'a rich inline result cannot depend on chosen_inline_result to replace a loading shell');
-    assert.match(richMessages, /function richCheckersHtml[\s\S]*?<table bordered compact>/,
-        'checkers should render as a compact table rather than rounded button rows');
+    assert.match(richMessages, /function richCheckersHtml[\s\S]*?<table compact>/,
+        'checkers should render as an unbordered alternating-cell table rather than blue gridlines');
+    assert.doesNotMatch(richMessages.slice(richMessages.indexOf('function richCheckersHtml'), richMessages.indexOf('function richActionHtml')), /[□■]/);
+    assert.match(server, /getTopsForGames\(topConfigs\.filter\(Boolean\), userId, true\)/,
+        'rich leaderboards support custom premium emoji and should not downgrade them');
+    assert.match(server, /text:\s*'Открыть Spark'[\s\S]*?style:\s*'success'/,
+        'the rich action must remain readable in Telegram themes that render primary buttons white');
     assert.doesNotMatch(
         server.slice(server.indexOf('// === КРЕСТИКИ-НОЛИКИ ===')),
         /bot\.editMessageReplyMarkup\(/,
@@ -133,8 +145,8 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
     assert.match(client, /visibilitychange[\s\S]*?pagehide/);
     assert.doesNotMatch(client.slice(client.indexOf('Lightweight profile playtime tracking'), client.indexOf('Profile overview\/statistics switch')), /setInterval\(/,
         'playtime tracking must remain event-driven and add no recurring timer');
-    assert.match(client, /sSessionReady=startGameSession\('saper_best_' \+ sCols\)/);
-    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key, Number\(sTimer\.toFixed\(2\)\)\)/,
+    assert.match(client, /const category='saper_best_' \+ sCols;[\s\S]*?sSessionReady=startGameSession\(category\)/);
+    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key,finishedTime\)/,
         'fast Minesweeper wins must wait for their signed session before saving the time');
 
     for (const category of ['saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15']) {
@@ -142,6 +154,12 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
     }
     assert.match(server, /Promise\.all\(categories\.map/);
     assert.match(server, /\.gt\(cat\.key, 0\)/);
+    assert.match(server, /rankQuery\.lt\(cat\.key, LEGACY_MINESWEEPER_TIME_SENTINEL\)/,
+        'the legacy 9999 placeholder must never receive a leaderboard rank');
+    assert.match(server, /readSignedSessionStart[\s\S]*?recoveredAfterRestart/,
+        'a signed Minesweeper session must survive an in-memory backend restart');
+    assert.match(client, /value > 0 && value < 9999/,
+        'the profile must never print the legacy 9999 placeholder as a time');
     assert.match(server, /goal = \{[\s\S]*?place: targetPlace[\s\S]*?gap:/);
 });
 

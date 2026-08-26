@@ -188,17 +188,19 @@
             height: 100%;
             min-width: 0;
             min-height: 0;
-            object-fit: cover;
+            object-fit: contain;
             object-position: 50% 50%;
-            transform: scale(1.08);
-            transform-origin: 50% 50%;
+            transform: none;
             background: #fff;
         }
-        @media (max-aspect-ratio: 4 / 5) {
-            /* The supplied animation already has generous white margins.
-               Pull it back slightly on phones so the Spark wordmark doesn't
-               feel cropped or oversized; landscape/tablet cover stays as-is. */
-            .app-loader video { transform: scale(.94); }
+        /* Keep the portrait source uncropped while its logo is visible. At the
+           final black-star wipe the image can safely cover the viewport: the
+           jump is hidden inside the expanding solid shape and no side bars are
+           exposed on phones, tablets or landscape desktop windows. */
+        .app-loader.star-wipe video {
+            object-fit: cover;
+            transform: scale(1.02);
+            background: #000;
         }
         .app-loader.ending-black video { background: #000; }
         @media (prefers-reduced-motion: reduce) {
@@ -2852,7 +2854,8 @@
             if (!root || !video) return;
             var removed = false;
             var animationFrame = 0;
-            var blackChrome = false;
+            var starWipeStarted = false;
+            var endingBlack = false;
             var playbackStarted = false;
             var remove = function () {
                 if (removed) return;
@@ -2884,14 +2887,14 @@
             var syncLoaderFrame = function () {
                 if (removed) return;
                 if (video.currentTime >= 0.30) root.classList.add('video-visible');
-                /* The supplied animation turns fully black at the end. Paint
-                   Telegram's own top/bottom chrome at the start of the star
-                   wipe. The video itself uses a centered cover crop, so the
-                   animation fills portrait and landscape tablets alike. */
-                if (!blackChrome && video.currentTime >= 4.90) {
-                    blackChrome = true;
-                    root.classList.add('ending-black');
+                if (!starWipeStarted && video.currentTime >= 4.82) {
+                    starWipeStarted = true;
+                    root.classList.add('star-wipe');
                     if (window.setSparkTelegramChrome) window.setSparkTelegramChrome('#000000');
+                }
+                if (!endingBlack && video.currentTime >= 5.38) {
+                    endingBlack = true;
+                    root.classList.add('ending-black');
                 }
                 animationFrame = window.requestAnimationFrame(syncLoaderFrame);
             };
@@ -5378,7 +5381,7 @@
         function localNumber(key) { return Number(localStorage.getItem(key)) || 0; }
         function bestTimeText(key) {
             const value = Number(localStorage.getItem(key));
-            return value > 0 ? `${value.toFixed(2)} ${t('sec')}` : '—';
+            return value > 0 && value < 9999 ? `${value.toFixed(2)} ${t('sec')}` : '—';
         }
         function renderProfileStatsDetails() {
             const times = playtimeSnapshot();
@@ -5796,8 +5799,13 @@
                 // Server → localStorage (server is source of truth)
                 const fields = ['bb_best_score','bb_total_games','saper_wins','saper_best_6','saper_best_8','saper_best_10','saper_best_15','checkers_total','checkers_wins_pve','sudoku_wins','tower_best','tower_combo','wordle_wins'];
                 fields.forEach(f => {
-                    if (data[f] !== null && data[f] !== undefined) {
+                    const isMinesweeperTime = f.startsWith('saper_best_');
+                    const serverValue = Number(data[f]);
+                    if (data[f] !== null && data[f] !== undefined &&
+                        (!isMinesweeperTime || (serverValue > 0 && serverValue < 9999))) {
                         localStorage.setItem(f, data[f]);
+                    } else if (isMinesweeperTime && Number(localStorage.getItem(f)) >= 9999) {
+                        localStorage.removeItem(f);
                     }
                 });
                 
@@ -6629,13 +6637,13 @@
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); beginGamePlaytime('saper'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} sSessionReady=startGameSession('saper_best_' + sCols); }
-        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;if(sFirst){sFirst=false;placeMinesSafe(r,c); sStartTime = Date.now(); sTimerInt=setInterval(()=>{ let now = Date.now(); let diff = (now - sStartTime)/1000; sTimer = diff; document.getElementById('saperTimer').innerText= diff.toFixed(2);},30);}reportGameMove('saper_best_' + sCols);if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;const category='saper_best_' + sCols;if(sFirst){sFirst=false;sSessionReady=startGameSession(category);placeMinesSafe(r,c);sStartTime=Date.now();sTimerInt=setInterval(()=>{const diff=(Date.now()-sStartTime)/1000;sTimer=diff;document.getElementById('saperTimer').innerText=diff.toFixed(2);},30);sSessionReady.then(()=>reportGameMove(category));}else{reportGameMove(category);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key = `saper_best_${sRows}`; let b=parseFloat(localStorage.getItem(key)||9999); await sSessionReady; const timeResult = await sendStatToBackend(key, Number(sTimer.toFixed(2))); if(timeResult){ const serverBest=Number(timeResult.best_score); if(Number.isFinite(serverBest)) saveStatToCloud(key,serverBest); else if(sTimer<b) saveStatToCloud(key,Number(sTimer.toFixed(2))); } let w=parseInt(localStorage.getItem('saper_wins')||0)+1; saveStatToCloud('saper_wins', w); sendStatToBackend('saper_wins', w); showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(2)} ${t('seconds')}`, t('cool'), () => { closeResult(); closeGame('saper'); }); } }
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(2));const previousBest=Number(localStorage.getItem(key));if(!Number.isFinite(previousBest)||previousBest<=0||previousBest>=9999||finishedTime<previousBest)saveStatToCloud(key,finishedTime);await sSessionReady;const timeResult=await sendStatToBackend(key,finishedTime);if(timeResult){const serverBest=Number(timeResult.best_score);if(Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999)saveStatToCloud(key,serverBest);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(2)} ${t('seconds')}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
