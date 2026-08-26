@@ -63,7 +63,7 @@ function richGameHtml(text, replyMarkup, options = {}) {
 
 /**
  * Render the 8×8 checkers controls as a compact chess-style board. Telegram
- * rich tables do not expose per-cell colors, so an inline code background
+ * rich tables do not expose per-cell colors, so a marked non-breaking block
  * paints the light cells while the table itself paints the dark ones. There
  * are no bordered-table gridlines or placeholder square glyphs.
  * A classic InlineKeyboardMarkup is still supplied by the caller as a
@@ -72,18 +72,21 @@ function richGameHtml(text, replyMarkup, options = {}) {
 function richCheckersHtml(text, replyMarkup) {
     const rows = replyMarkup?.inline_keyboard || [];
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const emptyCellBlock = '&nbsp;&nbsp;&nbsp;&nbsp;';
     const fileRow = `<tr><th></th>${files.map(file => `<th>${file}</th>`).join('')}<th></th></tr>`;
     const boardRows = rows.map((row, rowIndex) => {
         const rank = String(8 - rowIndex);
         const cells = row.map((button, columnIndex) => {
             const isDark = (rowIndex + columnIndex) % 2 === 1;
             if (!isDark) {
-                return '<td align="center" valign="middle"><code>　</code></td>';
+                return `<td align="center" valign="middle"><mark>${emptyCellBlock}</mark></td>`;
             }
-            const rawText = button.text && button.text.trim() ? button.text : '　';
-            const textValue = rawText === '·' ? '　' : rawText;
+            const rawText = button.text && button.text.trim() ? button.text : '';
+            const textHtml = !rawText || rawText === '·'
+                ? emptyCellBlock
+                : escapeRichHtml(rawText);
             const buttonHtml = `<tg-button type="callback_data" style="link" ` +
-                `data="${escapeRichHtml(button.callback_data)}">${escapeRichHtml(textValue)}</tg-button>`;
+                `data="${escapeRichHtml(button.callback_data)}">${textHtml}</tg-button>`;
             return `<td align="center" valign="middle">${buttonHtml}</td>`;
         }).join('');
         return `<tr><th>${rank}</th>${cells}<th>${rank}</th></tr>`;
