@@ -62,9 +62,10 @@ function richGameHtml(text, replyMarkup, options = {}) {
 }
 
 /**
- * Render the 8×8 checkers controls as a real compact board instead of eight
- * rows of rounded buttons. RichTextButton is inline content, so Telegram
- * allows it inside table cells while the table provides the stable grid.
+ * Render the 8×8 checkers controls as a compact chess-style board. Telegram
+ * rich tables do not expose per-cell colors, so an inline code background
+ * paints the light cells while the table itself paints the dark ones. There
+ * are no bordered-table gridlines or placeholder square glyphs.
  * A classic InlineKeyboardMarkup is still supplied by the caller as a
  * compatibility fallback for clients that reject rich messages.
  */
@@ -77,17 +78,17 @@ function richCheckersHtml(text, replyMarkup) {
         const cells = row.map((button, columnIndex) => {
             const isDark = (rowIndex + columnIndex) % 2 === 1;
             if (!isDark) {
-                return '<td align="center" valign="middle">□</td>';
+                return '<td align="center" valign="middle"><code>　</code></td>';
             }
-            const rawText = button.text && button.text.trim() ? button.text : '·';
-            const textValue = rawText === '·' ? '■' : rawText;
+            const rawText = button.text && button.text.trim() ? button.text : '　';
+            const textValue = rawText === '·' ? '　' : rawText;
             const buttonHtml = `<tg-button type="callback_data" style="link" ` +
                 `data="${escapeRichHtml(button.callback_data)}">${escapeRichHtml(textValue)}</tg-button>`;
             return `<td align="center" valign="middle">${buttonHtml}</td>`;
         }).join('');
         return `<tr><th>${rank}</th>${cells}<th>${rank}</th></tr>`;
     }).join('');
-    return `${classicHtmlToRichHtml(text)}<hr/><table bordered compact>` +
+    return `${classicHtmlToRichHtml(text)}<hr/><table compact>` +
         `${fileRow}${boardRows}${fileRow}</table>`;
 }
 

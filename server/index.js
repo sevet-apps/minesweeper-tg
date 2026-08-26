@@ -263,8 +263,11 @@ const SCORE_LIMITS = {
     'wordle_wins':        { min: 1, max: 10000000 },
 };
 
-// Time-based game types that allow float scores (seconds with ms precision)
+// Time-based game types that allow float scores (seconds with ms precision).
+// Older clients initialized these columns with 9999. It was a UI sentinel,
+// never a completed game, so it must not participate in ranks or profiles.
 const TIME_BASED_TYPES = ['saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15'];
+const LEGACY_MINESWEEPER_TIME_SENTINEL = 9999;
 
 function validateScore(gameType, score) {
     const limits = SCORE_LIMITS[gameType];
@@ -302,9 +305,37 @@ const MIN_GAME_DURATION = {
 };
 
 // Generate session token (HMAC-signed, can't be forged by client)
-function createSessionToken(userId, gameType, startTime) {
+function sessionTokenSignature(userId, gameType, startTime) {
     const data = `${userId}:${gameType}:${startTime}`;
-    return crypto.createHmac('sha256', BOT_TOKEN || 'fallback-secret').update(data).digest('hex').substring(0, 32);
+    return crypto.createHmac('sha256', GAME_SESSION_SECRET || 'fallback-secret')
+        .update(data).digest('hex').substring(0, 32);
+}
+
+function createSessionToken(userId, gameType, startTime) {
+    return `${startTime}.${sessionTokenSignature(userId, gameType, startTime)}`;
+}
+
+// Minesweeper has no server-authoritative board yet, but its signed start
+// time can still survive a Render restart. Previously every in-memory session
+// disappeared during a deploy and a legitimate completed board was rejected.
+function readSignedSessionStart(userId, gameType, token) {
+    if (typeof token !== 'string') return null;
+    const separator = token.indexOf('.');
+    if (separator <= 0 || token.indexOf('.', separator + 1) !== -1) return null;
+    const startTimeText = token.slice(0, separator);
+    if (!/^\d{13}$/.test(startTimeText)) return null;
+    const startTime = Number(startTimeText);
+    const now = Date.now();
+    if (!Number.isSafeInteger(startTime) || startTime > now + 30_000 || now - startTime > 24 * 60 * 60 * 1000) {
+        return null;
+    }
+    const expected = createSessionToken(userId, gameType, startTime);
+    const actualBuffer = Buffer.from(token);
+    const expectedBuffer = Buffer.from(expected);
+    if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {
+        return null;
+    }
+    return startTime;
 }
 
 // Start game session
@@ -947,6 +978,12 @@ app.get('/api/profile/:id', async (req, res) => {
             .update({ checkers_total: wins }).eq('telegram_id', id);
         if (repaired.error) console.error('[checkers] profile repair:', repaired.error.message);
     }
+    TIME_BASED_TYPES.forEach((category) => {
+        const value = Number(data[category]);
+        if (!Number.isFinite(value) || value <= 0 || value >= LEGACY_MINESWEEPER_TIME_SENTINEL) {
+            data[category] = null;
+        }
+    });
     res.json(data);
 });
 
@@ -1038,7 +1075,19 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     
     if (needsSession) {
         const key = `${user_id}:${sessionGameType}`;
-        const session = gameSessions.get(key);
+        let session = gameSessions.get(key);
+        if ((!session || session.token !== session_token) && TIME_BASED_TYPES.includes(game_type)) {
+            const recoveredStartTime = readSignedSessionStart(user_id, sessionGameType, session_token);
+            if (recoveredStartTime !== null) {
+                session = {
+                    startTime: recoveredStartTime,
+                    token: session_token,
+                    moveCount: 0,
+                    lastMoveTime: recoveredStartTime,
+                    recoveredAfterRestart: true,
+                };
+            }
+        }
         
         if (!session || session.token !== session_token) {
             // No strike — session loss is common after server restart/deploy
@@ -1232,11 +1281,13 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         // Before saving, get current top players for this category to detect displacement
         let topBefore = [];
         if (GAME_NAMES[game_type]) {
-            const { data: topData } = await supabase
+            let topBeforeQuery = supabase
                 .from('users')
                 .select(`telegram_id, username, ${game_type}`)
                 .not(game_type, 'is', null)
-                .gt(game_type, 0)
+                .gt(game_type, 0);
+            if (isTime) topBeforeQuery = topBeforeQuery.lt(game_type, LEGACY_MINESWEEPER_TIME_SENTINEL);
+            const { data: topData } = await topBeforeQuery
                 .order(game_type, { ascending: isTime })
                 .limit(10);
             topBefore = topData || [];
@@ -1264,11 +1315,13 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         
         // After saving, get new top and detect who got displaced
         if (GAME_NAMES[game_type]) {
-            const { data: topAfter } = await supabase
+            let topAfterQuery = supabase
                 .from('users')
                 .select(`telegram_id, username, ${game_type}`)
                 .not(game_type, 'is', null)
-                .gt(game_type, 0)
+                .gt(game_type, 0);
+            if (isTime) topAfterQuery = topAfterQuery.lt(game_type, LEGACY_MINESWEEPER_TIME_SENTINEL);
+            const { data: topAfter } = await topAfterQuery
                 .order(game_type, { ascending: isTime })
                 .limit(10);
             
@@ -1322,7 +1375,14 @@ app.get('/leaderboard', async (req, res) => {
     ];
     if (!allowed.includes(category)) return res.json([]); 
     const isTime = category.includes('best') && category.includes('saper');
-    const { data, error } = await supabase.from('users').select(`telegram_id, username, photo_url, ${category}`).not(category, 'is', null).gt(category, 0).order(category, { ascending: isTime }).limit(50);
+    let leaderboardQuery = supabase.from('users')
+        .select(`telegram_id, username, photo_url, ${category}`)
+        .not(category, 'is', null)
+        .gt(category, 0);
+    if (isTime) leaderboardQuery = leaderboardQuery.lt(category, LEGACY_MINESWEEPER_TIME_SENTINEL);
+    const { data, error } = await leaderboardQuery
+        .order(category, { ascending: isTime })
+        .limit(50);
     if (error) {
         console.error(`[leaderboard] ${category}:`, error.message);
         return res.status(500).json({ error: 'Leaderboard unavailable' });
@@ -1467,11 +1527,15 @@ app.get('/user-ranks', async (req, res) => {
 
     const milestones = [1, 3, 10, 25, 50, 100];
     const entries = await Promise.all(categories.map(async cat => {
-        const { data, error } = await supabase
+        let rankQuery = supabase
             .from('users')
             .select(`telegram_id, ${cat.key}`)
             .not(cat.key, 'is', null)
-            .gt(cat.key, 0)
+            .gt(cat.key, 0);
+        if (TIME_BASED_TYPES.includes(cat.key)) {
+            rankQuery = rankQuery.lt(cat.key, LEGACY_MINESWEEPER_TIME_SENTINEL);
+        }
+        const { data, error } = await rankQuery
             .order(cat.key, { ascending: cat.asc });
         if (error) {
             console.error(`[user-ranks] ${cat.key}:`, error.message);
@@ -3004,7 +3068,7 @@ async function editInlineMessageWithPlayButton(inlineMessageId, text, userId) {
     const replyMarkup = { inline_keyboard: [[{ text: '🎮 Играть', url }]] };
     return editRichInlineMessage(
         inlineMessageId,
-        richActionHtml(text, { text: '🎮 Играть', url, style: 'primary' }),
+        richActionHtml(text, { text: 'Открыть Spark', url, style: 'success' }),
         text,
         replyMarkup,
     );
@@ -3369,7 +3433,7 @@ if (BOT_TOKEN) {
                 id: tttId,
                 title: 'Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png?v=20260827-2',
                 richHtml: tttRichHtml(tttInviteText, createTTTBoard(), tttId),
                 fallbackText: tttInviteText,
                 fallbackReplyMarkup: tttInviteKeyboard,
@@ -3390,7 +3454,7 @@ if (BOT_TOKEN) {
                 id: chId,
                 title: 'Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png?v=20260827-2',
                 richHtml: checkersRichHtml(checkersInviteText, createCheckersBoard(), chId),
                 fallbackText: checkersInviteText,
                 fallbackReplyMarkup: checkersInviteKeyboard,
@@ -3414,7 +3478,7 @@ if (BOT_TOKEN) {
                 Object.values(GAME_CONFIG).find(config => config.column === game.key));
             let topData = new Map();
             try {
-                topData = await getTopsForGames(topConfigs.filter(Boolean), userId, false);
+                topData = await getTopsForGames(topConfigs.filter(Boolean), userId, true);
             } catch (error) {
                 console.error('Inline leaderboards error:', error.message);
             }
@@ -3441,7 +3505,7 @@ if (BOT_TOKEN) {
                     description: `Показать топ игроков в ${game.name}`,
                     thumbnailUrl: gameThumbnail(config),
                     richHtml: richActionHtml(text, {
-                        text: '🎮 Играть', url: playUrl, style: 'primary',
+                        text: 'Открыть Spark', url: playUrl, style: 'success',
                     }),
                     fallbackText: text,
                     fallbackReplyMarkup: replyMarkup,
@@ -3467,7 +3531,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: '❌⭕ Крестики-нолики',
                 description: 'Сыграйте с кем-то из чата!',
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png',
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png?v=20260827-2',
                 richHtml: tttRichHtml(inviteText, createTTTBoard(), gameId),
                 fallbackText: inviteText,
                 fallbackReplyMarkup: inviteKeyboard,
@@ -3491,7 +3555,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: '⚪⚫ Шашки',
                 description: 'Сыграйте в шашки с кем-то из чата!',
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png',
+                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png?v=20260827-2',
                 richHtml: checkersRichHtml(inviteText, createCheckersBoard(), gameId),
                 fallbackText: inviteText,
                 fallbackReplyMarkup: inviteKeyboard,
@@ -3512,9 +3576,9 @@ if (BOT_TOKEN) {
                     // Отправляем временное сообщение с обычными эмодзи
                     let result;
                     if (matchedGame.isReferral) {
-                        result = await getTopForReferrals(userId, false);
+                        result = await getTopForReferrals(userId, true);
                     } else {
-                        result = await getTopForGame(matchedGame, userId, false);
+                        result = await getTopForGame(matchedGame, userId, true);
                     }
                     const { text } = result;
                     
@@ -3531,7 +3595,7 @@ if (BOT_TOKEN) {
                         description: 'Нажмите чтобы отправить топ в чат',
                         thumbnailUrl: gameThumbnail(matchedGame),
                         richHtml: richActionHtml(text, {
-                            text: '🎮 Играть', url: playUrl, style: 'primary',
+                            text: 'Открыть Spark', url: playUrl, style: 'success',
                         }),
                         fallbackText: text,
                         fallbackReplyMarkup: {
@@ -3555,8 +3619,8 @@ if (BOT_TOKEN) {
                         let topText;
                         try {
                             const top = config.isReferral
-                                ? await getTopForReferrals(userId, false)
-                                : await getTopForGame(config, userId, false);
+                                ? await getTopForReferrals(userId, true)
+                                : await getTopForGame(config, userId, true);
                             topText = top.text;
                         } catch (error) {
                             console.error(`Inline ${config.column} suggestion error:`, error.message);
@@ -3568,7 +3632,7 @@ if (BOT_TOKEN) {
                             description: `Показать топ ${config.name}`,
                             thumbnailUrl: gameThumbnail(config),
                             richHtml: richActionHtml(topText, {
-                                text: '🎮 Играть', url: playUrl, style: 'primary',
+                                text: 'Открыть Spark', url: playUrl, style: 'success',
                             }),
                             fallbackText: topText,
                             fallbackReplyMarkup: {
