@@ -85,7 +85,7 @@ function richCheckersHtml(text, replyMarkup) {
             const textHtml = !rawText || rawText === '·'
                 ? emptyCellBlock
                 : escapeRichHtml(rawText);
-            const buttonHtml = `<tg-button type="callback_data" style="link" ` +
+            const buttonHtml = `<tg-button type="callback_data" style="primary" ` +
                 `data="${escapeRichHtml(button.callback_data)}">${textHtml}</tg-button>`;
             return `<td align="center" valign="middle">${buttonHtml}</td>`;
         }).join('');
