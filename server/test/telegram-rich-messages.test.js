@@ -90,7 +90,9 @@ test('checkers rich message is a compact square board with coordinates', () => {
     assert.equal((html.match(/type="callback_data"/g) || []).length, 32);
     assert.match(html, /<th>a<\/th>[\s\S]*<th>h<\/th>/);
     assert.match(html, /<th>8<\/th>[\s\S]*<th>1<\/th>/);
-    assert.match(html, /<code>　<\/code>/);
+    assert.equal((html.match(/<mark>&nbsp;&nbsp;&nbsp;&nbsp;<\/mark>/g) || []).length, 32);
+    assert.match(html, /style="link"[^>]*>&nbsp;&nbsp;&nbsp;&nbsp;<\/tg-button>/);
+    assert.doesNotMatch(html, /<code>/);
     assert.doesNotMatch(html, /[□■]/);
 });
 
