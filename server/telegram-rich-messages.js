@@ -63,14 +63,19 @@ function richGameHtml(text, replyMarkup, options = {}) {
 
 const CHECKERS_RICH_PIECES = Object.freeze({
     '⚫': '<tg-emoji emoji-id="5285320216824261814">⚫️</tg-emoji>',
-    '⚪': '<tg-emoji emoji-id="5287752989379933433">⚪️</tg-emoji>',
+    // This lighter stone is deliberately paired with the dark one above.
+    // The previous white variant was silver-grey and looked almost identical
+    // to the black stone on Telegram's dark message background.
+    '⚪': '<tg-emoji emoji-id="5285226384673746174">⚪️</tg-emoji>',
     '⬛': '<tg-emoji emoji-id="5287515675256955990">⚫️</tg-emoji>',
     '⬜': '<tg-emoji emoji-id="5285226384673746174">⚪️</tg-emoji>',
-    '🟢': '<tg-emoji emoji-id="5323761960829862762">🟢</tg-emoji>',
+    // A red checker-like stone marks selection without replacing the piece
+    // with the unrelated lightning animation used before.
+    '🔴': '<tg-emoji emoji-id="5287702059657734416">🔴</tg-emoji>',
 });
 
 /**
- * Render the 8×8 checkers controls as a chess-style board. Telegram rich
+ * Render the 8×8 checkers controls as a compact chess-style board. Telegram rich
  * tables expose the blue coordinate surface through header cells. Alternating
  * them with regular cells paints the complete square board without gridlines.
  * Link-style callbacks stay visually transparent; custom emoji avoid the
@@ -98,7 +103,7 @@ function richCheckersHtml(text, replyMarkup) {
         }).join('');
         return `<tr><th>${rank}</th>${cells}<th>${rank}</th></tr>`;
     }).join('');
-    return `${classicHtmlToRichHtml(text)}<hr/><table>` +
+    return `${classicHtmlToRichHtml(text)}<hr/><table compact>` +
         `${fileRow}${boardRows}${fileRow}</table>`;
 }
 

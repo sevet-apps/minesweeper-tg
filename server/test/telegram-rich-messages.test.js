@@ -84,8 +84,7 @@ test('checkers rich message is a square alternating board without button capsule
             }))),
     };
     const html = richCheckersHtml('<b>Шашки</b>', keyboard);
-    assert.match(html, /<table>/);
-    assert.doesNotMatch(html, /<table compact>/);
+    assert.match(html, /<table compact>/);
     assert.doesNotMatch(html, /\bbordered\b/);
     assert.equal((html.match(/<tr>/g) || []).length, 10);
     assert.equal((html.match(/type="callback_data"/g) || []).length, 32);
@@ -99,6 +98,23 @@ test('checkers rich message is a square alternating board without button capsule
     assert.doesNotMatch(html, />⚫<\/tg-button>/);
     assert.doesNotMatch(html, /<code>/);
     assert.doesNotMatch(html, /[□■]/);
+});
+
+test('checkers pieces keep strong contrast and selection remains checker-shaped', () => {
+    const keyboard = {
+        inline_keyboard: Array.from({ length: 8 }, (_, row) =>
+            Array.from({ length: 8 }, (_, col) => ({
+                text: row === 0 && col === 1 ? '⚫' :
+                    (row === 2 && col === 1 ? '⚪' :
+                        (row === 4 && col === 1 ? '🔴' : '·')),
+                callback_data: `ch_contrast_${row}_${col}`,
+            }))),
+    };
+    const html = richCheckersHtml('<b>Шашки</b>', keyboard);
+    assert.match(html, /emoji-id="5285320216824261814"/);
+    assert.match(html, /emoji-id="5285226384673746174"/);
+    assert.match(html, /emoji-id="5287702059657734416"/);
+    assert.doesNotMatch(html, /emoji-id="5323761960829862762"/);
 });
 
 test('inline articles expose a rich message and retain a classic fallback', () => {
