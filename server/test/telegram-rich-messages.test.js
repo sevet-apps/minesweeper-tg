@@ -75,7 +75,7 @@ test('an 8 by 8 checkers board stays within Telegram rich row limits', () => {
     assert.equal((html.match(/type="callback_data"/g) || []).length, 64);
 });
 
-test('checkers rich message is a compact square board with coordinates', () => {
+test('checkers rich message is a square alternating board without button capsules', () => {
     const keyboard = {
         inline_keyboard: Array.from({ length: 8 }, (_, row) =>
             Array.from({ length: 8 }, (_, col) => ({
@@ -84,16 +84,19 @@ test('checkers rich message is a compact square board with coordinates', () => {
             }))),
     };
     const html = richCheckersHtml('<b>Шашки</b>', keyboard);
-    assert.match(html, /<table compact>/);
+    assert.match(html, /<table>/);
+    assert.doesNotMatch(html, /<table compact>/);
     assert.doesNotMatch(html, /\bbordered\b/);
     assert.equal((html.match(/<tr>/g) || []).length, 10);
     assert.equal((html.match(/type="callback_data"/g) || []).length, 32);
     assert.match(html, /<th>a<\/th>[\s\S]*<th>h<\/th>/);
     assert.match(html, /<th>8<\/th>[\s\S]*<th>1<\/th>/);
-    assert.equal((html.match(/<th align="center" valign="middle">&nbsp;&nbsp;&nbsp;&nbsp;<\/th>/g) || []).length, 32);
+    assert.equal((html.match(/<td align="center" valign="middle">&nbsp;<\/td>/g) || []).length, 32);
     assert.doesNotMatch(html, /<mark>/);
-    assert.match(html, /type="callback_data" data="[^"]+">&nbsp;&nbsp;&nbsp;&nbsp;<\/tg-button>/);
-    assert.doesNotMatch(html, /<tg-button[^>]*\sstyle=/);
+    assert.match(html, /<th align="center" valign="middle"><tg-button type="callback_data" style="link" data="[^"]+">&nbsp;<\/tg-button><\/th>/);
+    assert.equal((html.match(/type="callback_data" style="link"/g) || []).length, 32);
+    assert.match(html, /<tg-emoji emoji-id="5285320216824261814">⚫️<\/tg-emoji>/);
+    assert.doesNotMatch(html, />⚫<\/tg-button>/);
     assert.doesNotMatch(html, /<code>/);
     assert.doesNotMatch(html, /[□■]/);
 });

@@ -2728,7 +2728,9 @@ const tttGames = new Map(); // inline_message_id -> game state
 
 const TTT_X = '❌';
 const TTT_O = '⭕';
-const TTT_EMPTY = '▫️';
+// Telegram requires button text, so an invisible separator keeps empty cells
+// clickable without drawing the small white squares seen in rich messages.
+const TTT_EMPTY = '\u2063';
 
 function createTTTBoard() {
     return [
@@ -3427,7 +3429,7 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(tttId), 10 * 60 * 1000);
             
-            const tttInviteText = `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+            const tttInviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
             const tttInviteKeyboard = getTTTKeyboard(createTTTBoard(), tttId);
             addRichResult({
                 id: tttId,
@@ -3448,7 +3450,7 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(chId), 10 * 60 * 1000);
             
-            const checkersInviteText = `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
+            const checkersInviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
             const checkersInviteKeyboard = getCheckersKeyboard(createCheckersBoard(), chId);
             addRichResult({
                 id: chId,
@@ -3525,7 +3527,7 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(gameId), 10 * 60 * 1000);
             
-            const inviteText = `🕹 <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+            const inviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
             const inviteKeyboard = getTTTKeyboard(createTTTBoard(), gameId);
             addRichResult({
                 id: gameId,
@@ -3549,7 +3551,7 @@ if (BOT_TOKEN) {
             });
             setTimeout(() => inlineCache.delete(gameId), 10 * 60 * 1000);
             
-            const inviteText = `🕹 <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
+            const inviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
             const inviteKeyboard = getCheckersKeyboard(createCheckersBoard(), gameId);
             addRichResult({
                 id: gameId,

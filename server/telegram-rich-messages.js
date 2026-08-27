@@ -61,37 +61,44 @@ function richGameHtml(text, replyMarkup, options = {}) {
     return `${classicHtmlToRichHtml(text)}<hr/>${keyboardToRichHtml(replyMarkup, options)}`;
 }
 
+const CHECKERS_RICH_PIECES = Object.freeze({
+    '⚫': '<tg-emoji emoji-id="5285320216824261814">⚫️</tg-emoji>',
+    '⚪': '<tg-emoji emoji-id="5287752989379933433">⚪️</tg-emoji>',
+    '⬛': '<tg-emoji emoji-id="5287515675256955990">⚫️</tg-emoji>',
+    '⬜': '<tg-emoji emoji-id="5285226384673746174">⚪️</tg-emoji>',
+    '🟢': '<tg-emoji emoji-id="5323761960829862762">🟢</tg-emoji>',
+});
+
 /**
- * Render the 8×8 checkers controls as a compact chess-style board. Telegram
- * rich tables expose the same blue surface used by coordinate headers through
- * header cells. Alternating those with regular body cells produces full,
- * square board cells without gridlines, colored glyphs or rounded chips.
- * A classic InlineKeyboardMarkup is still supplied by the caller as a
- * compatibility fallback for clients that reject rich messages.
+ * Render the 8×8 checkers controls as a chess-style board. Telegram rich
+ * tables expose the blue coordinate surface through header cells. Alternating
+ * them with regular cells paints the complete square board without gridlines.
+ * Link-style callbacks stay visually transparent; custom emoji avoid the
+ * underline Telegram adds to ordinary emoji links.
  */
 function richCheckersHtml(text, replyMarkup) {
     const rows = replyMarkup?.inline_keyboard || [];
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const emptyCellBlock = '&nbsp;&nbsp;&nbsp;&nbsp;';
+    const emptyCellBlock = '&nbsp;';
     const fileRow = `<tr><th></th>${files.map(file => `<th>${file}</th>`).join('')}<th></th></tr>`;
     const boardRows = rows.map((row, rowIndex) => {
         const rank = String(8 - rowIndex);
         const cells = row.map((button, columnIndex) => {
             const isDark = (rowIndex + columnIndex) % 2 === 1;
             if (!isDark) {
-                return `<th align="center" valign="middle">${emptyCellBlock}</th>`;
+                return `<td align="center" valign="middle">${emptyCellBlock}</td>`;
             }
             const rawText = button.text && button.text.trim() ? button.text : '';
             const textHtml = !rawText || rawText === '·'
                 ? emptyCellBlock
-                : escapeRichHtml(rawText);
-            const buttonHtml = `<tg-button type="callback_data" ` +
+                : (CHECKERS_RICH_PIECES[rawText] || escapeRichHtml(rawText));
+            const buttonHtml = `<tg-button type="callback_data" style="link" ` +
                 `data="${escapeRichHtml(button.callback_data)}">${textHtml}</tg-button>`;
-            return `<td align="center" valign="middle">${buttonHtml}</td>`;
+            return `<th align="center" valign="middle">${buttonHtml}</th>`;
         }).join('');
         return `<tr><th>${rank}</th>${cells}<th>${rank}</th></tr>`;
     }).join('');
-    return `${classicHtmlToRichHtml(text)}<hr/><table compact>` +
+    return `${classicHtmlToRichHtml(text)}<hr/><table>` +
         `${fileRow}${boardRows}${fileRow}</table>`;
 }
 
