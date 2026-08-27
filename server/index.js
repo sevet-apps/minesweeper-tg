@@ -2728,9 +2728,10 @@ const tttGames = new Map(); // inline_message_id -> game state
 
 const TTT_X = '❌';
 const TTT_O = '⭕';
-// Telegram requires button text, so an invisible separator keeps empty cells
-// clickable without drawing the small white squares seen in rich messages.
-const TTT_EMPTY = '\u2063';
+// Telegram requires button text. The invisible separator keeps the control
+// clickable, while two en-spaces restore the comfortable, plump button width
+// without drawing the white square glyph used by the old placeholder.
+const TTT_EMPTY = '\u2063\u2002\u2002';
 
 function createTTTBoard() {
     return [
@@ -2820,7 +2821,7 @@ function getCheckersKeyboard(board, gameId, selectedPos = null) {
             let text;
             
             if (selectedPos && selectedPos.r === r && selectedPos.c === c) {
-                text = '🟢';
+                text = '🔴';
             } else if (cell.type === 'light') {
                 text = ' ';
             } else if (cell.type === 'empty') {
