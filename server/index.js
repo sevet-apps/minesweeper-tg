@@ -288,6 +288,8 @@ function validateScore(gameType, score) {
 // SECURITY: Game Session Tracking
 // ============================
 const gameSessions = new Map(); // `${userId}:${gameType}` -> { startTime, token, moves }
+const completedStatSubmissions = new Map(); // signed completion token -> last successful response
+const COMPLETED_STAT_TTL_MS = 10 * 60 * 1000;
 
 // Minimum game durations in ms (impossible to play faster)
 const MIN_GAME_DURATION = {
@@ -1037,13 +1039,178 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
     }
 }
 
+async function getLeaderboardSnapshot(gameType) {
+    if (!GAME_NAMES[gameType]) return [];
+    const isTime = TIME_BASED_TYPES.includes(gameType);
+    let query = supabase
+        .from('users')
+        .select(`telegram_id, username, ${gameType}`)
+        .not(gameType, 'is', null)
+        .gt(gameType, 0);
+    if (isTime) query = query.lt(gameType, LEGACY_MINESWEEPER_TIME_SENTINEL);
+    const { data, error } = await query
+        .order(gameType, { ascending: isTime })
+        .limit(10);
+    if (error) throw new Error(`Leaderboard read error: ${error.message}`);
+    return data || [];
+}
+
+async function notifyLeaderboardDisplacements(topBefore, topAfter, currentUserId, username, gameType) {
+    if (!GAME_NAMES[gameType] || !topBefore.length) return;
+    const notifications = [];
+    for (let oldIndex = 0; oldIndex < topBefore.length; oldIndex++) {
+        const beforeUser = topBefore[oldIndex];
+        if (String(beforeUser.telegram_id) === String(currentUserId)) continue;
+        const newIndex = topAfter.findIndex(user =>
+            String(user.telegram_id) === String(beforeUser.telegram_id));
+        const oldRank = oldIndex + 1;
+        const newRank = newIndex >= 0 ? newIndex + 1 : topAfter.length + 1;
+        if (newRank > oldRank) {
+            notifications.push(notifyDisplaced(
+                beforeUser.telegram_id,
+                beforeUser.username,
+                username,
+                gameType,
+                oldRank,
+                newRank
+            ));
+        }
+    }
+    await Promise.allSettled(notifications);
+}
+
+async function repairCheckersCounters(userId) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const { data, error } = await supabase.from('users')
+            .select('checkers_total, checkers_wins_pve')
+            .eq('telegram_id', userId)
+            .maybeSingle();
+        if (error) throw new Error(`DB read error: ${error.message}`);
+        if (!data) return;
+        const total = Number(data.checkers_total) || 0;
+        const wins = Number(data.checkers_wins_pve) || 0;
+        if (total >= wins) return;
+        let update = supabase.from('users')
+            .update({ checkers_total: wins })
+            .eq('telegram_id', userId);
+        update = data.checkers_total === null || data.checkers_total === undefined
+            ? update.is('checkers_total', null)
+            : update.eq('checkers_total', data.checkers_total);
+        const { data: updated, error: updateError } = await update
+            .select('checkers_total')
+            .maybeSingle();
+        if (updateError) throw new Error(`DB write error: ${updateError.message}`);
+        if (updated) return;
+    }
+    throw new Error('DB conflict while repairing checkers counters');
+}
+
+async function incrementCounterStat(userId, username, photoUrl, gameType, delta) {
+    const columns = gameType === 'checkers_total' || gameType === 'checkers_wins_pve'
+        ? 'checkers_total, checkers_wins_pve'
+        : gameType;
+    for (let attempt = 0; attempt < 8; attempt++) {
+        const { data: currentUser, error: readError } = await supabase.from('users')
+            .select(columns)
+            .eq('telegram_id', userId)
+            .maybeSingle();
+        if (readError) throw new Error(`DB read error: ${readError.message}`);
+
+        if (!currentUser) {
+            const value = delta;
+            const insertData = {
+                telegram_id: userId,
+                username,
+                photo_url: photoUrl,
+                [gameType]: value,
+            };
+            if (gameType === 'checkers_wins_pve') insertData.checkers_total = value;
+            const { error: insertError } = await supabase.from('users').insert(insertData);
+            if (!insertError) return value;
+            // Another concurrent request may have created the row first.
+            if (attempt < 7) continue;
+            throw new Error(`DB write error: ${insertError.message}`);
+        }
+
+        const rawCurrent = currentUser[gameType];
+        const current = Number(rawCurrent) || 0;
+        const value = gameType === 'checkers_total'
+            ? Math.max(current + delta, Number(currentUser.checkers_wins_pve) || 0)
+            : current + delta;
+        const updateData = { username, photo_url: photoUrl, [gameType]: value };
+        let update = supabase.from('users')
+            .update(updateData)
+            .eq('telegram_id', userId);
+        update = rawCurrent === null || rawCurrent === undefined
+            ? update.is(gameType, null)
+            : update.eq(gameType, rawCurrent);
+        const { data: updated, error: updateError } = await update
+            .select(gameType)
+            .maybeSingle();
+        if (updateError) throw new Error(`DB write error: ${updateError.message}`);
+        if (updated) {
+            if (gameType === 'checkers_total' || gameType === 'checkers_wins_pve') {
+                await repairCheckersCounters(userId);
+            }
+            return Number(updated[gameType]);
+        }
+    }
+    throw new Error('DB conflict while incrementing counter');
+}
+
+async function persistBestStat(userId, username, photoUrl, gameType, score) {
+    const isTime = TIME_BASED_TYPES.includes(gameType);
+    for (let attempt = 0; attempt < 8; attempt++) {
+        const { data: currentUser, error: readError } = await supabase.from('users')
+            .select(gameType)
+            .eq('telegram_id', userId)
+            .maybeSingle();
+        if (readError) throw new Error(`DB read error: ${readError.message}`);
+
+        if (!currentUser) {
+            const { error: insertError } = await supabase.from('users').insert({
+                telegram_id: userId,
+                username,
+                photo_url: photoUrl,
+                [gameType]: score,
+            });
+            if (!insertError) return { persistedBest: score, recordImproved: true };
+            if (attempt < 7) continue;
+            throw new Error(`DB write error: ${insertError.message}`);
+        }
+
+        const rawCurrent = currentUser[gameType];
+        const current = Number(rawCurrent);
+        const missing = rawCurrent === null || rawCurrent === undefined || !Number.isFinite(current);
+        const improves = missing || (isTime ? score < current : score > current);
+        if (!improves) {
+            const { error: metadataError } = await supabase.from('users')
+                .update({ username, photo_url: photoUrl })
+                .eq('telegram_id', userId);
+            if (metadataError) throw new Error(`DB write error: ${metadataError.message}`);
+            return { persistedBest: current, recordImproved: false };
+        }
+
+        let update = supabase.from('users')
+            .update({ username, photo_url: photoUrl, [gameType]: score })
+            .eq('telegram_id', userId);
+        update = missing ? update.is(gameType, null) : update.eq(gameType, rawCurrent);
+        const { data: updated, error: updateError } = await update
+            .select(gameType)
+            .maybeSingle();
+        if (updateError) throw new Error(`DB write error: ${updateError.message}`);
+        if (updated) return { persistedBest: Number(updated[gameType]), recordImproved: true };
+    }
+    throw new Error('DB conflict while saving best result');
+}
+
 app.post('/save-stat', authMiddleware, async (req, res) => {
     const user = req.telegramUser;
     const user_id = String(user.id);
     const username = tgDisplayName(user);
     const tgUsername = user.username || '';
     const photo_url = user.photo_url || '';
-    let { game_type, score, session_token } = req.body;
+    let { game_type, score, session_token, stat_delta } = req.body;
     
     // Rate limit
     if (!checkRateLimit(user_id, 'save-stat')) {
@@ -1060,6 +1227,17 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     if (!validateScore(game_type, score)) {
         return res.status(400).json({ error: 'Invalid score' });
     }
+
+    const completedSubmissionKey = game_type === 'sudoku_wins' && session_token
+        ? `${user_id}:${game_type}:${session_token}`
+        : null;
+    if (completedSubmissionKey) {
+        const completed = completedStatSubmissions.get(completedSubmissionKey);
+        if (completed && Date.now() - completed.completedAt < COMPLETED_STAT_TTL_MS) {
+            return res.json(completed.response);
+        }
+        if (completed) completedStatSubmissions.delete(completedSubmissionKey);
+    }
     
     // ---- SESSION VALIDATION ----
     // Counter games (wins, total) don't need sessions — they increment by 1
@@ -1071,12 +1249,13 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         (game_type === 'tower_combo')         ? 'tower_best'    :
         (game_type === 'bb_tournament_score') ? 'bb_best_score' :
         game_type;
-    const needsSession = !isCounter;
+    const needsSession = !isCounter || game_type === 'sudoku_wins';
     
     if (needsSession) {
         const key = `${user_id}:${sessionGameType}`;
         let session = gameSessions.get(key);
-        if ((!session || session.token !== session_token) && TIME_BASED_TYPES.includes(game_type)) {
+        if ((!session || session.token !== session_token) &&
+            (TIME_BASED_TYPES.includes(game_type) || game_type === 'sudoku_wins')) {
             const recoveredStartTime = readSignedSessionStart(user_id, sessionGameType, session_token);
             if (recoveredStartTime !== null) {
                 session = {
@@ -1143,6 +1322,11 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             session.bbEnded = true;
             session.finishedAt = Date.now();
         // Session used — delete it (but keep for tower_combo if tower_best was just saved)
+        } else if (game_type === 'sudoku_wins') {
+            // Keep the signed token until the database increment succeeds. If
+            // the network drops after saving, the completed response cache
+            // makes the retry idempotent instead of awarding points twice.
+            session.statSubmissionPending = true;
         } else if (game_type !== 'tower_best') {
             gameSessions.delete(key);
         } else {
@@ -1154,28 +1338,29 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     
     // ---- COUNTER HANDLING: server-side increment ----
     if (isCounter) {
-        const counterSelect = game_type === 'checkers_total' || game_type === 'checkers_wins_pve'
-            ? 'checkers_total, checkers_wins_pve' : game_type;
-        let { data: checkUser } = await supabase.from('users').select(counterSelect).eq('telegram_id', user_id).single();
-        const currentVal = checkUser ? (checkUser[game_type] || 0) : 0;
-        // Server increments by 1 regardless of what client sends
-        // This prevents both COUNTER_JUMP false positives and cheating
-        const updateData = { username: username, photo_url: photo_url };
-        updateData[game_type] = currentVal + 1;
-        if (game_type === 'checkers_wins_pve') {
-            updateData.checkers_total = Math.max(Number(checkUser?.checkers_total) || 0, currentVal + 1);
-        } else if (game_type === 'checkers_total') {
-            updateData.checkers_total = Math.max(currentVal + 1, Number(checkUser?.checkers_wins_pve) || 0);
+        // Older cached clients did not send stat_delta. Preserve their +1
+        // behavior while current clients submit the difficulty award (1..3).
+        const delta = game_type === 'sudoku_wins' ? Number(stat_delta ?? 1) : 1;
+        if (!Number.isInteger(delta) || delta < 1 || delta > (game_type === 'sudoku_wins' ? 3 : 1)) {
+            return res.status(400).json({ error: 'Invalid counter delta' });
         }
-        
-        if (!checkUser) {
-            const { error } = await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
-            if (error) return res.status(500).json({ error: 'DB error' });
-        } else {
-            const { error } = await supabase.from('users').update(updateData).eq('telegram_id', user_id);
-            if (error) return res.status(500).json({ error: 'DB error' });
+        try {
+            const topBefore = await getLeaderboardSnapshot(game_type);
+            const value = await incrementCounterStat(user_id, username, photo_url, game_type, delta);
+            const topAfter = await getLeaderboardSnapshot(game_type);
+            await notifyLeaderboardDisplacements(topBefore, topAfter, user_id, username, game_type);
+            const response = { ok: true, value, added: delta };
+            if (completedSubmissionKey) {
+                completedStatSubmissions.set(completedSubmissionKey, {
+                    completedAt: Date.now(),
+                    response,
+                });
+                gameSessions.delete(`${user_id}:${sessionGameType}`);
+            }
+            return res.json(response);
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
         }
-        return res.json({ ok: true, value: currentVal + 1 });
     }
     
     // ---- TOURNAMENT BB: write to tournament_scores AND ALSO fall through to
@@ -1266,85 +1451,11 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     }
     
     try {
-        const { data: existingUser, error: existingUserError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('telegram_id', user_id)
-            .maybeSingle();
-        if (existingUserError) throw new Error(`DB read error: ${existingUserError.message}`);
-        
-        const updateData = { username: username, photo_url: photo_url };
-        updateData[game_type] = score;
-        
-        const isTime = game_type.includes('best') && game_type.includes('saper');
-        
-        // Before saving, get current top players for this category to detect displacement
-        let topBefore = [];
-        if (GAME_NAMES[game_type]) {
-            let topBeforeQuery = supabase
-                .from('users')
-                .select(`telegram_id, username, ${game_type}`)
-                .not(game_type, 'is', null)
-                .gt(game_type, 0);
-            if (isTime) topBeforeQuery = topBeforeQuery.lt(game_type, LEGACY_MINESWEEPER_TIME_SENTINEL);
-            const { data: topData } = await topBeforeQuery
-                .order(game_type, { ascending: isTime })
-                .limit(10);
-            topBefore = topData || [];
-        }
-        
-        let recordImproved = false;
-        let persistedBest = score;
-        if (!existingUser) {
-            const { error: insertError } = await supabase.from('users').insert({ telegram_id: user_id, ...updateData });
-            if (insertError) throw new Error(`DB write error: ${insertError.message}`);
-            recordImproved = true;
-        } else {
-            const currentScore = existingUser[game_type];
-            let isRecord = false;
-            if (currentScore === null || currentScore === undefined) isRecord = true;
-            else if (isTime) { if (score < currentScore) isRecord = true; }
-            else { if (score > currentScore) isRecord = true; }
-            recordImproved = isRecord;
-            const { error: updateError } = isRecord
-                ? await supabase.from('users').update(updateData).eq('telegram_id', user_id)
-                : await supabase.from('users').update({ username: username, photo_url: photo_url }).eq('telegram_id', user_id);
-            if (updateError) throw new Error(`DB write error: ${updateError.message}`);
-            persistedBest = isRecord ? score : currentScore;
-        }
-        
-        // After saving, get new top and detect who got displaced
-        if (GAME_NAMES[game_type]) {
-            let topAfterQuery = supabase
-                .from('users')
-                .select(`telegram_id, username, ${game_type}`)
-                .not(game_type, 'is', null)
-                .gt(game_type, 0);
-            if (isTime) topAfterQuery = topAfterQuery.lt(game_type, LEGACY_MINESWEEPER_TIME_SENTINEL);
-            const { data: topAfter } = await topAfterQuery
-                .order(game_type, { ascending: isTime })
-                .limit(10);
-            
-            if (topAfter && topBefore.length > 0) {
-                for (const beforeUser of topBefore) {
-                    if (String(beforeUser.telegram_id) === String(user_id)) continue;
-                    
-                    const oldRank = topBefore.findIndex(u => String(u.telegram_id) === String(beforeUser.telegram_id)) + 1;
-                    const newRank = topAfter.findIndex(u => String(u.telegram_id) === String(beforeUser.telegram_id)) + 1;
-                    
-                    if (oldRank > 0 && newRank > oldRank) {
-                        notifyDisplaced(
-                            beforeUser.telegram_id,
-                            beforeUser.username,
-                            username,
-                            game_type,
-                            oldRank,
-                            newRank
-                        );
-                    }
-                }
-            }
-        }
+        const topBefore = await getLeaderboardSnapshot(game_type);
+        const { persistedBest, recordImproved } = await persistBestStat(
+            user_id, username, photo_url, game_type, score);
+        const topAfter = await getLeaderboardSnapshot(game_type);
+        await notifyLeaderboardDisplacements(topBefore, topAfter, user_id, username, game_type);
         
         // Referral activation: when user scores 1000+ in Block Blast
         if (game_type === 'bb_best_score' && score >= 1000) {
@@ -2788,6 +2899,8 @@ const checkersGames = new Map(); // inline_message_id -> game state
 
 const CH_WHITE = '⚪';
 const CH_BLACK = '⚫';
+const CH_WHITE_KING = '🟡';
+const CH_BLACK_KING = '🔵';
 const CH_EMPTY = '·';
 
 function createCheckersBoard() {
@@ -2828,7 +2941,7 @@ function getCheckersKeyboard(board, gameId, selectedPos = null) {
                 text = CH_EMPTY;
             } else if (cell.type === 'piece') {
                 if (cell.isKing) {
-                    text = cell.color === 'white' ? '⬜' : '⬛';
+                    text = cell.color === 'white' ? CH_WHITE_KING : CH_BLACK_KING;
                 } else {
                     text = cell.color === 'white' ? CH_WHITE : CH_BLACK;
                 }
