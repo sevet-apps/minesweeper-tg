@@ -67,8 +67,10 @@ const CHECKERS_RICH_PIECES = Object.freeze({
     // The previous white variant was silver-grey and looked almost identical
     // to the black stone on Telegram's dark message background.
     '⚪': '<tg-emoji emoji-id="5285226384673746174">⚪️</tg-emoji>',
-    '⬛': '<tg-emoji emoji-id="5287515675256955990">⚫️</tg-emoji>',
-    '⬜': '<tg-emoji emoji-id="5285226384673746174">⚪️</tg-emoji>',
+    // Promoted pieces use single-glyph premium stones so their columns remain
+    // exactly as wide as regular pieces while still being unmistakable.
+    '🟡': '<tg-emoji emoji-id="5372454799447621689">🟡</tg-emoji>',
+    '🔵': '<tg-emoji emoji-id="5372454798532517340">🔵</tg-emoji>',
     // A red checker-like stone marks selection without replacing the piece
     // with the unrelated lightning animation used before.
     '🔴': '<tg-emoji emoji-id="5287702059657734416">🔴</tg-emoji>',
@@ -84,18 +86,22 @@ const CHECKERS_RICH_PIECES = Object.freeze({
 function richCheckersHtml(text, replyMarkup) {
     const rows = replyMarkup?.inline_keyboard || [];
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const emptyCellBlock = '&nbsp;';
-    const fileRow = `<tr><th></th>${files.map(file => `<th>${file}</th>`).join('')}<th></th></tr>`;
+    const emptyLightCell = '&nbsp;';
+    // U+2063 occupies no visible ink and therefore cannot acquire Telegram's
+    // white link underline. Figure-space padding on every file header gives
+    // all eight columns the same intrinsic width even when a column is empty.
+    const emptyDarkControl = '\u2063';
+    const fileRow = `<tr><th></th>${files.map(file => `<th>\u2007${file}\u2007</th>`).join('')}<th></th></tr>`;
     const boardRows = rows.map((row, rowIndex) => {
         const rank = String(8 - rowIndex);
         const cells = row.map((button, columnIndex) => {
             const isDark = (rowIndex + columnIndex) % 2 === 1;
             if (!isDark) {
-                return `<td align="center" valign="middle">${emptyCellBlock}</td>`;
+                return `<td align="center" valign="middle">${emptyLightCell}</td>`;
             }
             const rawText = button.text && button.text.trim() ? button.text : '';
             const textHtml = !rawText || rawText === '·'
-                ? emptyCellBlock
+                ? emptyDarkControl
                 : (CHECKERS_RICH_PIECES[rawText] || escapeRichHtml(rawText));
             const buttonHtml = `<tg-button type="callback_data" style="link" ` +
                 `data="${escapeRichHtml(button.callback_data)}">${textHtml}</tg-button>`;

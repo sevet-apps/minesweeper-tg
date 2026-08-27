@@ -88,11 +88,13 @@ test('checkers rich message is a square alternating board without button capsule
     assert.doesNotMatch(html, /\bbordered\b/);
     assert.equal((html.match(/<tr>/g) || []).length, 10);
     assert.equal((html.match(/type="callback_data"/g) || []).length, 32);
-    assert.match(html, /<th>a<\/th>[\s\S]*<th>h<\/th>/);
+    assert.match(html, /<th>\u2007a\u2007<\/th>[\s\S]*<th>\u2007h\u2007<\/th>/);
     assert.match(html, /<th>8<\/th>[\s\S]*<th>1<\/th>/);
     assert.equal((html.match(/<td align="center" valign="middle">&nbsp;<\/td>/g) || []).length, 32);
     assert.doesNotMatch(html, /<mark>/);
-    assert.match(html, /<th align="center" valign="middle"><tg-button type="callback_data" style="link" data="[^"]+">&nbsp;<\/tg-button><\/th>/);
+    assert.match(html, /<th align="center" valign="middle"><tg-button type="callback_data" style="link" data="[^"]+">\u2063<\/tg-button><\/th>/);
+    assert.doesNotMatch(html, /<tg-button[^>]*>&nbsp;<\/tg-button>/,
+        'Telegram underlines non-breaking spaces inside callback links');
     assert.equal((html.match(/type="callback_data" style="link"/g) || []).length, 32);
     assert.match(html, /<tg-emoji emoji-id="5285320216824261814">⚫️<\/tg-emoji>/);
     assert.doesNotMatch(html, />⚫<\/tg-button>/);
@@ -115,6 +117,21 @@ test('checkers pieces keep strong contrast and selection remains checker-shaped'
     assert.match(html, /emoji-id="5285226384673746174"/);
     assert.match(html, /emoji-id="5287702059657734416"/);
     assert.doesNotMatch(html, /emoji-id="5323761960829862762"/);
+});
+
+test('checkers kings stay one glyph wide and remain clearly different', () => {
+    const keyboard = {
+        inline_keyboard: Array.from({ length: 8 }, (_, row) =>
+            Array.from({ length: 8 }, (_, col) => ({
+                text: row === 0 && col === 1 ? '🔵' :
+                    (row === 2 && col === 1 ? '🟡' : '·'),
+                callback_data: `ch_kings_${row}_${col}`,
+            }))),
+    };
+    const html = richCheckersHtml('<b>Шашки</b>', keyboard);
+    assert.match(html, /emoji-id="5372454798532517340">🔵<\/tg-emoji>/);
+    assert.match(html, /emoji-id="5372454799447621689">🟡<\/tg-emoji>/);
+    assert.doesNotMatch(html, /[⬛⬜]/);
 });
 
 test('inline articles expose a rich message and retain a classic fallback', () => {

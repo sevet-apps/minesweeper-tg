@@ -170,9 +170,39 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
         'the legacy 9999 placeholder must never receive a leaderboard rank');
     assert.match(server, /readSignedSessionStart[\s\S]*?recoveredAfterRestart/,
         'a signed Minesweeper session must survive an in-memory backend restart');
-    assert.match(client, /value > 0 && value < 9999/,
+    assert.match(client, /seconds > 0 && seconds < 9999/,
         'the profile must never print the legacy 9999 placeholder as a time');
     assert.match(server, /goal = \{[\s\S]*?place: targetPlace[\s\S]*?gap:/);
+    assert.match(client, /allGoalsComplete:[\s\S]*?hasAnyRank[\s\S]*?'allGoalsComplete'/,
+        'players who already own every available top spot must not be treated as new');
+    assert.match(client, /function formatSaperSeconds[\s\S]*?seconds\.toFixed\(3\)/,
+        'Minesweeper profile times keep thousandths');
+    assert.match(client, /id="saperTimer">000\.000/);
+    assert.match(client, /userVal = Number\(userValRaw\)/,
+        'leaderboard rendering must not truncate Minesweeper thousandths');
+    assert.match(client, /spark_theme_preference[\s\S]*?savedThemePreference === 'light'/,
+        'an explicit light theme must win over Telegram system dark mode after reload');
+    assert.match(client, /\.profile-favorite\s*\{[\s\S]*?width:\s*min\(100%, 340px\)[\s\S]*?min-height:\s*62px/,
+        'the favorite game summary should be wide and compact rather than a tall badge');
+});
+
+test('score persistence is monotonic and leaderboard displacement is shared by every game', () => {
+    assert.match(server, /function incrementCounterStat[\s\S]*?for \(let attempt = 0; attempt < 8; attempt\+\+\)/,
+        'counter updates must retry compare-and-swap conflicts instead of losing wins');
+    assert.match(server, /update\.eq\(gameType, rawCurrent\)/,
+        'counter writes must be conditional on the value that was read');
+    assert.match(server, /Number\(stat_delta \?\? 1\)[\s\S]*?delta > \(game_type === 'sudoku_wins' \? 3 : 1\)/,
+        'Sudoku awards its real difficulty points while cached clients remain compatible');
+    assert.match(server, /function persistBestStat[\s\S]*?isTime \? score < current : score > current/,
+        'a slower Minesweeper result can never replace the minimum record');
+    assert.match(server, /getLeaderboardSnapshot\(game_type\)[\s\S]*?notifyLeaderboardDisplacements/,
+        'all saved leaderboard categories, including Sudoku, notify displaced players');
+    assert.match(client, /sudokuResultSaving[\s\S]*?statDelta: points[\s\S]*?setTimeout\(resolve, 600\)/,
+        'a completed Sudoku game is submitted once with an idempotent retry');
+    assert.match(client, /sessionToken:\s*activeSessionTokens\.sudoku_wins\s*\|\|\s*null/,
+        'a resumable Sudoku board keeps its original signed session');
+    assert.match(client, /data\.sessionToken\)\s*activeSessionTokens\.sudoku_wins\s*=\s*data\.sessionToken/,
+        'resuming Sudoku restores the original server-signed session');
 });
 
 test('Block Blast retries a final save without forking the authoritative session', () => {
@@ -199,6 +229,7 @@ test('finished Monopoly rooms and impossible checkers counters are repaired serv
     assert.match(monopoly, /socket\.on\('m2:anim-done',[\s\S]*?false\)\)/,
         'automatic animation acknowledgements must not reset human inactivity');
     assert.match(server, /wins > total[\s\S]*?checkers_total: wins/);
-    assert.match(server, /updateData\.checkers_total = Math\.max/);
-    assert.match(server, /let checkersStatsChain = Promise\.resolve\(\)/);
+    assert.match(server, /repairCheckersCounters[\s\S]*?Math\.max\(current \+ delta, Number\(currentUser\.checkers_wins_pve\)/);
+    assert.match(server, /update = rawCurrent === null[\s\S]*?update\.eq\(gameType, rawCurrent\)/,
+        'profile counters use a database compare-and-swap guard even across server processes');
 });

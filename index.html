@@ -1369,22 +1369,23 @@
         .toggle-labels { position: absolute; width: 100%; height: 100%; top:0; left:0; display: flex; justify-content: space-between; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 800; color: #8e8e93; pointer-events: none; }
         
         .profile-favorite {
-            display: flex;
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
             align-items: center;
-            gap: 10px;
-            max-width: 330px;
-            min-height: 42px;
-            margin: -8px auto 18px;
-            padding: 8px 14px 8px 9px;
+            gap: 12px;
+            width: min(100%, 340px);
+            min-height: 62px;
+            margin: -4px auto 18px;
+            padding: 10px 16px 10px 10px;
             border: 1px solid var(--glass-border);
-            border-radius: 22px;
+            border-radius: 19px;
             background: var(--glass-bg);
         }
-        .profile-favorite-icon { width: 28px; height: 28px; border-radius: 9px; object-fit: cover; }
-        .profile-favorite-copy { min-width: 0; line-height: 1.15; }
-        .profile-favorite-label { margin-bottom: 3px; color: #8e8e93; font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
-        .profile-favorite-name { font-size: 14px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .profile-favorite-time { margin-top: 3px; color: #8e8e93; font-size: 12px; }
+        .profile-favorite-icon { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; }
+        .profile-favorite-copy { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 12px; line-height: 1.15; }
+        .profile-favorite-label { grid-column: 1 / -1; margin-bottom: 5px; color: #8e8e93; font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+        .profile-favorite-name { font-size: 15px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-favorite-time { color: #8e8e93; font-size: 12px; white-space: nowrap; }
 
         .profile-segment {
             --profile-tab-progress: 0;
@@ -3460,7 +3461,7 @@
             <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> 
             <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
                 <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> 
-                <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.00</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> 
+                <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
             </div> 
         </div> 
         <div class="game-area"><div class="grid" id="saperGrid"></div></div> 
@@ -3797,7 +3798,12 @@
         }
         tg.enableClosingConfirmation();
 
-        let isDark = tg.colorScheme === 'dark';
+        const savedThemePreference = localStorage.getItem('spark_theme_preference');
+        let isDark = savedThemePreference === 'dark'
+            ? true
+            : savedThemePreference === 'light'
+                ? false
+                : tg.colorScheme === 'dark';
         let isLiteMode = localStorage.getItem('lite_mode') === 'true';
         
         // Android GPU optimizations — auto-detect and apply
@@ -4161,7 +4167,12 @@
                 window.setSparkTelegramChrome(isDark ? '#000000' : '#f2f2f7');
             }
         }
-        function toggleTheme() { isDark = !isDark; applyTheme(); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
+        function toggleTheme() {
+            isDark = !isDark;
+            localStorage.setItem('spark_theme_preference', isDark ? 'dark' : 'light');
+            applyTheme();
+            if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
         
         function applyLiteMode() { 
             const el = document.getElementById('liteToggleSheet');
@@ -4352,6 +4363,7 @@
                 nearestGoals: 'Ближайшие цели',
                 goalsLoading: 'Подбираем ближайшие цели…',
                 noGoals: 'Сыграйте первую игру — здесь появятся цели.',
+                allGoalsComplete: 'Все доступные вершины уже ваши.',
                 totalTime: 'Время в игре',
                 goalPlace: 'До места №{place}: {gap}',
                 referralCompactText: 'Одна ссылка — и весь прогресс приглашений всегда под рукой.',
@@ -4598,6 +4610,7 @@
                 nearestGoals: 'Nearest goals',
                 goalsLoading: 'Finding your nearest goals…',
                 noGoals: 'Play your first game to unlock goals.',
+                allGoalsComplete: 'You already hold every available top spot.',
                 totalTime: 'Time played',
                 goalPlace: 'To place #{place}: {gap}',
                 referralCompactText: 'One link keeps all your invitation progress close at hand.',
@@ -4827,7 +4840,7 @@
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
                 myRecords: '我的纪录', overview: '概览', statistics: '统计', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
-                nearestGoals: '最近目标', goalsLoading: '正在查找最近目标…', noGoals: '完成第一局后，这里会显示目标。',
+                nearestGoals: '最近目标', goalsLoading: '正在查找最近目标…', noGoals: '完成第一局后，这里会显示目标。', allGoalsComplete: '所有可用榜首都已属于您。',
                 totalTime: '游戏时长', goalPlace: '距离第 {place} 名：{gap}', referralCompactText: '一个链接即可随时查看全部邀请进度。',
                 referralProgram: '邀请计划', inviteFriends: '邀请好友并提升排行榜名次',
                 conditions: '规则', conditionsTitle: '邀请计划规则',
@@ -5379,9 +5392,14 @@
         }
         function rankText(data) { return data && data.rank ? `#${data.rank}` : '—'; }
         function localNumber(key) { return Number(localStorage.getItem(key)) || 0; }
+        function formatSaperSeconds(value) {
+            const seconds = Number(value);
+            return Number.isFinite(seconds) && seconds > 0 && seconds < 9999
+                ? `${seconds.toFixed(3)} ${t('sec')}`
+                : '—';
+        }
         function bestTimeText(key) {
-            const value = Number(localStorage.getItem(key));
-            return value > 0 && value < 9999 ? `${value.toFixed(2)} ${t('sec')}` : '—';
+            return formatSaperSeconds(localStorage.getItem(key));
         }
         function renderProfileStatsDetails() {
             const times = playtimeSnapshot();
@@ -5429,10 +5447,11 @@
         }
         function renderNearestGoals() {
             const container = document.getElementById('nearestGoalsList');
-            const candidates = [
+            const rankedGames = [
                 ['bb_best_score','bb'], ['saper_wins','saper'], ['tower_best','tower'],
                 ['sudoku_wins','sudoku'], ['checkers_wins_pve','checkers'], ['wordle_wins','wordle']
-            ].map(([key, game]) => ({ key, game, data: profileRankData[key] }))
+            ].map(([key, game]) => ({ key, game, data: profileRankData[key] }));
+            const candidates = rankedGames
              .filter(item => item.data && item.data.goal)
              .sort((a,b) => (a.data.rank - a.data.goal.place) - (b.data.rank - b.data.goal.place))
              .slice(0, 3);
@@ -5440,14 +5459,15 @@
             if (!candidates.length) {
                 const empty = document.createElement('div');
                 empty.className = 'nearest-goals-empty';
-                empty.textContent = t('noGoals');
+                const hasAnyRank = rankedGames.some(item => item.data && item.data.rank);
+                empty.textContent = t(hasAnyRank ? 'allGoalsComplete' : 'noGoals');
                 container.appendChild(empty);
                 return;
             }
             candidates.forEach(item => {
                 const config = PROFILE_GAMES[item.game];
                 const isTime = item.key.startsWith('saper_best_');
-                const gap = isTime ? `${Number(item.data.goal.gap).toFixed(2)} ${t('sec')}` : Math.ceil(item.data.goal.gap).toLocaleString(currentLocale());
+                const gap = isTime ? formatSaperSeconds(item.data.goal.gap) : Math.ceil(item.data.goal.gap).toLocaleString(currentLocale());
                 const row = document.createElement('div');
                 row.className = 'nearest-goal';
                 row.innerHTML = `<img class="nearest-goal-icon" src="${config.icon}" alt=""><div class="nearest-goal-copy"><div class="nearest-goal-title">${t(config.nameKey)}</div><div class="nearest-goal-subtitle">${t('goalPlace').replace('{place}', item.data.goal.place).replace('{gap}', gap)}</div></div><button class="nearest-goal-play" type="button">${t('play')}</button>`;
@@ -5749,7 +5769,7 @@
         }
         
         let userBanned = false;
-        async function sendStatToBackend(game_type, score) {
+        async function sendStatToBackend(game_type, score, options = {}) {
             if (userBanned) return false;
             const user = tg.initDataUnsafe.user; if (!user) return false;
             if ((game_type === 'bb_best_score' || game_type === 'bb_tournament_score')
@@ -5765,6 +5785,7 @@
                 game_type;
             const token = activeSessionTokens[sessionKey] || '';
             const payload = { game_type, score, session_token: token };
+            if (Number.isInteger(options.statDelta)) payload.stat_delta = options.statDelta;
             try {
                 let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) });
                 let data = await resp.json().catch(() => ({}));
@@ -5783,6 +5804,11 @@
                     return false;
                 }
                 if (!resp.ok) return false;
+                if (Number.isFinite(Number(data.value))) {
+                    const serverValue = Number(data.value);
+                    const localValue = Number(localStorage.getItem(game_type)) || 0;
+                    saveStatToCloud(game_type, Math.max(localValue, serverValue));
+                }
                 if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
                 return data && typeof data === 'object' ? data : true;
             } catch (error) { console.error(error); return false; }
@@ -6492,7 +6518,7 @@
                 const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
                 const response = await fetch(url); const data = await response.json();
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
-                const userValRaw = localStorage.getItem(category.id); let userVal = parseInt(userValRaw); let hasStats = true;
+                const userValRaw = localStorage.getItem(category.id); let userVal = Number(userValRaw); let hasStats = true;
                 if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal >= 9999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
                 const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, isMe: item.user_id.toString() === user.id.toString(), isLive: false }));
                 
@@ -6515,11 +6541,11 @@
                 listEl.innerHTML = ''; const finalDisplayList = displayList.slice(0, 100); const meInList = finalDisplayList.find(u => u.isMe); const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 document.getElementById('stickyName').innerText = tgName(user) + " " + t('you');
                 if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url; else document.getElementById('stickyAvatar').style.background = '#ddd';
-                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? (userVal >= 9999 ? '--' : userVal + t('seconds')) : userVal; } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
+                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? formatSaperSeconds(userVal) : userVal; } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
                 if(hasStats && myRank > 0) { lbObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) stickyEl.classList.remove('visible'); else if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }); }, { threshold: 0.1 }); } else { if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }
                 finalDisplayList.forEach((u, index) => {
                     const rank = index + 1; let medal = ''; if(rank <= 3) medal = `<div class="lb-rank-badge">${rank}</div>`;
-                    let displayVal = u.score; if(category.isTime) displayVal = (u.score >= 9999) ? '--' : u.score + t('seconds');
+                    let displayVal = u.score; if(category.isTime) displayVal = formatSaperSeconds(u.score);
                     const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
                     let avatarHtml = u.photo_url && u.photo_url.startsWith('http') ? `<img src="${u.photo_url}" class="lb-avatar">` : `<div class="lb-avatar" style="background:#ddd"></div>`;
                     item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}${u.isLive ? `<span class="lb-live-badge" onclick="event.stopPropagation(); openBBSpectator('${u.user_id}', '${u.username.replace(/'/g, "\\'")}')">LIVE</span>` : ''}</div></div><div class="lb-val">${displayVal}</div>`;
@@ -6637,13 +6663,13 @@
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); beginGamePlaytime('saper'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.00'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
-        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;const category='saper_best_' + sCols;if(sFirst){sFirst=false;sSessionReady=startGameSession(category);placeMinesSafe(r,c);sStartTime=Date.now();sTimerInt=setInterval(()=>{const diff=(Date.now()-sStartTime)/1000;sTimer=diff;document.getElementById('saperTimer').innerText=diff.toFixed(2);},30);sSessionReady.then(()=>reportGameMove(category));}else{reportGameMove(category);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;const category='saper_best_' + sCols;if(sFirst){sFirst=false;sSessionReady=startGameSession(category);placeMinesSafe(r,c);sStartTime=Date.now();sTimerInt=setInterval(()=>{const diff=(Date.now()-sStartTime)/1000;sTimer=diff;document.getElementById('saperTimer').innerText=diff.toFixed(3);},16);sSessionReady.then(()=>reportGameMove(category));}else{reportGameMove(category);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(2));const previousBest=Number(localStorage.getItem(key));if(!Number.isFinite(previousBest)||previousBest<=0||previousBest>=9999||finishedTime<previousBest)saveStatToCloud(key,finishedTime);await sSessionReady;const timeResult=await sendStatToBackend(key,finishedTime);if(timeResult){const serverBest=Number(timeResult.best_score);if(Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999)saveStatToCloud(key,serverBest);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(2)} ${t('seconds')}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));const previousBest=Number(localStorage.getItem(key));if(!Number.isFinite(previousBest)||previousBest<=0||previousBest>=9999||finishedTime<previousBest)saveStatToCloud(key,finishedTime);await sSessionReady;const timeResult=await sendStatToBackend(key,finishedTime);if(timeResult){const serverBest=Number(timeResult.best_score);if(Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999)saveStatToCloud(key,serverBest);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(3)} ${t('seconds')}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
@@ -8657,11 +8683,11 @@
         function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
         /* --- SUDOKU LOGIC --- */
-        let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1;
+        let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1; let sudoSessionReady = null; let sudokuResultSaving = false;
         function startSudokuCheck() { if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); else document.getElementById('modalSudoku').classList.add('visible'); }
-        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); restoreSudokuState(); startGameSession('sudoku_wins'); }
+        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); restoreSudokuState(); sudokuResultSaving=false; sudoSessionReady=activeSessionTokens.sudoku_wins ? Promise.resolve({ session_token: activeSessionTokens.sudoku_wins }) : startGameSession('sudoku_wins').then(data => { saveSudokuState(); return data; }); }
         function selectSudokuDiff(diff, btn, index) { selectedSudoDiff = diff; const glider = document.getElementById('sudokuGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); generateSudoku(selectedSudoDiff); startGameSession('sudoku_wins'); }
+        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); delete activeSessionTokens.sudoku_wins; generateSudoku(selectedSudoDiff); sudokuResultSaving=false; sudoSessionReady=startGameSession('sudoku_wins').then(data => { saveSudokuState(); return data; }); }
         function generateSudoku(holes) {
             if (holes === 30) currentSudoMode = 1; else if (holes === 40) currentSudoMode = 2; else currentSudoMode = 3;
             sudoBoard = Array(81).fill(0); sudoSolution = Array(81).fill(0); sudoLives = 3; sudoFilled = 0; activeDigit = null; document.querySelectorAll('.num-btn').forEach(b => { b.classList.remove('active-digit', 'disabled'); });
@@ -8676,9 +8702,9 @@
         function highlightSameNumbers(num) { const cells = document.querySelectorAll('.sudo-cell'); cells.forEach(c => c.classList.remove('same-num')); if (num === null) return; cells.forEach(cell => { if (parseInt(cell.innerText) === num) cell.classList.add('same-num'); }); }
         function checkNumberCompletion() { for(let i=1; i<=9; i++) { let count = 0; for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++; const btn = document.getElementById(`nb${i}`); if(count >= 9) { btn.classList.add('disabled'); btn.classList.remove('active-digit'); if(activeDigit === i) { activeDigit = null; highlightSameNumbers(null); } } else { btn.classList.remove('disabled'); } } }
         function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; reportGameMove('sudoku_wins'); const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('close'), () => { closeResult(); closeGame('sudoku'); }), 500); } } }
-        function checkSudokuWin() { if (sudoFilled === 81) { confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let points = currentSudoMode; let w = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', w); sendStatToBackend('sudoku_wins', w); localStorage.removeItem('sudo_state'); showResult(t('victory'), `${t('sudokuSolved')} (+${points})`, t('cool'), () => { closeResult(); closeGame('sudoku'); }); } }
-        function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
-        function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
+        async function checkSudokuWin() { if (sudoFilled === 81 && !sudokuResultSaving) { sudokuResultSaving=true; confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); const points = currentSudoMode; const optimisticWins = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', optimisticWins); localStorage.removeItem('sudo_state'); showResult(t('victory'), `${t('sudokuSolved')} (+${points})`, t('cool'), () => { closeResult(); closeGame('sudoku'); }); await sudoSessionReady; let result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points }); if (!result) { await new Promise(resolve => setTimeout(resolve, 600)); result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points }); } if (!result) console.error('Sudoku result could not be synchronized'); } }
+        function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode, sessionToken: activeSessionTokens.sudoku_wins || null }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
+        function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; if (data.sessionToken) activeSessionTokens.sudoku_wins = data.sessionToken; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
 
         /* --- TOWER (STACK) GAME LOGIC --- */
         let twCanvas, twCtx;
