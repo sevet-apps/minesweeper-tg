@@ -116,9 +116,16 @@ test('inline games use Telegram rich messages with in-message buttons and classi
         'rich leaderboard results must contain data before Telegram sends them');
     assert.doesNotMatch(server, /Загружаем актуальный топ игроков|Загрузка топа/,
         'a rich inline result cannot depend on chosen_inline_result to replace a loading shell');
-    assert.match(richMessages, /function richCheckersHtml[\s\S]*?<table compact>/,
+    assert.match(richMessages, /function richCheckersHtml[\s\S]*?<table>/,
         'checkers should render as an unbordered alternating-cell table rather than blue gridlines');
+    assert.match(richMessages, /type="callback_data" style="link"/,
+        'checkers cells must use transparent link-style callbacks instead of button capsules');
+    assert.match(richMessages, /CHECKERS_RICH_PIECES[\s\S]*?<tg-emoji/,
+        'custom emoji prevent Telegram from underlining checker pieces as ordinary links');
     assert.doesNotMatch(richMessages.slice(richMessages.indexOf('function richCheckersHtml'), richMessages.indexOf('function richActionHtml')), /[□■]/);
+    assert.match(server, /const TTT_EMPTY = '\\u2063'/,
+        'empty tic-tac-toe controls must not expose white square glyphs');
+    assert.doesNotMatch(server.slice(server.indexOf('const TTT_X'), server.indexOf('// --- CHECKERS GAME ---')), /▫️/);
     assert.match(server, /getTopsForGames\(topConfigs\.filter\(Boolean\), userId, true\)/,
         'rich leaderboards support custom premium emoji and should not downgrade them');
     assert.match(server, /text:\s*'Открыть Spark'[\s\S]*?style:\s*'success'/,
@@ -127,6 +134,11 @@ test('inline games use Telegram rich messages with in-message buttons and classi
         server.slice(server.indexOf('// === КРЕСТИКИ-НОЛИКИ ===')),
         /bot\.editMessageReplyMarkup\(/,
         'checkers selections must update the embedded rich board, not only a classic keyboard',
+    );
+    assert.equal(
+        (server.match(/const (?:tttInviteText|checkersInviteText|inviteText) = `\$\{EMOJI\.joystick\}/g) || []).length,
+        4,
+        'premium game emoji must be present in the initial inline message, not only after its first edit',
     );
 });
 
