@@ -212,6 +212,7 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
 const rateLimitMap = new Map(); // key -> { count, resetTime }
 const RATE_LIMITS = {
     'save-stat': { max: 30, windowMs: 60000 },      // 30 saves per minute
+    'playtime': { max: 60, windowMs: 60000 },       // visibility/open/close syncs
     'register-referral': { max: 5, windowMs: 60000 }, // 5 per minute
     'profile': { max: 60, windowMs: 60000 },           // 60 per minute
     'leaderboard': { max: 30, windowMs: 60000 },       // 30 per minute
@@ -930,6 +931,134 @@ async function logSuspiciousActivity(userId, username, tgHandle, gameType, score
 
 // --- API РОУТЫ ---
 app.get('/', (req, res) => res.send('Glass API v39.2 (secured)'));
+
+const PLAYTIME_FIELDS = Object.freeze({
+    bb: 'playtime_bb_ms',
+    saper: 'playtime_saper_ms',
+    tower: 'playtime_tower_ms',
+    sudoku: 'playtime_sudoku_ms',
+    checkers: 'playtime_checkers_ms',
+    wordle: 'playtime_wordle_ms',
+    monopoly: 'playtime_monopoly_ms',
+});
+const PLAYTIME_ACTIVITY_PREFIX = 'playtime:';
+const MAX_PROFILE_PLAYTIME_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+
+function normalizePlaytimeTotals(source) {
+    const input = source && typeof source === 'object' ? source : {};
+    return Object.keys(PLAYTIME_FIELDS).reduce((totals, game) => {
+        const value = Number(input[game]);
+        totals[game] = Number.isFinite(value)
+            ? Math.max(0, Math.min(MAX_PROFILE_PLAYTIME_MS, Math.trunc(value)))
+            : 0;
+        return totals;
+    }, {});
+}
+
+function profilePlaytime(row) {
+    return Object.entries(PLAYTIME_FIELDS).reduce((totals, [game, field]) => {
+        totals[game] = Math.max(0, Number(row && row[field]) || 0);
+        return totals;
+    }, {});
+}
+
+function parsePlaytimeActivity(rows) {
+    const totals = normalizePlaytimeTotals({});
+    for (const row of rows || []) {
+        const match = String(row.activity_type || '').match(/^playtime:(bb|saper|tower|sudoku|checkers|wordle|monopoly):(\d+)$/);
+        if (!match) continue;
+        const value = Math.min(MAX_PROFILE_PLAYTIME_MS, Number(match[2]) || 0);
+        totals[match[1]] = Math.max(totals[match[1]], value);
+    }
+    return totals;
+}
+
+async function readPlaytimeActivity(userId) {
+    const { data, error } = await supabase.from('user_activity')
+        .select('activity_type')
+        .eq('telegram_id', userId)
+        .like('activity_type', `${PLAYTIME_ACTIVITY_PREFIX}%`);
+    if (error) throw error;
+    return parsePlaytimeActivity(data);
+}
+
+async function persistPlaytimeActivity(userId, incoming, stored) {
+    const totals = { ...stored };
+    for (const game of Object.keys(PLAYTIME_FIELDS)) {
+        if (incoming[game] <= (totals[game] || 0)) continue;
+        const value = incoming[game];
+        const { error } = await supabase.from('user_activity').insert({
+            telegram_id: userId,
+            activity_type: `${PLAYTIME_ACTIVITY_PREFIX}${game}:${value}`,
+        });
+        if (error) throw error;
+        totals[game] = value;
+    }
+    return totals;
+}
+
+function isMissingPlaytimeSchema(error) {
+    const message = String(error && error.message || '');
+    return error && (error.code === '42703' || error.code === 'PGRST204' || /playtime_\w+_ms/i.test(message));
+}
+
+app.post('/api/playtime/sync', authMiddleware, async (req, res) => {
+    const user = req.telegramUser;
+    const userId = String(user.id);
+    if (!checkRateLimit(userId, 'playtime')) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+
+    const totals = normalizePlaytimeTotals(req.body && req.body.totals);
+    let activityTotals = normalizePlaytimeTotals({});
+    try {
+        try {
+            activityTotals = await readPlaytimeActivity(userId);
+            Object.keys(totals).forEach(game => {
+                totals[game] = Math.max(totals[game], activityTotals[game] || 0);
+            });
+        } catch (error) {
+            console.warn('[playtime] compatibility read:', error.message);
+        }
+        const { error: ensureError } = await supabase.from('users').upsert({
+            telegram_id: userId,
+            username: tgDisplayName(user),
+            photo_url: user.photo_url || '',
+        }, { onConflict: 'telegram_id', ignoreDuplicates: true });
+        if (ensureError) throw ensureError;
+
+        // Every counter is a monotonic absolute total. Retried keepalive
+        // requests are therefore idempotent and can never roll a device back.
+        for (const [game, field] of Object.entries(PLAYTIME_FIELDS)) {
+            const incoming = totals[game];
+            if (incoming <= 0) continue;
+            const { error } = await supabase.from('users')
+                .update({ [field]: incoming })
+                .eq('telegram_id', userId)
+                .lt(field, incoming);
+            if (error) throw error;
+        }
+
+        const fields = Object.values(PLAYTIME_FIELDS).join(',');
+        const { data, error } = await supabase.from('users')
+            .select(fields)
+            .eq('telegram_id', userId)
+            .single();
+        if (error) throw error;
+        return res.json({ playtime: profilePlaytime(data) });
+    } catch (error) {
+        if (isMissingPlaytimeSchema(error)) {
+            try {
+                const playtime = await persistPlaytimeActivity(userId, totals, activityTotals);
+                return res.json({ playtime, storage: 'supabase-compatibility' });
+            } catch (fallbackError) {
+                console.error('[playtime] compatibility sync:', fallbackError.message);
+            }
+        }
+        console.error('[playtime] sync:', error.message);
+        return res.status(500).json({ error: 'Could not sync playtime' });
+    }
+});
 
 // Check if user is subscribed to the required channel
 app.get('/check-subscription', async (req, res) => {
@@ -4601,6 +4730,7 @@ async function cleanupOldActivity() {
         const { error } = await supabase
             .from('user_activity')
             .delete()
+            .not('activity_type', 'like', `${PLAYTIME_ACTIVITY_PREFIX}%`)
             .lt('created_at', cutoff);
         
         if (error) {

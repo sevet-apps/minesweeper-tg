@@ -15,6 +15,11 @@ const sceneSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', '
 const diceDockSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'dice-dock.js'), 'utf8');
 const diceWorkerSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'scene', 'dice-worker.js'), 'utf8');
 const tradesSource = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'trades.js'), 'utf8');
+const serverSource = fs.readFileSync(path.join(root, 'server', 'index.js'), 'utf8');
+const playtimeMigration = fs.readFileSync(
+    path.join(root, 'supabase', 'migrations', '202608280001_add_profile_playtime.sql'),
+    'utf8'
+);
 
 function extractFunction(source, name) {
     const start = source.indexOf(`function ${name}`);
@@ -34,6 +39,62 @@ test('every inline application script remains syntactically valid', () => {
     blocks.forEach((match, index) => {
         assert.doesNotThrow(() => new vm.Script(match[1], { filename: `index-inline-${index}.js` }));
     });
+});
+
+test('profile playtime is backed by explicit monotonic Supabase counters', () => {
+    for (const game of ['bb', 'saper', 'tower', 'sudoku', 'checkers', 'wordle', 'monopoly']) {
+        assert.match(playtimeMigration, new RegExp(`playtime_${game}_ms bigint not null default 0`));
+        assert.match(serverSource, new RegExp(`${game}: 'playtime_${game}_ms'`));
+        assert.match(indexSource, new RegExp(`${game}: 'playtime_${game}_ms'`));
+    }
+    assert.match(serverSource, /app\.post\('\/api\/playtime\/sync', authMiddleware/);
+    assert.match(serverSource, /\.lt\(field, incoming\)/,
+        'older or retried device totals must never overwrite a larger server value');
+    assert.match(serverSource, /persistPlaytimeActivity/,
+        'production must keep Supabase persistence while the explicit-column migration is pending');
+    assert.match(serverSource, /\.not\('activity_type', 'like', `\$\{PLAYTIME_ACTIVITY_PREFIX\}%`\)/,
+        'compatibility totals must not be removed by activity cleanup');
+    assert.match(indexSource, /mergePlaytimeFromServer\(data\)/);
+    assert.match(indexSource, /keepalive/,
+        'page-hide sync must be allowed to finish while the Mini App closes');
+});
+
+test('profile playtime compatibility rows restore the largest absolute total', () => {
+    const context = vm.createContext({
+        PLAYTIME_FIELDS: Object.freeze({ bb: 'playtime_bb_ms', saper: 'playtime_saper_ms' }),
+        MAX_PROFILE_PLAYTIME_MS: 10 * 365 * 24 * 60 * 60 * 1000,
+    });
+    vm.runInContext(extractFunction(serverSource, 'normalizePlaytimeTotals'), context);
+    vm.runInContext(extractFunction(serverSource, 'parsePlaytimeActivity'), context);
+
+    const restored = context.parsePlaytimeActivity([
+        { activity_type: 'playtime:bb:12000' },
+        { activity_type: 'playtime:bb:9000' },
+        { activity_type: 'playtime:saper:3456' },
+        { activity_type: 'unrelated:activity' },
+    ]);
+    assert.deepEqual({ ...restored }, { bb: 12000, saper: 3456 });
+});
+
+test('profile segment keeps taps and drag gestures independent', () => {
+    assert.match(indexSource, /data-profile-section="overview"/);
+    assert.match(indexSource, /data-profile-section="stats"/);
+    assert.doesNotMatch(indexSource, /onclick="setProfileSection\('/,
+        'profile tabs must not depend on inline click handlers in Telegram WebViews');
+    const dragStart = indexSource.indexOf('(function initProfileSegmentDrag()');
+    const dragEnd = indexSource.indexOf('function toggleProfileGameStats', dragStart);
+    const dragSource = indexSource.slice(dragStart, dragEnd);
+    assert.ok(
+        dragSource.indexOf('horizontal = true') < dragSource.indexOf('segment.setPointerCapture(pointerId)'),
+        'pointer capture must start only after a real horizontal drag'
+    );
+    assert.match(dragSource, /button\.addEventListener\('click', \(\) => setProfileSection/);
+});
+
+test('checkers matchmaking placeholder uses an in-app dialog without exposing the web origin', () => {
+    const joinGame = extractFunction(indexSource, 'joinGame');
+    assert.doesNotMatch(joinGame, /\balert\s*\(/);
+    assert.match(joinGame, /showResult\(t\('findOpponent'\), t\('comingSoon'\), t\('close'\)/);
 });
 
 test('Monopoly sound pack is complete and controlled by the shared setting', () => {
