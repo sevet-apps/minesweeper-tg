@@ -4055,7 +4055,10 @@
             applyVibration();
             applyLanguage();
             loadProfile();
-            setTimeout(syncStatsFromServer, 1000);
+            setTimeout(async () => {
+                await retryPendingSaperRecord();
+                await syncStatsFromServer();
+            }, 1000);
             
             // Check subscription first
             checkSubscriptionOnStart();
@@ -4401,6 +4404,8 @@
                 recordNotBeat: 'Рекорд не побит',
                 recordSaveFailed: 'Результат ожидает отправки',
                 recordSaveRetry: 'Мы автоматически повторим сохранение при следующем запуске.',
+                recordSaveRejected: 'Рекорд не удалось сохранить',
+                recordSaveRejectedText: 'Сервер отклонил результат. Начните новую игру и попробуйте снова.',
                 bbSessionOutdated: 'Сессия устарела',
                 bbSessionOutdatedText: 'Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.',
                 refresh: 'Обновить',
@@ -4648,6 +4653,8 @@
                 recordNotBeat: 'Record not beaten',
                 recordSaveFailed: 'Result pending upload',
                 recordSaveRetry: 'We will retry saving it automatically the next time you open the game.',
+                recordSaveRejected: 'Record could not be saved',
+                recordSaveRejectedText: 'The server rejected this result. Start a new game and try again.',
                 bbSessionOutdated: 'Session is outdated',
                 bbSessionOutdatedText: 'This game was continued on another device. Refresh it to keep playing.',
                 refresh: 'Refresh',
@@ -4850,7 +4857,8 @@
                 menu: '菜单', back: '返回', newGame: '新游戏', playAgain: '再玩一次', exit: '退出', start: '开始',
                 score: '得分', best: '最佳', wins: '胜场', time: '时间', newRecord: '新纪录！',
                 recordNotBeat: '未打破纪录', recordSaveFailed: '结果等待上传',
-                recordSaveRetry: '下次打开游戏时会自动重试保存。', tryAgain: '再试一次！', victory: '胜利！', defeat: '失败', draw: '平局',
+                recordSaveRetry: '下次打开游戏时会自动重试保存。', recordSaveRejected: '纪录保存失败',
+                recordSaveRejectedText: '服务器拒绝了此结果。请开始新游戏后重试。', tryAgain: '再试一次！', victory: '胜利！', defeat: '失败', draw: '平局',
                 bbSessionOutdated: '游戏进度已过期', bbSessionOutdatedText: '此游戏已在另一台设备上继续。请刷新后再继续游戏。', refresh: '刷新',
                 youWon: '您赢了！', robotDefeated: '机器人已被击败。', robotWon: '机器人获胜。',
                 whiteWon: '白方获胜！', blackWon: '黑方获胜！', sudokuSolved: '数独完成！', towerFell: '塔倒了',
@@ -5850,7 +5858,7 @@
                 (game_type === 'tower_combo') ? 'tower_best' :
                 (game_type === 'bb_tournament_score') ? 'bb_best_score' :
                 game_type;
-            const token = activeSessionTokens[sessionKey] || '';
+            const token = options.sessionToken || activeSessionTokens[sessionKey] || '';
             const payload = { game_type, score, session_token: token };
             if (Number.isInteger(options.statDelta)) payload.stat_delta = options.statDelta;
             try {
@@ -5868,9 +5876,12 @@
                         userBanned = true;
                         showResult('⛔️', t('accountSuspended') || 'Ваш аккаунт заблокирован за нарушения. Обратитесь к администратору.', 'OK', () => { closeResult(); });
                     }
-                    return false;
+                    return options.returnFailure ? { success: false, retryable: false, status: resp.status, error: data.error } : false;
                 }
-                if (!resp.ok) return false;
+                if (!resp.ok) {
+                    const retryable = resp.status === 408 || resp.status === 425 || resp.status === 429 || resp.status >= 500;
+                    return options.returnFailure ? { success: false, retryable, status: resp.status, error: data.error } : false;
+                }
                 if (Number.isFinite(Number(data.value))) {
                     const serverValue = Number(data.value);
                     const localValue = Number(localStorage.getItem(game_type)) || 0;
@@ -5878,8 +5889,96 @@
                 }
                 if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
                 return data && typeof data === 'object' ? data : true;
-            } catch (error) { console.error(error); return false; }
+            } catch (error) {
+                console.error(error);
+                return options.returnFailure ? { success: false, retryable: true, error: String(error) } : false;
+            }
         }
+        const SAPER_PENDING_RECORD_KEY = 'saper_pending_records';
+        const SAPER_PENDING_RECORD_TTL_MS = 24 * 60 * 60 * 1000;
+
+        function readPendingSaperRecords() {
+            let records = [];
+            try {
+                const parsed = JSON.parse(localStorage.getItem(SAPER_PENDING_RECORD_KEY) || '[]');
+                records = Array.isArray(parsed) ? parsed : [parsed];
+            } catch (_) {}
+            const validRecords = records.filter(pending => {
+                const validGameType = /^saper_best_(6|8|10|15)$/.test(pending?.gameType || '');
+                const validScore = Number.isFinite(Number(pending?.score)) && Number(pending.score) > 0 && Number(pending.score) < 9999;
+                const validToken = typeof pending?.sessionToken === 'string' && pending.sessionToken.length > 0;
+                const validAge = Number.isFinite(Number(pending?.savedAt)) && Date.now() - Number(pending.savedAt) < SAPER_PENDING_RECORD_TTL_MS;
+                return validGameType && validScore && validToken && validAge;
+            });
+            if (validRecords.length !== records.length) {
+                if (validRecords.length) localStorage.setItem(SAPER_PENDING_RECORD_KEY, JSON.stringify(validRecords));
+                else localStorage.removeItem(SAPER_PENDING_RECORD_KEY);
+            }
+            return validRecords;
+        }
+
+        function clearPendingSaperRecord(gameType) {
+            const records = readPendingSaperRecords().filter(pending => pending.gameType !== gameType);
+            if (records.length) localStorage.setItem(SAPER_PENDING_RECORD_KEY, JSON.stringify(records));
+            else localStorage.removeItem(SAPER_PENDING_RECORD_KEY);
+        }
+
+        function queuePendingSaperRecord(gameType, score, sessionToken) {
+            if (!sessionToken) return false;
+            const records = readPendingSaperRecords();
+            const current = records.find(pending => pending.gameType === gameType);
+            if (current && Number(current.score) <= Number(score)) return true;
+            const next = records.filter(pending => pending.gameType !== gameType);
+            next.push({
+                gameType,
+                score: Number(score),
+                sessionToken,
+                savedAt: Date.now()
+            });
+            localStorage.setItem(SAPER_PENDING_RECORD_KEY, JSON.stringify(next));
+            return true;
+        }
+
+        async function retryPendingSaperRecord() {
+            const records = readPendingSaperRecords();
+            const user = tg.initDataUnsafe.user;
+            if (!records.length || !user) return false;
+
+            // The write may have succeeded even if its HTTP response was lost.
+            // Confirm against the server before replaying the signed result.
+            let profile = null;
+            try {
+                const profileResp = await fetch(`${API_BASE_URL}/api/profile/${user.id}`);
+                profile = profileResp.ok ? await profileResp.json() : null;
+            } catch (_) {}
+
+            let savedAny = false;
+            for (const pending of records) {
+                const persistedBest = Number(profile?.[pending.gameType]);
+                if (Number.isFinite(persistedBest) && persistedBest > 0 && persistedBest <= Number(pending.score)) {
+                    saveStatToCloud(pending.gameType, persistedBest);
+                    clearPendingSaperRecord(pending.gameType);
+                    savedAny = true;
+                    continue;
+                }
+
+                activeSessionTokens[pending.gameType] = pending.sessionToken;
+                const result = await sendStatToBackend(pending.gameType, Number(pending.score), {
+                    sessionToken: pending.sessionToken,
+                    returnFailure: true
+                });
+                const serverBest = Number(result?.best_score);
+                if (!Number.isFinite(serverBest) || serverBest <= 0 || serverBest >= 9999) {
+                    if (result && result.retryable === false) clearPendingSaperRecord(pending.gameType);
+                    continue;
+                }
+                saveStatToCloud(pending.gameType, serverBest);
+                clearPendingSaperRecord(pending.gameType);
+                savedAny = true;
+            }
+            return savedAny;
+        }
+
         async function syncStatsFromServer() {
             const user = tg.initDataUnsafe.user;
             if (!user) return;
@@ -6605,8 +6704,20 @@
                     } catch(e) {}
                 }
                 let myRankRow = displayList.find(u => u.isMe);
-                if (hasStats && !myRankRow) { displayList.push({ user_id: user.id.toString(), username: tgName(user), photo_url: user.photo_url, score: userVal, isMe: true }); if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } 
-                else if (hasStats && myRankRow) { if ((category.isTime && userVal < myRankRow.score) || (!category.isTime && userVal > myRankRow.score)) { myRankRow.score = userVal; if (category.isTime) displayList.sort((a, b) => a.score - b.score); else displayList.sort((a, b) => b.score - a.score); } }
+                if (category.isTime) {
+                    // Time leaderboards are server-authoritative. A failed upload
+                    // must never appear temporarily as a record or disappear on reload.
+                    const serverTime = Number(myRankRow?.score);
+                    hasStats = Number.isFinite(serverTime) && serverTime > 0 && serverTime < 9999;
+                    userVal = hasStats ? serverTime : 999999;
+                } else if (hasStats && !myRankRow) {
+                    displayList.push({ user_id: user.id.toString(), username: tgName(user), photo_url: user.photo_url, score: userVal, isMe: true });
+                    displayList.sort((a, b) => b.score - a.score);
+                    myRankRow = displayList.find(u => u.isMe);
+                } else if (hasStats && myRankRow && userVal > myRankRow.score) {
+                    myRankRow.score = userVal;
+                    displayList.sort((a, b) => b.score - a.score);
+                }
                 listEl.innerHTML = ''; const finalDisplayList = displayList.slice(0, 100); const meInList = finalDisplayList.find(u => u.isMe); const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 document.getElementById('stickyName').innerText = tgName(user) + " " + t('you');
                 if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url; else document.getElementById('stickyAvatar').style.background = '#ddd';
@@ -6738,7 +6849,7 @@
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
         function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));const previousBest=Number(localStorage.getItem(key));if(!Number.isFinite(previousBest)||previousBest<=0||previousBest>=9999||finishedTime<previousBest)saveStatToCloud(key,finishedTime);await sSessionReady;const timeResult=await sendStatToBackend(key,finishedTime);if(timeResult){const serverBest=Number(timeResult.best_score);if(Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999)saveStatToCloud(key,serverBest);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(3)} ${t('seconds')}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`\n${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`\n${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(3)} ${t('seconds')}${saveStatus}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;

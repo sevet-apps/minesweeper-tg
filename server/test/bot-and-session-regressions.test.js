@@ -158,8 +158,21 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
     assert.doesNotMatch(client.slice(client.indexOf('Lightweight profile playtime tracking'), client.indexOf('Profile overview\/statistics switch')), /setInterval\(/,
         'playtime tracking must remain event-driven and add no recurring timer');
     assert.match(client, /const category='saper_best_' \+ sCols;[\s\S]*?sSessionReady=startGameSession\(category\)/);
-    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key,finishedTime\)/,
+    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key,finishedTime,\{sessionToken,returnFailure:true\}\)/,
         'fast Minesweeper wins must wait for their signed session before saving the time');
+    const saperWin = client.slice(client.indexOf('async function checkSaperWin'), client.indexOf('/* --- CHECKERS --- */'));
+    assert.doesNotMatch(saperWin, /saveStatToCloud\(key,finishedTime\)/,
+        'an unconfirmed Minesweeper time must never become a local record');
+    assert.match(saperWin, /timeResult\?\.best_score[\s\S]*?saveStatToCloud\(key,serverBest\)/,
+        'only the server-confirmed Minesweeper best may update the profile');
+    assert.match(saperWin, /timeResult\?\.retryable[\s\S]*?queuePendingSaperRecord\(key,finishedTime,sessionToken\)/,
+        'a failed Minesweeper upload must be queued with its signed session');
+    assert.match(client, /async function retryPendingSaperRecord[\s\S]*?sessionToken:\s*pending\.sessionToken,[\s\S]*?returnFailure:\s*true/,
+        'pending Minesweeper results must be retried with the original signed session');
+    assert.match(client, /result && result\.retryable === false\) clearPendingSaperRecord/,
+        'permanent server rejections must not be replayed as trusted Minesweeper results');
+    assert.match(client, /if \(category\.isTime\)[\s\S]*?server-authoritative[\s\S]*?serverTime/,
+        'Minesweeper leaderboards must not mix in an unconfirmed local time');
 
     for (const category of ['saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15']) {
         assert.match(server, new RegExp(`\\{ key: '${category}', asc: true \\}`));
@@ -180,6 +193,14 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
     assert.match(client, /id="saperTimer">000\.000/);
     assert.match(client, /userVal = Number\(userValRaw\)/,
         'leaderboard rendering must not truncate Minesweeper thousandths');
+    const precisionMigration = fs.readFileSync(
+        path.join(root, 'supabase', 'migrations', '202608290001_minesweeper_time_precision.sql'),
+        'utf8',
+    );
+    for (const size of [6, 8, 10, 15]) {
+        assert.match(precisionMigration, new RegExp(`alter column saper_best_${size} type numeric\\(10, 3\\)`),
+            `saper_best_${size} must preserve milliseconds in Supabase`);
+    }
     assert.match(client, /spark_theme_preference[\s\S]*?savedThemePreference === 'light'/,
         'an explicit light theme must win over Telegram system dark mode after reload');
     assert.match(client, /\.profile-favorite\s*\{[\s\S]*?width:\s*min\(100%, 340px\)[\s\S]*?min-height:\s*62px/,
