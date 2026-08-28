@@ -3326,8 +3326,8 @@
 
         <div class="profile-segment" id="profileSegment" role="tablist" aria-label="Profile sections">
             <div class="profile-segment-glider"></div>
-            <button class="profile-segment-btn active" id="profileOverviewTab" role="tab" aria-selected="true" onclick="setProfileSection('overview')" data-i18n="overview">Обзор</button>
-            <button class="profile-segment-btn" id="profileStatsTab" role="tab" aria-selected="false" onclick="setProfileSection('stats')" data-i18n="statistics">Статистика</button>
+            <button class="profile-segment-btn active" id="profileOverviewTab" type="button" role="tab" aria-selected="true" data-profile-section="overview" data-i18n="overview">Обзор</button>
+            <button class="profile-segment-btn" id="profileStatsTab" type="button" role="tab" aria-selected="false" data-profile-section="stats" data-i18n="statistics">Статистика</button>
         </div>
 
         <div class="profile-panel" id="profileOverviewPanel" role="tabpanel">
@@ -5247,9 +5247,10 @@
         }
         function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalWordleGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); }
 
-        // --- Lightweight profile playtime tracking ---
+        // --- Lightweight, account-backed profile playtime tracking ---
         // There is deliberately no ticking interval. Time is accumulated only
-        // on open/close, visibility changes and page unload.
+        // on open/close and visibility changes, then merged monotonically with
+        // the user's explicit Supabase counters.
         const PROFILE_GAMES = {
             bb:       { nameKey: 'blockBlast', icon: 'assets/game-icons/block-blast.png' },
             saper:    { nameKey: 'minesweeper', icon: 'assets/game-icons/minesweeper.png' },
@@ -5261,7 +5262,17 @@
         };
         const playtimeUser = tg.initDataUnsafe.user;
         const playtimeStorageKey = `spark_playtime_${playtimeUser ? playtimeUser.id : 'guest'}`;
+        const PLAYTIME_PROFILE_FIELDS = Object.freeze({
+            bb: 'playtime_bb_ms',
+            saper: 'playtime_saper_ms',
+            tower: 'playtime_tower_ms',
+            sudoku: 'playtime_sudoku_ms',
+            checkers: 'playtime_checkers_ms',
+            wordle: 'playtime_wordle_ms',
+            monopoly: 'playtime_monopoly_ms'
+        });
         let activePlaytime = null;
+        let playtimeSyncTimer = null;
         function readPlaytime() {
             try {
                 const data = JSON.parse(localStorage.getItem(playtimeStorageKey) || '{}');
@@ -5271,7 +5282,57 @@
         function writePlaytime(data) {
             try { localStorage.setItem(playtimeStorageKey, JSON.stringify(data)); } catch (_) {}
         }
-        function flushGamePlaytime(pause) {
+        function cleanPlaytimeTotals(source) {
+            return Object.keys(PROFILE_GAMES).reduce((totals, game) => {
+                const value = Math.round(Number(source && source[game]) || 0);
+                totals[game] = Math.max(0, value);
+                return totals;
+            }, {});
+        }
+        function mergePlaytimeFromServer(source) {
+            if (!source || typeof source !== 'object') return readPlaytime();
+            const local = cleanPlaytimeTotals(readPlaytime());
+            Object.entries(PLAYTIME_PROFILE_FIELDS).forEach(([game, field]) => {
+                const serverValue = Number(source[game] ?? source[field]);
+                if (Number.isFinite(serverValue) && serverValue >= 0) {
+                    local[game] = Math.max(local[game] || 0, Math.round(serverValue));
+                }
+            });
+            writePlaytime(local);
+            return local;
+        }
+        async function syncPlaytimeWithServer(totals = readPlaytime(), keepalive = false) {
+            const user = tg.initDataUnsafe.user;
+            if (!user || !tg.initData) return null;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/playtime/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                    body: JSON.stringify({ totals: cleanPlaytimeTotals(totals) }),
+                    keepalive
+                });
+                if (!response.ok) return null;
+                const payload = await response.json();
+                const merged = mergePlaytimeFromServer(payload.playtime);
+                const profile = document.getElementById('view-profile');
+                if (profile && profile.classList.contains('active')) {
+                    updateFavoriteGame();
+                    renderProfileStatsDetails();
+                }
+                return merged;
+            } catch (error) {
+                if (!keepalive) console.warn('Playtime sync failed:', error.message);
+                return null;
+            }
+        }
+        function schedulePlaytimeSync(totals) {
+            clearTimeout(playtimeSyncTimer);
+            playtimeSyncTimer = setTimeout(() => {
+                playtimeSyncTimer = null;
+                syncPlaytimeWithServer(totals);
+            }, 300);
+        }
+        function flushGamePlaytime(pause, immediateSync = false) {
             if (!activePlaytime || !activePlaytime.startedAt) return;
             const now = Date.now();
             const elapsed = Math.max(0, Math.min(now - activePlaytime.startedAt, 12 * 60 * 60 * 1000));
@@ -5279,6 +5340,8 @@
             totals[activePlaytime.game] = Math.round((Number(totals[activePlaytime.game]) || 0) + elapsed);
             writePlaytime(totals);
             activePlaytime.startedAt = pause ? null : now;
+            if (immediateSync) syncPlaytimeWithServer(totals, true);
+            else schedulePlaytimeSync(totals);
         }
         function beginGamePlaytime(game) {
             if (!PROFILE_GAMES[game]) return;
@@ -5311,10 +5374,11 @@
         }
         document.addEventListener('visibilitychange', () => {
             if (!activePlaytime) return;
-            if (document.hidden) flushGamePlaytime(true);
+            if (document.hidden) flushGamePlaytime(true, true);
             else if (!activePlaytime.startedAt) activePlaytime.startedAt = Date.now();
         });
-        window.addEventListener('pagehide', () => flushGamePlaytime(true));
+        window.addEventListener('pagehide', () => flushGamePlaytime(true, true));
+        syncPlaytimeWithServer();
 
         // --- Profile overview/statistics switch ---
         let currentProfileSection = 'overview';
@@ -5341,6 +5405,9 @@
         (function initProfileSegmentDrag() {
             const segment = document.getElementById('profileSegment');
             let pointerId = null, startX = 0, startProgress = 0, progress = 0, horizontal = false, suppressClick = false;
+            segment.querySelectorAll('[data-profile-section]').forEach(button => {
+                button.addEventListener('click', () => setProfileSection(button.dataset.profileSection));
+            });
             segment.addEventListener('pointerdown', event => {
                 if (event.button !== undefined && event.button !== 0) return;
                 pointerId = event.pointerId;
@@ -5348,13 +5415,13 @@
                 startProgress = currentProfileSection === 'stats' ? 1 : 0;
                 progress = startProgress;
                 horizontal = false;
-                segment.setPointerCapture(pointerId);
             });
             segment.addEventListener('pointermove', event => {
                 if (event.pointerId !== pointerId) return;
                 const dx = event.clientX - startX;
                 if (!horizontal && Math.abs(dx) < 5) return;
                 horizontal = true;
+                if (!segment.hasPointerCapture(pointerId)) segment.setPointerCapture(pointerId);
                 segment.classList.add('dragging');
                 const travel = Math.max(1, segment.clientWidth / 2);
                 progress = Math.max(0, Math.min(1, startProgress + dx / travel));
@@ -5834,6 +5901,8 @@
                         localStorage.removeItem(f);
                     }
                 });
+                const mergedPlaytime = mergePlaytimeFromServer(data);
+                syncPlaytimeWithServer(mergedPlaytime);
                 
                 // Refresh profile UI with server data
                 loadProfile();
@@ -6694,7 +6763,10 @@
             socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '', gameType: 'checkers' });
         }
 
-        function joinGame() { if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('warning'); alert(t('comingSoon')); }
+        function joinGame() {
+            if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('warning');
+            showResult(t('findOpponent'), t('comingSoon'), t('close'), closeResult);
+        }
         function joinGameByCode() { const code = document.getElementById('joinCodeInput').value; if (code.length < 5) { if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); return; } onlineRoomCode = code; const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = tgName(user); socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } }); }
         function cancelOnlineWait() { document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
 
