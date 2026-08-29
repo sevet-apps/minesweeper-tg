@@ -49,6 +49,9 @@ const OWNER_MODULE = process.env.MONO_OWNER_MODULE || 'js/v2/board-cache-7731.js
 const dataModule = require(path.join(__dirname, '..', 'monopoly', 'js', 'board-data-v2.js'));
 const D = globalThis.MonopolyDataV2 || dataModule;
 const E = D.ECONOMY;
+const PROPERTY_GROUPS = Object.freeze([...new Set((D.TILES || [])
+    .filter(tile => tile && D.PROP && D.PROP[tile.i] && tile.group != null)
+    .map(tile => tile.group))]);
 
 /** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
     нулевой ширины, соединители, вариационные селекторы, пустой Брайль.
@@ -80,6 +83,12 @@ class Game {
         this.dumps = {};             // кто и кому раздал имущество почти даром
         this.unfair = {};            // участники такой схемы — без очков за матч
         this.peak = {};              // наибольшая стоимость активов за партию
+        this.lowestCash = {};        // минимум наличных за партию — для титулов
+        this.lowestNetWorth = {};    // минимум общей стоимости активов
+        this.everMortgaged = {};
+        this.acceptedDeals = {};
+        this.hadFullGroup = {};
+        this.hadMaxGroup = {};
         this.rigged = [];            // отладка владельца: заданные броски
         this.startedAt = 0;          // время начала партии
         this.pendingBuy = null;
@@ -281,6 +290,15 @@ class Game {
             if (!this.players[id]) continue;
             const w = this.netWorth(id);
             if (w > (this.peak[id] || 0)) this.peak[id] = w;
+            this.lowestCash[id] = this.lowestCash[id] == null
+                ? this.players[id].money : Math.min(this.lowestCash[id], this.players[id].money);
+            this.lowestNetWorth[id] = this.lowestNetWorth[id] == null
+                ? w : Math.min(this.lowestNetWorth[id], w);
+            if (PROPERTY_GROUPS.some(group => this.ownsFullGroup(id, group))) this.hadFullGroup[id] = true;
+            if (PROPERTY_GROUPS.some(group => {
+                const tiles = this.groupTiles(group);
+                return tiles.length > 0 && tiles.every(tile => this.owners[tile.i] === id && (this.branches[tile.i] || 0) >= 5);
+            })) this.hadMaxGroup[id] = true;
         }
     }
 
@@ -381,6 +399,9 @@ class Game {
             seat: -1,
         };
         this.order.push(id);
+        this.lowestCash[id] = E.startingCash;
+        this.lowestNetWorth[id] = E.startingCash;
+        this.acceptedDeals[id] = 0;
         this.players[id].seat = this.freeSeat();
         this.reorderBySeats();
         if (!this.hostId) this.hostId = id;
@@ -1060,7 +1081,7 @@ class Game {
         он не может. Результат уходит отдельным событием, чтобы окно
         начисления показалось всем участникам. */
     async awardRating(winnerIds) {
-        if (!rating || this.rated) return;
+        if ((!rating && !titleService) || this.rated) return;
         const winners = Array.isArray(winnerIds) ? winnerIds : (winnerIds ? [winnerIds] : []);
         this.rated = true;
         try {
@@ -1089,14 +1110,42 @@ class Game {
                     bot: !!this.players[id].bot,
                 };
             });
-            const res = await rating.applyMatch({
-                players: players.filter(x => !x.bot),   // ботам рейтинг не ведём
-                rounds: this.round || 0,
-                durationMs: Date.now() - startedAt,
-                withBots: this.hasBots,
-                teamMode: this.teams,
-            });
-            this.send('m2:rating', res);
+            if (rating) {
+                try {
+                    const res = await rating.applyMatch({
+                        players: players.filter(x => !x.bot),   // ботам рейтинг не ведём
+                        rounds: this.round || 0,
+                        durationMs: Date.now() - startedAt,
+                        withBots: this.hasBots,
+                        teamMode: this.teams,
+                    });
+                    this.send('m2:rating', res);
+                } catch (ratingError) {
+                    console.error('[mono2] рейтинг:', ratingError.message);
+                }
+            }
+            if (titleService) {
+                try {
+                    await Promise.all(players.filter(x => !x.bot).map(player => titleService.record(player.uid, {
+                        type: 'monopoly_match', game: 'monopoly',
+                        eventId: `monopoly:${this.roomId}:${startedAt}:${player.uid}`,
+                        checkRanks: true,
+                        context: {
+                            won: player.winner,
+                            humanMatch: !this.hasBots,
+                            fullGroup: !!this.hadFullGroup[player.uid],
+                            maxGroup: !!this.hadMaxGroup[player.uid],
+                            acceptedDeals: this.acceptedDeals[player.uid] || 0,
+                            everMortgaged: !!this.everMortgaged[player.uid],
+                            lowestCash: this.lowestCash[player.uid],
+                            lowestNetWorth: this.lowestNetWorth[player.uid],
+                            bankruptions: player.bankruptedCount,
+                        },
+                    })));
+                } catch (titleError) {
+                    console.error('[mono2] титулы:', titleError.message);
+                }
+            }
         } catch (e) {
             console.error('[mono2] рейтинг:', e.message);
         }
@@ -1116,6 +1165,7 @@ class Game {
         if (!force && this.groupHasBranches(D.TILES[i].group)) return false;
         this.players[pid].money += pr.mortgage;
         this.mortgaged[i] = E.mortgageRounds;
+        this.everMortgaged[pid] = true;
         this.log(pid, `закладывает **${D.TILES[i].name}**`);
         if (!silent) this.pushState();
         this.reemitPhase();
@@ -1265,6 +1315,8 @@ class Game {
         deal.takeTiles.forEach(i => this.owners[i] = fromId);
         this.players[fromId].money += (deal.takeMoney || 0) - (deal.giveMoney || 0);
         this.players[toId].money += (deal.giveMoney || 0) - (deal.takeMoney || 0);
+        this.acceptedDeals[fromId] = (this.acceptedDeals[fromId] || 0) + 1;
+        this.acceptedDeals[toId] = (this.acceptedDeals[toId] || 0) + 1;
         this.log(toId, `принимает договор игрока @${this.players[fromId].name}`);
 
         /* Сильно неравные сделки показываем всем и запоминаем: если следом
@@ -1343,6 +1395,8 @@ function publicRooms() {
 
 let rating = null;          // выставляется из index.js через setRating()
 function setRating(r) { rating = r; }
+let titleService = null;
+function setTitleService(service) { titleService = service; }
 
 function attach(io) {
     const nsp = io.of('/mono2');
@@ -1562,4 +1616,4 @@ function attach(io) {
     return { rooms };
 }
 
-module.exports = { attach, Game, rooms, publicRooms, setRating };
+module.exports = { attach, Game, rooms, publicRooms, setRating, setTitleService };

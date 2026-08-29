@@ -59,6 +59,9 @@ test('Block Blast checkpoint restores only server-signed state', () => {
             { matrix: [[1], [1]], color: 'bb-c-5', id: 2 },
         ],
         bbNextHandSeed: 0x12345678,
+        bbMaxCombo: 37,
+        bbMaxLines: 6,
+        bbCleanBoard: true,
         moveCount: 17,
         startTime: now - 60_000,
     };
@@ -70,6 +73,9 @@ test('Block Blast checkpoint restores only server-signed state', () => {
     assert.equal(restored.bbRevision, 17);
     assert.deepEqual(restored.bbShapes, session.bbShapes);
     assert.equal(restored.bbNextHandSeed, session.bbNextHandSeed);
+    assert.equal(restored.bbMaxCombo, session.bbMaxCombo);
+    assert.equal(restored.bbMaxLines, session.bbMaxLines);
+    assert.equal(restored.bbCleanBoard, session.bbCleanBoard);
     assert.deepEqual(restored.bbGrid, session.bbGrid);
     assert.equal(readCheckpoint(checkpoint, '43', secret, now + 1000), null);
 });
@@ -97,6 +103,7 @@ test('Block Blast checkpoint rejects score injection, bad signature and expiry',
     payload.s = 999_999_999;
     const tamperedBody = Buffer.from(JSON.stringify(payload)).toString('base64url');
     assert.equal(readCheckpoint(`${tamperedBody}.${signature}`, '42', secret, now), null);
-    assert.equal(readCheckpoint(checkpoint.slice(0, -1) + 'A', '42', secret, now), null);
+    const badSignature = `${body}.${signature[0] === 'A' ? 'B' : 'A'}${signature.slice(1)}`;
+    assert.equal(readCheckpoint(badSignature, '42', secret, now), null);
     assert.equal(readCheckpoint(checkpoint, '42', secret, now + 24 * 60 * 60 * 1000 + 1), null);
 });

@@ -2840,6 +2840,309 @@
         }
         .mono-rejoin-backdrop.visible { opacity: 1; }
 
+        /* Player titles */
+        .profile-selected-title {
+            --title-color: #8e8e93;
+            display: inline-flex;
+            align-items: center;
+            max-width: min(86vw, 310px);
+            min-height: 34px;
+            margin: 8px 0 0;
+            padding: 6px 11px 6px 8px;
+            border: 1px solid color-mix(in srgb, var(--title-color) 52%, transparent);
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--title-color) 13%, var(--glass-bg));
+            color: var(--text-color);
+            font: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform .2s cubic-bezier(.2,.8,.2,1), background .2s ease;
+        }
+        .profile-selected-title[hidden] { display: none; }
+        .profile-selected-title:active { transform: scale(.965); }
+        .profile-selected-title-icon {
+            display: grid;
+            place-items: center;
+            width: 22px;
+            height: 22px;
+            margin-right: 7px;
+            border-radius: 50%;
+            background: var(--title-color);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 0 14px color-mix(in srgb, var(--title-color) 55%, transparent);
+        }
+        .profile-selected-title-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--title-color);
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .profile-selected-title-chevron { margin-left: 8px; color: #8e8e93; font-size: 17px; line-height: 1; }
+
+        .title-library-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 26000;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-top: max(14px, env(safe-area-inset-top));
+            background: rgba(0,0,0,.62);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .28s ease, visibility 0s linear .28s;
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+        .title-library-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition-delay: 0s;
+        }
+        .title-library-sheet {
+            width: min(100%, 760px);
+            max-height: min(90vh, 90dvh);
+            padding: 8px 18px calc(18px + env(safe-area-inset-bottom));
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            border-bottom: 0;
+            border-radius: 30px 30px 0 0;
+            background: var(--bg-color);
+            color: var(--text-color);
+            box-shadow: 0 -22px 70px rgba(0,0,0,.34);
+            transform: translateY(104%);
+            transition: transform .48s cubic-bezier(.16,1,.3,1);
+        }
+        .title-library-overlay.visible .title-library-sheet { transform: translateY(0); }
+        .title-library-handle {
+            width: 42px;
+            height: 5px;
+            margin: 2px auto 10px;
+            border-radius: 99px;
+            background: #8e8e93;
+            opacity: .58;
+        }
+        .title-library-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .title-library-heading { min-width: 0; flex: 1; }
+        .title-library-heading h2 { margin: 0; font-size: 27px; line-height: 1.12; letter-spacing: -.02em; }
+        .title-library-count { margin-top: 3px; color: #8e8e93; font-size: 13px; }
+        .title-library-close {
+            display: grid;
+            place-items: center;
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            color: var(--text-color);
+            font-size: 23px;
+            cursor: pointer;
+        }
+        .title-library-scroll {
+            max-height: calc(min(90vh, 90dvh) - 80px);
+            overflow: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: none;
+        }
+        .title-library-scroll::-webkit-scrollbar { display: none; }
+        .title-detail-card {
+            --title-color: #8e8e93;
+            position: relative;
+            isolation: isolate;
+            min-height: 168px;
+            margin-bottom: 14px;
+            padding: 19px;
+            overflow: hidden;
+            border: 1px solid color-mix(in srgb, var(--title-color) 55%, transparent);
+            border-radius: 24px;
+            background: var(--glass-bg);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 14px 36px color-mix(in srgb, var(--title-color) 12%, transparent);
+        }
+        .title-detail-card::before {
+            content: '';
+            position: absolute;
+            z-index: -1;
+            inset: 0;
+            background: radial-gradient(circle at 88% 12%, var(--title-color), transparent 45%);
+            opacity: .22;
+        }
+        .title-detail-top { display: flex; align-items: flex-start; gap: 14px; }
+        .title-detail-icon {
+            display: grid;
+            place-items: center;
+            flex: 0 0 54px;
+            height: 54px;
+            border-radius: 17px;
+            background: var(--title-color);
+            color: #fff;
+            font-size: 29px;
+            font-weight: 900;
+            box-shadow: 0 10px 24px color-mix(in srgb, var(--title-color) 35%, transparent);
+        }
+        .title-detail-copy { min-width: 0; flex: 1; }
+        .title-detail-game { color: #8e8e93; font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+        .title-detail-name { margin-top: 3px; font-size: 23px; font-weight: 850; line-height: 1.08; }
+        .title-detail-rarity { margin-top: 5px; color: var(--title-color); font-size: 13px; font-weight: 800; }
+        .title-detail-description { margin: 16px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+        .title-detail-note { display: inline-flex; margin-top: 9px; padding: 5px 8px; border-radius: 9px; background: color-mix(in srgb, var(--title-color) 15%, transparent); color: var(--title-color); font-size: 12px; font-weight: 750; }
+        .title-detail-footer { display: flex; align-items: center; gap: 12px; margin-top: 17px; }
+        .title-holder-count { min-width: 0; flex: 1; color: #8e8e93; font-size: 12px; line-height: 1.25; }
+        .title-equip-button {
+            min-height: 38px;
+            padding: 8px 15px;
+            border: 0;
+            border-radius: 13px;
+            background: var(--title-color);
+            color: #fff;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform .18s ease, opacity .18s ease;
+        }
+        .title-equip-button:active { transform: scale(.96); }
+        .title-equip-button[disabled] { opacity: .48; cursor: default; }
+
+        .title-library-controls {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .title-filter-select {
+            min-width: 0;
+            height: 40px;
+            padding: 0 30px 0 11px;
+            border: 1px solid var(--glass-border);
+            border-radius: 13px;
+            background: var(--glass-bg);
+            color: var(--text-color);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            outline: none;
+        }
+        .title-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding-bottom: 6px; }
+        .title-card {
+            --title-color: #8e8e93;
+            position: relative;
+            display: grid;
+            grid-template-columns: 38px minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            min-height: 72px;
+            padding: 10px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            border-radius: 17px;
+            background: var(--glass-bg);
+            color: var(--text-color);
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform .18s ease, border-color .18s ease, opacity .18s ease;
+        }
+        .title-card:active { transform: scale(.975); }
+        .title-card.selected { border-color: var(--title-color); box-shadow: inset 0 0 0 1px var(--title-color); }
+        .title-card.locked { opacity: .56; }
+        .title-card-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; background: color-mix(in srgb, var(--title-color) 20%, var(--bg-color)); color: var(--title-color); font-size: 21px; font-weight: 900; }
+        .title-card-copy { display: block; min-width: 0; }
+        .title-card-copy > span { display: block; }
+        .title-card-name { overflow: hidden; color: var(--text-color); font-size: 13px; font-weight: 800; line-height: 1.16; text-overflow: ellipsis; }
+        .title-card-meta { margin-top: 4px; color: var(--title-color); font-size: 10px; font-weight: 750; line-height: 1.15; }
+        .title-card-lock { position: absolute; top: 7px; right: 8px; color: #8e8e93; font-size: 10px; }
+
+        .title-reward-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 31000;
+            display: grid;
+            place-items: center;
+            padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+            overflow: hidden;
+            background: rgba(0,0,0,.84);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .3s ease, visibility 0s linear .3s;
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+        }
+        .title-reward-overlay.visible { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+        .title-reward-rays {
+            --title-color: #8e8e93;
+            position: absolute;
+            width: min(120vw, 780px);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: repeating-conic-gradient(from 0deg, transparent 0deg 10deg, var(--title-color) 11deg 14deg, transparent 15deg 29deg);
+            opacity: .25;
+            -webkit-mask-image: radial-gradient(circle, transparent 0 17%, #000 36%, transparent 73%);
+            mask-image: radial-gradient(circle, transparent 0 17%, #000 36%, transparent 73%);
+            animation: title-rays-spin 18s linear infinite;
+        }
+        .title-reward-card {
+            --title-color: #8e8e93;
+            position: relative;
+            z-index: 1;
+            width: min(100%, 430px);
+            color: #fff;
+            text-align: center;
+            transform: translateY(18px) scale(.94);
+            opacity: 0;
+        }
+        .title-reward-overlay.visible .title-reward-card { animation: title-reward-enter .72s cubic-bezier(.16,1,.3,1) forwards; }
+        .title-reward-kicker { color: rgba(255,255,255,.62); font-size: 12px; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+        .title-reward-icon {
+            display: grid;
+            place-items: center;
+            width: 108px;
+            height: 108px;
+            margin: 23px auto 18px;
+            border: 1px solid rgba(255,255,255,.28);
+            border-radius: 34px;
+            background: var(--title-color);
+            color: #fff;
+            font-size: 58px;
+            font-weight: 900;
+            box-shadow: 0 0 28px color-mix(in srgb, var(--title-color) 70%, transparent), 0 0 90px color-mix(in srgb, var(--title-color) 45%, transparent);
+            animation: title-icon-breathe 2.2s ease-in-out infinite;
+        }
+        .title-reward-rarity { color: var(--title-color); font-size: 13px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+        .title-reward-name { margin: 8px 0 0; font-size: clamp(34px, 9vw, 49px); font-weight: 900; line-height: .98; letter-spacing: -.04em; text-wrap: balance; }
+        .title-reward-description { max-width: 360px; margin: 16px auto 0; color: rgba(255,255,255,.68); font-size: 15px; line-height: 1.45; }
+        .title-reward-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 30px; }
+        .title-reward-actions.single { grid-template-columns: 1fr; }
+        .title-reward-button { min-height: 50px; padding: 11px 15px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(255,255,255,.11); color: #fff; font: inherit; font-size: 14px; font-weight: 850; cursor: pointer; }
+        .title-reward-button.primary { border-color: transparent; background: var(--title-color); }
+        .title-reward-button:active { transform: scale(.97); }
+        @keyframes title-rays-spin { to { transform: rotate(360deg); } }
+        @keyframes title-reward-enter { to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes title-icon-breathe { 50% { transform: scale(1.045); } }
+
+        @media (max-width: 520px) {
+            .title-library-sheet { padding-left: 13px; padding-right: 13px; border-radius: 26px 26px 0 0; }
+            .title-library-controls { grid-template-columns: 1fr 1fr; }
+            .title-library-controls .title-filter-select:last-child { grid-column: 1 / -1; }
+            .title-grid { grid-template-columns: 1fr; }
+            .title-detail-card { min-height: 156px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .title-library-sheet, .title-library-overlay, .title-reward-overlay { transition-duration: .01ms; }
+            .title-reward-rays, .title-reward-icon, .title-reward-overlay.visible .title-reward-card { animation: none; }
+            .title-reward-overlay.visible .title-reward-card { transform: none; opacity: 1; }
+        }
+
     </style>
 </head>
 <body>
@@ -3313,6 +3616,11 @@
         <div class="profile-big-header" id="profileBigHeader"> 
             <img id="user-avatar" src="" alt="" class="avatar"> 
             <h2 id="user-name" style="margin:0;">Loading...</h2> 
+            <button class="profile-selected-title" id="profileSelectedTitle" type="button" hidden onclick="openTitleLibrary()">
+                <span class="profile-selected-title-icon" id="profileSelectedTitleIcon">✦</span>
+                <span class="profile-selected-title-name" id="profileSelectedTitleName">—</span>
+                <span class="profile-selected-title-chevron" aria-hidden="true">›</span>
+            </button>
             <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p>
             <div class="profile-favorite" id="profileFavorite">
                 <img class="profile-favorite-icon" id="profileFavoriteIcon" src="assets/game-icons/minesweeper.png" alt="">
@@ -3620,6 +3928,55 @@
 
     <div class="modal-overlay" id="modalWordleGameOver">
         <div class="modal" id="wordleGameOverContent"></div>
+    </div>
+
+    <div class="title-library-overlay" id="titleLibraryOverlay" onclick="closeTitleLibrary()" aria-hidden="true">
+        <section class="title-library-sheet" role="dialog" aria-modal="true" aria-labelledby="titleLibraryHeading" onclick="event.stopPropagation()">
+            <div class="title-library-handle" aria-hidden="true"></div>
+            <div class="title-library-header">
+                <div class="title-library-heading">
+                    <h2 id="titleLibraryHeading">Титулы</h2>
+                    <div class="title-library-count" id="titleLibraryCount">—</div>
+                </div>
+                <button class="title-library-close" type="button" onclick="closeTitleLibrary()" aria-label="Закрыть">×</button>
+            </div>
+            <div class="title-library-scroll" id="titleLibraryScroll">
+                <article class="title-detail-card" id="titleDetailCard">
+                    <div class="title-detail-top">
+                        <div class="title-detail-icon" id="titleDetailIcon">✦</div>
+                        <div class="title-detail-copy">
+                            <div class="title-detail-game" id="titleDetailGame">Spark</div>
+                            <div class="title-detail-name" id="titleDetailName">—</div>
+                            <div class="title-detail-rarity" id="titleDetailRarity">—</div>
+                        </div>
+                    </div>
+                    <p class="title-detail-description" id="titleDetailDescription">—</p>
+                    <div class="title-detail-note" id="titleDetailNote" hidden></div>
+                    <div class="title-detail-footer">
+                        <div class="title-holder-count" id="titleHolderCount">—</div>
+                        <button class="title-equip-button" id="titleEquipButton" type="button" onclick="equipFocusedTitle()">Выбрать</button>
+                    </div>
+                </article>
+                <div class="title-library-controls">
+                    <select class="title-filter-select" id="titleGameFilter" onchange="renderTitleLibraryGrid()" aria-label="Игра"></select>
+                    <select class="title-filter-select" id="titleRarityFilter" onchange="renderTitleLibraryGrid()" aria-label="Редкость"></select>
+                    <select class="title-filter-select" id="titleSortFilter" onchange="renderTitleLibraryGrid()" aria-label="Сортировка"></select>
+                </div>
+                <div class="title-grid" id="titleGrid"></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="title-reward-overlay" id="titleRewardOverlay" aria-hidden="true">
+        <div class="title-reward-rays" id="titleRewardRays"></div>
+        <section class="title-reward-card" id="titleRewardCard" aria-live="polite">
+            <div class="title-reward-kicker" id="titleRewardKicker">Новый титул</div>
+            <div class="title-reward-icon" id="titleRewardIcon">✦</div>
+            <div class="title-reward-rarity" id="titleRewardRarity">—</div>
+            <h2 class="title-reward-name" id="titleRewardName">—</h2>
+            <p class="title-reward-description" id="titleRewardDescription">—</p>
+            <div class="title-reward-actions" id="titleRewardActions"></div>
+        </section>
     </div>
 
     <div class="modal-overlay" id="modalTowerGameOver">
@@ -4962,6 +5319,9 @@
             if(document.getElementById('view-profile').classList.contains('active')) {
                 loadProfile();
             }
+            if (typeof renderSelectedProfileTitle === 'function') renderSelectedProfileTitle();
+            if (typeof renderTitleLibrary === 'function' && document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) renderTitleLibrary();
+            if (typeof renderTitleReward === 'function' && titleRewardRunning) renderTitleReward();
         }
 
         document.addEventListener('DOMContentLoaded', applyLanguage);
@@ -5211,7 +5571,7 @@
             
             // Switch screen
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
-            if(t==='games') document.getElementById('view-games').classList.add('active'); 
+            if(t==='games') { document.getElementById('view-games').classList.add('active'); scheduleTitleRewardCheck(420, true); }
             else if(t==='leaderboard') document.getElementById('view-leaderboard').classList.add('active'); 
             else { document.getElementById('view-profile').classList.add('active'); loadProfile(); }
             
@@ -5252,13 +5612,15 @@
                 saveWordleGame(); // Save game state on exit
                 document.removeEventListener('keydown', wordleKeyHandler);
             }
+            scheduleTitleRewardCheck(420, true);
         }
-        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalWordleGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); }
+        function closeResult() { document.getElementById('modalResult').classList.remove('visible'); document.getElementById('modalBBGameOver').classList.remove('visible'); document.getElementById('modalTowerGameOver').classList.remove('visible'); document.getElementById('modalWordleGameOver').classList.remove('visible'); document.getElementById('modalResultContent').classList.remove('rotate-180'); scheduleTitleRewardCheck(420); }
 
         // --- Lightweight, account-backed profile playtime tracking ---
-        // There is deliberately no ticking interval. Time is accumulated only
-        // on open/close and visibility changes, then merged monotonically with
-        // the user's explicit Supabase counters.
+        // There is deliberately no ticking interval. A user action opens a
+        // one-minute activity window; after 60 seconds without another action
+        // the timer stops. This keeps the counters cheap and excludes time
+        // spent with an idle game left open.
         const PROFILE_GAMES = {
             bb:       { nameKey: 'blockBlast', icon: 'assets/game-icons/block-blast.png' },
             saper:    { nameKey: 'minesweeper', icon: 'assets/game-icons/minesweeper.png' },
@@ -5281,6 +5643,7 @@
         });
         let activePlaytime = null;
         let playtimeSyncTimer = null;
+        const PLAYTIME_IDLE_WINDOW_MS = 60 * 1000;
         function readPlaytime() {
             try {
                 const data = JSON.parse(localStorage.getItem(playtimeStorageKey) || '{}');
@@ -5341,24 +5704,40 @@
             }, 300);
         }
         function flushGamePlaytime(pause, immediateSync = false) {
-            if (!activePlaytime || !activePlaytime.startedAt) return;
+            if (!activePlaytime) return;
             const now = Date.now();
-            const elapsed = Math.max(0, Math.min(now - activePlaytime.startedAt, 12 * 60 * 60 * 1000));
+            let elapsed = Math.max(0, Number(activePlaytime.pendingMs) || 0);
+            if (activePlaytime.lastActionAt) {
+                elapsed += Math.max(0, Math.min(now - activePlaytime.lastActionAt, PLAYTIME_IDLE_WINDOW_MS));
+            }
             const totals = readPlaytime();
-            totals[activePlaytime.game] = Math.round((Number(totals[activePlaytime.game]) || 0) + elapsed);
-            writePlaytime(totals);
-            activePlaytime.startedAt = pause ? null : now;
-            if (immediateSync) syncPlaytimeWithServer(totals, true);
-            else schedulePlaytimeSync(totals);
+            if (elapsed > 0) {
+                totals[activePlaytime.game] = Math.round((Number(totals[activePlaytime.game]) || 0) + elapsed);
+                writePlaytime(totals);
+                if (immediateSync) syncPlaytimeWithServer(totals, true);
+                else schedulePlaytimeSync(totals);
+            }
+            activePlaytime.pendingMs = 0;
+            activePlaytime.lastActionAt = pause ? null : now;
+        }
+        function noteGamePlaytimeAction(game = null) {
+            if (!activePlaytime || document.hidden || (game && activePlaytime.game !== game)) return;
+            const now = Date.now();
+            if (activePlaytime.lastActionAt) {
+                activePlaytime.pendingMs += Math.max(0, Math.min(
+                    now - activePlaytime.lastActionAt,
+                    PLAYTIME_IDLE_WINDOW_MS
+                ));
+            }
+            activePlaytime.lastActionAt = now;
         }
         function beginGamePlaytime(game) {
             if (!PROFILE_GAMES[game]) return;
             if (activePlaytime && activePlaytime.game === game) {
-                if (!activePlaytime.startedAt && !document.hidden) activePlaytime.startedAt = Date.now();
                 return;
             }
             flushGamePlaytime(true);
-            activePlaytime = { game, startedAt: document.hidden ? null : Date.now() };
+            activePlaytime = { game, lastActionAt: null, pendingMs: 0 };
         }
         function stopGamePlaytime(game) {
             if (!activePlaytime || (game && activePlaytime.game !== game)) return;
@@ -5367,8 +5746,15 @@
         }
         function playtimeSnapshot() {
             const totals = readPlaytime();
-            if (activePlaytime && activePlaytime.startedAt) {
-                totals[activePlaytime.game] = (Number(totals[activePlaytime.game]) || 0) + Math.max(0, Date.now() - activePlaytime.startedAt);
+            if (activePlaytime) {
+                let elapsed = Math.max(0, Number(activePlaytime.pendingMs) || 0);
+                if (activePlaytime.lastActionAt) {
+                    elapsed += Math.max(0, Math.min(
+                        Date.now() - activePlaytime.lastActionAt,
+                        PLAYTIME_IDLE_WINDOW_MS
+                    ));
+                }
+                totals[activePlaytime.game] = (Number(totals[activePlaytime.game]) || 0) + elapsed;
             }
             return totals;
         }
@@ -5383,7 +5769,13 @@
         document.addEventListener('visibilitychange', () => {
             if (!activePlaytime) return;
             if (document.hidden) flushGamePlaytime(true, true);
-            else if (!activePlaytime.startedAt) activePlaytime.startedAt = Date.now();
+        });
+        document.addEventListener('pointerdown', () => noteGamePlaytimeAction(), true);
+        document.addEventListener('keydown', () => noteGamePlaytimeAction(), true);
+        window.addEventListener('message', event => {
+            if (event.data && event.data.type === 'spark-playtime-action') {
+                noteGamePlaytimeAction('monopoly');
+            }
         });
         window.addEventListener('pagehide', () => flushGamePlaytime(true, true));
         syncPlaytimeWithServer();
@@ -5587,6 +5979,7 @@
             
             // Load ranks from server
             loadUserRanks();
+            loadTitles().catch(() => {});
         }
         
         // Profile collapsing header scroll handler
@@ -5861,6 +6254,9 @@
             const token = options.sessionToken || activeSessionTokens[sessionKey] || '';
             const payload = { game_type, score, session_token: token };
             if (Number.isInteger(options.statDelta)) payload.stat_delta = options.statDelta;
+            if (options.achievementContext && typeof options.achievementContext === 'object') {
+                payload.achievement_context = options.achievementContext;
+            }
             try {
                 let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData }, body: JSON.stringify(payload) });
                 let data = await resp.json().catch(() => ({}));
@@ -5887,6 +6283,7 @@
                     const localValue = Number(localStorage.getItem(game_type)) || 0;
                     saveStatToCloud(game_type, Math.max(localValue, serverValue));
                 }
+                collectNewTitles(data.new_titles);
                 if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
                 return data && typeof data === 'object' ? data : true;
             } catch (error) {
@@ -5923,7 +6320,7 @@
             else localStorage.removeItem(SAPER_PENDING_RECORD_KEY);
         }
 
-        function queuePendingSaperRecord(gameType, score, sessionToken) {
+        function queuePendingSaperRecord(gameType, score, sessionToken, usedFlag = null) {
             if (!sessionToken) return false;
             const records = readPendingSaperRecords();
             const current = records.find(pending => pending.gameType === gameType);
@@ -5933,6 +6330,7 @@
                 gameType,
                 score: Number(score),
                 sessionToken,
+                usedFlag: typeof usedFlag === 'boolean' ? usedFlag : null,
                 savedAt: Date.now()
             });
             localStorage.setItem(SAPER_PENDING_RECORD_KEY, JSON.stringify(next));
@@ -5965,7 +6363,8 @@
                 activeSessionTokens[pending.gameType] = pending.sessionToken;
                 const result = await sendStatToBackend(pending.gameType, Number(pending.score), {
                     sessionToken: pending.sessionToken,
-                    returnFailure: true
+                    returnFailure: true,
+                    achievementContext: typeof pending.usedFlag === 'boolean' ? { used_flag: pending.usedFlag } : undefined
                 });
                 const serverBest = Number(result?.best_score);
                 if (!Number.isFinite(serverBest) || serverBest <= 0 || serverBest >= 9999) {
@@ -6839,17 +7238,17 @@
         }
 
         /* --- SAPER WITH MS TIMER --- */
-        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0, sSessionReady=null;
+        let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0, sSessionReady=null, sUsedFlag=false;
         function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); beginGamePlaytime('saper'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
+        function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; sUsedFlag=false; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
         function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;const category='saper_best_' + sCols;if(sFirst){sFirst=false;sSessionReady=startGameSession(category);placeMinesSafe(r,c);sStartTime=Date.now();sTimerInt=setInterval(()=>{const diff=(Date.now()-sStartTime)/1000;sTimer=diff;document.getElementById('saperTimer').innerText=diff.toFixed(3);},16);sSessionReady.then(()=>reportGameMove(category));}else{reportGameMove(category);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
-        function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
+        function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;sUsedFlag=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
-        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`\n${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`\n${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(3)} ${t('seconds')}${saveStatus}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
+        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);const key=`saper_best_${sCols}`;Promise.resolve(sSessionReady).then(()=>reportTitleGameEvent('saper_loss',{mode:sCols},activeSessionTokens[key]||''));showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true,achievementContext:{used_flag:sUsedFlag}});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken,sUsedFlag);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`\n${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`\n${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(3)} ${t('seconds')}${saveStatus}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
@@ -8884,8 +9283,8 @@
         function activateDigit(num, btn) { if (btn.classList.contains('disabled')) return; if (activeDigit === num) { activeDigit = null; btn.classList.remove('active-digit'); highlightSameNumbers(null); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); return; } activeDigit = num; document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit')); btn.classList.add('active-digit'); highlightSameNumbers(num); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function highlightSameNumbers(num) { const cells = document.querySelectorAll('.sudo-cell'); cells.forEach(c => c.classList.remove('same-num')); if (num === null) return; cells.forEach(cell => { if (parseInt(cell.innerText) === num) cell.classList.add('same-num'); }); }
         function checkNumberCompletion() { for(let i=1; i<=9; i++) { let count = 0; for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++; const btn = document.getElementById(`nb${i}`); if(count >= 9) { btn.classList.add('disabled'); btn.classList.remove('active-digit'); if(activeDigit === i) { activeDigit = null; highlightSameNumbers(null); } } else { btn.classList.remove('disabled'); } } }
-        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; reportGameMove('sudoku_wins'); const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('close'), () => { closeResult(); closeGame('sudoku'); }), 500); } } }
-        async function checkSudokuWin() { if (sudoFilled === 81 && !sudokuResultSaving) { sudokuResultSaving=true; confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); const points = currentSudoMode; const optimisticWins = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', optimisticWins); localStorage.removeItem('sudo_state'); showResult(t('victory'), `${t('sudokuSolved')} (+${points})`, t('cool'), () => { closeResult(); closeGame('sudoku'); }); await sudoSessionReady; let result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points }); if (!result) { await new Promise(resolve => setTimeout(resolve, 600)); result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points }); } if (!result) console.error('Sudoku result could not be synchronized'); } }
+        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; reportGameMove('sudoku_wins'); const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); Promise.resolve(sudoSessionReady).then(() => reportTitleGameEvent('sudoku_loss', {}, activeSessionTokens.sudoku_wins || '')); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('close'), () => { closeResult(); closeGame('sudoku'); }), 500); } } }
+        async function checkSudokuWin() { if (sudoFilled === 81 && !sudokuResultSaving) { sudokuResultSaving=true; confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); const points = currentSudoMode; const optimisticWins = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', optimisticWins); localStorage.removeItem('sudo_state'); showResult(t('victory'), `${t('sudokuSolved')} (+${points})`, t('cool'), () => { closeResult(); closeGame('sudoku'); }); await sudoSessionReady; const achievementContext = { mistakes: 3 - sudoLives }; let result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points, achievementContext }); if (!result) { await new Promise(resolve => setTimeout(resolve, 600)); result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points, achievementContext }); } if (!result) console.error('Sudoku result could not be synchronized'); } }
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode, sessionToken: activeSessionTokens.sudoku_wins || null }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; if (data.sessionToken) activeSessionTokens.sudoku_wins = data.sessionToken; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
 
@@ -8912,6 +9311,7 @@
         let twBestCombo = 0;
         let twCurrentCombo = 0;
         let twMaxComboThisGame = 0;
+        let twCloseCallsThisGame = 0;
         let twLastFrameTime = 0;
 
         const TW_BLOCK_HEIGHT = 35; 
@@ -8985,6 +9385,7 @@
             twCurrentBlock = null;
             twCurrentCombo = 0;
             twMaxComboThisGame = 0;
+            twCloseCallsThisGame = 0;
             
             // Добавляем базовый блок для отображения
             twBlocks.push({
@@ -9124,6 +9525,7 @@
             if (twDirection === 'x') {
                 overlap = prev.w - Math.abs(diff);
                 if (overlap > 0) {
+                    if (overlap / Math.max(1, prev.w) <= 0.05) twCloseCallsThisGame++;
                     cutSize = Math.abs(diff);
                     twCurrentBlock.w = overlap; 
                     if (diff > 0) { 
@@ -9140,6 +9542,7 @@
             } else { 
                 overlap = prev.d - Math.abs(diff);
                 if (overlap > 0) {
+                    if (overlap / Math.max(1, prev.d) <= 0.05) twCloseCallsThisGame++;
                     cutSize = Math.abs(diff);
                     twCurrentBlock.d = overlap; 
                     if (diff > 0) { 
@@ -9265,15 +9668,17 @@
             // Saving runs in parallel with the camera reveal. A slow network must
             // never keep the player staring at the fallen tower indefinitely.
             const recordSave = (async () => {
-                if(twScore > twBestScore) {
-                    const accepted = await sendStatToBackend('tower_best', twScore);
-                    if(accepted) {
-                        twBestScore = twScore;
-                        localStorage.setItem('tower_best', twBestScore);
-                        saveStatToCloud('tower_best', twBestScore);
-                        document.getElementById('towerBestScore').innerText = twBestScore;
-                        isScoreRecord = true;
-                    }
+                const scoreResult = await sendStatToBackend('tower_best', twScore, {
+                    achievementContext: { close_calls: twCloseCallsThisGame }
+                });
+                if(scoreResult) {
+                    const serverBest = Number(scoreResult.best_score);
+                    const nextBest = Number.isFinite(serverBest) ? serverBest : Math.max(twBestScore, twScore);
+                    isScoreRecord = !!scoreResult.record_improved && twScore > 0;
+                    twBestScore = Math.max(twBestScore, nextBest);
+                    localStorage.setItem('tower_best', twBestScore);
+                    saveStatToCloud('tower_best', twBestScore);
+                    document.getElementById('towerBestScore').innerText = twBestScore;
                 }
 
                 if(twMaxComboThisGame > twBestCombo) {
@@ -10048,6 +10453,7 @@
                 monopolyWasLocal = false;
                 openMonopolyLobby();
             }
+            scheduleTitleRewardCheck(500, true);
         }
 
         // ---- Служебная кнопка Telegram для монополии ----
@@ -10222,6 +10628,7 @@
             // From the mode screen, the back button returns to the app menu.
             if (monopolyRoomCode) cancelMonopolyRoom();
             document.getElementById('monopoly-lobby').classList.remove('visible');
+            scheduleTitleRewardCheck(420, true);
         }
 
         function monoBackToMode() {
@@ -10612,6 +11019,7 @@
         })();
         
         let wordleRevealing = false; // Block input during reveal animation
+        let wordleSessionReady = null;
         let wordleWins = 0;
 
         function startWordle() {
@@ -10686,7 +11094,8 @@
             const gameState = {
                 target: wordleTarget,
                 guesses: wordleGuesses,
-                currentGuess: wordleCurrentGuess
+                currentGuess: wordleCurrentGuess,
+                sessionToken: activeSessionTokens.wordle_wins || null
             };
             localStorage.setItem('wordle_saved_game', JSON.stringify(gameState));
         }
@@ -10712,6 +11121,12 @@
                 wordleCurrentGuess = '';
                 wordleGameOver = false;
                 wordleRevealing = false;
+                if (gameState.sessionToken) {
+                    activeSessionTokens.wordle_wins = gameState.sessionToken;
+                    wordleSessionReady = Promise.resolve(gameState.sessionToken);
+                } else {
+                    wordleSessionReady = startGameSession('wordle_wins');
+                }
                 
                 renderWordleBoard();
                 renderWordleKeyboard();
@@ -10758,7 +11173,7 @@
             wordleCurrentGuess = '';
             wordleGameOver = false;
             wordleRevealing = false;
-            startGameSession('wordle_wins');
+            wordleSessionReady = startGameSession('wordle_wins');
             
             renderWordleBoard();
             renderWordleKeyboard();
@@ -10908,7 +11323,9 @@
                     wordleWins++;
                     localStorage.setItem('wordle_wins', wordleWins);
                     document.getElementById('wordleWins').innerText = wordleWins;
-                    sendStatToBackend('wordle_wins', wordleWins);
+                    sendStatToBackend('wordle_wins', wordleWins, {
+                        achievementContext: { attempts: wordleGuesses.length }
+                    });
                     
                     // Bounce animation for winning row
                     setTimeout(() => {
@@ -10922,6 +11339,8 @@
                     setTimeout(() => showWordleGameOver(true), 1500);
                 } else if (wordleGuesses.length >= 6) {
                     wordleGameOver = true;
+                    Promise.resolve(wordleSessionReady).then(() =>
+                        reportTitleGameEvent('wordle_loss', {}, activeSessionTokens.wordle_wins || ''));
                     setTimeout(() => showWordleGameOver(false), 500);
                 }
                 
@@ -11064,6 +11483,404 @@
         function closeWordleModal() {
             document.getElementById('modalWordleGameOver').classList.remove('visible');
         }
+
+        // =============================================
+        // PLAYER TITLES
+        // =============================================
+        const TITLE_UI_COPY = {
+            ru: {
+                library: 'Титулы', chooseTitle: 'Выбрать титул', earnedCount: 'Получено: {earned} из {total}',
+                allGames: 'Все игры', allRarities: 'Все редкости', earnedFirst: 'Сначала полученные',
+                raritySort: 'По редкости', gameSort: 'По играм', equip: 'Выбрать', equipped: 'Выбран', locked: 'Закрыт',
+                holders: 'Владельцев: {count}', newTitle: 'Новый титул', viewTitle: 'Посмотреть титул',
+                keepPlaying: 'Играть дальше', nextTitle: 'Следующий титул', activeWhile: 'Действует, пока выполняется условие',
+                common: 'Обычный', uncommon: 'Необычный', rare: 'Редкий', epic: 'Эпический',
+                legendary: 'Легендарный', mythic: 'Мифический'
+            },
+            en: {
+                library: 'Titles', chooseTitle: 'Choose a title', earnedCount: 'Earned: {earned} of {total}',
+                allGames: 'All games', allRarities: 'All rarities', earnedFirst: 'Earned first',
+                raritySort: 'By rarity', gameSort: 'By game', equip: 'Equip', equipped: 'Equipped', locked: 'Locked',
+                holders: 'Holders: {count}', newTitle: 'New title', viewTitle: 'View title',
+                keepPlaying: 'Keep playing', nextTitle: 'Next title', activeWhile: 'Active while the condition is met',
+                common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic',
+                legendary: 'Legendary', mythic: 'Mythic'
+            },
+            zh: {
+                library: '称号', chooseTitle: '选择称号', earnedCount: '已获得：{earned}/{total}',
+                allGames: '全部游戏', allRarities: '全部稀有度', earnedFirst: '已获得优先',
+                raritySort: '按稀有度', gameSort: '按游戏', equip: '使用', equipped: '已使用', locked: '未解锁',
+                holders: '拥有者：{count}', newTitle: '获得新称号', viewTitle: '查看称号',
+                keepPlaying: '继续游戏', nextTitle: '下一个称号', activeWhile: '仅在满足条件期间有效',
+                common: '普通', uncommon: '优秀', rare: '稀有', epic: '史诗',
+                legendary: '传奇', mythic: '神话'
+            }
+        };
+        let titleState = null;
+        let titleLoadPromise = null;
+        let titleLastLoadedAt = 0;
+        let titleFocusedId = null;
+        let titleRewardQueue = [];
+        let titleRewardIndex = 0;
+        let titleRewardRunning = false;
+        let titleRewardTimer = null;
+        let titleRewardRefreshRequested = false;
+        const titleLocalPending = new Set();
+
+        function titleCopy(key) {
+            const copy = TITLE_UI_COPY[currentLang] || TITLE_UI_COPY.ru;
+            return copy[key] || TITLE_UI_COPY.ru[key] || key;
+        }
+        function localizedTitleText(value) {
+            if (!value || typeof value !== 'object') return String(value || '');
+            return String(value[currentLang] || value.ru || value.en || value.zh || '');
+        }
+        function titleCatalogItem(id) {
+            return titleState && Array.isArray(titleState.catalog)
+                ? titleState.catalog.find(item => item.id === id) || null
+                : null;
+        }
+        function titleRarity(item) {
+            return titleState?.rarities?.[item?.rarity] || { order: 0, color: '#8e8e93' };
+        }
+        function titleIsAvailable(item) {
+            if (!item || !titleState) return false;
+            if (item.dynamic) return (titleState.active_dynamic || []).includes(item.id);
+            return !!titleState.unlocked?.[item.id];
+        }
+        function titleEarnedCount() {
+            if (!titleState) return 0;
+            return (titleState.catalog || []).filter(item => titleIsAvailable(item)).length;
+        }
+        function titleGameLabel(game) {
+            return localizedTitleText(titleState?.games?.[game]) || game || 'Spark';
+        }
+        function titleRarityLabel(rarity) { return titleCopy(rarity || 'common'); }
+        function titleAuthHeaders(json = false) {
+            const headers = { 'X-Init-Data': tg.initData || '' };
+            if (json) headers['Content-Type'] = 'application/json';
+            return headers;
+        }
+
+        async function loadTitles(force = false) {
+            if (!tg.initData || !tg.initDataUnsafe?.user) return titleState;
+            if (!force && titleState && Date.now() - titleLastLoadedAt < 30_000) return titleState;
+            if (titleLoadPromise) return titleLoadPromise;
+            titleLoadPromise = (async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/titles`, { headers: titleAuthHeaders() });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const payload = await response.json();
+                    payload.unlocked = payload.unlocked && typeof payload.unlocked === 'object' ? payload.unlocked : {};
+                    payload.pending = Array.isArray(payload.pending) ? payload.pending : [];
+                    payload.active_dynamic = Array.isArray(payload.active_dynamic) ? payload.active_dynamic : [];
+                    titleLocalPending.forEach(id => {
+                        if (!payload.pending.includes(id)) payload.pending.push(id);
+                        if (!payload.unlocked[id]) payload.unlocked[id] = { title_id: id, unlocked_at: new Date().toISOString(), seen_at: null };
+                    });
+                    titleState = payload;
+                    titleLastLoadedAt = Date.now();
+                    renderSelectedProfileTitle();
+                    if (document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) renderTitleLibrary();
+                    if (payload.pending.length) scheduleTitleRewardCheck(350);
+                    return titleState;
+                } catch (error) {
+                    console.warn('Titles could not be loaded:', error.message);
+                    return titleState;
+                } finally {
+                    titleLoadPromise = null;
+                }
+            })();
+            return titleLoadPromise;
+        }
+
+        function collectNewTitles(ids) {
+            if (!Array.isArray(ids) || !ids.length) return;
+            const now = new Date().toISOString();
+            ids.filter(Boolean).forEach(id => {
+                titleLocalPending.add(String(id));
+                if (titleState) {
+                    titleState.unlocked ||= {};
+                    titleState.pending ||= [];
+                    if (!titleState.unlocked[id]) titleState.unlocked[id] = { title_id: id, unlocked_at: now, seen_at: null };
+                    if (!titleState.pending.includes(id)) titleState.pending.push(id);
+                }
+            });
+            titleLastLoadedAt = 0;
+            renderSelectedProfileTitle();
+            scheduleTitleRewardCheck(450);
+        }
+
+        async function reportTitleGameEvent(kind, extra = {}, sessionToken = '') {
+            if (!sessionToken || !tg.initData) return false;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/titles/game-event`, {
+                    method: 'POST', headers: titleAuthHeaders(true),
+                    body: JSON.stringify({ kind, session_token: sessionToken, ...extra })
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) return false;
+                collectNewTitles(payload.new_titles);
+                return true;
+            } catch (_) { return false; }
+        }
+
+        function renderSelectedProfileTitle() {
+            const chip = document.getElementById('profileSelectedTitle');
+            if (!chip || !titleState) return;
+            const selected = titleCatalogItem(titleState.selected_title_id);
+            const color = selected ? titleRarity(selected).color : '#8e8e93';
+            chip.style.setProperty('--title-color', color);
+            document.getElementById('profileSelectedTitleIcon').textContent = selected?.icon || '✦';
+            document.getElementById('profileSelectedTitleName').textContent = selected
+                ? localizedTitleText(selected.name) : titleCopy('chooseTitle');
+            chip.hidden = false;
+        }
+
+        function fillTitleFilters() {
+            if (!titleState) return;
+            const gameSelect = document.getElementById('titleGameFilter');
+            const raritySelect = document.getElementById('titleRarityFilter');
+            const sortSelect = document.getElementById('titleSortFilter');
+            const currentGame = gameSelect.value || 'all';
+            const currentRarity = raritySelect.value || 'all';
+            const currentSort = sortSelect.value || 'earned';
+            gameSelect.replaceChildren();
+            raritySelect.replaceChildren();
+            sortSelect.replaceChildren();
+            const option = (value, label) => {
+                const el = document.createElement('option'); el.value = value; el.textContent = label; return el;
+            };
+            gameSelect.appendChild(option('all', titleCopy('allGames')));
+            const gamesInCatalog = new Set((titleState.catalog || []).map(item => item.game));
+            Object.keys(titleState.games || {}).filter(game => gamesInCatalog.has(game)).forEach(game => {
+                gameSelect.appendChild(option(game, titleGameLabel(game)));
+            });
+            raritySelect.appendChild(option('all', titleCopy('allRarities')));
+            ['common','uncommon','rare','epic','legendary','mythic'].forEach(rarity => {
+                raritySelect.appendChild(option(rarity, titleRarityLabel(rarity)));
+            });
+            sortSelect.append(option('earned', titleCopy('earnedFirst')), option('rarity', titleCopy('raritySort')), option('game', titleCopy('gameSort')));
+            gameSelect.value = [...gameSelect.options].some(el => el.value === currentGame) ? currentGame : 'all';
+            raritySelect.value = [...raritySelect.options].some(el => el.value === currentRarity) ? currentRarity : 'all';
+            sortSelect.value = [...sortSelect.options].some(el => el.value === currentSort) ? currentSort : 'earned';
+        }
+
+        function renderTitleDetail(id) {
+            if (!titleState) return;
+            const item = titleCatalogItem(id) || titleState.catalog?.[0];
+            if (!item) return;
+            titleFocusedId = item.id;
+            const rarity = titleRarity(item);
+            const available = titleIsAvailable(item);
+            const selected = titleState.selected_title_id === item.id;
+            const card = document.getElementById('titleDetailCard');
+            card.style.setProperty('--title-color', rarity.color);
+            document.getElementById('titleDetailIcon').textContent = item.icon || '✦';
+            document.getElementById('titleDetailGame').textContent = titleGameLabel(item.game);
+            document.getElementById('titleDetailName').textContent = localizedTitleText(item.name);
+            document.getElementById('titleDetailRarity').textContent = titleRarityLabel(item.rarity);
+            document.getElementById('titleDetailDescription').textContent = localizedTitleText(item.description);
+            const note = document.getElementById('titleDetailNote');
+            const noteText = localizedTitleText(item.note) || (item.dynamic ? titleCopy('activeWhile') : '');
+            note.hidden = !noteText; note.textContent = noteText;
+            const count = Number(titleState.holder_counts?.[item.id]) || 0;
+            document.getElementById('titleHolderCount').textContent = titleCopy('holders').replace('{count}', count.toLocaleString(currentLocale()));
+            const equip = document.getElementById('titleEquipButton');
+            equip.textContent = selected ? titleCopy('equipped') : (available ? titleCopy('equip') : titleCopy('locked'));
+            equip.disabled = selected || !available;
+            document.querySelectorAll('.title-card').forEach(el => el.classList.toggle('selected', el.dataset.titleId === titleState.selected_title_id));
+        }
+
+        function renderTitleLibraryGrid() {
+            if (!titleState) return;
+            const game = document.getElementById('titleGameFilter').value || 'all';
+            const rarityFilter = document.getElementById('titleRarityFilter').value || 'all';
+            const sort = document.getElementById('titleSortFilter').value || 'earned';
+            const rows = (titleState.catalog || []).filter(item =>
+                (game === 'all' || item.game === game) && (rarityFilter === 'all' || item.rarity === rarityFilter));
+            rows.sort((a,b) => {
+                const availableDifference = Number(titleIsAvailable(b)) - Number(titleIsAvailable(a));
+                if (sort === 'earned' && availableDifference) return availableDifference;
+                const rarityDifference = (titleRarity(b).order || 0) - (titleRarity(a).order || 0);
+                if (sort === 'rarity' && rarityDifference) return rarityDifference;
+                const gameDifference = titleGameLabel(a.game).localeCompare(titleGameLabel(b.game), currentLocale());
+                if (sort === 'game' && gameDifference) return gameDifference;
+                if (rarityDifference) return rarityDifference;
+                return localizedTitleText(a.name).localeCompare(localizedTitleText(b.name), currentLocale());
+            });
+            const grid = document.getElementById('titleGrid');
+            grid.replaceChildren();
+            rows.forEach(item => {
+                const rarity = titleRarity(item);
+                const available = titleIsAvailable(item);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `title-card${available ? '' : ' locked'}${titleState.selected_title_id === item.id ? ' selected' : ''}`;
+                button.dataset.titleId = item.id;
+                button.style.setProperty('--title-color', rarity.color);
+                const icon = document.createElement('span'); icon.className = 'title-card-icon'; icon.textContent = item.icon || '✦';
+                const copy = document.createElement('span'); copy.className = 'title-card-copy';
+                const name = document.createElement('span'); name.className = 'title-card-name'; name.textContent = localizedTitleText(item.name);
+                const meta = document.createElement('span'); meta.className = 'title-card-meta'; meta.textContent = `${titleRarityLabel(item.rarity)} · ${titleGameLabel(item.game)}`;
+                copy.append(name, meta);
+                button.append(icon, copy);
+                if (!available) { const lock = document.createElement('span'); lock.className = 'title-card-lock'; lock.textContent = '●'; button.appendChild(lock); }
+                button.addEventListener('click', () => renderTitleDetail(item.id));
+                grid.appendChild(button);
+            });
+        }
+
+        function renderTitleLibrary() {
+            if (!titleState) return;
+            document.getElementById('titleLibraryHeading').textContent = titleCopy('library');
+            document.getElementById('titleLibraryCount').textContent = titleCopy('earnedCount')
+                .replace('{earned}', titleEarnedCount()).replace('{total}', titleState.catalog?.length || 0);
+            fillTitleFilters();
+            renderTitleLibraryGrid();
+            const firstAvailable = (titleState.catalog || []).find(item => titleIsAvailable(item))?.id;
+            const defaultId = titleFocusedId || titleState.selected_title_id || titleState.pending?.[0]
+                || firstAvailable || titleState.catalog?.[0]?.id;
+            renderTitleDetail(defaultId);
+        }
+
+        async function openTitleLibrary(focusId = null) {
+            if (focusId) titleFocusedId = focusId;
+            await loadTitles(!titleState);
+            if (!titleState) return;
+            renderTitleLibrary();
+            const overlay = document.getElementById('titleLibraryOverlay');
+            overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
+        }
+        function closeTitleLibrary() {
+            const overlay = document.getElementById('titleLibraryOverlay');
+            overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden', 'true');
+        }
+        async function equipFocusedTitle() {
+            const item = titleCatalogItem(titleFocusedId);
+            if (!item || !titleIsAvailable(item)) return;
+            const button = document.getElementById('titleEquipButton');
+            button.disabled = true;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/titles/select`, {
+                    method: 'POST', headers: titleAuthHeaders(true), body: JSON.stringify({ title_id: item.id })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                titleState.selected_title_id = item.id;
+                renderSelectedProfileTitle(); renderTitleLibrary();
+                try { tg.HapticFeedback.notificationOccurred('success'); } catch (_) {}
+            } catch (error) {
+                console.warn('Title could not be selected:', error.message);
+                button.disabled = false;
+            }
+        }
+
+        function acknowledgeTitles(ids) {
+            const clean = [...new Set((ids || []).filter(Boolean))];
+            if (!clean.length) return Promise.resolve();
+            clean.forEach(id => {
+                titleLocalPending.delete(id);
+                if (titleState?.unlocked?.[id]) titleState.unlocked[id].seen_at = new Date().toISOString();
+            });
+            if (titleState) titleState.pending = (titleState.pending || []).filter(id => !clean.includes(id));
+            return fetch(`${API_BASE_URL}/api/titles/acknowledge`, {
+                    method: 'POST', headers: titleAuthHeaders(true), body: JSON.stringify({ title_ids: clean })
+                }).catch(() => {});
+        }
+
+        function titleRewardCanOpen() {
+            if (document.getElementById('appLoader')) return false;
+            if (!document.getElementById('view-games')?.classList.contains('active')) return false;
+            if (document.querySelector('.game-overlay.visible')) return false;
+            if (document.querySelector('.modal-overlay.visible')) return false;
+            if (document.querySelector('.bottom-sheet-overlay.visible')) return false;
+            if (document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) return false;
+            return true;
+        }
+        function scheduleTitleRewardCheck(delay = 500, refresh = false) {
+            if (refresh) titleRewardRefreshRequested = true;
+            clearTimeout(titleRewardTimer);
+            titleRewardTimer = setTimeout(async () => {
+                titleRewardTimer = null;
+                if (titleRewardRunning) return;
+                if (titleRewardRefreshRequested) {
+                    titleRewardRefreshRequested = false;
+                    await loadTitles(true);
+                } else if (!titleState) await loadTitles();
+                const pending = [...new Set([...(titleState?.pending || []), ...titleLocalPending])];
+                if (!pending.length) return;
+                if (!titleRewardCanOpen()) { scheduleTitleRewardCheck(850); return; }
+                showPendingTitleRewards(pending);
+            }, delay);
+        }
+        function showPendingTitleRewards(ids) {
+            const valid = [...new Set(ids || [])].filter(id => titleCatalogItem(id));
+            if (!valid.length || !titleRewardCanOpen()) return;
+            titleRewardQueue = valid;
+            titleRewardIndex = 0;
+            titleRewardRunning = true;
+            const overlay = document.getElementById('titleRewardOverlay');
+            overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
+            renderTitleReward();
+        }
+        function renderTitleReward() {
+            const item = titleCatalogItem(titleRewardQueue[titleRewardIndex]);
+            if (!item) { closeTitleRewardSequence(); return; }
+            const rarity = titleRarity(item);
+            document.getElementById('titleRewardRays').style.setProperty('--title-color', rarity.color);
+            const card = document.getElementById('titleRewardCard');
+            card.style.setProperty('--title-color', rarity.color);
+            card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+            document.getElementById('titleRewardKicker').textContent = titleCopy('newTitle');
+            document.getElementById('titleRewardIcon').textContent = item.icon || '✦';
+            document.getElementById('titleRewardRarity').textContent = titleRarityLabel(item.rarity);
+            document.getElementById('titleRewardName').textContent = localizedTitleText(item.name);
+            document.getElementById('titleRewardDescription').textContent = localizedTitleText(item.description);
+            const actions = document.getElementById('titleRewardActions');
+            actions.replaceChildren();
+            const multiple = titleRewardQueue.length > 1;
+            actions.classList.toggle('single', multiple);
+            const makeButton = (label, primary, handler) => {
+                const button = document.createElement('button'); button.type = 'button';
+                button.className = `title-reward-button${primary ? ' primary' : ''}`;
+                button.textContent = label; button.addEventListener('click', handler); return button;
+            };
+            if (multiple) {
+                const final = titleRewardIndex >= titleRewardQueue.length - 1;
+                actions.appendChild(makeButton(final ? titleCopy('keepPlaying') : titleCopy('nextTitle'), true, advanceTitleReward));
+            } else {
+                actions.append(
+                    makeButton(titleCopy('viewTitle'), false, () => openRewardTitle()),
+                    makeButton(titleCopy('keepPlaying'), true, () => closeTitleRewardSequence())
+                );
+            }
+            try { tg.HapticFeedback.notificationOccurred('success'); } catch (_) {}
+        }
+        function advanceTitleReward() {
+            const currentId = titleRewardQueue[titleRewardIndex];
+            void acknowledgeTitles([currentId]);
+            if (titleRewardIndex < titleRewardQueue.length - 1) {
+                titleRewardIndex += 1; renderTitleReward();
+            } else closeTitleRewardSequence(false);
+        }
+        function closeTitleRewardSequence(acknowledgeCurrent = true) {
+            if (acknowledgeCurrent) void acknowledgeTitles([titleRewardQueue[titleRewardIndex]]);
+            const overlay = document.getElementById('titleRewardOverlay');
+            overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden', 'true');
+            titleRewardRunning = false; titleRewardQueue = []; titleRewardIndex = 0;
+            renderSelectedProfileTitle();
+        }
+        async function openRewardTitle() {
+            const id = titleRewardQueue[titleRewardIndex];
+            void acknowledgeTitles([id]);
+            closeTitleRewardSequence(false);
+            const profileTab = [...document.querySelectorAll('.tab-item')].find(el => (el.getAttribute('onclick') || '').includes("'profile'"));
+            switchTab('profile', profileTab || null);
+            await openTitleLibrary(id);
+        }
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) closeTitleLibrary();
+        });
 
         // Start App
         initApp();

@@ -23,6 +23,7 @@ const {
 } = require('./block-blast-hand');
 const MonopolyEngine = require('./monopoly-engine');
 const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
+const { makeTitleService } = require('./player-titles');
 
 const app = express();
 app.use(cors());
@@ -35,6 +36,7 @@ MonopolyV2.attach(io);                        // комнаты и матчи н
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+const titleService = makeTitleService({ supabase });
 
 // Telegram Bot Token for subscription check
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -377,6 +379,9 @@ app.post('/game-session/start', authMiddleware, (req, res) => {
             bbScore: 0,
             bbCombo: 0,
             bbComboBuffer: 0,
+            bbMaxCombo: 0,
+            bbMaxLines: 0,
+            bbCleanBoard: false,
             bbRevision: 0,
             bbShapes: [null, null, null],
             bbNextHandSeed: null,
@@ -572,6 +577,8 @@ function bbPlaceAndScore(session, matrix, r, c) {
     if (totalCleared > 0) {
         // Комбо растёт на число закрытых линий за ход; буфер держит серию 3 хода
         session.bbCombo += totalCleared;
+        session.bbMaxCombo = Math.max(session.bbMaxCombo || 0, session.bbCombo);
+        session.bbMaxLines = Math.max(session.bbMaxLines || 0, totalCleared);
         session.bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES;
         
         // Clear lines
@@ -589,6 +596,7 @@ function bbPlaceAndScore(session, matrix, r, c) {
             }
         }
         if (allClear) {
+            session.bbCleanBoard = true;
             const bonus = 500 * (session.bbCombo > 0 ? session.bbCombo : 1);
             session.bbScore += bonus;
         }
@@ -763,6 +771,9 @@ app.post('/game-session/bb-sync', authMiddleware, (req, res) => {
     session.bbScore = restored.bbScore;
     session.bbCombo = restored.bbCombo;
     session.bbComboBuffer = restored.bbComboBuffer;
+    session.bbMaxCombo = restored.bbMaxCombo || 0;
+    session.bbMaxLines = restored.bbMaxLines || 0;
+    session.bbCleanBoard = !!restored.bbCleanBoard;
     session.moveCount = restored.moveCount;
     session.bbRevision = restored.bbRevision;
     session.bbShapes = restored.bbShapes;
@@ -811,6 +822,7 @@ const monoRating = MonopolyRating.makeRating({
     notify: (text, keyboard) => notifyOwner(text, keyboard),
 });
 MonopolyV2.setRating(monoRating);
+MonopolyV2.setTitleService(titleService);
 
 async function notifyOwner(message, replyMarkup) {
     if (!BOT_TOKEN) return;
@@ -1045,11 +1057,16 @@ app.post('/api/playtime/sync', authMiddleware, async (req, res) => {
             .eq('telegram_id', userId)
             .single();
         if (error) throw error;
-        return res.json({ playtime: profilePlaytime(data) });
+        const playtime = profilePlaytime(data);
+        try { await titleService.record(userId, { type: 'playtime', totals: playtime }); }
+        catch (titleError) { console.warn('[titles] playtime:', titleError.message); }
+        return res.json({ playtime });
     } catch (error) {
         if (isMissingPlaytimeSchema(error)) {
             try {
                 const playtime = await persistPlaytimeActivity(userId, totals, activityTotals);
+                try { await titleService.record(userId, { type: 'playtime', totals: playtime }); }
+                catch (titleError) { console.warn('[titles] playtime compatibility:', titleError.message); }
                 return res.json({ playtime, storage: 'supabase-compatibility' });
             } catch (fallbackError) {
                 console.error('[playtime] compatibility sync:', fallbackError.message);
@@ -1057,6 +1074,64 @@ app.post('/api/playtime/sync', authMiddleware, async (req, res) => {
         }
         console.error('[playtime] sync:', error.message);
         return res.status(500).json({ error: 'Could not sync playtime' });
+    }
+});
+
+app.get('/api/titles', authMiddleware, async (req, res) => {
+    try {
+        const result = await titleService.collection(String(req.telegramUser.id), { registerOpen: true });
+        res.json(result);
+    } catch (error) {
+        console.error('[titles] collection:', error.message);
+        res.status(500).json({ error: 'Could not load titles' });
+    }
+});
+
+app.post('/api/titles/select', authMiddleware, async (req, res) => {
+    try {
+        const titleId = await titleService.select(String(req.telegramUser.id), req.body && req.body.title_id);
+        res.json({ ok: true, selected_title_id: titleId });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/titles/acknowledge', authMiddleware, async (req, res) => {
+    try {
+        await titleService.acknowledge(String(req.telegramUser.id), req.body && req.body.title_ids);
+        res.json({ ok: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Could not acknowledge titles' });
+    }
+});
+
+// Losses only reset a streak and can never grant a title. The signed session
+// prevents another account from resetting somebody else's progress.
+app.post('/api/titles/game-event', authMiddleware, async (req, res) => {
+    const userId = String(req.telegramUser.id);
+    const kind = String(req.body && req.body.kind || '');
+    const token = String(req.body && req.body.session_token || '');
+    let event = null, sessionType = null;
+    if (kind === 'saper_loss') {
+        const mode = Number(req.body && req.body.mode);
+        if (![6,8,10,15].includes(mode)) return res.status(400).json({ error: 'Invalid mode' });
+        sessionType = `saper_best_${mode}`;
+        event = { type: 'saper_loss', game: 'saper', eventId: `${token}:loss`, context: { mode } };
+    } else if (kind === 'wordle_loss') {
+        sessionType = 'wordle_wins';
+        event = { type: 'wordle_loss', game: 'wordle', eventId: `${token}:loss` };
+    } else if (kind === 'sudoku_loss') {
+        sessionType = 'sudoku_wins';
+        event = { type: 'sudoku_loss', game: 'sudoku', eventId: `${token}:loss` };
+    } else return res.status(400).json({ error: 'Invalid event' });
+    const session = gameSessions.get(`${userId}:${sessionType}`);
+    const signed = readSignedSessionStart(userId, sessionType, token);
+    if ((!session || session.token !== token) && signed === null) return res.status(400).json({ error: 'Invalid session' });
+    try {
+        const newTitles = await titleService.record(userId, event);
+        res.json({ ok: true, new_titles: newTitles });
+    } catch (error) {
+        res.status(500).json({ error: 'Could not record event' });
     }
 });
 
@@ -1333,13 +1408,69 @@ async function persistBestStat(userId, username, photoUrl, gameType, score) {
     throw new Error('DB conflict while saving best result');
 }
 
+async function recordSavedStatTitles({
+    userId, gameType, score, savedValue, session, duration, context, sessionToken, delta, recordImproved,
+}) {
+    const safeContext = context && typeof context === 'object' ? context : {};
+    const eventId = sessionToken ? `${sessionToken}:${gameType}` : '';
+    let event = { type: 'stat', eventId, stats: { [gameType]: savedValue }, checkRanks: !!recordImproved };
+    if (/^saper_best_(6|8|10|15)$/.test(gameType)) {
+        const usedFlag = typeof safeContext.used_flag === 'boolean'
+            ? safeContext.used_flag
+            : null;
+        event = {
+            ...event, type: 'saper_win', game: 'saper', score,
+            context: { mode: Number(gameType.match(/\d+$/)[0]), usedFlag },
+        };
+    } else if (gameType === 'bb_best_score' || gameType === 'bb_tournament_score') {
+        event = {
+            ...event, type: 'bb_game', game: 'bb',
+            context: {
+                maxCombo: Number(session?.bbMaxCombo) || 0,
+                maxLines: Number(session?.bbMaxLines) || 0,
+                cleanBoard: !!session?.bbCleanBoard,
+            },
+        };
+    } else if (gameType === 'sudoku_wins') {
+        event = {
+            ...event, type: 'sudoku_win', game: 'sudoku',
+            context: {
+                difficulty: Number(delta) || 1,
+                mistakes: Math.max(0, Math.min(3, Math.trunc(Number(safeContext.mistakes) || 0))),
+                durationMs: Math.max(0, Number(duration) || 0),
+            },
+        };
+    } else if (gameType === 'tower_best') {
+        event = {
+            ...event, type: 'tower_game', game: 'tower',
+            context: { closeCalls: Math.max(0, Math.min(Number(score) || 0, Math.trunc(Number(safeContext.close_calls) || 0))) },
+        };
+    } else if (gameType === 'wordle_wins') {
+        event = {
+            ...event, type: 'wordle_win', game: 'wordle',
+            context: { attempts: Math.max(1, Math.min(6, Math.trunc(Number(safeContext.attempts) || 6))) },
+        };
+    } else {
+        const games = {
+            bb_total_games: 'bb', saper_wins: 'saper', checkers_total: 'checkers',
+            checkers_wins_pve: 'checkers', tower_combo: 'tower',
+        };
+        event.game = games[gameType] || null;
+    }
+    try { return await titleService.record(userId, event); }
+    catch (error) { console.warn('[titles] saved stat:', error.message); return []; }
+}
+
 app.post('/save-stat', authMiddleware, async (req, res) => {
     const user = req.telegramUser;
     const user_id = String(user.id);
     const username = tgDisplayName(user);
     const tgUsername = user.username || '';
     const photo_url = user.photo_url || '';
-    let { game_type, score, session_token, stat_delta } = req.body;
+    let { game_type, score, session_token, stat_delta, achievement_context } = req.body;
+    const requestedGameType = game_type;
+    let validatedSession = null;
+    let validatedDuration = 0;
     
     // Rate limit
     if (!checkRateLimit(user_id, 'save-stat')) {
@@ -1404,6 +1535,8 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
         
         const duration = Date.now() - session.startTime;
+        validatedSession = session;
+        validatedDuration = duration;
         const minDuration = MIN_GAME_DURATION[game_type] || 2000;
         
         if (duration < minDuration) {
@@ -1478,7 +1611,12 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             const value = await incrementCounterStat(user_id, username, photo_url, game_type, delta);
             const topAfter = await getLeaderboardSnapshot(game_type);
             await notifyLeaderboardDisplacements(topBefore, topAfter, user_id, username, game_type);
-            const response = { ok: true, value, added: delta };
+            const newTitles = await recordSavedStatTitles({
+                userId: user_id, gameType: requestedGameType, score, savedValue: value,
+                session: validatedSession, duration: validatedDuration, context: achievement_context,
+                sessionToken: session_token, delta, recordImproved: true,
+            });
+            const response = { ok: true, value, added: delta, new_titles: newTitles };
             if (completedSubmissionKey) {
                 completedStatSubmissions.set(completedSubmissionKey, {
                     completedAt: Date.now(),
@@ -1585,6 +1723,11 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             user_id, username, photo_url, game_type, score);
         const topAfter = await getLeaderboardSnapshot(game_type);
         await notifyLeaderboardDisplacements(topBefore, topAfter, user_id, username, game_type);
+        const newTitles = await recordSavedStatTitles({
+            userId: user_id, gameType: requestedGameType, score, savedValue: persistedBest,
+            session: validatedSession, duration: validatedDuration, context: achievement_context,
+            sessionToken: session_token, delta: stat_delta, recordImproved,
+        });
         
         // Referral activation: when user scores 1000+ in Block Blast
         if (game_type === 'bb_best_score' && score >= 1000) {
@@ -1596,9 +1739,9 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         }
         
         if (_tournamentResult) {
-            res.json({ success: true, saved_score: score, best_score: persistedBest, record_improved: recordImproved, tournament: _tournamentResult });
+            res.json({ success: true, saved_score: score, best_score: persistedBest, record_improved: recordImproved, tournament: _tournamentResult, new_titles: newTitles });
         } else {
-            res.json({ success: true, saved_score: score, best_score: persistedBest, record_improved: recordImproved });
+            res.json({ success: true, saved_score: score, best_score: persistedBest, record_improved: recordImproved, new_titles: newTitles });
         }
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -3209,7 +3352,7 @@ function countPieces(board, color) {
 }
 
 let checkersStatsChain = Promise.resolve();
-async function recordInlineCheckersResult(playerIds, winnerId) {
+async function recordInlineCheckersResult(playerIds, winnerId, contexts = {}) {
     const run = async () => {
         for (const oderId of [...new Set(playerIds.map(String))]) {
             try {
@@ -3226,6 +3369,13 @@ async function recordInlineCheckersResult(playerIds, winnerId) {
                     .update({ checkers_total: total, checkers_wins_pve: wins })
                     .eq('telegram_id', oderId);
                 if (saved.error) throw saved.error;
+                const extra = contexts[oderId] || contexts[String(oderId)] || {};
+                await titleService.record(oderId, {
+                    type: 'checkers_match', game: 'checkers', checkRanks: true,
+                    eventId: extra.eventId ? `${extra.eventId}:${oderId}` : '',
+                    stats: { checkers_total: total, checkers_wins_pve: wins },
+                    context: { ...extra, won: oderId === String(winnerId) },
+                });
             } catch (e) {
                 console.error('Error updating inline checkers stats:', e.message);
             }
@@ -3242,7 +3392,25 @@ function recordRoomCheckersResult(room, winnerColor) {
     const winner = players.find(p => p.color === winnerColor);
     if (players.length !== 2 || !winner) return;
     room.statsRecorded = true;
-    void recordInlineCheckersResult(players.map(p => p.oderId), winner.oderId);
+    const contexts = Object.fromEntries(players.map(player => [String(player.oderId), {
+        eventId: `checkers-room:${room.code || room.roomCode || room.id || room.createdAt || Date.now()}`,
+    }]));
+    void recordInlineCheckersResult(players.map(p => p.oderId), winner.oderId, contexts);
+}
+
+function checkersAchievement(game, color) {
+    game.achievement ||= {};
+    game.achievement[color] ||= { crowned: false, maxCapture: 0, captureChain: 0, maxDeficit: 0 };
+    return game.achievement[color];
+}
+
+function updateCheckersDeficits(game) {
+    for (const color of ['white', 'black']) {
+        const opponent = color === 'white' ? 'black' : 'white';
+        const deficit = countPieces(game.board, opponent) - countPieces(game.board, color);
+        const state = checkersAchievement(game, color);
+        state.maxDeficit = Math.max(state.maxDeficit, deficit);
+    }
 }
 
 function getUserDisplayName(user) {
@@ -4366,6 +4534,9 @@ if (BOT_TOKEN) {
                     
                     if (capture) {
                         // Выполняем взятие
+                        const achievement = checkersAchievement(game, playerColor);
+                        achievement.captureChain += 1;
+                        achievement.maxCapture = Math.max(achievement.maxCapture, achievement.captureChain);
                         const piece = game.board[game.selected.r][game.selected.c];
                         game.board[row][col] = piece;
                         game.board[game.selected.r][game.selected.c] = { type: 'empty' };
@@ -4373,6 +4544,7 @@ if (BOT_TOKEN) {
                         
                         // Проверяем превращение в дамку
                         if ((playerColor === 'white' && row === 0) || (playerColor === 'black' && row === 7)) {
+                            if (!game.board[row][col].isKing) achievement.crowned = true;
                             game.board[row][col].isKing = true;
                         }
                         
@@ -4392,14 +4564,18 @@ if (BOT_TOKEN) {
                             } catch (e) {}
                             return;
                         }
+                        achievement.captureChain = 0;
                     } else if (move && !mustCapture) {
                         // Обычный ход
+                        const achievement = checkersAchievement(game, playerColor);
+                        achievement.captureChain = 0;
                         const piece = game.board[game.selected.r][game.selected.c];
                         game.board[row][col] = piece;
                         game.board[game.selected.r][game.selected.c] = { type: 'empty' };
                         
                         // Проверяем превращение в дамку
                         if ((playerColor === 'white' && row === 0) || (playerColor === 'black' && row === 7)) {
+                            if (!game.board[row][col].isKing) achievement.crowned = true;
                             game.board[row][col].isKing = true;
                         }
                     } else {
@@ -4411,6 +4587,7 @@ if (BOT_TOKEN) {
                     
                     // Меняем ход
                     const opponentColor = playerColor === 'white' ? 'black' : 'white';
+                    updateCheckersDeficits(game);
                     
                     // Проверяем победу
                     const opponentPieces = countPieces(game.board, opponentColor);
@@ -4420,10 +4597,26 @@ if (BOT_TOKEN) {
                         game.status = 'finished';
                         const winnerName = playerColor === 'white' ? game.playerWhiteName : game.playerBlackName;
                         const winnerSymbol = playerColor === 'white' ? '⚪' : '⚫';
+                        const playerIds = {
+                            white: String(game.playerWhite.id),
+                            black: String(game.playerBlack.id),
+                        };
+                        const contexts = {};
+                        for (const color of ['white', 'black']) {
+                            const achievement = checkersAchievement(game, color);
+                            contexts[playerIds[color]] = {
+                                eventId: `checkers-inline:${game.gameId}`,
+                                crowned: achievement.crowned,
+                                maxCapture: achievement.maxCapture,
+                                maxDeficit: achievement.maxDeficit,
+                                lostPieces: 12 - countPieces(game.board, color),
+                            };
+                        }
                         
                         await recordInlineCheckersResult(
                             [game.playerWhite.id, game.playerBlack.id],
                             playerColor === 'white' ? game.playerWhite.id : game.playerBlack.id,
+                            contexts,
                         );
                         
                         try {

@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 
-const VERSION = 3;
+const VERSION = 4;
 const ROWS = 8;
 const COLS = 8;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -76,6 +76,9 @@ function createCheckpoint(session, userId, secret, now = Date.now()) {
         r: session.bbRevision || 0,
         h: encodeShapes(session.bbShapes || [null, null, null]),
         n: session.bbNextHandSeed >>> 0,
+        x: session.bbMaxCombo || 0,
+        l: session.bbMaxLines || 0,
+        q: !!session.bbCleanBoard,
         a: session.startTime,
         t: now,
     };
@@ -98,7 +101,7 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
     let payload;
     try { payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')); } catch (_) { return null; }
     const grid = decodeGrid(payload && payload.g);
-    if (!payload || ![1, 2, VERSION].includes(payload.v) || payload.u !== String(userId) || !grid) return null;
+    if (!payload || ![1, 2, 3, VERSION].includes(payload.v) || payload.u !== String(userId) || !grid) return null;
     if (!Number.isInteger(payload.s) || payload.s < 0 || payload.s > 1_500_000_000) return null;
     if (!Number.isInteger(payload.c) || payload.c < 0 || payload.c > 1_000_000) return null;
     if (!Number.isInteger(payload.b) || payload.b < 0 || payload.b > 3) return null;
@@ -109,6 +112,12 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
     if (payload.v >= 2 && !shapes) return null;
     const nextHandSeed = payload.v >= 3 ? payload.n : null;
     if (payload.v >= 3 && (!Number.isInteger(nextHandSeed) || nextHandSeed < 0 || nextHandSeed > 0xffffffff)) return null;
+    const maxCombo = payload.v >= 4 ? payload.x : payload.c;
+    const maxLines = payload.v >= 4 ? payload.l : 0;
+    const cleanBoard = payload.v >= 4 ? payload.q : false;
+    if (!Number.isInteger(maxCombo) || maxCombo < 0 || maxCombo > 1_000_000) return null;
+    if (!Number.isInteger(maxLines) || maxLines < 0 || maxLines > 16) return null;
+    if (typeof cleanBoard !== 'boolean') return null;
     if (!Number.isFinite(payload.t) || payload.t > now + MAX_FUTURE_SKEW_MS || now - payload.t > MAX_AGE_MS) return null;
     const startTime = Number.isFinite(payload.a)
         && payload.a <= payload.t
@@ -126,6 +135,9 @@ function readCheckpoint(checkpoint, userId, secret, now = Date.now()) {
         bbRevision: revision,
         bbShapes: shapes,
         bbNextHandSeed: nextHandSeed,
+        bbMaxCombo: maxCombo,
+        bbMaxLines: maxLines,
+        bbCleanBoard: cleanBoard,
         startTime,
         issuedAt: payload.t,
     };
