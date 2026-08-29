@@ -158,14 +158,14 @@ test('profile tabs, playtime and Minesweeper ranks stay lightweight and complete
     assert.doesNotMatch(client.slice(client.indexOf('Lightweight profile playtime tracking'), client.indexOf('Profile overview\/statistics switch')), /setInterval\(/,
         'playtime tracking must remain event-driven and add no recurring timer');
     assert.match(client, /const category='saper_best_' \+ sCols;[\s\S]*?sSessionReady=startGameSession\(category\)/);
-    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key,finishedTime,\{sessionToken,returnFailure:true\}\)/,
+    assert.match(client, /await sSessionReady;[\s\S]*?sendStatToBackend\(key,finishedTime,\{sessionToken,returnFailure:true,achievementContext:\{used_flag:sUsedFlag\}\}\)/,
         'fast Minesweeper wins must wait for their signed session before saving the time');
     const saperWin = client.slice(client.indexOf('async function checkSaperWin'), client.indexOf('/* --- CHECKERS --- */'));
     assert.doesNotMatch(saperWin, /saveStatToCloud\(key,finishedTime\)/,
         'an unconfirmed Minesweeper time must never become a local record');
     assert.match(saperWin, /timeResult\?\.best_score[\s\S]*?saveStatToCloud\(key,serverBest\)/,
         'only the server-confirmed Minesweeper best may update the profile');
-    assert.match(saperWin, /timeResult\?\.retryable[\s\S]*?queuePendingSaperRecord\(key,finishedTime,sessionToken\)/,
+    assert.match(saperWin, /timeResult\?\.retryable[\s\S]*?queuePendingSaperRecord\(key,finishedTime,sessionToken,sUsedFlag\)/,
         'a failed Minesweeper upload must be queued with its signed session');
     assert.match(client, /async function retryPendingSaperRecord[\s\S]*?sessionToken:\s*pending\.sessionToken,[\s\S]*?returnFailure:\s*true/,
         'pending Minesweeper results must be retried with the original signed session');

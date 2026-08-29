@@ -198,6 +198,13 @@ window.DICE_SIZE = 1.0;
 <script src="js/v2/lobby.js"></script>
 <script>
     if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+    const reportPlaytimeAction = () => {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'spark-playtime-action' }, window.location.origin);
+      }
+    };
+    document.addEventListener('pointerdown', reportPlaytimeAction, true);
+    document.addEventListener('keydown', reportPlaytimeAction, true);
     Lobby.init();
 </script>
 </body>
