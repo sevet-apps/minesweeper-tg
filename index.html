@@ -2883,6 +2883,15 @@
             object-fit: cover;
             transform: scale(1.045);
         }
+        .profile-selected-title-icon img[data-game="referral"],
+        .title-detail-icon img[data-game="referral"],
+        .title-card-icon img[data-game="referral"],
+        .title-reward-icon img[data-game="referral"] {
+            object-fit: contain;
+            padding: 19%;
+            background: linear-gradient(145deg, #292a30, #0f1013);
+            transform: none;
+        }
         .profile-selected-title-name {
             min-width: 0;
             overflow: hidden;
@@ -3175,6 +3184,213 @@
         .title-card-meta { margin-top: 4px; color: var(--title-color); font-size: 10px; font-weight: 750; line-height: 1.15; }
         .title-card-lock { position: absolute; top: 8px; right: 9px; width: 6px; height: 6px; border-radius: 50%; background: #8e8e93; }
 
+        /* Title library is an in-app page. Closing it never navigates or reloads. */
+        body.title-library-open { overflow: hidden; }
+        .title-library-overlay {
+            align-items: stretch;
+            justify-content: stretch;
+            padding: 0;
+            background: var(--bg-color);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            transition: opacity .2s ease, visibility 0s linear .2s;
+        }
+        .title-library-sheet {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            max-height: none;
+            padding: max(16px, env(safe-area-inset-top)) 18px 0;
+            border: 0;
+            border-radius: 0;
+            background: var(--bg-color);
+            box-shadow: none;
+            transform: translateX(16px) scale(.992);
+            opacity: 0;
+            transition: transform .42s cubic-bezier(.16,1,.3,1), opacity .24s ease;
+        }
+        .title-library-overlay.visible .title-library-sheet { transform: none; opacity: 1; }
+        .title-library-handle { display: none; }
+        .title-library-header {
+            flex: 0 0 auto;
+            width: min(100%, 760px);
+            margin: 0 auto 15px;
+        }
+        .title-library-heading h2 { font-size: clamp(28px, 7vw, 36px); }
+        .title-library-close,
+        .title-bottom-close {
+            display: grid;
+            place-items: center;
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            overflow: hidden;
+            border: 0;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            color: var(--text-color);
+            line-height: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform .28s cubic-bezier(.2,1.35,.3,1), background .2s ease;
+        }
+        .title-library-close:active,
+        .title-bottom-close:active { transform: scale(.91); }
+        .title-library-close svg,
+        .title-bottom-close svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+        .title-library-scroll {
+            flex: 1 1 auto;
+            width: min(100%, 760px);
+            min-height: 0;
+            max-height: none;
+            margin: 0 auto;
+            padding-bottom: calc(112px + env(safe-area-inset-bottom));
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .title-library-controls { margin: 1px 0 16px; }
+        .title-filter-summary-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; }
+        .title-filter-summary {
+            display: grid;
+            grid-template-columns: minmax(0,1fr) 18px;
+            grid-template-rows: auto auto;
+            align-items: center;
+            min-width: 0;
+            min-height: 58px;
+            padding: 9px 12px;
+            border: 1px solid var(--glass-border);
+            border-radius: 17px;
+            background: var(--glass-bg);
+            color: var(--text-color);
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform .32s cubic-bezier(.2,1.35,.3,1), border-color .2s ease;
+        }
+        .title-filter-summary:active { transform: scale(.965); }
+        .title-filter-summary .title-filter-label { grid-column: 1; margin: 0 0 2px; }
+        .title-filter-summary-value { grid-column: 1; overflow: hidden; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+        .title-filter-summary svg { grid-column: 2; grid-row: 1 / span 2; width: 18px; fill: none; stroke: #8e8e93; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .title-sort-switch { overflow: hidden; isolation: isolate; }
+        .title-sort-indicator { z-index: 0; }
+        .title-sort-button { position: relative; z-index: 1; }
+        .title-grid { padding-bottom: calc(34px + env(safe-area-inset-bottom)); }
+        .title-card { opacity: 1; animation-duration: .36s; }
+        .title-card.locked { opacity: 1; }
+        .title-card.locked .title-card-copy { opacity: .58; }
+        .title-card-lock { display: none; }
+
+        .title-card-icon,
+        .title-detail-icon,
+        .title-reward-icon,
+        .profile-selected-title-icon { position: relative; isolation: isolate; border: 0; background: transparent; }
+        .title-card-icon::after,
+        .title-detail-icon::after,
+        .title-reward-icon::after,
+        .profile-selected-title-icon::after {
+            content: '';
+            position: absolute;
+            z-index: 4;
+            inset: 0;
+            border: 2px solid var(--title-color, #8e8e93);
+            border-radius: inherit;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.28);
+            pointer-events: none;
+        }
+        .title-card.locked .title-card-icon::before {
+            content: '';
+            position: absolute;
+            z-index: 3;
+            inset: 0;
+            border-radius: inherit;
+            background: rgba(255,255,255,.64);
+            pointer-events: none;
+        }
+        .title-card.locked .title-card-icon img { filter: none; }
+
+        .title-bottom-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 28500;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-top: max(18px, env(safe-area-inset-top));
+            background: rgba(0,0,0,.56);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .24s ease, visibility 0s linear .24s;
+        }
+        .title-bottom-overlay.visible { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+        .title-bottom-sheet {
+            width: min(100%, 620px);
+            max-height: min(82vh, 82dvh);
+            padding: 17px 17px calc(18px + env(safe-area-inset-bottom));
+            overflow: auto;
+            border: 1px solid var(--glass-border);
+            border-bottom: 0;
+            border-radius: 28px 28px 0 0;
+            background: color-mix(in srgb, var(--bg-color) 96%, var(--accent));
+            color: var(--text-color);
+            box-shadow: 0 -22px 70px rgba(0,0,0,.36);
+            transform: translateY(106%);
+            transition: transform .5s cubic-bezier(.16,1,.3,1);
+            -webkit-overflow-scrolling: touch;
+        }
+        .title-bottom-overlay.visible .title-bottom-sheet { transform: translateY(0); }
+        .title-bottom-sheet-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .title-bottom-sheet-title { flex: 1; font-size: 22px; font-weight: 850; }
+        .title-detail-card { margin: 0; }
+        .title-detail-note {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 11px 12px;
+            border: 1px solid color-mix(in srgb, var(--title-color) 22%, var(--glass-border));
+            border-radius: 13px;
+            background: color-mix(in srgb, var(--title-color) 8%, var(--glass-bg));
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .title-detail-note[hidden] { display: none; }
+        .title-detail-footer { align-items: stretch; flex-wrap: wrap; }
+        .title-holder-count { display: flex; align-items: center; min-height: 44px; }
+        .title-equip-button { min-width: 130px; min-height: 44px; }
+        .title-choice-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 13px; }
+        .title-choice-header h3 { margin: 0; font-size: 17px; }
+        .title-choice-cancel { justify-self: start; padding: 8px 3px; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 14px; font-weight: 750; cursor: pointer; }
+        .title-choice-list { display: grid; gap: 7px; }
+        .title-choice-item {
+            display: grid;
+            grid-template-columns: 38px minmax(0,1fr) 22px;
+            align-items: center;
+            gap: 11px;
+            min-height: 58px;
+            padding: 8px 11px;
+            border: 1px solid transparent;
+            border-radius: 17px;
+            background: var(--glass-bg);
+            color: var(--text-color);
+            text-align: left;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform .3s cubic-bezier(.2,1.35,.3,1), border-color .2s ease;
+        }
+        .title-choice-item:active { transform: scale(.975); }
+        .title-choice-item.active { border-color: var(--choice-color, var(--accent)); }
+        .title-choice-icon { display: grid; place-items: center; width: 38px; height: 38px; overflow: hidden; border-radius: 12px; background: color-mix(in srgb, var(--choice-color, var(--accent)) 12%, var(--glass-bg)); }
+        .title-choice-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .title-choice-icon span { width: 12px; height: 12px; border-radius: 50%; background: var(--choice-color, var(--accent)); box-shadow: 0 0 13px color-mix(in srgb, var(--choice-color, var(--accent)) 55%, transparent); }
+        .title-choice-check { color: var(--choice-color, var(--accent)); font-size: 21px; opacity: 0; }
+        .title-choice-item.active .title-choice-check { opacity: 1; }
+
         .title-reward-overlay {
             position: fixed;
             inset: 0;
@@ -3188,8 +3404,7 @@
             visibility: hidden;
             pointer-events: none;
             transition: opacity .3s ease, visibility 0s linear .3s;
-            -webkit-backdrop-filter: blur(14px);
-            backdrop-filter: blur(14px);
+            contain: strict;
         }
         .title-reward-overlay.visible { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
         .title-reward-emblem-stage {
@@ -3199,19 +3414,33 @@
             width: min(68vw, 250px);
             height: min(68vw, 250px);
             margin: 4px auto -2px;
+            isolation: isolate;
         }
         .title-reward-rays {
             --title-color: #8e8e93;
             position: absolute;
             inset: 0;
-            aspect-ratio: 1;
-            border-radius: 50%;
-            background: repeating-conic-gradient(from -4deg, transparent 0deg 10deg, var(--title-color) 11deg 14deg, transparent 15deg 29deg);
-            opacity: .36;
-            -webkit-mask-image: radial-gradient(circle, transparent 0 27%, #000 43%, transparent 73%);
-            mask-image: radial-gradient(circle, transparent 0 27%, #000 43%, transparent 73%);
-            animation: title-rays-spin 20s linear infinite;
-            filter: drop-shadow(0 0 12px color-mix(in srgb, var(--title-color) 50%, transparent));
+            z-index: 0;
+            display: grid;
+            place-items: center;
+            opacity: .42;
+            animation: title-rays-spin 24s linear infinite;
+            will-change: transform;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+        }
+        .title-reward-ray {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 5px;
+            height: 88px;
+            margin-left: -2.5px;
+            margin-top: -88px;
+            border-radius: 99px;
+            background: linear-gradient(to top, color-mix(in srgb, var(--title-color) 74%, transparent), transparent 92%);
+            transform: rotate(calc(var(--ray-index) * 22.5deg)) translateY(-28px);
+            transform-origin: 50% 116px;
         }
         .title-reward-card {
             --title-color: #8e8e93;
@@ -3223,7 +3452,7 @@
             transform: translateY(18px) scale(.94);
             opacity: 0;
         }
-        .title-reward-overlay.visible .title-reward-card { animation: title-reward-enter .72s cubic-bezier(.16,1,.3,1) forwards; }
+        .title-reward-overlay.visible .title-reward-card { animation: none; }
         .title-reward-kicker { color: rgba(255,255,255,.62); font-size: 12px; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
         .title-reward-icon {
             position: relative;
@@ -3236,7 +3465,8 @@
             border-radius: 36px;
             background: var(--title-color);
             box-shadow: 0 0 28px color-mix(in srgb, var(--title-color) 70%, transparent), 0 0 90px color-mix(in srgb, var(--title-color) 45%, transparent);
-            animation: title-icon-breathe 2.2s ease-in-out infinite;
+            transform: translateZ(0);
+            backface-visibility: hidden;
         }
         .title-reward-rarity { color: var(--title-color); font-size: 13px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
         .title-reward-name { margin: 8px 0 0; font-size: clamp(34px, 9vw, 49px); font-weight: 900; line-height: .98; letter-spacing: -.04em; text-wrap: balance; }
@@ -3248,18 +3478,17 @@
         .title-reward-button:active { transform: scale(.97); }
         @keyframes title-rays-spin { to { transform: rotate(360deg); } }
         @keyframes title-reward-enter { to { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes title-icon-breathe { 50% { transform: scale(1.045); } }
         @keyframes title-card-enter { to { opacity: 1; transform: translateY(0) scale(1); } }
 
         @media (max-width: 520px) {
-            .title-library-sheet { padding-left: 13px; padding-right: 13px; border-radius: 26px 26px 0 0; }
+            .title-library-sheet { padding-left: 13px; padding-right: 13px; border-radius: 0; }
             .title-grid { grid-template-columns: 1fr; }
             .title-detail-card { min-height: 156px; }
             .title-reward-emblem-stage { width: min(64vw, 238px); height: min(64vw, 238px); }
         }
         @media (prefers-reduced-motion: reduce) {
             .title-library-sheet, .title-library-overlay, .title-reward-overlay { transition-duration: .01ms; }
-            .title-reward-rays, .title-reward-icon, .title-card, .title-reward-overlay.visible .title-reward-card { animation: none; }
+            .title-reward-rays, .title-card, .title-reward-overlay.visible .title-reward-card { animation: none; }
             .title-card { opacity: 1; transform: none; }
             .title-reward-overlay.visible .title-reward-card { transform: none; opacity: 1; }
         }
@@ -3382,6 +3611,12 @@
         <div class="card" onclick="openLeaderboardDetail('wordle')">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/wordle.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsWordle">Топ Вордли</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+
+        <div class="card" onclick="openLeaderboardDetail('monopoly')">
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/monopoly.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsMonopoly">Топ Монополия</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
@@ -4051,42 +4286,31 @@
         <div class="modal" id="wordleGameOverContent"></div>
     </div>
 
-    <div class="title-library-overlay" id="titleLibraryOverlay" onclick="closeTitleLibrary()" aria-hidden="true">
-        <section class="title-library-sheet" role="dialog" aria-modal="true" aria-labelledby="titleLibraryHeading" onclick="event.stopPropagation()">
-            <div class="title-library-handle" aria-hidden="true"></div>
+    <div class="title-library-overlay" id="titleLibraryOverlay" aria-hidden="true">
+        <section class="title-library-sheet" role="dialog" aria-modal="true" aria-labelledby="titleLibraryHeading">
             <div class="title-library-header">
                 <div class="title-library-heading">
                     <h2 id="titleLibraryHeading">Титулы</h2>
                     <div class="title-library-count" id="titleLibraryCount">—</div>
                 </div>
-                <button class="title-library-close" type="button" onclick="closeTitleLibrary()" aria-label="Закрыть">×</button>
+                <button class="title-library-close" type="button" onclick="closeTitleLibrary(event)" aria-label="Закрыть">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+                </button>
             </div>
             <div class="title-library-scroll" id="titleLibraryScroll">
-                <article class="title-detail-card" id="titleDetailCard">
-                    <div class="title-detail-top">
-                        <div class="title-detail-icon"><img id="titleDetailIcon" src="assets/spark-logo.png" alt=""></div>
-                        <div class="title-detail-copy">
-                            <div class="title-detail-game" id="titleDetailGame">Spark</div>
-                            <div class="title-detail-name" id="titleDetailName">—</div>
-                            <div class="title-detail-rarity" id="titleDetailRarity">—</div>
-                        </div>
-                    </div>
-                    <p class="title-detail-description" id="titleDetailDescription">—</p>
-                    <div class="title-detail-note" id="titleDetailNote" hidden></div>
-                    <div class="title-detail-footer">
-                        <div class="title-holder-count" id="titleHolderCount">—</div>
-                        <button class="title-equip-button" id="titleEquipButton" type="button" onclick="equipFocusedTitle()">Выбрать</button>
-                    </div>
-                </article>
                 <div class="title-library-controls">
-                    <section class="title-filter-group">
-                        <div class="title-filter-label" id="titleGameFilterLabel">Игра</div>
-                        <div class="title-filter-rail" id="titleGameFilter" role="tablist" aria-label="Игра"></div>
-                    </section>
-                    <section class="title-filter-group">
-                        <div class="title-filter-label" id="titleRarityFilterLabel">Редкость</div>
-                        <div class="title-filter-rail" id="titleRarityFilter" role="tablist" aria-label="Редкость"></div>
-                    </section>
+                    <div class="title-filter-summary-row">
+                        <button class="title-filter-summary" id="titleGameFilter" type="button" onclick="openTitleChoiceMenu('game')">
+                            <span class="title-filter-label" id="titleGameFilterLabel">Игра</span>
+                            <span class="title-filter-summary-value" id="titleGameFilterValue">Все игры</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg>
+                        </button>
+                        <button class="title-filter-summary" id="titleRarityFilter" type="button" onclick="openTitleChoiceMenu('rarity')">
+                            <span class="title-filter-label" id="titleRarityFilterLabel">Редкость</span>
+                            <span class="title-filter-summary-value" id="titleRarityFilterValue">Все редкости</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg>
+                        </button>
+                    </div>
                     <section class="title-filter-group">
                         <div class="title-filter-label" id="titleSortFilterLabel">Сортировка</div>
                         <div class="title-sort-switch" id="titleSortFilter" role="tablist" aria-label="Сортировка">
@@ -4096,6 +4320,44 @@
                 </div>
                 <div class="title-grid" id="titleGrid"></div>
             </div>
+        </section>
+    </div>
+
+    <div class="title-bottom-overlay" id="titleDetailOverlay" onclick="closeTitleDetail(event)" aria-hidden="true">
+        <section class="title-bottom-sheet title-detail-sheet" id="titleDetailSheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+            <div class="title-bottom-sheet-header">
+                <div class="title-bottom-sheet-title" id="titleDetailSheetTitle">Титул</div>
+                <button class="title-bottom-close" type="button" onclick="closeTitleDetail(event)" aria-label="Закрыть">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+                </button>
+            </div>
+            <article class="title-detail-card" id="titleDetailCard">
+                <div class="title-detail-top">
+                    <div class="title-detail-icon"><img id="titleDetailIcon" src="assets/spark-logo.png" alt=""></div>
+                    <div class="title-detail-copy">
+                        <div class="title-detail-game" id="titleDetailGame">Spark</div>
+                        <div class="title-detail-name" id="titleDetailName">—</div>
+                        <div class="title-detail-rarity" id="titleDetailRarity">—</div>
+                    </div>
+                </div>
+                <p class="title-detail-description" id="titleDetailDescription">—</p>
+                <div class="title-detail-note" id="titleDetailNote" hidden></div>
+                <div class="title-detail-footer">
+                    <div class="title-holder-count" id="titleHolderCount">—</div>
+                    <button class="title-equip-button" id="titleEquipButton" type="button" onclick="handleFocusedTitleAction()">Выбрать</button>
+                </div>
+            </article>
+        </section>
+    </div>
+
+    <div class="title-bottom-overlay" id="titleChoiceOverlay" onclick="closeTitleChoiceMenu(event)" aria-hidden="true">
+        <section class="title-bottom-sheet title-choice-sheet" id="titleChoiceSheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+            <div class="title-choice-header">
+                <button class="title-choice-cancel" id="titleChoiceCancel" type="button" onclick="closeTitleChoiceMenu(event)">Отмена</button>
+                <h3 id="titleChoiceHeading">Игра</h3>
+                <span aria-hidden="true"></span>
+            </div>
+            <div class="title-choice-list" id="titleChoiceList"></div>
         </section>
     </div>
 
@@ -4934,6 +5196,7 @@
                 bestTime15: 'Лучшее время 15x15',
                 winsVsBot: 'Победы',
                 bestScore: 'Рекорд очков',
+                ratingPoints: 'Рейтинговые очки',
                 towerHeight: 'Высота башни',
                 cleanSeries: 'Чистая серия',
                 place: 'место',
@@ -4963,6 +5226,7 @@
                 topsSudoku: 'Топ Судоку',
                 topsCheckers: 'Топ Шашки',
                 topsWordle: 'Топ Вордли',
+                topsMonopoly: 'Топ Монополия',
                 topsReferrals: 'Топ Рефоводы',
                 // Extra
                 tapToStart: 'Нажми, чтобы начать',
@@ -5183,6 +5447,7 @@
                 bestTime15: 'Best time 15x15',
                 winsVsBot: 'Wins',
                 bestScore: 'Best score',
+                ratingPoints: 'Rating points',
                 towerHeight: 'Tower height',
                 cleanSeries: 'Clean series',
                 place: 'place',
@@ -5212,6 +5477,7 @@
                 topsSudoku: 'Sudoku Top',
                 topsCheckers: 'Checkers Top',
                 topsWordle: 'Wordle Top',
+                topsMonopoly: 'Monopoly Top',
                 topsReferrals: 'Referrers Top',
                 // Extra
                 tapToStart: 'Tap to start',
@@ -5358,14 +5624,14 @@
                 opponentDisconnected: '对手已断开连接', opponentTimeout: '对手时间已用完', opponentLeft: '对手已离开游戏',
                 totalGames: '总场次', numWins: '获胜次数', bestTime6: '6×6 最佳时间', bestTime8: '8×8 最佳时间',
                 bestTime10: '10×10 最佳时间', bestTime15: '15×15 最佳时间', winsVsBot: '胜场',
-                bestScore: '最高得分', towerHeight: '塔高', cleanSeries: '连续完美', place: '名', points: '分', gamesPlayed: '场',
+                bestScore: '最高得分', ratingPoints: '排位积分', towerHeight: '塔高', cleanSeries: '连续完美', place: '名', points: '分', gamesPlayed: '场',
                 foundUnfinished: '发现未完成的游戏', continue: '继续', cancel: '取消', close: '关闭', cool: '太棒了',
                 exitGame: '退出游戏？', exitConfirm: '确定要退出吗？本局将计为失败。', yesExit: '确认退出',
                 chooseDifficulty: '选择难度', subscribeChannel: '订阅频道',
                 subscribeText: '要开始游戏，请订阅我们的新闻频道。频道只发布应用更新和开发动态。',
                 goToChannel: '前往频道', checkSub: '检查订阅', checking: '正在检查...', welcome: '欢迎！', topsBlockBlast: '方块爆破排行榜',
                 topsMinesweeper: '扫雷排行榜', topsTower: '叠塔排行榜', topsSudoku: '数独排行榜',
-                topsCheckers: '跳棋排行榜', topsWordle: '猜词排行榜', topsReferrals: '邀请排行榜',
+                topsCheckers: '跳棋排行榜', topsWordle: '猜词排行榜', topsMonopoly: '大富翁排行榜', topsReferrals: '邀请排行榜',
                 tapToStart: '点击开始', refCondition2: '好友首次通过链接进入后将永久归属于您的邀请。',
                 refCondition3: '好友在方块爆破中达到 1000 分后才会进入排行榜；此前只显示在个人资料中。',
                 gotIt: '知道了', easy: '简单', medium: '中等', hard: '困难', chooseGameMode: '选择游戏模式',
@@ -5777,7 +6043,13 @@
         });
         let activePlaytime = null;
         let playtimeSyncTimer = null;
-        const PLAYTIME_IDLE_WINDOW_MS = 60 * 1000;
+        let playtimeIdleTimer = null;
+        const PLAYTIME_IDLE_WINDOW_MS = 3 * 60 * 1000;
+        const PLAYTIME_GAME_SURFACES = Object.freeze({
+            bb: ['bb-screen'], saper: ['saper-screen'], tower: ['tower-screen'],
+            sudoku: ['sudoku-screen'], checkers: ['checkers-screen'],
+            wordle: ['wordle-screen'], monopoly: ['monopoly-lobby', 'monopoly-game']
+        });
         function readPlaytime() {
             try {
                 const data = JSON.parse(localStorage.getItem(playtimeStorageKey) || '{}');
@@ -5839,6 +6111,10 @@
         }
         function flushGamePlaytime(pause, immediateSync = false) {
             if (!activePlaytime) return;
+            if (pause) {
+                clearTimeout(playtimeIdleTimer);
+                playtimeIdleTimer = null;
+            }
             const now = Date.now();
             let elapsed = Math.max(0, Number(activePlaytime.pendingMs) || 0);
             if (activePlaytime.lastActionAt) {
@@ -5854,6 +6130,25 @@
             activePlaytime.pendingMs = 0;
             activePlaytime.lastActionAt = pause ? null : now;
         }
+        function armPlaytimeIdleTimer() {
+            clearTimeout(playtimeIdleTimer);
+            playtimeIdleTimer = setTimeout(() => {
+                playtimeIdleTimer = null;
+                flushGamePlaytime(true);
+            }, PLAYTIME_IDLE_WINDOW_MS);
+        }
+        function playtimeGameIsVisible(game) {
+            return (PLAYTIME_GAME_SURFACES[game] || []).some(id =>
+                document.getElementById(id)?.classList.contains('visible'));
+        }
+        function playtimeActionBelongsToActiveGame(target, keyboard = false) {
+            if (!activePlaytime || !playtimeGameIsVisible(activePlaytime.game)) return false;
+            if (keyboard) return true;
+            return (PLAYTIME_GAME_SURFACES[activePlaytime.game] || []).some(id => {
+                const surface = document.getElementById(id);
+                return surface?.classList.contains('visible') && surface.contains(target);
+            });
+        }
         function noteGamePlaytimeAction(game = null) {
             if (!activePlaytime || document.hidden || (game && activePlaytime.game !== game)) return;
             const now = Date.now();
@@ -5864,6 +6159,7 @@
                 ));
             }
             activePlaytime.lastActionAt = now;
+            armPlaytimeIdleTimer();
         }
         function beginGamePlaytime(game) {
             if (!PROFILE_GAMES[game]) return;
@@ -5904,14 +6200,22 @@
             if (!activePlaytime) return;
             if (document.hidden) flushGamePlaytime(true, true);
         });
-        document.addEventListener('pointerdown', () => noteGamePlaytimeAction(), true);
-        document.addEventListener('keydown', () => noteGamePlaytimeAction(), true);
+        document.addEventListener('pointerdown', event => {
+            if (playtimeActionBelongsToActiveGame(event.target, false)) noteGamePlaytimeAction();
+        }, true);
+        document.addEventListener('keydown', () => {
+            if (playtimeActionBelongsToActiveGame(document.activeElement, true)) noteGamePlaytimeAction();
+        }, true);
         window.addEventListener('message', event => {
             if (event.data && event.data.type === 'spark-playtime-action') {
                 noteGamePlaytimeAction('monopoly');
             }
         });
-        window.addEventListener('pagehide', () => flushGamePlaytime(true, true));
+        window.addEventListener('pagehide', () => {
+            clearTimeout(playtimeIdleTimer);
+            playtimeIdleTimer = null;
+            flushGamePlaytime(true, true);
+        });
         syncPlaytimeWithServer();
 
         // --- Profile overview/statistics switch ---
@@ -6905,6 +7209,7 @@
         const SUDOKU_CATS = [{ id: 'sudoku_wins', nameKey: 'numWins' }];
         const TOWER_CATS = [{ id: 'tower_best', nameKey: 'towerHeight' },{ id: 'tower_combo', nameKey: 'cleanSeries' }];
         const WORDLE_CATS = [{ id: 'wordle_wins', nameKey: 'numWins' }];
+        const MONOPOLY_CATS = [{ id: 'monopoly_points', nameKey: 'ratingPoints', serverAuthoritative: true }];
 
         function openLeaderboardDetail(game) {
             currentLbGame = game;
@@ -6921,6 +7226,7 @@
             else if (game === 'sudoku') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.sudoku}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(SUDOKU_CATS[0]); }
             else if (game === 'tower') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.tower}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(TOWER_CATS[0]); }
             else if (game === 'wordle') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.wordle}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(WORDLE_CATS[0]); }
+            else if (game === 'monopoly') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.monopoly}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(MONOPOLY_CATS[0]); }
             else if (game === 'referral') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.referrals}`; if(selectorWrapper) selectorWrapper.style.display = 'none'; loadReferralLeaderboard(); }
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
@@ -7067,7 +7373,7 @@
             const menu = document.getElementById('dropdownMenu'); const catcher = document.getElementById('dropdownCatcher'); const selector = document.getElementById('lbSelector');
             if(!menu.classList.contains('active')) {
                 menu.innerHTML = ''; let cats = [];
-                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS; else if(currentLbGame === 'wordle') cats = WORDLE_CATS;
+                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS; else if(currentLbGame === 'wordle') cats = WORDLE_CATS; else if(currentLbGame === 'monopoly') cats = MONOPOLY_CATS;
                 cats.forEach(cat => { const el = document.createElement('div'); el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`; el.innerText = t(cat.nameKey); el.onclick = () => { loadLeaderboardData(cat); toggleDropdown(); }; menu.appendChild(el); });
                 menu.classList.add('active'); catcher.classList.add('active'); selector.classList.add('open'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
             } else { menu.classList.remove('active'); catcher.classList.remove('active'); selector.classList.remove('open'); }
@@ -7237,7 +7543,11 @@
                     } catch(e) {}
                 }
                 let myRankRow = displayList.find(u => u.isMe);
-                if (category.isTime) {
+                if (category.serverAuthoritative) {
+                    const serverValue = Number(myRankRow?.score);
+                    hasStats = Number.isFinite(serverValue) && serverValue > 0;
+                    userVal = hasStats ? serverValue : 0;
+                } else if (category.isTime) {
                     // Time leaderboards are server-authoritative. A failed upload
                     // must never appear temporarily as a record or disappear on reload.
                     const serverTime = Number(myRankRow?.score);
@@ -11629,6 +11939,7 @@
                 gameFilter: 'Игра', rarityFilter: 'Редкость', sortFilter: 'Сортировка',
                 holders: 'Владельцев: {count}', newTitle: 'Новый титул', viewTitle: 'Посмотреть титул',
                 keepPlaying: 'Играть дальше', nextTitle: 'Следующий титул', activeWhile: 'Действует, пока выполняется условие',
+                cancel: 'Отмена', titleDetails: 'О титуле', playToUnlock: 'Играть и получить',
                 common: 'Обычный', uncommon: 'Необычный', rare: 'Редкий', epic: 'Эпический',
                 legendary: 'Легендарный', mythic: 'Мифический'
             },
@@ -11639,6 +11950,7 @@
                 gameFilter: 'Game', rarityFilter: 'Rarity', sortFilter: 'Sort',
                 holders: 'Holders: {count}', newTitle: 'New title', viewTitle: 'View title',
                 keepPlaying: 'Keep playing', nextTitle: 'Next title', activeWhile: 'Active while the condition is met',
+                cancel: 'Cancel', titleDetails: 'Title details', playToUnlock: 'Play to unlock',
                 common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic',
                 legendary: 'Legendary', mythic: 'Mythic'
             },
@@ -11649,13 +11961,14 @@
                 gameFilter: '游戏', rarityFilter: '稀有度', sortFilter: '排序',
                 holders: '拥有者：{count}', newTitle: '获得新称号', viewTitle: '查看称号',
                 keepPlaying: '继续游戏', nextTitle: '下一个称号', activeWhile: '仅在满足条件期间有效',
+                cancel: '取消', titleDetails: '称号详情', playToUnlock: '开始游戏并解锁',
                 common: '普通', uncommon: '优秀', rare: '稀有', epic: '史诗',
                 legendary: '传奇', mythic: '神话'
             }
         };
         const TITLE_GAME_LOGOS = Object.freeze({
             general: 'assets/spark-logo.png',
-            referral: 'assets/spark-logo.png',
+            referral: 'assets/referral-icon.svg',
             saper: 'assets/game-icons/minesweeper.png',
             checkers: 'assets/game-icons/checkers.png',
             bb: 'assets/game-icons/block-blast.png',
@@ -11677,6 +11990,9 @@
         let titleGameFilterValue = 'all';
         let titleRarityFilterValue = 'all';
         let titleSortFilterValue = 'earned';
+        let titleChoiceType = null;
+        let titleRewardAnimation = null;
+        const TITLE_REWARD_RAY_COUNT = 16;
         const titleLocalPending = new Set();
 
         function titleCopy(key) {
@@ -11800,59 +12116,14 @@
 
         function fillTitleFilters() {
             if (!titleState) return;
-            const gameRail = document.getElementById('titleGameFilter');
-            const rarityRail = document.getElementById('titleRarityFilter');
             const sortSwitch = document.getElementById('titleSortFilter');
             document.getElementById('titleGameFilterLabel').textContent = titleCopy('gameFilter');
             document.getElementById('titleRarityFilterLabel').textContent = titleCopy('rarityFilter');
             document.getElementById('titleSortFilterLabel').textContent = titleCopy('sortFilter');
-            gameRail.replaceChildren();
-            rarityRail.replaceChildren();
-            const makeChip = (container, value, label, selected, color, imageSrc = '') => {
-                const button = document.createElement('button');
-                button.type = 'button'; button.className = `title-filter-chip${selected ? ' active' : ''}`;
-                button.dataset.value = value; button.setAttribute('role', 'tab');
-                button.setAttribute('aria-selected', selected ? 'true' : 'false');
-                button.style.setProperty('--filter-color', color || 'var(--accent)');
-                if (imageSrc) {
-                    const logo = document.createElement('img'); logo.className = 'title-filter-game-logo';
-                    logo.src = imageSrc; logo.alt = ''; button.appendChild(logo);
-                } else if (container === rarityRail && value !== 'all') {
-                    const dot = document.createElement('span'); dot.className = 'title-filter-rarity-dot'; button.appendChild(dot);
-                }
-                const text = document.createElement('span'); text.textContent = label; button.appendChild(text);
-                container.appendChild(button);
-                return button;
-            };
-            const updateRailSelection = (rail, value) => {
-                rail.querySelectorAll('.title-filter-chip').forEach(button => {
-                    const active = button.dataset.value === value;
-                    button.classList.toggle('active', active);
-                    button.setAttribute('aria-selected', active ? 'true' : 'false');
-                });
-            };
-            const allGames = makeChip(gameRail, 'all', titleCopy('allGames'), titleGameFilterValue === 'all', 'var(--accent)');
-            allGames.addEventListener('click', () => {
-                titleGameFilterValue = 'all'; updateRailSelection(gameRail, 'all'); renderTitleLibraryGrid();
-            });
-            const gamesInCatalog = new Set((titleState.catalog || []).map(item => item.game));
-            Object.keys(titleState.games || {}).filter(game => gamesInCatalog.has(game)).forEach(game => {
-                const button = makeChip(gameRail, game, titleGameLabel(game), titleGameFilterValue === game, 'var(--accent)', titleGameLogo(game));
-                button.addEventListener('click', () => {
-                    titleGameFilterValue = game; updateRailSelection(gameRail, game); renderTitleLibraryGrid();
-                });
-            });
-            const allRarities = makeChip(rarityRail, 'all', titleCopy('allRarities'), titleRarityFilterValue === 'all', 'var(--accent)');
-            allRarities.addEventListener('click', () => {
-                titleRarityFilterValue = 'all'; updateRailSelection(rarityRail, 'all'); renderTitleLibraryGrid();
-            });
-            TITLE_RARITY_ORDER.forEach(rarity => {
-                const color = titleState.rarities?.[rarity]?.color || '#8e8e93';
-                const button = makeChip(rarityRail, rarity, titleRarityLabel(rarity), titleRarityFilterValue === rarity, color);
-                button.addEventListener('click', () => {
-                    titleRarityFilterValue = rarity; updateRailSelection(rarityRail, rarity); renderTitleLibraryGrid();
-                });
-            });
+            document.getElementById('titleGameFilterValue').textContent = titleGameFilterValue === 'all'
+                ? titleCopy('allGames') : titleGameLabel(titleGameFilterValue);
+            document.getElementById('titleRarityFilterValue').textContent = titleRarityFilterValue === 'all'
+                ? titleCopy('allRarities') : titleRarityLabel(titleRarityFilterValue);
             const indicator = sortSwitch.querySelector('.title-sort-indicator') || document.createElement('span');
             indicator.className = 'title-sort-indicator'; indicator.setAttribute('aria-hidden', 'true');
             sortSwitch.replaceChildren(indicator);
@@ -11882,6 +12153,114 @@
             sortSwitch.style.setProperty('--title-sort-index', Math.max(0, sorts.findIndex(([key]) => key === titleSortFilterValue)));
         }
 
+        function titleChoiceOptions(type) {
+            if (type === 'rarity') {
+                return [
+                    { value: 'all', label: titleCopy('allRarities'), color: 'var(--accent)' },
+                    ...TITLE_RARITY_ORDER.map(value => ({
+                        value, label: titleRarityLabel(value),
+                        color: titleState?.rarities?.[value]?.color || '#8e8e93'
+                    }))
+                ];
+            }
+            const gamesInCatalog = new Set((titleState?.catalog || []).map(item => item.game));
+            return [
+                { value: 'all', label: titleCopy('allGames'), image: TITLE_GAME_LOGOS.general },
+                ...Object.keys(titleState?.games || {}).filter(game => gamesInCatalog.has(game)).map(value => ({
+                    value, label: titleGameLabel(value), image: titleGameLogo(value)
+                }))
+            ];
+        }
+
+        function openTitleChoiceMenu(type) {
+            if (!titleState || !['game', 'rarity'].includes(type)) return;
+            titleChoiceType = type;
+            const selectedValue = type === 'game' ? titleGameFilterValue : titleRarityFilterValue;
+            document.getElementById('titleChoiceCancel').textContent = titleCopy('cancel');
+            document.getElementById('titleChoiceHeading').textContent = titleCopy(type === 'game' ? 'gameFilter' : 'rarityFilter');
+            const list = document.getElementById('titleChoiceList');
+            list.replaceChildren();
+            titleChoiceOptions(type).forEach(option => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `title-choice-item${option.value === selectedValue ? ' active' : ''}`;
+                button.style.setProperty('--choice-color', option.color || 'var(--accent)');
+                const icon = document.createElement('span'); icon.className = 'title-choice-icon';
+                if (option.image) {
+                    const image = document.createElement('img'); image.src = option.image; image.alt = ''; icon.appendChild(image);
+                } else {
+                    icon.appendChild(document.createElement('span'));
+                }
+                const label = document.createElement('span'); label.textContent = option.label;
+                const check = document.createElement('span'); check.className = 'title-choice-check'; check.textContent = '✓';
+                button.append(icon, label, check);
+                button.addEventListener('click', () => selectTitleChoice(option.value));
+                list.appendChild(button);
+            });
+            const overlay = document.getElementById('titleChoiceOverlay');
+            overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function selectTitleChoice(value) {
+            if (titleChoiceType === 'game') titleGameFilterValue = value;
+            else if (titleChoiceType === 'rarity') titleRarityFilterValue = value;
+            fillTitleFilters();
+            renderTitleLibraryGrid();
+            closeTitleChoiceMenu();
+            try { tg.HapticFeedback.selectionChanged(); } catch (_) {}
+        }
+
+        function closeTitleChoiceMenu(event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            const overlay = document.getElementById('titleChoiceOverlay');
+            overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden', 'true');
+            titleChoiceType = null;
+        }
+
+        function installTitleSheetGesture(sheetId, closeSheet) {
+            const sheet = document.getElementById(sheetId);
+            if (!sheet || sheet.dataset.dragReady === '1') return;
+            sheet.dataset.dragReady = '1';
+            let startY = 0;
+            let startX = 0;
+            let startedAt = 0;
+            let dragging = false;
+            const finish = event => {
+                if (!dragging) return;
+                dragging = false;
+                const distance = Math.max(0, event.clientY - startY);
+                const velocity = distance / Math.max(1, performance.now() - startedAt);
+                sheet.style.transition = '';
+                sheet.style.transform = '';
+                if (distance > 92 || velocity > .62) closeSheet();
+            };
+            sheet.addEventListener('pointerdown', event => {
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                if (event.target.closest('button, a, input, select, textarea')) return;
+                if (sheet.scrollTop > 0) return;
+                startY = event.clientY;
+                startX = event.clientX;
+                startedAt = performance.now();
+                dragging = true;
+                sheet.setPointerCapture?.(event.pointerId);
+            });
+            sheet.addEventListener('pointermove', event => {
+                if (!dragging) return;
+                const dy = Math.max(0, event.clientY - startY);
+                const dx = Math.abs(event.clientX - startX);
+                if (dx > dy && dx > 12) { dragging = false; return; }
+                if (dy < 4) return;
+                event.preventDefault();
+                sheet.style.transition = 'none';
+                sheet.style.transform = `translate3d(0, ${dy}px, 0)`;
+            }, { passive: false });
+            sheet.addEventListener('pointerup', finish);
+            sheet.addEventListener('pointercancel', finish);
+        }
+
+        installTitleSheetGesture('titleDetailSheet', closeTitleDetail);
+        installTitleSheetGesture('titleChoiceSheet', closeTitleChoiceMenu);
+
         function renderTitleDetail(id) {
             if (!titleState) return;
             const item = titleCatalogItem(id) || titleState.catalog?.[0];
@@ -11892,6 +12271,7 @@
             const selected = titleState.selected_title_id === item.id;
             const card = document.getElementById('titleDetailCard');
             card.style.setProperty('--title-color', rarity.color);
+            document.getElementById('titleDetailSheetTitle').textContent = titleCopy('titleDetails');
             applyTitleGameLogo(document.getElementById('titleDetailIcon'), item.game);
             document.getElementById('titleDetailGame').textContent = titleGameLabel(item.game);
             document.getElementById('titleDetailName').textContent = localizedTitleText(item.name);
@@ -11903,9 +12283,17 @@
             const count = Number(titleState.holder_counts?.[item.id]) || 0;
             document.getElementById('titleHolderCount').textContent = titleCopy('holders').replace('{count}', count.toLocaleString(currentLocale()));
             const equip = document.getElementById('titleEquipButton');
-            equip.textContent = selected ? titleCopy('equipped') : (available ? titleCopy('equip') : titleCopy('locked'));
-            equip.disabled = selected || !available;
+            equip.textContent = selected ? titleCopy('equipped') : (available ? titleCopy('equip') : titleCopy('playToUnlock'));
+            equip.disabled = selected;
             document.querySelectorAll('.title-card').forEach(el => el.classList.toggle('selected', el.dataset.titleId === titleState.selected_title_id));
+            const overlay = document.getElementById('titleDetailOverlay');
+            overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeTitleDetail(event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            const overlay = document.getElementById('titleDetailOverlay');
+            overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden', 'true');
         }
 
         function renderTitleLibraryGrid() {
@@ -11943,7 +12331,6 @@
                 const meta = document.createElement('span'); meta.className = 'title-card-meta'; meta.textContent = `${titleRarityLabel(item.rarity)} · ${titleGameLabel(item.game)}`;
                 copy.append(name, meta);
                 button.append(icon, copy);
-                if (!available) { const lock = document.createElement('span'); lock.className = 'title-card-lock'; lock.textContent = '●'; button.appendChild(lock); }
                 button.addEventListener('click', () => renderTitleDetail(item.id));
                 grid.appendChild(button);
             });
@@ -11956,23 +12343,46 @@
                 .replace('{earned}', titleEarnedCount()).replace('{total}', titleState.catalog?.length || 0);
             fillTitleFilters();
             renderTitleLibraryGrid();
-            const firstAvailable = (titleState.catalog || []).find(item => titleIsAvailable(item))?.id;
-            const defaultId = titleFocusedId || titleState.selected_title_id || titleState.pending?.[0]
-                || firstAvailable || titleState.catalog?.[0]?.id;
-            renderTitleDetail(defaultId);
         }
 
         async function openTitleLibrary(focusId = null) {
-            if (focusId) titleFocusedId = focusId;
             await loadTitles(!titleState);
             if (!titleState) return;
             renderTitleLibrary();
             const overlay = document.getElementById('titleLibraryOverlay');
             overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('title-library-open');
+            if (focusId) requestAnimationFrame(() => renderTitleDetail(focusId));
         }
-        function closeTitleLibrary() {
+        function closeTitleLibrary(event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            closeTitleDetail();
+            closeTitleChoiceMenu();
             const overlay = document.getElementById('titleLibraryOverlay');
             overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('title-library-open');
+            titleFocusedId = null;
+        }
+        function handleFocusedTitleAction() {
+            const item = titleCatalogItem(titleFocusedId);
+            if (!item) return;
+            if (titleIsAvailable(item)) {
+                void equipFocusedTitle();
+                return;
+            }
+            const cardByGame = {
+                saper: '.game-card--minesweeper', checkers: '.game-card--checkers',
+                bb: '.game-card--block-blast', sudoku: '.game-card--sudoku',
+                tower: '.game-card--tower', wordle: '.game-card--wordle',
+                monopoly: '.game-card--monopoly'
+            };
+            const selector = cardByGame[item.game];
+            closeTitleLibrary();
+            if (selector) requestAnimationFrame(() => document.querySelector(selector)?.click());
+            else {
+                const gamesTab = [...document.querySelectorAll('.tab-item')].find(el => (el.getAttribute('onclick') || '').includes("'games'"));
+                switchTab('games', gamesTab || null);
+            }
         }
         async function equipFocusedTitle() {
             const item = titleCatalogItem(titleFocusedId);
@@ -11986,6 +12396,7 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 titleState.selected_title_id = item.id;
                 renderSelectedProfileTitle(); renderTitleLibrary();
+                renderTitleDetail(item.id);
                 try { tg.HapticFeedback.notificationOccurred('success'); } catch (_) {}
             } catch (error) {
                 console.warn('Title could not be selected:', error.message);
@@ -12041,6 +12452,18 @@
             overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
             renderTitleReward();
         }
+        function ensureTitleRewardRays() {
+            const rays = document.getElementById('titleRewardRays');
+            if (!rays || rays.childElementCount === TITLE_REWARD_RAY_COUNT) return;
+            const fragment = document.createDocumentFragment();
+            for (let index = 0; index < TITLE_REWARD_RAY_COUNT; index += 1) {
+                const ray = document.createElement('span');
+                ray.className = 'title-reward-ray';
+                ray.style.setProperty('--ray-index', index);
+                fragment.appendChild(ray);
+            }
+            rays.replaceChildren(fragment);
+        }
         function renderTitleReward() {
             const item = titleCatalogItem(titleRewardQueue[titleRewardIndex]);
             if (!item) { closeTitleRewardSequence(); return; }
@@ -12048,9 +12471,14 @@
             const overlay = document.getElementById('titleRewardOverlay');
             overlay.style.setProperty('--title-color', rarity.color);
             document.getElementById('titleRewardRays').style.setProperty('--title-color', rarity.color);
+            ensureTitleRewardRays();
             const card = document.getElementById('titleRewardCard');
             card.style.setProperty('--title-color', rarity.color);
-            card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+            if (titleRewardAnimation) titleRewardAnimation.cancel();
+            titleRewardAnimation = card.animate([
+                { opacity: 0, transform: 'translateY(16px) scale(.96)' },
+                { opacity: 1, transform: 'translateY(0) scale(1)' }
+            ], { duration: 620, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' });
             document.getElementById('titleRewardKicker').textContent = titleCopy('newTitle');
             applyTitleGameLogo(document.getElementById('titleRewardIcon'), item.game);
             document.getElementById('titleRewardRarity').textContent = titleRarityLabel(item.rarity);
@@ -12087,6 +12515,7 @@
             if (acknowledgeCurrent) void acknowledgeTitles([titleRewardQueue[titleRewardIndex]]);
             const overlay = document.getElementById('titleRewardOverlay');
             overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden', 'true');
+            if (titleRewardAnimation) { titleRewardAnimation.cancel(); titleRewardAnimation = null; }
             titleRewardRunning = false; titleRewardQueue = []; titleRewardIndex = 0;
             renderSelectedProfileTitle();
         }
