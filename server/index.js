@@ -1748,6 +1748,40 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
 
 app.get('/leaderboard', async (req, res) => {
     const { category } = req.query;
+    if (category === 'monopoly_points') {
+        const { data: ratings, error: ratingError } = await supabase
+            .from('monopoly_rating')
+            .select('uid, points, games, updated_at')
+            .eq('banned', false)
+            .gt('games', 0)
+            .order('points', { ascending: false })
+            .order('updated_at', { ascending: true })
+            .limit(50);
+        if (ratingError) {
+            console.error('[leaderboard] monopoly_points:', ratingError.message);
+            return res.status(500).json({ error: 'Leaderboard unavailable' });
+        }
+        const ids = [...new Set((ratings || []).map(row => String(row.uid)).filter(Boolean))];
+        let profiles = [];
+        if (ids.length) {
+            const { data, error } = await supabase
+                .from('users')
+                .select('telegram_id, username, photo_url')
+                .in('telegram_id', ids);
+            if (error) console.warn('[leaderboard] monopoly profiles:', error.message);
+            else profiles = data || [];
+        }
+        const profileById = new Map(profiles.map(profile => [String(profile.telegram_id), profile]));
+        return res.json((ratings || []).map(row => {
+            const profile = profileById.get(String(row.uid)) || {};
+            return {
+                user_id: String(row.uid),
+                username: profile.username || `Player ${row.uid}`,
+                photo_url: profile.photo_url || '',
+                score: Number(row.points) || 0,
+            };
+        }));
+    }
     const allowed = [
         'saper_total', 'saper_wins', 'saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15', 
         'checkers_total', 'checkers_wins_pve', 

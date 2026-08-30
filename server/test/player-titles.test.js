@@ -13,6 +13,10 @@ const migration = fs.readFileSync(
     path.join(root, 'supabase', 'migrations', '202608290001_add_player_titles.sql'),
     'utf8',
 );
+const monopolyMigration = fs.readFileSync(
+    path.join(root, 'supabase', 'migrations', '202608300001_add_monopoly_rating.sql'),
+    'utf8',
+);
 
 const byId = Object.fromEntries(TITLES.map(item => [item.id, item]));
 const awardSet = (progress = {}, stats = {}, ranks = null, unlocked = []) =>
@@ -196,24 +200,41 @@ test('profile catalog, selection and reward presentation are wired end to end', 
     assert.match(client, /id="profileSelectedTitle"[^>]*onclick="openTitleLibrary\(\)"/);
     assert.match(client, /id="titleGameFilter"[\s\S]*?id="titleRarityFilter"[\s\S]*?id="titleSortFilter"/);
     assert.match(client, /const TITLE_GAME_LOGOS = Object\.freeze\([\s\S]*?assets\/game-icons\/minesweeper\.png[\s\S]*?assets\/game-icons\/monopoly\.png/);
+    assert.match(client, /referral: 'assets\/referral-icon\.svg'/);
     assert.match(client, /applyTitleGameLogo\(document\.getElementById\('titleRewardIcon'\), item\.game\)/);
     assert.doesNotMatch(client, /item\.icon \|\| '✦'/);
     assert.match(client, /id="titleHolderCount"/);
     assert.match(client, /function equipFocusedTitle\([\s\S]*?\/api\/titles\/select/);
     assert.match(client, /function titleRewardCanOpen\([\s\S]*?view-games[\s\S]*?\.game-overlay\.visible/,
         'reward animations must wait until the player returns to the games menu');
-    assert.match(client, /title-reward-rays[\s\S]*?repeating-conic-gradient[\s\S]*?title-rays-spin/);
+    assert.match(client, /const TITLE_REWARD_RAY_COUNT = 16/);
+    assert.match(client, /function ensureTitleRewardRays\([\s\S]*?title-reward-ray[\s\S]*?--ray-index/);
+    assert.match(client, /id="titleDetailOverlay"[\s\S]*?id="titleChoiceOverlay"/);
+    assert.match(client, /\.title-library-sheet[\s\S]*?min-height: 100dvh/);
     assert.match(client, /titleRewardQueue\.length > 1[\s\S]*?nextTitle/);
 });
 
-test('active playtime is action-driven and stops after one idle minute', () => {
+test('active playtime is scoped to the open game and stops after three idle minutes', () => {
     const start = client.indexOf('Lightweight, account-backed profile playtime tracking');
     const end = client.indexOf('Profile overview/statistics switch', start);
     const playtime = client.slice(start, end);
-    assert.match(playtime, /const PLAYTIME_IDLE_WINDOW_MS = 60 \* 1000/);
+    assert.match(playtime, /const PLAYTIME_IDLE_WINDOW_MS = 3 \* 60 \* 1000/);
+    assert.match(playtime, /const PLAYTIME_GAME_SURFACES/);
+    assert.match(playtime, /playtimeActionBelongsToActiveGame/);
+    assert.match(playtime, /armPlaytimeIdleTimer/);
     assert.match(playtime, /pointerdown[\s\S]*?noteGamePlaytimeAction/);
     assert.match(playtime, /keydown[\s\S]*?noteGamePlaytimeAction/);
     assert.match(playtime, /spark-playtime-action/);
     assert.match(playtime, /Math\.min\([\s\S]*?PLAYTIME_IDLE_WINDOW_MS/);
     assert.doesNotMatch(playtime, /setInterval\(/);
+});
+
+test('Monopoly rating has durable private storage and a public leaderboard projection', () => {
+    assert.match(monopolyMigration, /create table if not exists public\.monopoly_rating/);
+    assert.match(monopolyMigration, /unfair_count integer not null default 0/);
+    assert.match(monopolyMigration, /enable row level security/);
+    assert.match(monopolyMigration, /revoke all on table public\.monopoly_rating from anon, authenticated/);
+    assert.match(server, /category === 'monopoly_points'[\s\S]*?from\('monopoly_rating'\)[\s\S]*?order\('points'/);
+    assert.match(client, /openLeaderboardDetail\('monopoly'\)/);
+    assert.match(client, /const MONOPOLY_CATS = \[\{ id: 'monopoly_points'/);
 });
