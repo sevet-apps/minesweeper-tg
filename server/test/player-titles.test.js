@@ -24,13 +24,16 @@ test('title rarity order and colors follow the approved visual system', () => {
         uncommon: { order: 1, color: '#168cff' },
         rare: { order: 2, color: '#28c76f' },
         epic: { order: 3, color: '#9b5cff' },
-        legendary: { order: 4, color: '#f5b82e' },
-        mythic: { order: 5, color: '#ff3b30' },
+        mythic: { order: 4, color: '#ff3b30' },
+        legendary: { order: 5, color: '#f5b82e' },
     });
-    assert.equal(byId.checkers_clean_win.rarity, 'legendary');
-    assert.equal(byId.sudoku_expert.rarity, 'legendary');
-    assert.equal(byId.wordle_sixth_sense.rarity, 'legendary');
-    assert.equal(byId.mono_clean_assets.rarity, 'legendary');
+    assert.equal(byId.checkers_clean_win.rarity, 'mythic');
+    assert.equal(byId.sudoku_expert.rarity, 'mythic');
+    assert.equal(byId.wordle_sixth_sense.rarity, 'mythic');
+    assert.equal(byId.mono_clean_assets.rarity, 'mythic');
+    assert.equal(byId.bb_singularity.rarity, 'legendary');
+    assert.equal(byId.tower_stratosphere.rarity, 'legendary');
+    assert.equal(byId.spark_crown.rarity, 'legendary');
     assert.equal(byId.mono_phoenix.rarity, 'epic');
     assert.equal(byId.spark_crown.dynamic, true);
 });
@@ -164,6 +167,7 @@ test('the title catalog is complete, localized and has stable unique ids', () =>
     assert.equal(new Set(TITLES.map(item => item.id)).size, TITLES.length);
     for (const item of TITLES) {
         assert.ok(RARITIES[item.rarity], `${item.id} has an unknown rarity`);
+        assert.equal(Object.hasOwn(item, 'icon'), false, `${item.id} must use its game's real Spark logo`);
         for (const locale of ['ru', 'en', 'zh']) {
             assert.ok(item.name[locale], `${item.id} needs a ${locale} name`);
             assert.ok(item.description[locale], `${item.id} needs a ${locale} description`);
@@ -191,6 +195,9 @@ test('profile catalog, selection and reward presentation are wired end to end', 
 
     assert.match(client, /id="profileSelectedTitle"[^>]*onclick="openTitleLibrary\(\)"/);
     assert.match(client, /id="titleGameFilter"[\s\S]*?id="titleRarityFilter"[\s\S]*?id="titleSortFilter"/);
+    assert.match(client, /const TITLE_GAME_LOGOS = Object\.freeze\([\s\S]*?assets\/game-icons\/minesweeper\.png[\s\S]*?assets\/game-icons\/monopoly\.png/);
+    assert.match(client, /applyTitleGameLogo\(document\.getElementById\('titleRewardIcon'\), item\.game\)/);
+    assert.doesNotMatch(client, /item\.icon \|\| '✦'/);
     assert.match(client, /id="titleHolderCount"/);
     assert.match(client, /function equipFocusedTitle\([\s\S]*?\/api\/titles\/select/);
     assert.match(client, /function titleRewardCanOpen\([\s\S]*?view-games[\s\S]*?\.game-overlay\.visible/,

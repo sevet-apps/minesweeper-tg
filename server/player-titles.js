@@ -5,8 +5,8 @@ const RARITIES = Object.freeze({
     uncommon:  { order: 1, color: '#168cff' },
     rare:      { order: 2, color: '#28c76f' },
     epic:      { order: 3, color: '#9b5cff' },
-    legendary: { order: 4, color: '#f5b82e' },
-    mythic:    { order: 5, color: '#ff3b30' },
+    mythic:    { order: 4, color: '#ff3b30' },
+    legendary: { order: 5, color: '#f5b82e' },
 });
 
 const GAME_LABELS = Object.freeze({
@@ -22,8 +22,10 @@ const GAME_LABELS = Object.freeze({
 });
 
 function text(ru, en, zh) { return Object.freeze({ ru, en, zh }); }
-function title(id, game, rarity, icon, name, description, extra = {}) {
-    return Object.freeze({ id, game, rarity, icon, name, description, ...extra });
+function title(id, game, rarity, _legacyIcon, name, description, extra = {}) {
+    // The client resolves one consistent emblem from the owning game's real
+    // Spark logo. Individual glyph avatars are intentionally not exposed.
+    return Object.freeze({ id, game, rarity, name, description, ...extra });
 }
 
 const TITLES = Object.freeze([
@@ -34,78 +36,78 @@ const TITLES = Object.freeze([
     title('spark_veteran', 'general', 'epic', '✹', text('Ветеран Spark', 'Spark Veteran', 'Spark 老将'), text('Провести 100 часов активного времени в играх.', 'Spend 100 active hours in games.', '累计 100 小时有效游戏时间。')),
     title('unstoppable', 'general', 'epic', '▣', text('Без остановки', 'Unstoppable', '永不停歇'), text('Заходить в Spark 30 дней подряд.', 'Open Spark 30 days in a row.', '连续 30 天打开 Spark。')),
     title('top_ten', 'general', 'rare', '⑩', text('В десятке', 'Top Ten', '前十名'), text('Войти в топ-10 хотя бы одной главной таблицы.', 'Reach the top 10 of any main leaderboard.', '进入任一主要排行榜前十。')),
-    title('summit_conqueror', 'general', 'legendary', '♛', text('Покоритель вершины', 'Summit Conqueror', '登顶者'), text('Хотя бы однажды занять первое место в главном топе игры.', 'Reach first place in a main game leaderboard.', '曾在任一游戏主榜登顶。')),
-    title('seven_facets', 'general', 'mythic', '✺', text('Семь граней', 'Seven Facets', '七重光芒'), text('Получить титул эпической редкости или выше в каждой из семи игр.', 'Earn an Epic-or-higher title in all seven games.', '在七款游戏中各获得一个史诗或更高稀有度的称号。')),
+    title('summit_conqueror', 'general', 'mythic', '♛', text('Покоритель вершины', 'Summit Conqueror', '登顶者'), text('Хотя бы однажды занять первое место в главном топе игры.', 'Reach first place in a main game leaderboard.', '曾在任一游戏主榜登顶。')),
+    title('seven_facets', 'general', 'legendary', '✺', text('Семь граней', 'Seven Facets', '七重光芒'), text('Получить титул эпической редкости или выше в каждой из семи игр.', 'Earn an Epic-or-higher title in all seven games.', '在七款游戏中各获得一个史诗或更高稀有度的称号。')),
 
     title('saper_rookie', 'saper', 'common', '⚑', text('Сапёр-новобранец', 'Rookie Sapper', '扫雷新兵'), text('Впервые пройти поле 6×6.', 'Clear a 6×6 board for the first time.', '首次完成 6×6 棋盘。')),
     title('saper_full_clearance', 'saper', 'uncommon', '▦', text('Полная зачистка', 'Full Clearance', '全面清扫'), text('Пройти режимы 6×6, 8×8, 10×10 и 15×15.', 'Clear all four board sizes.', '完成全部四种棋盘尺寸。')),
     title('saper_no_flags', 'saper', 'rare', '◇', text('Без единой метки', 'No Flags Needed', '无需标记'), text('Пройти 10×10, ни разу не поставив флаг.', 'Clear 10×10 without placing a flag.', '不放置旗帜完成 10×10。')),
     title('saper_fast_fuse', 'saper', 'epic', 'ϟ', text('Быстрее фитиля', 'Faster than the Fuse', '快过引线'), text('Пройти 15×15 быстрее чем за 3 минуты.', 'Clear 15×15 in under 3 minutes.', '在 3 分钟内完成 15×15。')),
     title('saper_cold_head', 'saper', 'epic', '❄', text('Холодная голова', 'Cold Head', '冷静头脑'), text('Победить 10 раз подряд. Учитываются режимы не меньше 8×8.', 'Win 10 games in a row on boards of at least 8×8.', '在至少 8×8 的模式中连续获胜 10 局。'), { note: text('Минимум 8×8', '8×8 minimum', '至少 8×8') }),
-    title('saper_mine_sense', 'saper', 'mythic', '✧', text('Чувствую мины', 'Mine Sense', '雷区直觉'), text('Одновременно занимать первое место по времени во всех четырёх режимах.', 'Hold the fastest time in all four modes at once.', '同时占据四种模式最快时间第一名。'), { dynamic: true }),
+    title('saper_mine_sense', 'saper', 'legendary', '✧', text('Чувствую мины', 'Mine Sense', '雷区直觉'), text('Одновременно занимать первое место по времени во всех четырёх режимах.', 'Hold the fastest time in all four modes at once.', '同时占据四种模式最快时间第一名。'), { dynamic: true }),
 
     title('checkers_first_king', 'checkers', 'common', '♔', text('Первая дамка', 'First King', '首枚王棋'), text('Впервые превратить шашку в дамку в игре с человеком.', 'Crown your first king in a human match.', '在人类对局中首次升王。')),
     title('checkers_combo', 'checkers', 'rare', '⤫', text('Комбинация', 'Combination', '连环吃子'), text('Срубить не меньше трёх шашек за один ход.', 'Capture at least three pieces in one turn.', '一回合吃掉至少三枚棋子。')),
-    title('checkers_clean_win', 'checkers', 'legendary', '◐', text('Сухая победа', 'Flawless Victory', '零损胜利'), text('Победить человека, не потеряв ни одной шашки.', 'Beat a human without losing a single piece.', '不损失任何棋子击败真人。')),
+    title('checkers_clean_win', 'checkers', 'mythic', '◐', text('Сухая победа', 'Flawless Victory', '零损胜利'), text('Победить человека, не потеряв ни одной шашки.', 'Beat a human without losing a single piece.', '不损失任何棋子击败真人。')),
     title('checkers_iron_will', 'checkers', 'epic', '◆', text('Железная воля', 'Iron Will', '钢铁意志'), text('Победить после отставания минимум в четыре шашки.', 'Win after trailing by at least four pieces.', '落后至少四枚棋子后逆转获胜。')),
-    title('checkers_ten_streak', 'checkers', 'legendary', 'Ⅹ', text('Без права на ошибку', 'No Room for Error', '不容有失'), text('Победить людей 10 раз подряд.', 'Win 10 human matches in a row.', '连续赢得 10 场真人对局。')),
-    title('checkers_grandmaster', 'checkers', 'legendary', '♚', text('Гроссмейстер', 'Grandmaster', '特级大师'), text('Одержать 100 побед над людьми.', 'Win 100 matches against humans.', '赢得 100 场真人对局。')),
+    title('checkers_ten_streak', 'checkers', 'mythic', 'Ⅹ', text('Без права на ошибку', 'No Room for Error', '不容有失'), text('Победить людей 10 раз подряд.', 'Win 10 human matches in a row.', '连续赢得 10 场真人对局。')),
+    title('checkers_grandmaster', 'checkers', 'mythic', '♚', text('Гроссмейстер', 'Grandmaster', '特级大师'), text('Одержать 100 побед над людьми.', 'Win 100 matches against humans.', '赢得 100 场真人对局。')),
 
     title('bb_first_line', 'bb', 'common', '▬', text('Первый ряд', 'First Line', '第一行'), text('Впервые очистить линию.', 'Clear your first line.', '首次消除一行。')),
     title('bb_triple', 'bb', 'rare', '≡', text('Тройной удар', 'Triple Strike', '三重打击'), text('Очистить минимум три линии одним ходом.', 'Clear at least three lines in one move.', '一回合消除至少三行。')),
     title('bb_combo_10', 'bb', 'rare', '⑩', text('Цепная реакция', 'Chain Reaction', '连锁反应'), text('Достичь комбо ×10.', 'Reach a ×10 combo.', '达到 ×10 连击。')),
-    title('bb_combo_100', 'bb', 'legendary', '◎', text('Резонанс', 'Resonance', '共振'), text('Достичь комбо ×100.', 'Reach a ×100 combo.', '达到 ×100 连击。')),
-    title('bb_combo_1000', 'bb', 'mythic', '∞', text('Бесконечная цепь', 'Endless Chain', '无限连锁'), text('Достичь комбо ×1000.', 'Reach a ×1000 combo.', '达到 ×1000 连击。')),
+    title('bb_combo_100', 'bb', 'mythic', '◎', text('Резонанс', 'Resonance', '共振'), text('Достичь комбо ×100.', 'Reach a ×100 combo.', '达到 ×100 连击。')),
+    title('bb_combo_1000', 'bb', 'legendary', '∞', text('Бесконечная цепь', 'Endless Chain', '无限连锁'), text('Достичь комбо ×1000.', 'Reach a ×1000 combo.', '达到 ×1000 连击。')),
     title('bb_geometry', 'bb', 'epic', '▰', text('Геометрия подчиняется', 'Geometry Obeys', '驾驭几何'), text('Набрать 10 000 000 очков.', 'Score 10,000,000 points.', '获得 10,000,000 分。')),
-    title('bb_event_horizon', 'bb', 'legendary', '◉', text('Горизонт событий', 'Event Horizon', '事件视界'), text('Набрать 100 000 000 очков.', 'Score 100,000,000 points.', '获得 100,000,000 分。')),
-    title('bb_singularity', 'bb', 'mythic', '●', text('Сингулярность', 'Singularity', '奇点'), text('Набрать 1 000 000 000 очков.', 'Score 1,000,000,000 points.', '获得 1,000,000,000 分。')),
+    title('bb_event_horizon', 'bb', 'mythic', '◉', text('Горизонт событий', 'Event Horizon', '事件视界'), text('Набрать 100 000 000 очков.', 'Score 100,000,000 points.', '获得 100,000,000 分。')),
+    title('bb_singularity', 'bb', 'legendary', '●', text('Сингулярность', 'Singularity', '奇点'), text('Набрать 1 000 000 000 очков.', 'Score 1,000,000,000 points.', '获得 1,000,000,000 分。')),
     title('bb_clean_board', 'bb', 'epic', '□', text('Чистое поле', 'Clean Board', '清空棋盘'), text('Полностью очистить поле одним ходом.', 'Completely clear the board in one move.', '一次落子清空整个棋盘。')),
 
     title('sudoku_first_grid', 'sudoku', 'common', '▦', text('Первая сетка', 'First Grid', '第一盘'), text('Впервые решить судоку.', 'Solve your first Sudoku.', '首次完成数独。')),
     title('sudoku_pure_logic', 'sudoku', 'uncommon', '◇', text('Чистая логика', 'Pure Logic', '纯粹逻辑'), text('Решить средний уровень без ошибок.', 'Solve Medium without mistakes.', '无错误完成中等难度。')),
-    title('sudoku_expert', 'sudoku', 'legendary', '◆', text('Эксперт', 'Expert', '专家'), text('Решить сложный уровень без ошибок.', 'Solve Hard without mistakes.', '无错误完成困难难度。')),
+    title('sudoku_expert', 'sudoku', 'mythic', '◆', text('Эксперт', 'Expert', '专家'), text('Решить сложный уровень без ошибок.', 'Solve Hard without mistakes.', '无错误完成困难难度。')),
     title('sudoku_speed', 'sudoku', 'epic', 'ϟ', text('Скорость мысли', 'Speed of Thought', '思维极速'), text('Решить сложный уровень быстрее чем за 5 минут.', 'Solve Hard in under 5 minutes.', '在 5 分钟内完成困难难度。')),
-    title('sudoku_archivist', 'sudoku', 'legendary', '▤', text('Архивариус', 'Archivist', '典藏家'), text('Решить 100 судоку.', 'Solve 100 Sudoku puzzles.', '完成 100 盘数独。')),
-    title('sudoku_ninth_level', 'sudoku', 'mythic', '⑨', text('Девятый уровень', 'Ninth Level', '第九境界'), text('Решить 30 сложных судоку подряд без ошибок.', 'Solve 30 Hard puzzles in a row without mistakes.', '连续无错误完成 30 盘困难数独。')),
+    title('sudoku_archivist', 'sudoku', 'mythic', '▤', text('Архивариус', 'Archivist', '典藏家'), text('Решить 100 судоку.', 'Solve 100 Sudoku puzzles.', '完成 100 盘数独。')),
+    title('sudoku_ninth_level', 'sudoku', 'legendary', '⑨', text('Девятый уровень', 'Ninth Level', '第九境界'), text('Решить 30 сложных судоку подряд без ошибок.', 'Solve 30 Hard puzzles in a row without mistakes.', '连续无错误完成 30 盘困难数独。')),
 
     title('tower_foundation', 'tower', 'common', '▰', text('Фундамент заложен', 'Foundation Laid', '奠定基础'), text('Построить башню из 10 этажей.', 'Build a 10-floor tower.', '建成 10 层高塔。')),
     title('tower_steady_hand', 'tower', 'uncommon', '◫', text('Точная рука', 'Steady Hand', '精准之手'), text('Поставить 5 идеальных блоков подряд.', 'Place 5 perfect blocks in a row.', '连续完美放置 5 个方块。')),
     title('tower_skyscraper', 'tower', 'rare', '▥', text('Небоскрёб', 'Skyscraper', '摩天楼'), text('Построить 50 этажей.', 'Build 50 floors.', '建成 50 层。')),
-    title('tower_perfect_balance', 'tower', 'legendary', '◈', text('Идеальный баланс', 'Perfect Balance', '完美平衡'), text('Поставить 20 идеальных блоков подряд.', 'Place 20 perfect blocks in a row.', '连续完美放置 20 个方块。')),
-    title('tower_stratosphere', 'tower', 'mythic', '↑', text('Стратосфера', 'Stratosphere', '平流层'), text('Построить башню из 500 этажей.', 'Build a 500-floor tower.', '建成 500 层高塔。')),
-    title('tower_close_call', 'tower', 'mythic', '⌁', text('На волоске', 'By a Thread', '命悬一线'), text('За одну игру 10 раз успешно поставить блок, когда остаётся не больше 5% ширины.', 'In one game, place 10 blocks successfully with no more than 5% width remaining.', '在同一局中，以不超过 5% 的剩余宽度成功放置 10 次。')),
+    title('tower_perfect_balance', 'tower', 'mythic', '◈', text('Идеальный баланс', 'Perfect Balance', '完美平衡'), text('Поставить 20 идеальных блоков подряд.', 'Place 20 perfect blocks in a row.', '连续完美放置 20 个方块。')),
+    title('tower_stratosphere', 'tower', 'legendary', '↑', text('Стратосфера', 'Stratosphere', '平流层'), text('Построить башню из 500 этажей.', 'Build a 500-floor tower.', '建成 500 层高塔。')),
+    title('tower_close_call', 'tower', 'legendary', '⌁', text('На волоске', 'By a Thread', '命悬一线'), text('За одну игру 10 раз успешно поставить блок, когда остаётся не больше 5% ширины.', 'In one game, place 10 blocks successfully with no more than 5% width remaining.', '在同一局中，以不超过 5% 的剩余宽度成功放置 10 次。')),
 
     title('wordle_found', 'wordle', 'common', '✓', text('Слово найдено', 'Word Found', '找到单词'), text('Впервые угадать слово.', 'Guess your first word.', '首次猜中单词。')),
     title('wordle_third_try', 'wordle', 'uncommon', '③', text('Третья попытка', 'Third Try', '三次以内'), text('Угадать слово не позднее третьей попытки.', 'Guess a word within three attempts.', '三次以内猜中单词。')),
     title('wordle_almost_telepath', 'wordle', 'rare', '②', text('Почти телепат', 'Almost Telepathic', '近乎读心'), text('Угадать слово со второй попытки.', 'Guess a word on the second attempt.', '第二次猜中单词。')),
-    title('wordle_sixth_sense', 'wordle', 'legendary', '①', text('Шестое чувство', 'Sixth Sense', '第六感'), text('Угадать слово с первой попытки.', 'Guess a word on the first attempt.', '第一次就猜中单词。')),
-    title('wordle_vocabulary', 'wordle', 'legendary', 'A', text('Словарный запас', 'Vocabulary', '词汇大师'), text('Одержать 100 побед.', 'Win 100 Wordle games.', '赢得 100 局猜词。')),
-    title('wordle_last_word', 'wordle', 'mythic', 'Ω', text('Последнее слово', 'Last Word', '最终答案'), text('Победить 30 раз подряд.', 'Win 30 games in a row.', '连续获胜 30 局。')),
+    title('wordle_sixth_sense', 'wordle', 'mythic', '①', text('Шестое чувство', 'Sixth Sense', '第六感'), text('Угадать слово с первой попытки.', 'Guess a word on the first attempt.', '第一次就猜中单词。')),
+    title('wordle_vocabulary', 'wordle', 'mythic', 'A', text('Словарный запас', 'Vocabulary', '词汇大师'), text('Одержать 100 побед.', 'Win 100 Wordle games.', '赢得 100 局猜词。')),
+    title('wordle_last_word', 'wordle', 'legendary', 'Ω', text('Последнее слово', 'Last Word', '最终答案'), text('Победить 30 раз подряд.', 'Win 30 games in a row.', '连续获胜 30 局。')),
 
     title('mono_first_capital', 'monopoly', 'common', '$', text('Первый капитал', 'First Capital', '第一桶金'), text('Впервые победить в игре с людьми.', 'Win your first human match.', '首次赢得真人对局。')),
     title('mono_monopolist', 'monopoly', 'uncommon', '▣', text('Монополист', 'Monopolist', '垄断者'), text('Впервые собрать полную цветовую группу.', 'Complete your first color group.', '首次集齐一个完整色组。')),
     title('mono_builder', 'monopoly', 'rare', '▥', text('Застройщик', 'Developer', '建设者'), text('Максимально застроить все компании одной группы.', 'Fully develop every company in one group.', '将同一色组全部开发至最高等级。')),
     title('mono_diplomat', 'monopoly', 'rare', '⇄', text('Дипломат', 'Diplomat', '外交家'), text('Заключить 10 принятых договоров.', 'Complete 10 accepted deals.', '达成 10 笔被接受的交易。')),
-    title('mono_clean_assets', 'monopoly', 'legendary', '◇', text('Чистые активы', 'Clean Assets', '纯净资产'), text('Победить, не заложив ни одной компании.', 'Win without mortgaging a company.', '在未抵押任何公司的情况下获胜。')),
+    title('mono_clean_assets', 'monopoly', 'mythic', '◇', text('Чистые активы', 'Clean Assets', '纯净资产'), text('Победить, не заложив ни одной компании.', 'Win without mortgaging a company.', '在未抵押任何公司的情况下获胜。')),
     title('mono_phoenix', 'monopoly', 'epic', '♨', text('Феникс', 'Phoenix', '凤凰'), text('Победить после падения денежного баланса ниже $100.', 'Win after your cash balance falls below $100.', '现金余额低于 $100 后逆转获胜。')),
-    title('mono_ruthless_market', 'monopoly', 'legendary', '♜', text('Безжалостный рынок', 'Ruthless Market', '无情市场'), text('Обанкротить трёх соперников за одну игру.', 'Bankrupt three opponents in one match.', '一局内令三名对手破产。')),
-    title('mono_city_owner', 'monopoly', 'legendary', '♙', text('Владелец города', 'City Owner', '城市之主'), text('Одержать 100 побед в играх с людьми.', 'Win 100 human matches.', '赢得 100 场真人对局。')),
-    title('mono_last_asset', 'monopoly', 'mythic', '◒', text('Последний актив', 'Last Asset', '最后资产'), text('Победить после падения общей стоимости активов до $2 000 или ниже.', 'Win after your total net worth falls to $2,000 or less.', '总资产跌至 $2,000 或更低后逆转获胜。')),
+    title('mono_ruthless_market', 'monopoly', 'mythic', '♜', text('Безжалостный рынок', 'Ruthless Market', '无情市场'), text('Обанкротить трёх соперников за одну игру.', 'Bankrupt three opponents in one match.', '一局内令三名对手破产。')),
+    title('mono_city_owner', 'monopoly', 'mythic', '♙', text('Владелец города', 'City Owner', '城市之主'), text('Одержать 100 побед в играх с людьми.', 'Win 100 human matches.', '赢得 100 场真人对局。')),
+    title('mono_last_asset', 'monopoly', 'legendary', '◒', text('Последний актив', 'Last Asset', '最后资产'), text('Победить после падения общей стоимости активов до $2 000 или ниже.', 'Win after your total net worth falls to $2,000 or less.', '总资产跌至 $2,000 或更低后逆转获胜。')),
 
     title('ref_partner', 'referral', 'common', '＋', text('Напарник', 'Partner', '伙伴'), text('Пригласить одного активированного игрока.', 'Invite one activated player.', '邀请 1 名已激活玩家。')),
     title('ref_company', 'referral', 'uncommon', '♧', text('Своя компания', 'Your Own Crew', '自己的团队'), text('Пригласить 5 активированных игроков.', 'Invite 5 activated players.', '邀请 5 名已激活玩家。')),
     title('ref_hub', 'referral', 'epic', '◎', text('Центр сообщества', 'Community Hub', '社区中心'), text('Пригласить 25 активированных игроков.', 'Invite 25 activated players.', '邀请 25 名已激活玩家。')),
-    title('ref_ambassador', 'referral', 'legendary', '✦', text('Амбассадор Spark', 'Spark Ambassador', 'Spark 大使'), text('Пригласить 100 активированных игроков.', 'Invite 100 activated players.', '邀请 100 名已激活玩家。')),
+    title('ref_ambassador', 'referral', 'mythic', '✦', text('Амбассадор Spark', 'Spark Ambassador', 'Spark 大使'), text('Пригласить 100 активированных игроков.', 'Invite 100 activated players.', '邀请 100 名已激活玩家。')),
 
-    title('leader_saper', 'saper', 'legendary', '⚑', text('Гроза мин', 'Mine Terror', '雷区霸主'), text('Занимать первое место в главном топе Сапёра по победам.', 'Hold first place in the main Minesweeper wins leaderboard.', '占据扫雷胜场主榜第一。'), { dynamic: true }),
-    title('leader_checkers', 'checkers', 'legendary', '♚', text('Гроссмейстер Spark', 'Spark Grandmaster', 'Spark 特级大师'), text('Занимать первое место в главном топе Шашек.', 'Hold first place in the main Checkers leaderboard.', '占据跳棋主榜第一。'), { dynamic: true }),
-    title('leader_bb', 'bb', 'legendary', '◉', text('Архитектор хаоса', 'Architect of Chaos', '混沌建筑师'), text('Занимать первое место в главном топе Блок Бласта.', 'Hold first place in the main Block Blast leaderboard.', '占据方块消除主榜第一。'), { dynamic: true }),
-    title('leader_sudoku', 'sudoku', 'legendary', '⑨', text('Властелин сеток', 'Grid Master', '九宫之主'), text('Занимать первое место в главном топе Судоку.', 'Hold first place in the main Sudoku leaderboard.', '占据数独主榜第一。'), { dynamic: true }),
-    title('leader_tower', 'tower', 'legendary', '↑', text('Выше облаков', 'Above the Clouds', '云端之上'), text('Занимать первое место в главном топе Башни.', 'Hold first place in the main Tower leaderboard.', '占据高塔主榜第一。'), { dynamic: true }),
-    title('leader_wordle', 'wordle', 'legendary', 'W', text('Хозяин слов', 'Master of Words', '词语之王'), text('Занимать первое место в главном топе Вордли.', 'Hold first place in the main Wordle leaderboard.', '占据猜词主榜第一。'), { dynamic: true }),
-    title('leader_monopoly', 'monopoly', 'legendary', '♜', text('Король рынка', 'Market King', '市场之王'), text('Занимать первое место в рейтинге Монополии.', 'Hold first place in the Monopoly rating.', '占据大富翁评级第一。'), { dynamic: true }),
-    title('absolute_champion', 'general', 'mythic', '✵', text('Абсолютный чемпион', 'Absolute Champion', '绝对冠军'), text('Одновременно занимать первое место в трёх главных игровых топах.', 'Hold first place in three main game leaderboards at once.', '同时占据三个游戏主榜第一。'), { dynamic: true }),
-    title('spark_crown', 'general', 'mythic', '♕', text('Венец Spark', 'Crown of Spark', 'Spark 王冠'), text('Одновременно занимать первые места во всех семи главных игровых топах. Рекорды времени Сапёра не учитываются.', 'Hold first place in all seven main game leaderboards. Minesweeper time boards do not count.', '同时占据七个游戏主榜第一；扫雷计时榜不计入。'), { dynamic: true }),
+    title('leader_saper', 'saper', 'mythic', '⚑', text('Гроза мин', 'Mine Terror', '雷区霸主'), text('Занимать первое место в главном топе Сапёра по победам.', 'Hold first place in the main Minesweeper wins leaderboard.', '占据扫雷胜场主榜第一。'), { dynamic: true }),
+    title('leader_checkers', 'checkers', 'mythic', '♚', text('Гроссмейстер Spark', 'Spark Grandmaster', 'Spark 特级大师'), text('Занимать первое место в главном топе Шашек.', 'Hold first place in the main Checkers leaderboard.', '占据跳棋主榜第一。'), { dynamic: true }),
+    title('leader_bb', 'bb', 'mythic', '◉', text('Архитектор хаоса', 'Architect of Chaos', '混沌建筑师'), text('Занимать первое место в главном топе Блок Бласта.', 'Hold first place in the main Block Blast leaderboard.', '占据方块消除主榜第一。'), { dynamic: true }),
+    title('leader_sudoku', 'sudoku', 'mythic', '⑨', text('Властелин сеток', 'Grid Master', '九宫之主'), text('Занимать первое место в главном топе Судоку.', 'Hold first place in the main Sudoku leaderboard.', '占据数独主榜第一。'), { dynamic: true }),
+    title('leader_tower', 'tower', 'mythic', '↑', text('Выше облаков', 'Above the Clouds', '云端之上'), text('Занимать первое место в главном топе Башни.', 'Hold first place in the main Tower leaderboard.', '占据高塔主榜第一。'), { dynamic: true }),
+    title('leader_wordle', 'wordle', 'mythic', 'W', text('Хозяин слов', 'Master of Words', '词语之王'), text('Занимать первое место в главном топе Вордли.', 'Hold first place in the main Wordle leaderboard.', '占据猜词主榜第一。'), { dynamic: true }),
+    title('leader_monopoly', 'monopoly', 'mythic', '♜', text('Король рынка', 'Market King', '市场之王'), text('Занимать первое место в рейтинге Монополии.', 'Hold first place in the Monopoly rating.', '占据大富翁评级第一。'), { dynamic: true }),
+    title('absolute_champion', 'general', 'legendary', '✵', text('Абсолютный чемпион', 'Absolute Champion', '绝对冠军'), text('Одновременно занимать первое место в трёх главных игровых топах.', 'Hold first place in three main game leaderboards at once.', '同时占据三个游戏主榜第一。'), { dynamic: true }),
+    title('spark_crown', 'general', 'legendary', '♕', text('Венец Spark', 'Crown of Spark', 'Spark 王冠'), text('Одновременно занимать первые места во всех семи главных игровых топах. Рекорды времени Сапёра не учитываются.', 'Hold first place in all seven main game leaderboards. Minesweeper time boards do not count.', '同时占据七个游戏主榜第一；扫雷计时榜不计入。'), { dynamic: true }),
 ]);
 
 const BY_ID = new Map(TITLES.map(item => [item.id, item]));
