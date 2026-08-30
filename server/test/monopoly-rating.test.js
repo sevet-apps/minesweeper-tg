@@ -69,3 +69,17 @@ test('Monopoly rating preserves points across concurrent matches and old schemas
     assert.ok(db.legacyFallbacks >= 4, 'every rejected new-schema write must retry without the missing column');
     assert.equal(db.rows.get('winner').points, 62, 'the durable row must contain the final accumulated score');
 });
+
+test('Monopoly rating migrates live-room tg ids to the shared profile id', async () => {
+    const db = fakeLegacySupabase({
+        tg42: { points: 21, games: 3, wins: 2, bankrupted: 1, streak: 1,
+            banned: false, checked: 0, history: [] },
+    });
+    const rating = makeRating({ supabase: db, log() {} });
+    const player = await rating.get('tg42');
+    assert.equal(player.uid, '42');
+    assert.equal(player.points, 21);
+
+    await rating.setBanned('tg42', false);
+    assert.equal(db.rows.get('42').points, 21, 'the next write must use the canonical profile id');
+});

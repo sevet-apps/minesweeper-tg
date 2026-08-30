@@ -1,5 +1,7 @@
 'use strict';
 
+const { normalizeTelegramId, telegramIdAliases } = require('./telegram-id');
+
 const RARITIES = Object.freeze({
     common:    { order: 0, color: '#8e8e93' },
     uncommon:  { order: 1, color: '#168cff' },
@@ -94,10 +96,10 @@ const TITLES = Object.freeze([
     title('mono_city_owner', 'monopoly', 'mythic', '♙', text('Владелец города', 'City Owner', '城市之主'), text('Одержать 100 побед в играх с людьми.', 'Win 100 human matches.', '赢得 100 场真人对局。')),
     title('mono_last_asset', 'monopoly', 'legendary', '◒', text('Последний актив', 'Last Asset', '最后资产'), text('Победить после падения общей стоимости активов до $2 000 или ниже.', 'Win after your total net worth falls to $2,000 or less.', '总资产跌至 $2,000 或更低后逆转获胜。')),
 
-    title('ref_partner', 'referral', 'common', '＋', text('Напарник', 'Partner', '伙伴'), text('Пригласить одного активированного игрока.', 'Invite one activated player.', '邀请 1 名已激活玩家。')),
-    title('ref_company', 'referral', 'uncommon', '♧', text('Своя компания', 'Your Own Crew', '自己的团队'), text('Пригласить 5 активированных игроков.', 'Invite 5 activated players.', '邀请 5 名已激活玩家。')),
-    title('ref_hub', 'referral', 'epic', '◎', text('Центр сообщества', 'Community Hub', '社区中心'), text('Пригласить 25 активированных игроков.', 'Invite 25 activated players.', '邀请 25 名已激活玩家。')),
-    title('ref_ambassador', 'referral', 'mythic', '✦', text('Амбассадор Spark', 'Spark Ambassador', 'Spark 大使'), text('Пригласить 100 активированных игроков.', 'Invite 100 activated players.', '邀请 100 名已激活玩家。')),
+    title('ref_partner', 'referral', 'common', '＋', text('Напарник', 'Partner', '伙伴'), text('Пригласить одного активного игрока.', 'Invite one active player.', '邀请 1 名活跃玩家。')),
+    title('ref_company', 'referral', 'uncommon', '♧', text('Своя компания', 'Your Own Crew', '自己的团队'), text('Пригласить 5 активных игроков.', 'Invite 5 active players.', '邀请 5 名活跃玩家。')),
+    title('ref_hub', 'referral', 'epic', '◎', text('Центр сообщества', 'Community Hub', '社区中心'), text('Пригласить 25 активных игроков.', 'Invite 25 active players.', '邀请 25 名活跃玩家。')),
+    title('ref_ambassador', 'referral', 'mythic', '✦', text('Амбассадор Spark', 'Spark Ambassador', 'Spark 大使'), text('Пригласить 100 активных игроков.', 'Invite 100 active players.', '邀请 100 名活跃玩家。')),
 
     title('leader_saper', 'saper', 'mythic', '⚑', text('Гроза мин', 'Mine Terror', '雷区霸主'), text('Занимать первое место в главном топе Сапёра по победам.', 'Hold first place in the main Minesweeper wins leaderboard.', '占据扫雷胜场主榜第一。'), { dynamic: true }),
     title('leader_checkers', 'checkers', 'mythic', '♚', text('Гроссмейстер Spark', 'Spark Grandmaster', 'Spark 特级大师'), text('Занимать первое место в главном топе Шашек.', 'Hold first place in the main Checkers leaderboard.', '占据跳棋主榜第一。'), { dynamic: true }),
@@ -322,12 +324,12 @@ function makeTitleService({ supabase, log = console }) {
     const chains = new Map();
 
     function memoryState(userId) {
-        const id = String(userId);
+        const id = normalizeTelegramId(userId);
         if (!memory.has(id)) memory.set(id, { progress: {}, selectedTitleId: null, titles: new Map() });
         return memory.get(id);
     }
     async function dbState(userId) {
-        const id = String(userId);
+        const id = normalizeTelegramId(userId);
         try {
             const [progressResult, titleResult] = await Promise.all([
                 supabase.from('player_title_progress').select('progress,selected_title_id').eq('telegram_id', id).maybeSingle(),
@@ -347,7 +349,7 @@ function makeTitleService({ supabase, log = console }) {
         }
     }
     async function saveProgress(userId, state) {
-        const id = String(userId);
+        const id = normalizeTelegramId(userId);
         if (state.storage === 'memory') {
             const target = memoryState(id); target.progress = state.progress; target.selectedTitleId = state.selectedTitleId;
             return;
@@ -360,7 +362,7 @@ function makeTitleService({ supabase, log = console }) {
     }
     async function saveAwards(userId, state, ids) {
         if (!ids.length) return [];
-        const id = String(userId), now = new Date().toISOString();
+        const id = normalizeTelegramId(userId), now = new Date().toISOString();
         const fresh = ids.filter(titleId => !state.titles.has(titleId));
         if (!fresh.length) return [];
         if (state.storage === 'memory') {
@@ -380,12 +382,12 @@ function makeTitleService({ supabase, log = console }) {
             'bb_best_score','bb_total_games','saper_wins','saper_best_6','saper_best_8','saper_best_10','saper_best_15',
             'checkers_total','checkers_wins_pve','sudoku_wins','tower_best','tower_combo','wordle_wins'
         ];
-        const id = String(userId);
+        const id = normalizeTelegramId(userId);
         const [userResult, referralResult, monopolyResult] = await Promise.all([
             supabase.from('users').select(fields.join(',')).eq('telegram_id', id).maybeSingle(),
             supabase.from('users').select('telegram_id', { count: 'exact', head: true })
                 .eq('referred_by', id).eq('referral_activated', true),
-            supabase.from('monopoly_rating').select('games').eq('uid', id).maybeSingle(),
+            supabase.from('monopoly_rating').select('games').in('uid', telegramIdAliases(id)),
         ]);
         if (userResult.error) log.warn?.('[titles] user stats:', userResult.error.message);
         if (referralResult.error) log.warn?.('[titles] activated referrals:', referralResult.error.message);
@@ -393,11 +395,11 @@ function makeTitleService({ supabase, log = console }) {
         return {
             ...safeObject(userResult.data),
             activated_referrals: referralResult.error ? 0 : number(referralResult.count),
-            monopoly_games: monopolyResult.error ? 0 : number(monopolyResult.data?.games),
+            monopoly_games: monopolyResult.error ? 0 : Math.max(0, ...(monopolyResult.data || []).map(row => number(row.games))),
         };
     }
     async function rankState(userId) {
-        const id = String(userId), first = {}, ranks = {};
+        const id = normalizeTelegramId(userId), first = {}, ranks = {};
         await Promise.all(Object.entries(MAIN_RANKS).map(async ([game, column]) => {
             const [{ data: own, error: ownError }, { data: top, error: topError }] = await Promise.all([
                 supabase.from('users').select(column).eq('telegram_id', id).maybeSingle(),
@@ -414,14 +416,14 @@ function makeTitleService({ supabase, log = console }) {
             ranks[game] = first[game] ? 1 : (index >= 0 ? index + 1 : null);
         }));
         const [{ data: own, error: ownError }, { data: top, error: topError }] = await Promise.all([
-            supabase.from('monopoly_rating').select('points').eq('uid', id).maybeSingle(),
+            supabase.from('monopoly_rating').select('uid,points').in('uid', telegramIdAliases(id)),
             supabase.from('monopoly_rating').select('uid,points').gt('games', 0).order('points', { ascending: false }).limit(10),
         ]);
         if (ownError) throw ownError;
         if (topError) throw topError;
-        const rows = top || [], ownValue = number(own?.points);
+        const rows = top || [], ownValue = Math.max(0, ...(own || []).map(row => number(row.points)));
         first.monopoly = ownValue > 0 && rows.length > 0 && ownValue === number(rows[0].points);
-        const index = rows.findIndex(row => String(row.uid) === id);
+        const index = rows.findIndex(row => normalizeTelegramId(row.uid) === id);
         ranks.monopoly = first.monopoly ? 1 : (index >= 0 ? index + 1 : null);
         const firstCount = Object.values(first).filter(Boolean).length;
         return { first, ranks, firstCount, firstAny: firstCount > 0, topTenAny: Object.values(ranks).some(rank => rank && rank <= 10) };
@@ -445,7 +447,8 @@ function makeTitleService({ supabase, log = console }) {
         if (typeof extra === 'function') tieQuery = extra(tieQuery);
         const { data: ties, error: tieError } = await tieQuery;
         if (tieError) throw tieError;
-        return new Set((ties || []).map(row => String(row[idField])));
+        return new Set((ties || []).map(row => table === 'monopoly_rating'
+            ? normalizeTelegramId(row[idField]) : String(row[idField])));
     }
     async function dynamicHolderCounts() {
         if (dynamicCountsCache.expiresAt > Date.now()) return dynamicCountsCache.counts;
@@ -480,7 +483,7 @@ function makeTitleService({ supabase, log = console }) {
         }
     }
     function enqueue(userId, task) {
-        const id = String(userId), previous = chains.get(id) || Promise.resolve();
+        const id = normalizeTelegramId(userId), previous = chains.get(id) || Promise.resolve();
         const current = previous.then(task, task);
         chains.set(id, current.catch(() => {}));
         return current;
@@ -541,7 +544,7 @@ function makeTitleService({ supabase, log = console }) {
                 for (const mode of modes) {
                     const column = `saper_best_${mode}`;
                     const [{ data: own, error: ownError }, { data: top, error: topError }] = await Promise.all([
-                        supabase.from('users').select(column).eq('telegram_id', String(userId)).maybeSingle(),
+                        supabase.from('users').select(column).eq('telegram_id', normalizeTelegramId(userId)).maybeSingle(),
                         supabase.from('users').select(column).gt(column, 0).lt(column, 9999).order(column, { ascending: true }).limit(1),
                     ]);
                     if (ownError) throw ownError;
@@ -587,7 +590,7 @@ function makeTitleService({ supabase, log = console }) {
                     for (const mode of [6,8,10,15]) {
                         const column = `saper_best_${mode}`;
                         const [{ data: own, error: ownError }, { data: top, error: topError }] = await Promise.all([
-                            supabase.from('users').select(column).eq('telegram_id', String(userId)).maybeSingle(),
+                            supabase.from('users').select(column).eq('telegram_id', normalizeTelegramId(userId)).maybeSingle(),
                             supabase.from('users').select(column).gt(column, 0).lt(column, 9999).order(column, { ascending: true }).limit(1),
                         ]);
                         if (ownError) throw ownError;
@@ -608,7 +611,7 @@ function makeTitleService({ supabase, log = console }) {
             if (state.storage === 'memory') {
                 ids.forEach(id => { const row = state.titles.get(id); if (row) row.seen_at = now; }); return;
             }
-            const { error } = await supabase.from('player_titles').update({ seen_at: now }).eq('telegram_id', String(userId)).in('title_id', ids);
+            const { error } = await supabase.from('player_titles').update({ seen_at: now }).in('telegram_id', telegramIdAliases(userId)).in('title_id', ids);
             if (error) throw error;
         });
     }

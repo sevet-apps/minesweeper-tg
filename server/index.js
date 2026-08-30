@@ -24,6 +24,7 @@ const {
 const MonopolyEngine = require('./monopoly-engine');
 const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
 const { makeTitleService } = require('./player-titles');
+const { normalizeTelegramId } = require('./telegram-id');
 
 const app = express();
 app.use(cors());
@@ -1748,20 +1749,43 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
 
 app.get('/leaderboard', async (req, res) => {
     const { category } = req.query;
-    if (category === 'monopoly_points') {
-        const { data: ratings, error: ratingError } = await supabase
+    if (category === 'monopoly_points' || category === 'monopoly_wins') {
+        const metric = category === 'monopoly_wins' ? 'wins' : 'points';
+        let ratingQuery = supabase
             .from('monopoly_rating')
-            .select('uid, points, games, updated_at')
+            .select('uid, points, games, wins, updated_at')
             .eq('banned', false)
-            .gt('games', 0)
-            .order('points', { ascending: false })
+            .gt('games', 0);
+        if (metric === 'wins') ratingQuery = ratingQuery.gt('wins', 0);
+        const { data: ratings, error: ratingError } = await ratingQuery
+            .order(metric, { ascending: false })
             .order('updated_at', { ascending: true })
-            .limit(50);
+            .limit(100);
         if (ratingError) {
-            console.error('[leaderboard] monopoly_points:', ratingError.message);
+            console.error(`[leaderboard] ${category}:`, ratingError.message);
             return res.status(500).json({ error: 'Leaderboard unavailable' });
         }
-        const ids = [...new Set((ratings || []).map(row => String(row.uid)).filter(Boolean))];
+        // Old live rooms used `tg123`, while every shared profile uses `123`.
+        // Collapse both forms so a player cannot appear twice and profile
+        // names/photos can always be resolved from public.users.
+        const normalizedRatings = new Map();
+        (ratings || []).forEach(row => {
+            const id = normalizeTelegramId(row.uid);
+            if (!id) return;
+            const existing = normalizedRatings.get(id);
+            if (!existing) normalizedRatings.set(id, { ...row, uid: id });
+            else {
+                existing.points = Math.max(Number(existing.points) || 0, Number(row.points) || 0);
+                existing.games = Math.max(Number(existing.games) || 0, Number(row.games) || 0);
+                existing.wins = Math.max(Number(existing.wins) || 0, Number(row.wins) || 0);
+                if (new Date(row.updated_at || 0) < new Date(existing.updated_at || 0)) existing.updated_at = row.updated_at;
+            }
+        });
+        const orderedRatings = [...normalizedRatings.values()]
+            .sort((a, b) => (Number(b[metric]) || 0) - (Number(a[metric]) || 0)
+                || new Date(a.updated_at || 0) - new Date(b.updated_at || 0))
+            .slice(0, 50);
+        const ids = orderedRatings.map(row => row.uid);
         let profiles = [];
         if (ids.length) {
             const { data, error } = await supabase
@@ -1772,13 +1796,13 @@ app.get('/leaderboard', async (req, res) => {
             else profiles = data || [];
         }
         const profileById = new Map(profiles.map(profile => [String(profile.telegram_id), profile]));
-        return res.json((ratings || []).map(row => {
+        return res.json(orderedRatings.map(row => {
             const profile = profileById.get(String(row.uid)) || {};
             return {
                 user_id: String(row.uid),
-                username: profile.username || `Player ${row.uid}`,
+                username: profile.username || 'Игрок',
                 photo_url: profile.photo_url || '',
-                score: Number(row.points) || 0,
+                score: Number(row[metric]) || 0,
             };
         }));
     }
@@ -3620,7 +3644,7 @@ async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
     return tops.get(gameConfig.column);
 }
 
-// Получить топ рефералов (только активированные)
+// Получить топ рефералов (только активные)
 async function getTopForReferrals(userId, usePremiumEmoji = true) {
     const emojis = usePremiumEmoji ? EMOJI : EMOJI_INLINE;
     const name = 'Рефералы';

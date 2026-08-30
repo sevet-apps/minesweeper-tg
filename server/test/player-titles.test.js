@@ -17,6 +17,10 @@ const monopolyMigration = fs.readFileSync(
     path.join(root, 'supabase', 'migrations', '202608300001_add_monopoly_rating.sql'),
     'utf8',
 );
+const identityMigration = fs.readFileSync(
+    path.join(root, 'supabase', 'migrations', '202608310001_normalize_monopoly_identity.sql'),
+    'utf8',
+);
 
 const byId = Object.fromEntries(TITLES.map(item => [item.id, item]));
 const awardSet = (progress = {}, stats = {}, ranks = null, unlocked = []) =>
@@ -234,7 +238,19 @@ test('Monopoly rating has durable private storage and a public leaderboard proje
     assert.match(monopolyMigration, /unfair_count integer not null default 0/);
     assert.match(monopolyMigration, /enable row level security/);
     assert.match(monopolyMigration, /revoke all on table public\.monopoly_rating from anon, authenticated/);
-    assert.match(server, /category === 'monopoly_points'[\s\S]*?from\('monopoly_rating'\)[\s\S]*?order\('points'/);
+    assert.match(server, /category === 'monopoly_points' \|\| category === 'monopoly_wins'[\s\S]*?from\('monopoly_rating'\)[\s\S]*?order\(metric/);
     assert.match(client, /openLeaderboardDetail\('monopoly'\)/);
     assert.match(client, /const MONOPOLY_CATS = \[\{ id: 'monopoly_points'/);
+    assert.match(client, /id: 'monopoly_wins'/);
+    assert.match(identityMigration, /where uid ~ '\^tg\[0-9\]\+\$'/);
+    assert.match(identityMigration, /monopoly_rating_wins_top_idx/);
+});
+
+test('Title catalog keeps Telegram phone chrome clear and uses scroll-isolated filter sheets', () => {
+    assert.match(client, /body:not\(\.desktop\) \.title-library-sheet\s*\{[\s\S]*?padding-top:\s*calc\(90px \+ var\(--safe-top\)\)/);
+    assert.match(client, /body:not\(\.desktop\) \.title-detail-sheet\s*\{\s*min-height:\s*min\(66vh, 640px\)/);
+    assert.match(client, /\.title-choice-sheet\s*\{[\s\S]*?overflow:\s*hidden/);
+    assert.match(client, /\.title-choice-list\s*\{[\s\S]*?overflow-y:\s*auto/);
+    assert.match(client, /span\.rainbow\s*\{[\s\S]*?conic-gradient/);
+    assert.match(client, /value:\s*'all'[\s\S]*?rainbow:\s*true/);
 });
