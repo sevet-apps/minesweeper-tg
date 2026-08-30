@@ -24,6 +24,8 @@
    ============================================================ */
 'use strict';
 
+const { normalizeTelegramId, telegramIdAliases } = require('./telegram-id');
+
 /* ---------- титулы ----------
    Порог — суммарные очки. Средняя победа даёт ~10 очков, поэтому до
    «Легенды» нужны тысячи партий. */
@@ -102,14 +104,20 @@ function makeRating(opts) {
     }
 
     async function load(uid) {
-        if (cache.has(uid)) return cache.get(uid);
-        if (pendingLoads.has(uid)) return pendingLoads.get(uid);
+        const id = normalizeTelegramId(uid);
+        if (cache.has(id)) return cache.get(id);
+        if (pendingLoads.has(id)) return pendingLoads.get(id);
         const pending = (async () => {
-            let rec = blank(uid);
+            let rec = blank(id);
             if (supabase && tableOk) {
                 try {
-                    const { data, error } = await supabase
-                        .from('monopoly_rating').select('*').eq('uid', uid).maybeSingle();
+                    let { data, error } = await supabase
+                        .from('monopoly_rating').select('*').eq('uid', id).maybeSingle();
+                    const aliases = telegramIdAliases(id);
+                    if (!error && !data && aliases.length > 1) {
+                        ({ data, error } = await supabase
+                            .from('monopoly_rating').select('*').eq('uid', aliases[1]).maybeSingle());
+                    }
                     if (error && error.code === '42P01') {   // таблицы нет
                         tableOk = false;
                         log('[rating] таблицы monopoly_rating нет — работаю в памяти');
@@ -117,18 +125,19 @@ function makeRating(opts) {
                         log('[rating] load:', error.message || error.code || String(error));
                     } else if (data) {
                         rec = Object.assign(rec, data, {
+                            uid: id,
                             history: Array.isArray(data.history) ? data.history : [],
                             unfairCount: data.unfair_count | 0,
                         });
                     }
                 } catch (e) { log('[rating] load:', e.message); }
             }
-            cache.set(uid, rec);
+            cache.set(id, rec);
             return rec;
         })();
-        pendingLoads.set(uid, pending);
+        pendingLoads.set(id, pending);
         try { return await pending; }
-        finally { pendingLoads.delete(uid); }
+        finally { pendingLoads.delete(id); }
     }
 
     async function save(rec) {
@@ -233,7 +242,7 @@ function makeRating(opts) {
             await save(rec);
 
             result.push({
-                uid: p.uid, name: p.name, winner: !!p.winner,
+                uid: rec.uid, name: p.name, winner: !!p.winner,
                 place: p.place || null, peak: p.peak || 0,
                 gained, reasons,
                 pointsBefore: before, pointsAfter: rec.points,
