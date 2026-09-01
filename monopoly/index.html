@@ -16,6 +16,7 @@ window.DICE_SIZE = 1.0;
 <link rel="stylesheet" href="css/masks.css">
 <link rel="stylesheet" href="css/v2.css">
 <link rel="stylesheet" href="css/lobby.css">
+<link rel="stylesheet" href="css/collection.css">
 </head>
 <body>
 
@@ -47,6 +48,11 @@ window.DICE_SIZE = 1.0;
           <div class="lb-mode-txt"><b>Войти по коду</b><span>Присоединиться к комнате</span></div>
           <div class="lb-mode-arrow">›</div>
         </button>
+        <button class="lb-mode" id="lbCollectionOpen">
+          <div class="lb-mode-ico gold"><img class="lb-ico-img" src="assets/skins/case.svg" alt=""></div>
+          <div class="lb-mode-txt"><b>Профиль и коллекция</b><span>Кейсы, компании и оформление поля</span></div>
+          <div class="lb-mode-arrow">›</div>
+        </button>
       </div>
 
       <div class="lb-sec-head">
@@ -60,6 +66,11 @@ window.DICE_SIZE = 1.0;
         </button>
       </div>
       <div id="lbRooms"></div>
+    </div>
+
+    <!-- Профиль и коллекция Монополии -->
+    <div class="lb-screen collection-screen" id="lbCollection">
+      <div id="monoCollectionRoot"></div>
     </div>
 
     <!-- Создание комнаты -->
@@ -194,6 +205,7 @@ window.DICE_SIZE = 1.0;
 <script src="js/v2/trades.js"></script>
 <script src="js/v2/emoji.js"></script>
 <script src="js/v2/rating-ui.js"></script>
+<script src="js/v2/collection-ui.js"></script>
 <script src="js/v2/game-ui.js"></script>
 <script src="js/v2/lobby.js"></script>
 <script>

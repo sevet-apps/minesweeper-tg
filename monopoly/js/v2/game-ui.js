@@ -16,6 +16,7 @@
     const ico = (n, fb, cls) => (global.Modals && global.Modals.ico)
         ? global.Modals.ico(n, fb, cls)
         : `<span class="mi-ico-fb">${fb || ''}</span>`;
+    const tileName = i => E?.S?.activeSkins?.[i]?.name || D.TILES[i]?.name || 'Поле';
 
     let els = {};
     let timerTick = null, lastPhase = null;
@@ -296,7 +297,8 @@
         }
         let view = {
             players: S.players, owners: S.owners,
-            branches: S.branches, mortgaged: S.mortgaged, chips,
+            branches: S.branches, mortgaged: S.mortgaged,
+            activeSkins: S.activeSkins || {}, chips,
             selected: global.Trades ? global.Trades.selection() : {},
         };
         if (global.Trades && global.Trades.futureOn()) view = global.Trades.futureState(view);
@@ -491,10 +493,9 @@
                 html = head('');
                 break;
             case 'await-buy': {
-                const t = D.TILES[ph.tile];
                 if (mine) {
                     html = head('Покупаем?') +
-                        `<div class="service-desc">Вы попали на ${t.name}, и у вас есть право его купить.<br>
+                        `<div class="service-desc">Вы попали на ${tileName(ph.tile)}, и у вас есть право его купить.<br>
                          Если вы откажетесь от покупки, то поле будет выставлено на аукцион.</div>
                          <div class="service-actions">
                             <button class="btn btn-primary${afford(ph.price) ? '' : ' is-disabled'}" id="buyBtn"
@@ -505,18 +506,17 @@
                 break;
             }
             case 'auction': {
-                const t = D.TILES[ph.tile];
                 if (mine) {
                     const can = E.S.players[meId].money >= ph.next;
                     html = head('Аукцион') +
-                        `<div class="service-desc">${t.name} находится на аукционе.</div>
+                        `<div class="service-desc">${tileName(ph.tile)} находится на аукционе.</div>
                          <div class="service-actions">
                             <button class="btn btn-primary" id="raiseBtn" ${can ? '' : 'disabled'}>Поднять до <b>${DS}${fmt(ph.next)}</b></button>
                             <button class="btn btn-secondary" id="passBtn">Отказаться</button>
                          </div>`;
                 } else {
                     html = head('Аукцион') +
-                        `<div class="service-desc">${t.name} на аукционе: ставка ${DS}${fmt(ph.price)}, ходит @${S.players[ph.pid]?.name || ''}.</div>`;
+                        `<div class="service-desc">${tileName(ph.tile)} на аукционе: ставка ${DS}${fmt(ph.price)}, ходит @${S.players[ph.pid]?.name || ''}.</div>`;
                 }
                 break;
             }

@@ -72,11 +72,17 @@
     }
 
     /* ---------- карточка поля ---------- */
-    function starRow(n, price) {
+    function boosted(price, skin) {
+        return skin ? Math.round(price * (1 + (Number(skin.bonusBps) || 0) / 10000)) : price;
+    }
+    function bonusMark(skin) {
+        return skin ? `<small class="skin-rent-bonus">+${skin.bonusBps / 100}% от скина</small>` : '';
+    }
+    function starRow(n, price, skin) {
         const cell = n === 5
             ? star('gold')
             : Array.from({ length: n }, () => star('white')).join('');
-        return `<div class="row"><span class="stars-cell">${cell}</span><span>${DS}${fmt(price)}</span></div>`;
+        return `<div class="row"><span class="stars-cell">${cell}</span><span>${DS}${fmt(boosted(price, skin))}</span></div>`;
     }
 
     function fieldCard(i, anchorRect, anchorEl) {
@@ -85,6 +91,7 @@
         const g = D.GROUPS[t.group];
         const S = global.Engine ? global.Engine.S : { owners: {}, branches: {}, mortgaged: {} };
         const owner = S.owners[i];
+        const skin = S.activeSkins && S.activeSkins[i];
         const me = global.Engine && global.Engine.me();
         const mine = owner && owner === me;
 
@@ -97,16 +104,18 @@
                 && global.Engine.ownsFullGroup(owner, t.group) && !(S.branches[i] > 0);
             body += `<div class="row${doubled ? ' hl' : ''}"><span>Базовая аренда${
                 doubled ? ' <i class="x2">×2</i>' : ''}</span><span>${DS}${fmt(
-                doubled ? pr.rent[0] * 2 : pr.rent[0])}</span></div>`;
-            for (let n = 1; n <= 4; n++) body += starRow(n, pr.rent[n]);
-            body += starRow(5, pr.rent[5]);
+                boosted(doubled ? pr.rent[0] * 2 : pr.rent[0], skin))}</span></div>`;
+            for (let n = 1; n <= 4; n++) body += starRow(n, pr.rent[n], skin);
+            body += starRow(5, pr.rent[5], skin);
+            body += bonusMark(skin);
             body += `<p class="hint note">Если собрана вся монополия и на ней нет филиалов,
                 базовая аренда взимается в двойном размере.</p>`;
             body += `<div class="sep"></div>`;
         } else if (pr.carRent) {
             body += `<p class="hint">Аренда зависит от количества Автомобилей, которыми вы владеете.</p>`;
             pr.carRent.forEach((r, k) =>
-                body += `<div class="row"><span>${k + 1} пол${k === 0 ? 'е' : 'я'}</span><span>${DS}${fmt(r)}</span></div>`);
+                body += `<div class="row"><span>${k + 1} пол${k === 0 ? 'е' : 'я'}</span><span>${DS}${fmt(boosted(r, skin))}</span></div>`);
+            body += bonusMark(skin);
             body += `<div class="sep"></div>`;
         } else if (pr.diceMult) {
             body += `<p class="hint">Аренда зависит от суммы чисел на кубиках и от количества Разработчиков игр, которыми вы владеете.</p>`;
@@ -141,7 +150,7 @@
 
         const card = openAt(`
             <div class="pc-head" style="background:${g.color}">
-                <div class="pc-name">${t.name}</div>
+                <div class="pc-name">${skin ? skin.name : t.name}</div>
                 <div class="pc-group">${g.name}</div>
             </div>
             <div class="pc-body">${body}</div>
@@ -170,7 +179,8 @@
             if (alive) items += `<button class="mi danger giveup"><span class="mi-ico-fb">✕</span> Сдаться</button>`;
             items += `<button class="mi quit">${EXIT_SVG} Выйти</button>`;
         } else {
-            /* чужая карточка: только договор и игнор */
+            /* Чужая карточка: коллекция видна всем участникам партии. */
+            items += `<button class="mi profile">${ico('user', '👤')} Профиль и коллекция</button>`;
             const myTurn = E.canTrade(me);
             items += `<button class="mi trade${myTurn ? '' : ' disabled'}">${ico('contract', '📄')} Договор${
                 myTurn ? '' : '<small>только в свой ход</small>'}</button>`;
@@ -188,6 +198,10 @@
             <div class="pm-menu">${items}</div>`, anchorRect, 'player-menu', anchorEl);
 
         card.querySelector('.giveup')?.addEventListener('click', () => confirmSurrender());
+        card.querySelector('.profile')?.addEventListener('click', () => {
+            close();
+            if (global.CollectionUI) global.CollectionUI.openPlayer(pid);
+        });
         card.querySelector('.quit')?.addEventListener('click', () => confirmQuit());
         card.querySelector('.ignore')?.addEventListener('click', ev => {
             S.ignored[pid] = !S.ignored[pid];

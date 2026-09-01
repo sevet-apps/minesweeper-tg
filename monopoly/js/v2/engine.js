@@ -24,6 +24,7 @@
         chance: [], chanceIdx: 0,
         winner: null,
         ignored: {},             // id -> true (мои игноры)
+        skinLoadouts: {},        // pid -> tile -> проверенный профильный скин
     };
 
     const listeners = {};
@@ -262,30 +263,62 @@
 
     /* ---------- собственность ---------- */
     function groupTiles(g) { return D.TILES.filter(x => x.group === g); }
+    function ownsEntireGroup(pid, g) {
+        return !!pid && groupTiles(g).length > 0 && groupTiles(g).every(x => S.owners[x.i] === pid);
+    }
     function ownsFullGroup(pid, g) {
         return groupTiles(g).every(x => S.owners[x.i] === pid && S.mortgaged[x.i] == null);
+    }
+    function activeSkin(i) {
+        const tile = D.TILES[i], owner = S.owners[i];
+        if (!tile || tile.type !== 'prop' || !ownsEntireGroup(owner, tile.group)) return null;
+        return S.skinLoadouts[owner]?.[i] || null;
+    }
+    function activeSkins() {
+        const out = {};
+        D.TILES.forEach(tile => {
+            const skin = activeSkin(tile.i);
+            if (skin) out[tile.i] = { ...skin, owner: S.owners[tile.i] };
+        });
+        return out;
+    }
+    function tileName(i) { return activeSkin(i)?.name || D.TILES[i]?.name || 'Поле'; }
+    function withSkinBonus(amount, skin) {
+        return skin ? Math.round((Number(amount) || 0) * (1 + (Number(skin.bonusBps) || 0) / 10000)) : amount;
+    }
+    function setSkinLoadout(pid, rows) {
+        const out = {};
+        (Array.isArray(rows) ? rows : []).forEach(row => {
+            const tile = Number(row.tile_id ?? row.tileId);
+            const skin = row.skin || row;
+            if (!Number.isInteger(tile) || !skin?.id || !skin.compatibleTiles?.includes(tile)) return;
+            out[tile] = skin;
+        });
+        S.skinLoadouts[String(pid)] = out;
+        emit('state');
     }
     function rentFor(i, ctx) {
         const t = D.TILES[i], pr = D.PROP[i], owner = S.owners[i];
         if (S.mortgaged[i] != null) return 0;
+        let rent;
         if (pr.diceMult) {
             const n = groupTiles('gamedev').filter(x => S.owners[x.i] === owner).length;
-            return (ctx.diceSum || 7) * pr.diceMult[Math.min(n, 2) - 1];
-        }
-        if (pr.carRent) {
+            rent = (ctx.diceSum || 7) * pr.diceMult[Math.min(n, 2) - 1];
+        } else if (pr.carRent) {
             const n = groupTiles('cars').filter(x => S.owners[x.i] === owner).length;
-            return pr.carRent[Math.min(n, 4) - 1];
+            rent = pr.carRent[Math.min(n, 4) - 1];
+        } else {
+            const b = S.branches[i] || 0;
+            rent = pr.rent[b];
+            if (b === 0 && ownsFullGroup(owner, t.group)) rent *= 2;  // монополия без филиалов ×2
         }
-        const b = S.branches[i] || 0;
-        let r = pr.rent[b];
-        if (b === 0 && ownsFullGroup(owner, t.group)) r *= 2;  // монополия без филиалов ×2
-        return r;
+        return withSkinBonus(rent, activeSkin(i));
     }
 
     function landOnProp(p, t, ctx) {
         const owner = S.owners[t.i];
         if (!owner) {
-            log(p.id, `попадает на **${t.name}** и задумывается о покупке`);
+            log(p.id, `попадает на **${tileName(t.i)}** и задумывается о покупке`);
             S.phase = 'await-buy'; S.pendingBuy = t.i;
             emit('phase', { phase: 'await-buy', pid: p.id, tile: t.i, price: t.price, canBuy: p.money >= t.price, ctx });
             armTimer(() => resolveBuy(false, ctx));      // таймаут -> аукцион
@@ -294,7 +327,7 @@
         }
         if (owner === p.id || S.mortgaged[t.i] != null) return endStep(ctx);
         const rent = rentFor(t.i, ctx);
-        log(p.id, `попадает на **${t.name}** и должен заплатить игроку @${S.players[owner].name} аренду в размере $${fmt(rent)}`);
+        log(p.id, `попадает на **${tileName(t.i)}** и должен заплатить игроку @${S.players[owner].name} аренду в размере $${fmt(rent)}`);
         charge(p, rent, owner, () => {
             log(p.id, `заплатил $${fmt(rent)} аренды`);
             endStep(ctx);
@@ -309,11 +342,11 @@
         if (buy && p.money >= t.price) {
             p.money -= t.price;
             S.owners[i] = p.id;
-            log(p.id, `покупает **${t.name}** за $${fmt(t.price)}`);
+            log(p.id, `покупает **${tileName(t.i)}** за $${fmt(t.price)}`);
             emit('state');
             return endStep(ctx);
         }
-        log(p.id, `выставляет **${t.name}** на аукцион. Стартовая цена $${fmt(t.price)}`);
+        log(p.id, `выставляет **${tileName(t.i)}** на аукцион. Стартовая цена $${fmt(t.price)}`);
         startAuction(i, ctx);
     }
 
@@ -364,9 +397,9 @@
             const p = S.players[winner];
             p.money -= A.price;
             S.owners[A.tile] = winner;
-            log(winner, `побеждает в аукционе и покупает **${t.name}** за $${fmt(A.price)}`);
+            log(winner, `побеждает в аукционе и покупает **${tileName(t.i)}** за $${fmt(A.price)}`);
         } else {
-            log(null, `**${t.name}** никого не заинтересовал — остаётся у Банка`);
+            log(null, `**${tileName(t.i)}** никого не заинтересовал — остаётся у Банка`);
         }
         emit('state');
         endStep(A.ctx || {});
@@ -619,8 +652,8 @@
         if (!force && groupOccupied(D.TILES[i].group)) return false;
         S.players[pid].money += pr.mortgage;
         S.mortgaged[i] = E.mortgageRounds;
-        if (!silent) log(pid, `закладывает **${D.TILES[i].name}**`);
-        else log(pid, `закладывает **${D.TILES[i].name}**`);
+        if (!silent) log(pid, `закладывает **${tileName(i)}**`);
+        else log(pid, `закладывает **${tileName(i)}**`);
         emit('state');
         return true;
     }
@@ -629,7 +662,7 @@
         if (S.owners[i] !== pid || S.mortgaged[i] == null || S.players[pid].money < pr.unmortgage) return false;
         S.players[pid].money -= pr.unmortgage;
         delete S.mortgaged[i];
-        log(pid, `выкупает **${D.TILES[i].name}** из залога`);
+        log(pid, `выкупает **${tileName(i)}** из залога`);
         emit('state');
         return true;
     }
@@ -648,7 +681,7 @@
         S.players[pid].money -= D.PROP[i].branch;
         S.branches[i] = (S.branches[i] || 0) + 1;
         (S.builtGroups = S.builtGroups || {})[D.TILES[i].group] = true;
-        log(pid, `строит филиал компании **${D.TILES[i].name}**. Аренда возрастает`);
+        log(pid, `строит филиал компании **${tileName(i)}**. Аренда возрастает`);
         emit('state');
         return true;
     }
@@ -656,7 +689,7 @@
         if (S.owners[i] !== pid || !(S.branches[i] > 0)) return false;
         S.players[pid].money += Math.floor(D.PROP[i].branch / 2);
         S.branches[i]--;
-        log(pid, `продаёт филиал **${D.TILES[i].name}** за половину стоимости`);
+        log(pid, `продаёт филиал **${tileName(i)}** за половину стоимости`);
         emit('state');
         return true;
     }
@@ -691,7 +724,7 @@
     function tickMortgages() {
         for (const i of Object.keys(S.mortgaged)) {
             if (--S.mortgaged[i] <= 0) {
-                log(S.owners[i], `залог **${D.TILES[i].name}** истёк — поле возвращается Банку`);
+                log(S.owners[i], `залог **${tileName(i)}** истёк — поле возвращается Банку`);
                 delete S.mortgaged[i]; delete S.owners[i]; delete S.branches[i];
             }
         }
@@ -812,6 +845,8 @@
     }
 
     /* ---------- публичное API ---------- */
+    Object.defineProperty(S, 'activeSkins', { enumerable: true, get: activeSkins });
+
     global.Engine = {
         S, on, start,
         roll: doRoll,
@@ -828,7 +863,7 @@
         canBuild, groupHasBranches, build, sellBranch,
         surrender,
         applyTrade, validTrade, botEvaluate, tradeValue, answerTrade, canTrade,
-        rentFor, ownsFullGroup,
+        rentFor, ownsFullGroup, setSkinLoadout,
         cur: () => cur(),
         me: () => S.order.find(id => !S.players[id].bot),
     };
