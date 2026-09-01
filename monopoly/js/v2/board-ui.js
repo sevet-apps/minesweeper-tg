@@ -123,8 +123,10 @@
             const tile = document.createElement('div');
             tile.className = 'tile';
 
+            let logoEl = null;
             if (t.type === 'prop') {
-                tile.appendChild(Logos.logoEl(t.i));
+                logoEl = Logos.logoEl(t.i);
+                tile.appendChild(logoEl);
             } else if (t.type === 'chance') {
                 tile.classList.add('chance');
                 tile.appendChild(pngIcon('chance', 'qmark-img', p.side));
@@ -169,7 +171,7 @@
             tw.appendChild(starsEl);
             tw.appendChild(lockEl);
             container.appendChild(tw);
-            tileEls[t.i] = { tw, tile, pill, starsEl, lockEl, chipsEl };
+            tileEls[t.i] = { tw, tile, pill, starsEl, lockEl, chipsEl, logoEl };
         });
 
         /* размер «?» в пикселях: 62% от короткой стороны обычной клетки —
@@ -204,10 +206,37 @@
         }
         if (prop.carRent) {
             const n = D.TILES.filter(x => x.group === 'cars' && st.owners[x.i] === owner).length;
-            return fmtMoney(prop.carRent[Math.min(n, 4) - 1]);
+            return fmtMoney(withSkinBonus(prop.carRent[Math.min(n, 4) - 1], st.activeSkins && st.activeSkins[t.i]));
         }
         const b = (st.branches && st.branches[t.i]) || 0;
-        return fmtMoney(prop.rent[b]);
+        let value = prop.rent[b];
+        if (b === 0) {
+            const complete = D.TILES.filter(x => x.group === t.group)
+                .every(x => st.owners[x.i] === owner && st.mortgaged[x.i] == null);
+            if (complete) value *= 2;
+        }
+        return fmtMoney(withSkinBonus(value, st.activeSkins && st.activeSkins[t.i]));
+    }
+
+    function withSkinBonus(value, skin) {
+        return skin ? Math.round(value * (1 + (Number(skin.bonusBps) || 0) / 10000)) : value;
+    }
+
+    function renderSkinLogo(el, t, skin) {
+        const sig = skin ? skin.id : '';
+        if (el.skinSig === sig) return;
+        el.skinSig = sig;
+        if (el.logoEl && el.logoEl.parentNode) el.logoEl.remove();
+        if (!skin) {
+            el.logoEl = Logos.logoEl(t.i);
+        } else {
+            const holder = document.createElement('div');
+            holder.className = 'logo skin-company ' + (skin.layout === 'wordmark' ? 'wordmark' : 'badge');
+            const img = document.createElement('img');
+            img.src = skin.asset; img.alt = skin.name || ''; img.draggable = false;
+            holder.appendChild(img); el.logoEl = holder;
+        }
+        el.tile.insertBefore(el.logoEl, el.chipsEl);
     }
 
     function update(st) {
@@ -241,6 +270,9 @@
 
             if (t.type !== 'prop') return;
 
+            const skin = st.activeSkins && st.activeSkins[t.i];
+            renderSkinLogo(el, t, skin);
+
             const owner = st.owners && st.owners[t.i];
             const mort  = st.mortgaged && st.mortgaged[t.i];
 
@@ -251,6 +283,7 @@
                застывает — подпись не меняется и клетка не перерисовывается */
             const tileSig = [label, owner || '', (st.branches && st.branches[t.i]) || 0,
                              mort == null ? '-' : mort,
+                             skin ? skin.id : '',
                              (st.selected && st.selected[t.i]) || '',
                              (st.players[owner] && st.players[owner].color) || ''].join('~');
             if (el.tileSig === tileSig) return;      // на клетке ничего не поменялось

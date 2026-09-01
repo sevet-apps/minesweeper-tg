@@ -25,6 +25,7 @@ const MonopolyEngine = require('./monopoly-engine');
 const MonopolyV2 = require('./monopoly-v2');   // новая монополия (namespace /mono2)
 const { makeTitleService } = require('./player-titles');
 const { normalizeTelegramId } = require('./telegram-id');
+const { makeCollection: makeMonopolyCollection } = require('./monopoly-collection');
 
 const app = express();
 app.use(cors());
@@ -38,6 +39,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const titleService = makeTitleService({ supabase });
+const monopolyCollection = makeMonopolyCollection({ supabase });
 
 // Telegram Bot Token for subscription check
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -128,6 +130,50 @@ function authMiddleware(req, res, next) {
     req.telegramUser = user;
     next();
 }
+
+/* ---------- Коллекция Monopoly: кейсы, компании и экипировка ---------- */
+function collectionError(res, error) {
+    const known = {
+        no_cases: 409, skin_not_owned: 403, no_duplicate: 409,
+        pending_opening: 409,
+        incompatible_skin: 400, invalid_tile: 400, unknown_skin: 404,
+    };
+    const key = String(error && error.message || 'collection_error');
+    console.warn('[monopoly-collection]', key);
+    return res.status(known[key] || 500).json({ error: key });
+}
+
+app.get('/api/monopoly/collection/catalog', authMiddleware, (req, res) => {
+    res.json(monopolyCollection.catalog());
+});
+app.get('/api/monopoly/collection/me', authMiddleware, async (req, res) => {
+    try { res.json(await monopolyCollection.profile(req.telegramUser.id, { sync: true })); }
+    catch (error) { collectionError(res, error); }
+});
+app.get('/api/monopoly/collection/player/:id', authMiddleware, async (req, res) => {
+    try { res.json(await monopolyCollection.profile(req.params.id)); }
+    catch (error) { collectionError(res, error); }
+});
+app.post('/api/monopoly/cases/open', authMiddleware, async (req, res) => {
+    try { res.json(await monopolyCollection.openCase(req.telegramUser.id)); }
+    catch (error) { collectionError(res, error); }
+});
+app.post('/api/monopoly/cases/claim', authMiddleware, async (req, res) => {
+    try { res.json({ ok: await monopolyCollection.claimOpening(req.telegramUser.id, req.body && req.body.openingId) }); }
+    catch (error) { collectionError(res, error); }
+});
+app.post('/api/monopoly/skins/equip', authMiddleware, async (req, res) => {
+    try { res.json(await monopolyCollection.equip(req.telegramUser.id, req.body && req.body.skinId, req.body && req.body.tileId)); }
+    catch (error) { collectionError(res, error); }
+});
+app.post('/api/monopoly/skins/unequip', authMiddleware, async (req, res) => {
+    try { res.json(await monopolyCollection.unequip(req.telegramUser.id, req.body && req.body.tileId)); }
+    catch (error) { collectionError(res, error); }
+});
+app.post('/api/monopoly/skins/exchange', authMiddleware, async (req, res) => {
+    try { res.json(await monopolyCollection.exchange(req.telegramUser.id, req.body && req.body.skinId)); }
+    catch (error) { collectionError(res, error); }
+});
 
 /** Нативное окно Telegram для отправки приглашения. Prepared messages
     сохраняют кнопку Mini App и custom emoji, чего обычная share/url-ссылка
@@ -824,6 +870,7 @@ const monoRating = MonopolyRating.makeRating({
 });
 MonopolyV2.setRating(monoRating);
 MonopolyV2.setTitleService(titleService);
+MonopolyV2.setCollectionService(monopolyCollection);
 
 async function notifyOwner(message, replyMarkup) {
     if (!BOT_TOKEN) return;
@@ -3859,7 +3906,7 @@ if (BOT_TOKEN) {
     }
     
     // Register admin tournament management commands (/admin)
-    registerAdminBot({ bot, supabase });
+    registerAdminBot({ bot, supabase, monopolyCollection });
     
     // Обработчик ошибок polling - чтобы бот не падал
     bot.on('polling_error', (error) => {

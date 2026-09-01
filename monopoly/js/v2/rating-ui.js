@@ -71,6 +71,10 @@
                 ${me && me.peak ? `<div class="rw-peak">Пиковая стоимость активов
                     <b>${DS}${fmt(me.peak)}</b></div>` : ''}
 
+                ${me && me.caseReward && me.caseReward.granted > 0 ? `<div class="rw-case-reward">
+                    <img src="assets/skins/case.svg" alt=""><span><b>Вы получили ${me.caseReward.granted === 1 ? 'кейс' : me.caseReward.granted + ' кейса'}</b>
+                    <small>Он уже находится в профиле Монополии</small></span></div>` : ''}
+
                 ${me ? `
                 <div class="rw-gain"><span class="rw-plus">+${fmt(me.gained)}</span> очков</div>
                 <div class="rw-reasons">${(me.reasons || [])

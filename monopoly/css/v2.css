@@ -995,6 +995,7 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 .pc-body .hint { color: #c9c9d0; margin-bottom: 10px; }
 .pc-body .row { display: flex; justify-content: space-between; padding: 3px 0; }
 .pc-body .sep { height: 1px; background: #37373d; margin: 9px 0; }
+.pc-body .skin-rent-bonus { display:block; color:#8e8e98; font-size:11.5px; margin:7px 0 2px; text-align:right; }
 .pc-body .stars-cell { color: #b9bec7; letter-spacing: 1px; }
 .pc-body .gold { color: #f5c518; font-size: 1.25em; }
 .pc-actions { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -1402,6 +1403,9 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
 }
 .rw-peak b { font-size: 17px; font-weight: 700; color: #17171a; }
 .rw-peak .dsign { --dcol: #9a9aa2; --dh: .72em; }
+.rw-case-reward { display:flex;align-items:center;gap:11px;margin:12px 0;padding:10px 12px;border-radius:15px;background:linear-gradient(135deg,rgba(255,204,0,.14),rgba(255,149,0,.08));border:1px solid rgba(255,204,0,.24);text-align:left; }
+.rw-case-reward img { width:43px;height:43px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.22)); }
+.rw-case-reward b,.rw-case-reward small { display:block; }.rw-case-reward b { font-size:14px; }.rw-case-reward small { color:#8e8e98;font-size:11.5px;margin-top:2px; }
 
 /* очки */
 .rw-gain { margin: 12px 0 2px; font-size: 15px; color: #7c7c85; }
@@ -1481,6 +1485,12 @@ body.blurred .app { filter: blur(9px) brightness(.6); transition: filter .25s; }
     transition: opacity .15s;
 }
 .rw-exit:active { opacity: .85; }
+
+/* Компания из коллекции заменяет штатный логотип только после того, как
+   владелец собрал всю монополию. Контейнер наследует ориентацию клетки. */
+.tile .logo.skin-company { display:grid; place-items:center; overflow:hidden; padding:5%; }
+.tile .logo.skin-company img { width:88%; height:82%; object-fit:contain; display:block; }
+.tile .logo.skin-company.wordmark img { width:94%; height:92%; }
 
 @media (max-width: 520px) {
     .rw-card { padding: 22px 18px 16px; border-radius: 20px; }

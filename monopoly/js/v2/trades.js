@@ -18,6 +18,10 @@
         future: false,
     };
 
+    function tileName(i) {
+        return global.Engine?.S?.activeSkins?.[i]?.name || D.TILES[i]?.name || 'Поле';
+    }
+
     /* ---------- панель поверх чата ---------- */
     function panel() {
         let el = $('#tradePanel');
@@ -127,7 +131,7 @@
         return Object.entries(byGroup).map(([g, ts]) => `
             <div class="tp-group">
                 <div class="tp-gname"><span class="dot" style="background:${D.GROUPS[g].color}"></span>${D.GROUPS[g].name}</div>
-                ${ts.map(t => `<div class="tp-row"><span>${t.name}</span><span class="dots"></span><span>${DS}${fmt(t.price)}</span></div>`).join('')}
+                ${ts.map(t => `<div class="tp-row"><span>${tileName(t.i)}</span><span class="dots"></span><span>${DS}${fmt(t.price)}</span></div>`).join('')}
             </div>`).join('');
     }
     function total(tiles, money) {

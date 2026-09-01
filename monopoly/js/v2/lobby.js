@@ -207,6 +207,9 @@
         if (/^https?:$/.test(location.protocol)) list.push(location.origin);
         return [...new Set(list.filter(Boolean).map(u => String(u).replace(/\/+$/, '')))];
     }
+    function authHeaders() {
+        return { 'Content-Type': 'application/json', 'x-init-data': (TG && TG.initData) || '' };
+    }
     let connecting = null;
     function ensureNet() {
         if (connected) return Promise.resolve();
@@ -472,6 +475,11 @@
         if (mode === 'bots') {
             global.MONO_LOCAL = true;             // меню игрока показывает «Выйти»
             global.GameUI.init(global.Engine);
+            /* Коллекция загружается без блокировки старта. Обычно это успевает
+               задолго до того, как игрок соберёт первую монополию. */
+            global.CollectionUI?.loadSelf?.().then(profile => {
+                global.Engine.setSkinLoadout?.(ME.uid, profile.loadout || []);
+            }).catch(() => {});
             global.Engine.start([
                 { id: ME.uid, name: ME.name, color: 'var(--p4)', host: true,
                   avatar: ME.avatar, initials: ME.initials },
@@ -552,7 +560,12 @@
         setupFullscreen();
 
         $('#lbMe').innerHTML = ava(ME, 40) + `<div class="lb-me-name">${ME.name}</div>`;
+        $('#lbMe').role = 'button';
+        $('#lbMe').tabIndex = 0;
+        $('#lbMe').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
+        $('#lbMe').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') $('#lbMe').click(); };
         $('#lbBots').onclick = () => startGame('bots');
+        $('#lbCollectionOpen').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
         $('#lbCreateGo').onclick = createRoom;
         $('#lbJoinGo').onclick = () => joinRoom();
         $('#lbRefresh').onclick = manualRefresh;
@@ -593,5 +606,8 @@
         syncBackButton();
     }
 
-    global.Lobby = { init, profile: () => ME, exitToLobby, exitToApp };
+    global.Lobby = {
+        init, profile: () => ME, exitToLobby, exitToApp, show, toast,
+        serverCandidates, authHeaders,
+    };
 })(window);

@@ -115,18 +115,20 @@
     function rentFor(i, ctx) {
         const t = D().TILES[i], pr = D().PROP[i], owner = S.owners[i];
         if (S.mortgaged[i] != null) return 0;
+        let rent;
         if (pr.diceMult) {
             const n = groupTiles('gamedev').filter(x => S.owners[x.i] === owner).length;
-            return ((ctx && ctx.diceSum) || 7) * pr.diceMult[Math.min(n, 2) - 1];
-        }
-        if (pr.carRent) {
+            rent = ((ctx && ctx.diceSum) || 7) * pr.diceMult[Math.min(n, 2) - 1];
+        } else if (pr.carRent) {
             const n = groupTiles('cars').filter(x => S.owners[x.i] === owner).length;
-            return pr.carRent[Math.min(n, 4) - 1];
+            rent = pr.carRent[Math.min(n, 4) - 1];
+        } else {
+            const b = S.branches[i] || 0;
+            rent = pr.rent[b];
+            if (b === 0 && ownsFullGroup(owner, t.group)) rent *= 2;
         }
-        const b = S.branches[i] || 0;
-        let r = pr.rent[b];
-        if (b === 0 && ownsFullGroup(owner, t.group)) r *= 2;
-        return r;
+        const skin = S.activeSkins && S.activeSkins[i];
+        return skin ? Math.round(rent * (1 + (Number(skin.bonusBps) || 0) / 10000)) : rent;
     }
     /** Построен ли хоть один филиал на этой монополии (для кнопки залога). */
     function groupHasBranches(group) {

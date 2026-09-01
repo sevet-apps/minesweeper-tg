@@ -442,7 +442,7 @@ async function snapshotAndArchive(bot, supabase, chatId, messageId, tournamentId
 
 // ---- registration -----------------------------------------------------------
 
-function registerAdminBot({ bot, supabase }) {
+function registerAdminBot({ bot, supabase, monopolyCollection }) {
     if (!bot) {
         console.warn('[admin-bot] bot instance not available — skipping');
         return;
@@ -452,6 +452,30 @@ function registerAdminBot({ bot, supabase }) {
     bot.onText(/^\/admin(?:@\w+)?\s*$/, async (msg) => {
         if (!isAdmin(msg.from.id)) return; // silently ignore non-admins
         await sendRootMenu(bot, msg.chat.id);
+    });
+
+    /* /givecases @username 3 — безопасная ручная выдача универсальных кейсов.
+       source_key привязан к сообщению, поэтому повторная доставка Telegram
+       не начислит кейсы второй раз. */
+    bot.onText(/^\/givecases(?:@\w+)?\s+(\S+)\s+(\d+)(?:\s+(.+))?$/i, async (msg, match) => {
+        if (!isAdmin(msg.from.id)) return;
+        if (!monopolyCollection) return bot.sendMessage(msg.chat.id, '❌ Сервис коллекции недоступен.');
+        try {
+            const target = await monopolyCollection.resolveUser(match[1]);
+            const amount = Number(match[2]);
+            const result = await monopolyCollection.grantCases(target, amount, {
+                source: 'admin',
+                sourceKey: `admin:${msg.chat.id}:${msg.message_id}`,
+                reason: match[3] || 'Выдано администратором',
+                adminId: msg.from.id,
+            });
+            await bot.sendMessage(msg.chat.id,
+                `✅ Пользователю ${target} выдано кейсов: ${result.granted || 0}.\n` +
+                `Теперь в профиле: ${result.cases_balance || 0}.`);
+        } catch (error) {
+            const hints = { user_not_found: 'Пользователь не найден. Он должен хотя бы раз открыть Spark.', invalid_case_amount: 'Количество должно быть от 1 до 10000.' };
+            await bot.sendMessage(msg.chat.id, `❌ ${hints[error.message] || error.message}`);
+        }
     });
 
     // Free-text input handler — only fires when admin is mid-flow

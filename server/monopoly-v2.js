@@ -31,6 +31,7 @@
 
 const path = require('path');
 const Rating = require('./monopoly-rating');
+const { applyRentBonus } = require('./monopoly-collection');
 const Bots = require('./monopoly-bots');
 
 /* Владелец проекта: только ему доступна отладочная панель партии.
@@ -109,6 +110,9 @@ class Game {
         this.createdAt = Date.now();
         this.lastHumanActionAt = this.createdAt;
         this.finishedAt = 0;
+        this.skinLoadouts = {};        // player id -> { tileId: verified catalog skin }
+        this.skinsPrepared = false;
+        this.skinsPreparePromise = null;
     }
 
     /** Свободных мест в комнате. */
@@ -318,6 +322,7 @@ class Game {
             maxPlayers: this.maxPlayers, teams: this.teams, turnIdx: this.turnIdx, round: this.round,
             owners: this.owners, branches: this.branches, mortgaged: this.mortgaged,
             phase: this.phase, startedAt: this.startedAt,
+            activeSkins: this.activeSkins(),
         };
     }
 
@@ -409,8 +414,26 @@ class Game {
         return true;
     }
 
-    start(byId) {
+    async prepareSkins() {
+        if (this.skinsPrepared || !collectionService) return;
+        if (!this.skinsPreparePromise) {
+            this.skinsPreparePromise = Promise.all(this.order.map(async id => {
+                if (this.players[id] && this.players[id].bot) return;
+                try { this.skinLoadouts[id] = await collectionService.loadLoadout(id); }
+                catch (error) { console.warn('[mono2] loadout:', id, error.message); this.skinLoadouts[id] = {}; }
+            })).then(() => { this.skinsPrepared = true; });
+        }
+        try {
+            await this.skinsPreparePromise;
+        } finally {
+            if (!this.skinsPrepared) this.skinsPreparePromise = null;
+        }
+    }
+
+    async start(byId) {
         if (this.phase !== 'lobby' || byId !== this.hostId || this.order.length < 2) return;
+        await this.prepareSkins();
+        if (this.phase !== 'lobby') return;
         this.phase = 'idle';
         this.startedAt = Date.now();
         this.sendOwner();          // партия началась — обновляем панель
@@ -592,24 +615,48 @@ class Game {
             .reduce((s, [, b]) => s + b, 0);
     }
     groupTiles(g) { return D.TILES.filter(x => x.group === g); }
+    ownsEntireGroup(pid, g) {
+        const tiles = this.groupTiles(g);
+        return !!pid && tiles.length > 0 && tiles.every(x => this.owners[x.i] === pid);
+    }
     ownsFullGroup(pid, g) {
         return this.groupTiles(g).every(x => this.owners[x.i] === pid && this.mortgaged[x.i] == null);
     }
+    activeSkin(i) {
+        const tile = D.TILES[i], owner = this.owners[i];
+        if (!tile || tile.type !== 'prop' || !owner || !this.ownsEntireGroup(owner, tile.group)) return null;
+        return this.skinLoadouts[owner] && this.skinLoadouts[owner][i] || null;
+    }
+    activeSkins() {
+        const out = {};
+        for (const tile of D.TILES) {
+            const skin = this.activeSkin(tile.i);
+            if (skin) out[tile.i] = {
+                id: skin.id, name: skin.name, groupId: skin.groupId, rarity: skin.rarity,
+                asset: skin.asset, layout: skin.layout, bonusBps: skin.bonusBps,
+                owner: this.owners[tile.i],
+            };
+        }
+        return out;
+    }
+    tileName(i) { return this.activeSkin(i)?.name || D.TILES[i]?.name || 'Поле'; }
     rentFor(i, ctx) {
         const t = D.TILES[i], pr = D.PROP[i], owner = this.owners[i];
         if (this.mortgaged[i] != null) return 0;
+        let rent = 0;
         if (pr.diceMult) {
             const n = this.groupTiles('gamedev').filter(x => this.owners[x.i] === owner).length;
-            return (ctx.diceSum || 7) * pr.diceMult[Math.min(n, 2) - 1];
-        }
-        if (pr.carRent) {
+            rent = (ctx.diceSum || 7) * pr.diceMult[Math.min(n, 2) - 1];
+        } else if (pr.carRent) {
             const n = this.groupTiles('cars').filter(x => this.owners[x.i] === owner).length;
-            return pr.carRent[Math.min(n, 4) - 1];
+            rent = pr.carRent[Math.min(n, 4) - 1];
+        } else {
+            const b = this.branches[i] || 0;
+            rent = pr.rent[b];
+            if (b === 0 && this.ownsFullGroup(owner, t.group)) rent *= 2;
         }
-        const b = this.branches[i] || 0;
-        let r = pr.rent[b];
-        if (b === 0 && this.ownsFullGroup(owner, t.group)) r *= 2;
-        return r;
+        const skin = this.activeSkin(i);
+        return skin ? applyRentBonus(rent, skin.bonusBps) : rent;
     }
 
     landOn(p, ctx) {
@@ -704,7 +751,7 @@ class Game {
     landOnProp(p, t, ctx) {
         const owner = this.owners[t.i];
         if (!owner) {
-            this.log(p.id, `попадает на **${t.name}** и задумывается о покупке`);
+            this.log(p.id, `попадает на **${this.tileName(t.i)}** и задумывается о покупке`);
             this.phase = 'await-buy'; this.pendingBuy = t.i; this.lastCtx = ctx;
             this.send('m2:phase', { phase: 'await-buy', pid: p.id, tile: t.i, price: t.price, canBuy: p.money >= t.price });
             this.arm(() => this.toAuction(p.id));
@@ -712,11 +759,11 @@ class Game {
         }
         if (owner === p.id || this.mortgaged[t.i] != null) return this.endStep(ctx);
         if (this.sameTeam(owner, p.id)) {
-            this.log(p.id, `попадает на **${t.name}** — поле союзника, аренда не взимается`);
+            this.log(p.id, `попадает на **${this.tileName(t.i)}** — поле союзника, аренда не взимается`);
             return this.endStep(ctx);
         }
         const rent = this.rentFor(t.i, ctx);
-        this.log(p.id, `попадает на **${t.name}** и должен заплатить игроку @${this.players[owner].name} аренду в размере $${fmt(rent)}`);
+        this.log(p.id, `попадает на **${this.tileName(t.i)}** и должен заплатить игроку @${this.players[owner].name} аренду в размере $${fmt(rent)}`);
         this.charge(p, rent, owner, () => { this.log(p.id, `заплатил $${fmt(rent)} аренды`); this.endStep(ctx); });
     }
 
@@ -728,7 +775,7 @@ class Game {
         this.pendingBuy = null;
         p.money -= t.price;
         this.owners[i] = p.id;
-        this.log(p.id, `покупает **${t.name}** за $${fmt(t.price)}`);
+        this.log(p.id, `покупает **${this.tileName(i)}** за $${fmt(t.price)}`);
         this.pushState();
         this.endStep(this.lastCtx);
     }
@@ -737,7 +784,7 @@ class Game {
         const i = this.pendingBuy;
         clearTimeout(this.timer);
         this.pendingBuy = null;
-        this.log(this.cur().id, `выставляет **${D.TILES[i].name}** на аукцион. Стартовая цена $${fmt(D.TILES[i].price)}`);
+        this.log(this.cur().id, `выставляет **${this.tileName(i)}** на аукцион. Стартовая цена $${fmt(D.TILES[i].price)}`);
         this.startAuction(i);
     }
 
@@ -781,8 +828,8 @@ class Game {
         if (winner) {
             this.players[winner].money -= A.price;
             this.owners[A.tile] = winner;
-            this.log(winner, `побеждает в аукционе и покупает **${t.name}** за $${fmt(A.price)}`);
-        } else this.log(null, `**${t.name}** никого не заинтересовал — остаётся у Банка`);
+            this.log(winner, `побеждает в аукционе и покупает **${this.tileName(t.i)}** за $${fmt(A.price)}`);
+        } else this.log(null, `**${this.tileName(t.i)}** никого не заинтересовал — остаётся у Банка`);
         this.pushState();
         this.endStep(this.lastCtx);
     }
@@ -1119,6 +1166,18 @@ class Game {
                         withBots: this.hasBots,
                         teamMode: this.teams,
                     });
+                    if (collectionService && res && Array.isArray(res.players)) {
+                        await Promise.all(res.players.map(async player => {
+                            try {
+                                const reward = await collectionService.syncRatingCases(player.uid);
+                                player.caseReward = {
+                                    granted: Number(reward.cases_granted) || 0,
+                                    balance: Number(reward.cases_balance) || 0,
+                                    milestones: Number(reward.milestones) || 0,
+                                };
+                            } catch (error) { console.warn('[mono2] case reward:', player.uid, error.message); }
+                        }));
+                    }
                     this.send('m2:rating', res);
                 } catch (ratingError) {
                     console.error('[mono2] рейтинг:', ratingError.message);
@@ -1166,7 +1225,7 @@ class Game {
         this.players[pid].money += pr.mortgage;
         this.mortgaged[i] = E.mortgageRounds;
         this.everMortgaged[pid] = true;
-        this.log(pid, `закладывает **${D.TILES[i].name}**`);
+        this.log(pid, `закладывает **${this.tileName(i)}**`);
         if (!silent) this.pushState();
         this.reemitPhase();
         return true;
@@ -1176,7 +1235,7 @@ class Game {
         if (!pr || this.owners[i] !== pid || this.mortgaged[i] == null || this.players[pid].money < pr.unmortgage) return false;
         this.players[pid].money -= pr.unmortgage;
         delete this.mortgaged[i];
-        this.log(pid, `выкупает **${D.TILES[i].name}** из залога`);
+        this.log(pid, `выкупает **${this.tileName(i)}** из залога`);
         this.pushState();
         this.reemitPhase();
         return true;
@@ -1196,7 +1255,7 @@ class Game {
         this.players[pid].money -= D.PROP[i].branch;
         this.branches[i] = (this.branches[i] || 0) + 1;
         (this.builtGroups = this.builtGroups || {})[D.TILES[i].group] = true;
-        this.log(pid, `строит филиал компании **${D.TILES[i].name}**. Аренда возрастает`);
+        this.log(pid, `строит филиал компании **${this.tileName(i)}**. Аренда возрастает`);
         this.pushState();
         return true;
     }
@@ -1204,7 +1263,7 @@ class Game {
         if (this.owners[i] !== pid || !(this.branches[i] > 0)) return false;
         this.players[pid].money += Math.floor(D.PROP[i].branch / 2);
         this.branches[i]--;
-        this.log(pid, `продаёт филиал **${D.TILES[i].name}**`);
+        this.log(pid, `продаёт филиал **${this.tileName(i)}**`);
         this.pushState();
         this.reemitPhase();
         return true;
@@ -1364,7 +1423,7 @@ class Game {
             this.round++;
             for (const i of Object.keys(this.mortgaged)) {
                 if (--this.mortgaged[i] <= 0) {
-                    this.log(this.owners[i], `залог **${D.TILES[i].name}** истёк — поле возвращается Банку`);
+                    this.log(this.owners[i], `залог **${this.tileName(Number(i))}** истёк — поле возвращается Банку`);
                     delete this.mortgaged[i]; delete this.owners[i]; delete this.branches[i];
                 }
             }
@@ -1397,6 +1456,8 @@ let rating = null;          // выставляется из index.js через
 function setRating(r) { rating = r; }
 let titleService = null;
 function setTitleService(service) { titleService = service; }
+let collectionService = null;
+function setCollectionService(service) { collectionService = service; }
 
 function attach(io) {
     const nsp = io.of('/mono2');
@@ -1533,7 +1594,11 @@ function attach(io) {
             const g = rooms.get(roomId);
             if (g) {
                 if (touch) g.touchHuman(uid);
-                fn(g, ...a);
+                try {
+                    const result = fn(g, ...a);
+                    if (result && typeof result.catch === 'function')
+                        result.catch(error => console.error('[mono2] action:', error.message));
+                } catch (error) { console.error('[mono2] action:', error.message); }
             }
         };
 
@@ -1616,4 +1681,4 @@ function attach(io) {
     return { rooms };
 }
 
-module.exports = { attach, Game, rooms, publicRooms, setRating, setTitleService };
+module.exports = { attach, Game, rooms, publicRooms, setRating, setTitleService, setCollectionService };
