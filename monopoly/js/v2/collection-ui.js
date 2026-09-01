@@ -16,17 +16,25 @@
     let current = null;
     let activeTab = 'cases';
     let filter = 'all';
+    let sortMode = 'collection';
     let busy = false;
+    let tabProgress = 0;
+    let tabDrag = null;
 
     async function request(path, options = {}) {
         const bases = global.Lobby?.serverCandidates?.() || ['https://spark-game-backend.onrender.com'];
         const method = String(options.method || 'GET').toUpperCase();
+        const headers = { ...(global.Lobby?.authHeaders?.() || {}), ...(options.headers || {}) };
+        const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+        if (options.body != null && !isFormData && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
         let networkError = null;
         for (const base of bases) {
             try {
                 const response = await fetch(base + path, {
                     ...options,
-                    headers: { ...(global.Lobby?.authHeaders?.() || {}), ...(options.headers || {}) },
+                    headers,
                 });
                 const body = await response.json().catch(() => ({}));
                 if (!response.ok) throw new Error(body.error || 'network_error');
@@ -90,86 +98,203 @@
     function render() {
         const root = $('#monoCollectionRoot');
         if (!root || !current) return;
+        if (!root.querySelector('.mc-page')) buildShell(root);
+        updateProfile(root);
+        renderCasesPanel(root);
+        renderSkinsPanel(root, { animate: false });
+        setTab(activeTab, false);
         const account = current.account || {};
-        const rating = current.rating || {};
         const inventory = current.inventory || [];
         const unique = inventory.length;
         const total = inventory.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-        root.innerHTML = `<div class="mc-page">
-            <div class="mc-head">
-                <button class="mc-back" aria-label="Назад">‹</button>
-                <div class="mc-head-copy"><h2>Профиль</h2><p>Монополия</p></div>
-                <div class="mc-balance">
-                    <div class="mc-chip"><img src="assets/skins/case.svg" alt=""><b>${compact(account.cases_count)}</b><span>кейсов</span></div>
-                    <div class="mc-chip"><img src="assets/skins/coin.svg" alt=""><b>${compact(account.coins)}</b></div>
-                </div>
-            </div>
-            <section class="mc-hero">
-                <div class="mc-person">${avatar(current.user, global.Lobby?.profile?.())}<div><b>${esc(ownerName(current))}</b><small>${current.user?.username ? '@' + esc(current.user.username) : 'Профиль игрока'}</small></div></div>
-                <div class="mc-stats">
-                    <div class="mc-stat"><span>Рейтинг</span><b>${compact(rating.points)}</b></div>
-                    <div class="mc-stat"><span>Победы</span><b>${compact(rating.wins)}</b></div>
-                    <div class="mc-stat"><span>Игры</span><b>${compact(rating.games)}</b></div>
-                </div>
-            </section>
-            <div class="mc-tabs" data-tab="${activeTab}">
-                <button class="mc-tab${activeTab === 'cases' ? ' on' : ''}" data-tab="cases">Кейсы</button>
-                <button class="mc-tab${activeTab === 'skins' ? ' on' : ''}" data-tab="skins">Компании</button>
-            </div>
-            <div id="mcTabBody">${activeTab === 'cases' ? casesHtml() : skinsHtml()}</div>
-        </div>`;
-        root.querySelector('.mc-back').onclick = back;
-        root.querySelectorAll('.mc-tab').forEach(button => button.onclick = () => {
-            activeTab = button.dataset.tab; render();
-        });
-        bindBody(root);
         root.dataset.unique = unique; root.dataset.total = total;
     }
-
+    function buildShell(root) {
+        root.innerHTML = `<div class="mc-page" style="--mc-tab-progress:${activeTab === 'skins' ? 1 : 0}">
+            <div class="mc-head">
+                <button class="mc-back" aria-label="Назад"><span aria-hidden="true"></span></button>
+                <div class="mc-head-copy"><h2>Профиль</h2><p>Монополия</p></div>
+                <div class="mc-balance">
+                    <div class="mc-chip"><img src="assets/skins/case.svg" alt=""><b data-mc-cases>0</b><span>кейсов</span></div>
+                    <div class="mc-chip"><img src="assets/skins/coin.svg" alt=""><b data-mc-coins>0</b></div>
+                </div>
+            </div>
+            <section class="mc-hero" data-mc-profile></section>
+            <div class="mc-tabs" role="tablist" aria-label="Раздел профиля">
+                <button class="mc-tab" data-tab="cases" role="tab">Кейсы</button>
+                <button class="mc-tab" data-tab="skins" role="tab">Компании</button>
+            </div>
+            <div class="mc-tab-viewport">
+                <div class="mc-tab-track">
+                    <section class="mc-tab-panel" id="mcCasesPanel" role="tabpanel"></section>
+                    <section class="mc-tab-panel" id="mcSkinsPanel" role="tabpanel"></section>
+                </div>
+            </div>
+        </div>`;
+        root.querySelector('.mc-back').onclick = back;
+        root.querySelectorAll('.mc-tab').forEach(button => button.onclick = event => {
+            if (Date.now() - Number(root.dataset.mcDraggedAt || 0) < 250) return;
+            setTab(button.dataset.tab, true);
+        });
+        bindTabDrag(root);
+    }
+    function updateProfile(root) {
+        const account = current.account || {};
+        const rating = current.rating || {};
+        root.querySelector('[data-mc-cases]').textContent = compact(account.cases_count);
+        root.querySelector('[data-mc-coins]').textContent = compact(account.coins);
+        root.querySelector('[data-mc-profile]').innerHTML = `<div class="mc-person">${avatar(current.user, global.Lobby?.profile?.())}<div><b>${esc(ownerName(current))}</b><small>${current.user?.username ? '@' + esc(current.user.username) : 'Профиль игрока'}</small></div></div>
+            <div class="mc-stats"><div class="mc-stat"><span>Рейтинг</span><b>${compact(rating.points)}</b></div>
+            <div class="mc-stat"><span>Победы</span><b>${compact(rating.wins)}</b></div>
+            <div class="mc-stat"><span>Игры</span><b>${compact(rating.games)}</b></div></div>`;
+    }
+    function renderCasesPanel(root) {
+        const panel = root.querySelector('#mcCasesPanel');
+        if (!panel) return;
+        panel.innerHTML = casesHtml();
+        panel.querySelectorAll('.mc-case-item').forEach(card => card.onclick = () => presentCase());
+        panel.querySelector('.mc-pending-case')?.addEventListener('click', () => showWin(current.pendingOpenings[0], true));
+        syncViewportHeight();
+    }
     function casesHtml() {
         const account = current.account || {};
         const pending = current.pendingOpenings?.[0];
-        return `<div class="mc-section-title"><b>Универсальный кейс</b><span>за каждые 50 рейтинга</span></div>
-            <div class="mc-case-card">
-                <div class="mc-case-art"><img src="assets/skins/case.svg" alt="Кейс"></div>
-                <div class="mc-case-copy"><b>${pending ? 'Находка ждёт вас' : 'Новая компания'}</b>
-                    <span>${pending ? 'Открытый кейс сохранён — заберите выпавшую компанию.' : 'Внутри одна уникальная компания одной из четырёх редкостей.'}</span>
-                    <button class="mc-primary mc-open" ${!pending && Number(account.cases_count) < 1 ? 'disabled' : ''}>${pending ? 'Забрать' : 'Открыть кейс'}</button>
-                </div>
-            </div>
-            <div class="mc-section-title"><b>Шансы выпадения</b><span>без скрытых корректировок</span></div>
-            <div class="mc-stats">
-                <div class="mc-stat"><span>Обычная</span><b>70%</b></div>
-                <div class="mc-stat"><span>Редкая</span><b>22%</b></div>
-                <div class="mc-stat"><span>Эпическая</span><b>7%</b></div>
-            </div>
-            <div class="mc-stat" style="margin-top:8px"><span>Мифическая</span><b style="color:var(--mc-mythic)">1%</b></div>`;
+        const count = Math.max(0, Number(account.cases_count) || 0);
+        const visible = Math.min(count, 30);
+        const cards = Array.from({ length: Math.max(visible, count ? 0 : 1) }, (_, index) => `<button class="mc-case-item" ${count ? '' : 'disabled'} aria-label="${count ? `Открыть кейс ${index + 1}` : 'Нет доступных кейсов'}">
+            <span class="mc-case-glow"></span><img src="assets/skins/case.svg" alt=""><b>Универсальный кейс</b><small>${count ? `Кейс ${index + 1} из ${count}` : 'Следующий — за 50 рейтинга'}</small></button>`).join('');
+        return `<div class="mc-section-title"><b>Ваши кейсы</b><span>${count} в профиле</span></div>
+            ${pending ? `<button class="mc-pending-case"><span>Открытая компания ждёт вас</span><b>Забрать находку</b></button>` : ''}
+            <div class="mc-case-carousel" aria-label="Доступные кейсы">${cards}${count > visible ? `<div class="mc-case-more"><b>+${count - visible}</b><span>ещё кейсов</span></div>` : ''}</div>
+            <div class="mc-case-hint"><b>Одна компания внутри</b><span>Кейсы начисляются за каждые 50 очков рейтинга Монополии.</span></div>
+            <div class="mc-odds"><span><i data-rarity="common"></i>Обычная <b>70%</b></span><span><i data-rarity="rare"></i>Редкая <b>22%</b></span><span><i data-rarity="epic"></i>Эпическая <b>7%</b></span><span><i data-rarity="mythic"></i>Мифическая <b>1%</b></span></div>`;
     }
-    function skinsHtml() {
+    function companyInstances(inventory = current?.inventory || []) {
+        return inventory.flatMap(row => Array.from({ length: Math.max(0, Number(row.quantity) || 0) }, (_, copyIndex) => ({ row, copyIndex, duplicate: copyIndex > 0 })));
+    }
+    function visibleCompanies() {
         const inventory = current.inventory || [];
-        const groups = [['all', 'Все'], ['cars', 'Авто'], ['web', 'Веб'], ['food', 'Рестораны'], ['tech', 'Электроника'], ['duplicates', 'Повторки']];
-        const rows = inventory.filter(row => filter === 'all' || (filter === 'duplicates' ? Number(row.quantity) > 1 : row.skin?.groupId === filter));
-        return `<div class="mc-section-title"><b>Коллекция</b><span>${inventory.length} из ${current.catalog?.skins?.length || 0}</span></div>
-            <div class="mc-filter-row">${groups.map(([id, title]) => `<button class="mc-filter${filter === id ? ' on' : ''}" data-filter="${id}">${title}</button>`).join('')}</div>
-            ${rows.length ? `<div class="mc-grid">${rows.map(row => skinCard(row)).join('')}</div>` : '<div class="mc-empty"><b>Здесь пока пусто</b>Откройте кейс — полученная компания появится в коллекции.</div>'}`;
+        let rows = companyInstances(inventory).filter(item => filter === 'all' || (filter === 'duplicates' ? item.duplicate : item.row.skin?.groupId === filter));
+        const rarityRank = { common: 0, rare: 1, epic: 2, mythic: 3 };
+        if (sortMode === 'rarity') rows.sort((a, b) => (rarityRank[b.row.skin?.rarity] || 0) - (rarityRank[a.row.skin?.rarity] || 0));
+        else if (sortMode === 'newest') rows.sort((a, b) => String(b.row.first_acquired_at || '').localeCompare(String(a.row.first_acquired_at || '')) || b.copyIndex - a.copyIndex);
+        else if (sortMode === 'duplicates') rows.sort((a, b) => Number(b.duplicate) - Number(a.duplicate));
+        else rows.sort((a, b) => String(a.row.skin?.groupId || '').localeCompare(String(b.row.skin?.groupId || '')) || String(a.row.skin?.name || '').localeCompare(String(b.row.skin?.name || ''), 'ru'));
+        return rows;
     }
-    function skinCard(row, loadout = current?.loadout || []) {
+    function renderSkinsPanel(root, options = {}) {
+        const panel = root.querySelector('#mcSkinsPanel');
+        if (!panel) return;
+        const groups = [['all', 'Все'], ['cars', 'Авто'], ['web', 'Веб'], ['food', 'Рестораны'], ['tech', 'Электроника'], ['duplicates', 'Повторки']];
+        const rows = visibleCompanies();
+        const inventory = current.inventory || [];
+        const total = companyInstances(inventory).length;
+        const direction = Number(options.direction || 1);
+        panel.innerHTML = `<div class="mc-section-title mc-company-title"><div><b>Компании</b><span>${inventory.length} из ${current.catalog?.skins?.length || 0} уникальных · ${total} всего</span></div><button class="mc-sort" aria-label="Сортировать"><i></i>Сортировка</button></div>
+            <div class="mc-filter-row">${groups.map(([id, title]) => `<button class="mc-filter${filter === id ? ' on' : ''}" data-filter="${id}">${title}</button>`).join('')}</div>
+            ${rows.length ? `<div class="mc-grid">${rows.map(item => skinCard(item)).join('')}</div>` : '<div class="mc-empty"><b>Здесь пока пусто</b>Откройте кейс — полученная компания появится в коллекции.</div>'}`;
+        bindCompanies(panel);
+        if (options.animate && panel.querySelector('.mc-grid')) panel.querySelector('.mc-grid').animate([
+            { opacity: .35, transform: `translate3d(${direction * 22}px,0,0)` },
+            { opacity: 1, transform: 'translate3d(0,0,0)' },
+        ], { duration: 300, easing: 'cubic-bezier(.2,.8,.25,1)' });
+        requestAnimationFrame(() => {
+            const rail = panel.querySelector('.mc-filter-row');
+            const selected = rail?.querySelector('.mc-filter.on');
+            if (!rail || !selected) return;
+            const railRect = rail.getBoundingClientRect();
+            const selectedRect = selected.getBoundingClientRect();
+            const localLeft = selectedRect.left - railRect.left + rail.scrollLeft;
+            const left = localLeft - Math.max(0, (rail.clientWidth - selected.offsetWidth) / 2);
+            rail.scrollTo({ left:Math.max(0, left), behavior:options.animate ? 'smooth' : 'auto' });
+        });
+        syncViewportHeight();
+    }
+    function skinCard(value, loadout = current?.loadout || []) {
+        const row = value?.row || value;
+        const copyIndex = Number(value?.copyIndex || 0);
+        const duplicate = Boolean(value?.duplicate || copyIndex > 0);
         const skin = row.skin;
         if (!skin) return '';
-        const equipped = loadout.some(item => item.skin_id === skin.id);
-        return `<button class="mc-skin" data-skin="${esc(skin.id)}" data-rarity="${skin.rarity}" data-layout="${skin.layout}">
-            ${Number(row.quantity) > 1 ? `<span class="mc-qty">×${Number(row.quantity)}</span>` : ''}
-            <div class="mc-skin-img"><img src="${esc(asset(skin.asset))}" alt=""><i class="mc-rarity-strip"></i></div>
+        const equipped = !duplicate && loadout.some(item => item.skin_id === skin.id);
+        return `<button class="mc-skin${duplicate ? ' is-duplicate' : ''}" data-skin="${esc(skin.id)}" data-copy="${copyIndex}" data-rarity="${skin.rarity}" data-layout="${skin.layout}">
+            ${duplicate ? '<span class="mc-duplicate-badge">Повторка</span>' : ''}
+            <div class="mc-skin-img"><img src="${esc(asset(skin.asset))}" alt=""></div>
             <b>${esc(skin.name)}</b><small>${RARITY[skin.rarity]?.[0] || skin.rarity}${equipped ? ' · установлена' : ''}</small>
         </button>`;
     }
-    function bindBody(root) {
-        root.querySelectorAll('.mc-filter').forEach(button => button.onclick = () => { filter = button.dataset.filter; render(); });
-        root.querySelectorAll('.mc-skin').forEach(button => button.onclick = () => openSkin(button.dataset.skin));
-        root.querySelector('.mc-open')?.addEventListener('click', () => {
-            const pending = current.pendingOpenings?.[0];
-            if (pending) showWin(pending, true);
-            else openCase();
+    function bindCompanies(panel) {
+        const order = ['all','cars','web','food','tech','duplicates'];
+        panel.querySelectorAll('.mc-filter').forEach(button => button.onclick = () => {
+            const oldIndex = order.indexOf(filter), nextIndex = order.indexOf(button.dataset.filter);
+            filter = button.dataset.filter;
+            renderSkinsPanel($('#monoCollectionRoot'), { animate:true, direction:nextIndex >= oldIndex ? 1 : -1 });
+        });
+        panel.querySelectorAll('.mc-skin').forEach(button => button.onclick = () => openSkin(button.dataset.skin, Number(button.dataset.copy || 0)));
+        panel.querySelector('.mc-sort')?.addEventListener('click', openSortSheet);
+    }
+    function applyTabProgress(value) {
+        tabProgress = Math.max(0, Math.min(1, Number(value) || 0));
+        const page = $('#monoCollectionRoot .mc-page');
+        if (!page) return;
+        page.style.setProperty('--mc-tab-progress', tabProgress);
+        const panels = page.querySelectorAll('.mc-tab-panel');
+        const viewport = page.querySelector('.mc-tab-viewport');
+        if (viewport && panels.length === 2) {
+            if (viewport.scrollLeft) viewport.scrollLeft = 0;
+            viewport.style.height = `${Math.round(panels[0].scrollHeight * (1 - tabProgress) + panels[1].scrollHeight * tabProgress)}px`;
+        }
+    }
+    function setTab(tab, animate = true) {
+        activeTab = tab === 'skins' ? 'skins' : 'cases';
+        const page = $('#monoCollectionRoot .mc-page');
+        if (!page) return;
+        page.classList.toggle('mc-no-tab-motion', !animate);
+        page.querySelectorAll('.mc-tab').forEach(button => {
+            const on = button.dataset.tab === activeTab;
+            button.classList.toggle('on', on); button.setAttribute('aria-selected', String(on));
+        });
+        applyTabProgress(activeTab === 'skins' ? 1 : 0);
+        requestAnimationFrame(() => page.classList.remove('mc-no-tab-motion'));
+    }
+    function syncViewportHeight() { requestAnimationFrame(() => applyTabProgress(tabProgress)); }
+    function bindTabDrag(root) {
+        const tabs = root.querySelector('.mc-tabs');
+        tabs.addEventListener('pointerdown', event => {
+            if (event.button != null && event.button !== 0) return;
+            tabDrag = { id:event.pointerId, x:event.clientX, time:performance.now(), start:activeTab === 'skins' ? 1 : 0, moved:false };
+            tabs.setPointerCapture?.(event.pointerId); tabs.classList.add('dragging');
+        });
+        tabs.addEventListener('pointermove', event => {
+            if (!tabDrag || tabDrag.id !== event.pointerId) return;
+            const dx = event.clientX - tabDrag.x;
+            if (Math.abs(dx) > 3) tabDrag.moved = true;
+            applyTabProgress(tabDrag.start + dx / Math.max(1, tabs.clientWidth * .72));
+        });
+        const finish = event => {
+            if (!tabDrag || tabDrag.id !== event.pointerId) return;
+            const elapsed = Math.max(1, performance.now() - tabDrag.time);
+            const velocity = (event.clientX - tabDrag.x) / elapsed;
+            const next = velocity > .35 ? 'skins' : velocity < -.35 ? 'cases' : tabProgress >= .5 ? 'skins' : 'cases';
+            if (tabDrag.moved) root.dataset.mcDraggedAt = Date.now();
+            tabDrag = null; tabs.classList.remove('dragging'); setTab(next, true);
+        };
+        tabs.addEventListener('pointerup', finish); tabs.addEventListener('pointercancel', finish);
+    }
+    function presentCase() {
+        if (Number(current.account?.cases_count || 0) < 1) return;
+        const el = layer(`<div class="mc-sheet mc-case-sheet"><div class="mc-grabber"></div><div class="mc-case-sheet-art"><span></span><img src="assets/skins/case.svg" alt=""></div>
+            <h3>Универсальный кейс</h3><p>Внутри одна компания. Редкость определяется честной серверной выборкой в момент открытия.</p>
+            <div class="mc-sheet-actions"><button class="mc-secondary mc-close-btn">Не сейчас</button><button class="mc-primary mc-open-confirm">Открыть</button></div></div>`);
+        el.querySelector('.mc-close-btn').onclick = () => closeLayer(el);
+        el.querySelector('.mc-open-confirm').onclick = () => { closeLayer(el); setTimeout(openCase, 520); };
+    }
+    function openSortSheet() {
+        const options = [['collection','По коллекциям'],['rarity','По редкости'],['newest','Сначала новые'],['duplicates','Сначала повторки']];
+        const el = layer(`<div class="mc-sheet mc-sort-sheet"><div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Сортировать по</h3><button class="mc-close">×</button></div>
+            <div class="mc-sort-options">${options.map(([id,title]) => `<button data-sort="${id}" class="${sortMode === id ? 'on' : ''}"><span>${title}</span><i></i></button>`).join('')}</div></div>`);
+        el.querySelectorAll('[data-sort]').forEach(button => button.onclick = () => {
+            sortMode = button.dataset.sort; closeLayer(el); renderSkinsPanel($('#monoCollectionRoot'), { animate:true, direction:1 });
         });
     }
 
@@ -183,7 +308,7 @@
         el.querySelector('.mc-close')?.addEventListener('click', () => closeLayer(el));
         return el;
     }
-    function closeLayer(el) { if (!el) return; el.classList.remove('on'); setTimeout(() => el.remove(), 300); }
+    function closeLayer(el) { if (!el) return; el.classList.remove('on'); setTimeout(() => el.remove(), 540); }
     function closeLayers() { document.querySelectorAll('.mc-layer,.mc-roulette-layer').forEach(el => el.remove()); }
 
     function boardPreviewHtml(skin, equipped) {
@@ -207,23 +332,24 @@
         </div>`;
     }
 
-    function openSkin(id) {
+    function openSkin(id, copyIndex = 0) {
         const row = current.inventory.find(item => item.skin_id === id);
         if (!row?.skin) return;
         const skin = row.skin;
+        const duplicate = Number(copyIndex) > 0;
         const equipped = current.loadout.find(item => item.skin_id === id);
         const html = `<div class="mc-sheet mc-detail" data-rarity="${skin.rarity}"><div class="mc-grabber"></div>
-            <div class="mc-sheet-head"><h3>Компания</h3><button class="mc-close">×</button></div>
+            <div class="mc-sheet-head"><h3>${duplicate ? 'Повторка' : 'Компания'}</h3><button class="mc-close">×</button></div>
             <div class="mc-detail-top"><div class="mc-detail-img"><img src="${esc(asset(skin.asset))}" alt=""></div>
                 <div class="mc-detail-copy"><b>${RARITY[skin.rarity]?.[0] || skin.rarity}</b><h4>${esc(skin.name)}</h4>
-                <p>${esc(skin.groupName)} · +${skin.bonusBps / 100}% ко всем уровням аренды после сбора монополии.</p></div></div>
-            <div class="mc-section-title"><b>Расположение на карте</b><span>без перехода в игру</span></div>
+                <p>${duplicate ? `Первый экземпляр уже хранится в коллекции. Этот можно обменять на ${skin.exchangeValue} монет.` : `${esc(skin.groupName)} · +${skin.bonusBps / 100}% ко всем уровням аренды после сбора монополии.`}</p></div></div>
+            ${duplicate ? '' : `<div class="mc-section-title"><b>Расположение на карте</b><span>без перехода в игру</span></div>
             ${boardPreviewHtml(skin, equipped)}
             <div class="mc-section-title"><b>Выберите поле</b><span>в той же тематике</span></div>
-            <div class="mc-map">${skin.compatibleTiles.map(tile => `<button data-equip-tile="${tile}" class="${equipped?.tile_id === tile ? 'on equipped' : ''}">${esc(TILE_NAMES[tile] || 'Поле ' + tile)}</button>`).join('')}</div>
+            <div class="mc-map">${skin.compatibleTiles.map(tile => `<button data-equip-tile="${tile}" class="${equipped?.tile_id === tile ? 'on equipped' : ''}">${esc(TILE_NAMES[tile] || 'Поле ' + tile)}</button>`).join('')}</div>`}
             <div class="mc-sheet-actions">
-                ${equipped ? '<button class="mc-secondary mc-original">Вернуть оригинал</button>' : ''}
-                ${Number(row.quantity) > 1 ? `<button class="mc-secondary mc-exchange">Обменять дубль · ${skin.exchangeValue}</button>` : ''}
+                ${!duplicate && equipped ? '<button class="mc-secondary mc-original">Вернуть оригинал</button>' : ''}
+                ${duplicate ? `<button class="mc-primary mc-exchange">Обменять на ${skin.exchangeValue} монет</button>` : ''}
             </div></div>`;
         const el = layer(html);
         el.querySelectorAll('[data-equip-tile]').forEach(button => button.onclick = async () => {
@@ -244,14 +370,20 @@
     function confirmExchange(parentLayer, row) {
         closeLayer(parentLayer);
         const skin = row.skin;
-        const el = layer(`<div class="mc-sheet"><div class="mc-grabber"></div><div class="mc-confirm"><img src="assets/skins/coin.svg" alt="">
+        const el = layer(`<div class="mc-sheet mc-exchange-sheet"><div class="mc-grabber"></div><div class="mc-confirm"><img src="assets/skins/coin.svg" alt="">
             <h3>Обменять повторку?</h3><p>Один лишний экземпляр «${esc(skin.name)}» исчезнет. Вы получите ${skin.exchangeValue} монет. Первый экземпляр останется навсегда.</p>
             <div class="mc-sheet-actions"><button class="mc-secondary mc-close-btn">Отмена</button><button class="mc-primary mc-confirm-btn">Обменять</button></div></div></div>`);
         el.querySelector('.mc-close-btn').onclick = () => closeLayer(el);
         el.querySelector('.mc-confirm-btn').onclick = async () => {
             if (busy) return; busy = true;
+            const button = el.querySelector('.mc-confirm-btn');
+            button.disabled = true; button.textContent = 'Обмениваем…';
             try { await request('/api/monopoly/skins/exchange', { method:'POST', body:JSON.stringify({ skinId:skin.id }) }); closeLayer(el); global.Lobby?.toast?.(`Получено ${skin.exchangeValue} монет`); await refresh(); }
-            catch (error) { global.Lobby?.toast?.(humanError(error), true); } finally { busy = false; }
+            catch (error) {
+                button.disabled = false;
+                button.textContent = 'Обменять';
+                global.Lobby?.toast?.(humanError(error), true);
+            } finally { busy = false; }
         };
     }
 

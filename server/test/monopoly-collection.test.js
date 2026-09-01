@@ -92,6 +92,14 @@ test('collectible SQL serializes openings and protects all mutations from client
 test('collection UI never retries a mutating request on another backend', () => {
     assert.match(collectionUi, /method === 'GET' \|\| method === 'HEAD'/);
     assert.match(collectionUi, /skinCard\(row, data\.loadout \|\| \[\]\)/);
+    assert.match(collectionUi, /headers\['Content-Type'\] = 'application\/json'/);
+});
+
+test('collection UI renders individual cases and duplicate company instances', () => {
+    assert.match(collectionUi, /function companyInstances/);
+    assert.match(collectionUi, /copyIndex > 0/);
+    assert.match(collectionUi, /mc-case-carousel/);
+    assert.doesNotMatch(collectionUi, /mc-rarity-strip/);
 });
 
 test('active company names and skins are used throughout match UI', () => {
