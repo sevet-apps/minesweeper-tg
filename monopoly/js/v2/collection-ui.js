@@ -190,23 +190,26 @@
         const inventory = current.inventory || [];
         const total = companyInstances(inventory).length;
         const direction = Number(options.direction || 1);
-        panel.innerHTML = `<div class="mc-section-title mc-company-title"><div><b>Компании</b><span>${inventory.length} из ${current.catalog?.skins?.length || 0} уникальных · ${total} всего</span></div><button class="mc-sort" aria-label="Сортировать"><i></i>Сортировка</button></div>
-            <div class="mc-filter-row">${groups.map(([id, title]) => `<button class="mc-filter${filter === id ? ' on' : ''}" data-filter="${id}">${title}</button>`).join('')}</div>
-            ${rows.length ? `<div class="mc-grid">${rows.map(item => skinCard(item)).join('')}</div>` : '<div class="mc-empty"><b>Здесь пока пусто</b>Откройте кейс — полученная компания появится в коллекции.</div>'}`;
-        bindCompanies(panel);
-        if (options.animate && panel.querySelector('.mc-grid')) panel.querySelector('.mc-grid').animate([
+        if (!panel.querySelector('.mc-companies-shell')) {
+            panel.innerHTML = `<div class="mc-companies-shell"><div class="mc-section-title mc-company-title"><div><b>Компании</b><span data-company-count></span></div><button class="mc-sort" aria-label="Сортировать"><i></i>Сортировка</button></div>
+                <div class="mc-filter-row">${groups.map(([id, title]) => `<button class="mc-filter${filter === id ? ' on' : ''}" data-filter="${id}">${title}</button>`).join('')}</div>
+                <div class="mc-company-results"></div></div>`;
+            bindCompanies(panel);
+        }
+        panel.querySelector('[data-company-count]').textContent = `${inventory.length} из ${current.catalog?.skins?.length || 0} уникальных · ${total} всего`;
+        panel.querySelectorAll('.mc-filter').forEach(button => button.classList.toggle('on', button.dataset.filter === filter));
+        const results = panel.querySelector('.mc-company-results');
+        results.innerHTML = rows.length ? `<div class="mc-grid">${rows.map(item => skinCard(item)).join('')}</div>` : '<div class="mc-empty"><b>Здесь пока пусто</b>Откройте кейс — полученная компания появится в коллекции.</div>';
+        bindCompanyCards(results);
+        if (options.animate && results.querySelector('.mc-grid')) results.querySelector('.mc-grid').animate([
             { opacity: .35, transform: `translate3d(${direction * 22}px,0,0)` },
             { opacity: 1, transform: 'translate3d(0,0,0)' },
-        ], { duration: 300, easing: 'cubic-bezier(.2,.8,.25,1)' });
+        ], { duration: 360, easing: 'cubic-bezier(.2,.8,.25,1)' });
         requestAnimationFrame(() => {
             const rail = panel.querySelector('.mc-filter-row');
             const selected = rail?.querySelector('.mc-filter.on');
             if (!rail || !selected) return;
-            const railRect = rail.getBoundingClientRect();
-            const selectedRect = selected.getBoundingClientRect();
-            const localLeft = selectedRect.left - railRect.left + rail.scrollLeft;
-            const left = localLeft - Math.max(0, (rail.clientWidth - selected.offsetWidth) / 2);
-            rail.scrollTo({ left:Math.max(0, left), behavior:options.animate ? 'smooth' : 'auto' });
+            alignFilterAtStart(rail, selected, options.animate);
         });
         syncViewportHeight();
     }
@@ -226,12 +229,25 @@
     function bindCompanies(panel) {
         const order = ['all','cars','web','food','tech','duplicates'];
         panel.querySelectorAll('.mc-filter').forEach(button => button.onclick = () => {
+            if (button.dataset.filter === filter) return;
             const oldIndex = order.indexOf(filter), nextIndex = order.indexOf(button.dataset.filter);
             filter = button.dataset.filter;
+            panel.querySelectorAll('.mc-filter').forEach(item => item.classList.toggle('on', item === button));
+            const rail = button.closest('.mc-filter-row');
+            requestAnimationFrame(() => alignFilterAtStart(rail, button, true));
             renderSkinsPanel($('#monoCollectionRoot'), { animate:true, direction:nextIndex >= oldIndex ? 1 : -1 });
         });
-        panel.querySelectorAll('.mc-skin').forEach(button => button.onclick = () => openSkin(button.dataset.skin, Number(button.dataset.copy || 0)));
         panel.querySelector('.mc-sort')?.addEventListener('click', openSortSheet);
+    }
+    function alignFilterAtStart(rail, button, smooth) {
+        if (!rail || !button) return;
+        const railRect = rail.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        const localLeft = buttonRect.left - railRect.left + rail.scrollLeft;
+        rail.scrollTo({ left:Math.max(0, localLeft - 2), behavior:smooth ? 'smooth' : 'auto' });
+    }
+    function bindCompanyCards(root) {
+        root.querySelectorAll('.mc-skin').forEach(button => button.onclick = () => openSkin(button.dataset.skin, Number(button.dataset.copy || 0)));
     }
     function applyTabProgress(value) {
         tabProgress = Math.max(0, Math.min(1, Number(value) || 0));
@@ -255,6 +271,14 @@
             button.classList.toggle('on', on); button.setAttribute('aria-selected', String(on));
         });
         applyTabProgress(activeTab === 'skins' ? 1 : 0);
+        if (activeTab === 'skins') {
+            const alignActive = () => {
+                const rail = page.querySelector('.mc-filter-row');
+                alignFilterAtStart(rail, rail?.querySelector('.mc-filter.on'), animate);
+            };
+            requestAnimationFrame(alignActive);
+            setTimeout(alignActive, 80);
+        }
         requestAnimationFrame(() => page.classList.remove('mc-no-tab-motion'));
     }
     function syncViewportHeight() { requestAnimationFrame(() => applyTabProgress(tabProgress)); }
@@ -306,9 +330,81 @@
         requestAnimationFrame(() => el.classList.add('on'));
         el.addEventListener('click', event => { if (event.target === el) closeLayer(el); });
         el.querySelector('.mc-close')?.addEventListener('click', () => closeLayer(el));
+        bindSheetDrag(el);
         return el;
     }
-    function closeLayer(el) { if (!el) return; el.classList.remove('on'); setTimeout(() => el.remove(), 540); }
+    function setSheetDrag(el, offset) {
+        const sheet = el.querySelector('.mc-sheet');
+        if (!sheet) return;
+        const distance = Math.max(0, Number(offset) || 0);
+        const progress = Math.min(1, distance / Math.max(280, sheet.offsetHeight * .72));
+        sheet.style.setProperty('--mc-sheet-offset', `${distance}px`);
+        el.style.backgroundColor = `rgba(0,0,0,${(.54 * (1 - progress)).toFixed(3)})`;
+        el.style.backdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
+        el.style.webkitBackdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
+    }
+    function resetSheetDrag(el) {
+        const sheet = el.querySelector('.mc-sheet');
+        el.classList.remove('mc-dragging');
+        sheet?.style.removeProperty('--mc-sheet-offset');
+        el.style.removeProperty('background-color');
+        el.style.removeProperty('backdrop-filter');
+        el.style.removeProperty('-webkit-backdrop-filter');
+    }
+    function bindSheetDrag(el) {
+        const sheet = el.querySelector('.mc-sheet');
+        if (!sheet) return;
+        let drag = null;
+        const interactive = target => target.closest('button,a,input,select,textarea,[data-no-drag]');
+        const begin = (y, target) => {
+            if (interactive(target)) return false;
+            drag = { startY:y, lastY:y, lastAt:performance.now(), velocity:0, active:false };
+            return true;
+        };
+        const move = (y, event) => {
+            if (!drag) return;
+            const distance = y - drag.startY;
+            if (!drag.active) {
+                if (distance < 7) return;
+                if (sheet.scrollTop > 0 || distance <= 0) { drag = null; return; }
+                drag.active = true;
+                el.classList.add('mc-dragging');
+            }
+            if (event?.cancelable) event.preventDefault();
+            const now = performance.now();
+            drag.velocity = (y - drag.lastY) / Math.max(1, now - drag.lastAt);
+            drag.lastY = y; drag.lastAt = now;
+            setSheetDrag(el, Math.max(0, distance));
+        };
+        const finish = y => {
+            if (!drag) return;
+            const distance = Math.max(0, y - drag.startY);
+            const dismiss = drag.active && (distance > Math.min(150, sheet.offsetHeight * .24) || drag.velocity > .7);
+            drag = null;
+            if (dismiss) closeLayer(el);
+            else resetSheetDrag(el);
+        };
+        sheet.addEventListener('touchstart', event => {
+            if (event.touches.length === 1) begin(event.touches[0].clientY, event.target);
+        }, { passive:true });
+        sheet.addEventListener('touchmove', event => {
+            if (event.touches.length === 1) move(event.touches[0].clientY, event);
+        }, { passive:false });
+        sheet.addEventListener('touchend', event => finish(event.changedTouches[0]?.clientY ?? drag?.lastY ?? 0));
+        sheet.addEventListener('touchcancel', () => { drag = null; resetSheetDrag(el); });
+        sheet.addEventListener('pointerdown', event => {
+            if (event.pointerType === 'mouse' && event.button === 0 && begin(event.clientY, event.target)) sheet.setPointerCapture(event.pointerId);
+        });
+        sheet.addEventListener('pointermove', event => { if (event.pointerType === 'mouse') move(event.clientY, event); });
+        sheet.addEventListener('pointerup', event => { if (event.pointerType === 'mouse') finish(event.clientY); });
+        sheet.addEventListener('pointercancel', () => { drag = null; resetSheetDrag(el); });
+    }
+    function closeLayer(el) {
+        if (!el) return;
+        resetSheetDrag(el);
+        requestAnimationFrame(() => el.classList.remove('on'));
+        setTimeout(() => el.remove(), 540);
+    }
     function closeLayers() { document.querySelectorAll('.mc-layer,.mc-roulette-layer').forEach(el => el.remove()); }
 
     function boardPreviewHtml(skin, equipped) {
@@ -405,15 +501,30 @@
         return pool[Math.floor(Math.random() * pool.length)] || current.catalog.skins[0];
     }
     function playRoulette(overlay, result) {
-        const target = 22;
-        const items = Array.from({ length: 28 }, weightedSkin);
+        const target = 48;
+        const items = Array.from({ length: 56 }, weightedSkin);
         items[target] = result.skin;
-        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map(skin => `<div class="mc-reel-item" data-rarity="${skin.rarity}"><img src="${esc(asset(skin.asset))}" alt=""></div>`).join('')}</div></div></div>`;
+        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map(skin => `<div class="mc-reel-item" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><img src="${esc(asset(skin.asset))}" alt=""><span>${esc(skin.name)}</span></div>`).join('')}</div></div></div>`;
         const reel = overlay.querySelector('.mc-reel');
-        const destination = -(target * 134 + 62) + (Math.random() * 32 - 16);
-        reel.animate([{ transform:'translateX(0)' }, { transform:`translateX(${destination}px)` }], {
-            duration: 5800, easing:'cubic-bezier(.08,.72,.12,1)', fill:'forwards',
-        }).onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 450);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            const windowRect = overlay.querySelector('.mc-reel-window').getBoundingClientRect();
+            const item = reel.children[target];
+            const itemWidth = item.getBoundingClientRect().width;
+            const gap = parseFloat(getComputedStyle(reel).columnGap) || 0;
+            const landingFraction = .04 + Math.random() * .92;
+            const destination = windowRect.width / 2 - (target * (itemWidth + gap) + itemWidth * landingFraction);
+            const start = Math.min(70, windowRect.width * .18);
+            const at = part => start + (destination - start) * part;
+            reel.animate([
+                { transform:`translate3d(${start}px,0,0)`, offset:0 },
+                { transform:`translate3d(${at(.52)}px,0,0)`, offset:.12 },
+                { transform:`translate3d(${at(.79)}px,0,0)`, offset:.31 },
+                { transform:`translate3d(${at(.93)}px,0,0)`, offset:.57 },
+                { transform:`translate3d(${at(.985)}px,0,0)`, offset:.81 },
+                { transform:`translate3d(${destination}px,0,0)`, offset:1 },
+            ], { duration:7600, easing:'cubic-bezier(.12,.58,.18,1)', fill:'forwards' })
+                .onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 520);
+        }));
     }
     function showWin(opening, pending) {
         const skin = opening.skin;

@@ -13,6 +13,9 @@ const root = path.join(__dirname, '..', '..');
 const migration = fs.readFileSync(path.join(
     root, 'supabase', 'migrations', '202609010001_add_monopoly_collectibles.sql'
 ), 'utf8');
+const exchangeFixMigration = fs.readFileSync(path.join(
+    root, 'supabase', 'migrations', '202609020001_fix_monopoly_duplicate_exchange.sql'
+), 'utf8');
 const collectionUi = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'collection-ui.js'), 'utf8');
 const gameUi = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'game-ui.js'), 'utf8');
 const tradesUi = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'trades.js'), 'utf8');
@@ -100,6 +103,22 @@ test('collection UI renders individual cases and duplicate company instances', (
     assert.match(collectionUi, /copyIndex > 0/);
     assert.match(collectionUi, /mc-case-carousel/);
     assert.doesNotMatch(collectionUi, /mc-rarity-strip/);
+});
+
+test('duplicate exchange migration qualifies inventory columns and stays service-role only', () => {
+    assert.match(exchangeFixMigration, /update public\.monopoly_skin_inventory as inv[\s\S]*quantity = inv\.quantity - 1/i);
+    assert.match(exchangeFixMigration, /returning inv\.quantity into v_qty/i);
+    assert.match(exchangeFixMigration, /revoke all on function public\.monopoly_exchange_duplicate\(text, text, integer\) from public, anon, authenticated/i);
+    assert.match(exchangeFixMigration, /grant execute on function public\.monopoly_exchange_duplicate\(text, text, integer\) to service_role/i);
+});
+
+test('collection UI uses compact roulette cells, random landing position and draggable sheets', () => {
+    assert.match(collectionUi, /const target = 48/);
+    assert.match(collectionUi, /landingFraction = \.04 \+ Math\.random\(\) \* \.92/);
+    assert.match(collectionUi, /duration:7600/);
+    assert.match(collectionUi, /function bindSheetDrag/);
+    assert.match(collectionUi, /buttonRect\.left - railRect\.left \+ rail\.scrollLeft/);
+    assert.match(collectionUi, /setTimeout\(alignActive, 80\)/);
 });
 
 test('active company names and skins are used throughout match UI', () => {
