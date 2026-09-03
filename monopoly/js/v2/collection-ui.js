@@ -514,16 +514,11 @@
             const landingFraction = .04 + Math.random() * .92;
             const destination = windowRect.width / 2 - (target * (itemWidth + gap) + itemWidth * landingFraction);
             const start = Math.min(70, windowRect.width * .18);
-            const at = part => start + (destination - start) * part;
             reel.animate([
-                { transform:`translate3d(${start}px,0,0)`, offset:0 },
-                { transform:`translate3d(${at(.52)}px,0,0)`, offset:.12 },
-                { transform:`translate3d(${at(.79)}px,0,0)`, offset:.31 },
-                { transform:`translate3d(${at(.93)}px,0,0)`, offset:.57 },
-                { transform:`translate3d(${at(.985)}px,0,0)`, offset:.81 },
-                { transform:`translate3d(${destination}px,0,0)`, offset:1 },
-            ], { duration:7600, easing:'cubic-bezier(.12,.58,.18,1)', fill:'forwards' })
-                .onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 520);
+                { transform:`translate3d(${start}px,0,0)` },
+                { transform:`translate3d(${destination}px,0,0)` },
+            ], { duration:5600, easing:'cubic-bezier(.07,.72,.16,1)', fill:'forwards' })
+                .onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 420);
         }));
     }
     function showWin(opening, pending) {
