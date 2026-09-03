@@ -501,24 +501,25 @@
         return pool[Math.floor(Math.random() * pool.length)] || current.catalog.skins[0];
     }
     function playRoulette(overlay, result) {
-        const target = 48;
-        const items = Array.from({ length: 56 }, weightedSkin);
+        const target = 58;
+        const items = Array.from({ length: 66 }, weightedSkin);
         items[target] = result.skin;
-        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map(skin => `<div class="mc-reel-item" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><img src="${esc(asset(skin.asset))}" alt=""><span>${esc(skin.name)}</span></div>`).join('')}</div></div></div>`;
+        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map((skin, index) => `<div class="mc-reel-item" data-index="${index}" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><div class="mc-reel-logo"><img src="${esc(asset(skin.asset))}" alt=""></div><span>${esc(skin.name)}</span></div>${index < items.length - 1 ? '<i class="mc-reel-separator" aria-hidden="true"></i>' : ''}`).join('')}</div></div></div>`;
         const reel = overlay.querySelector('.mc-reel');
         requestAnimationFrame(() => requestAnimationFrame(() => {
             const windowRect = overlay.querySelector('.mc-reel-window').getBoundingClientRect();
-            const item = reel.children[target];
+            const item = reel.querySelector(`[data-index="${target}"]`);
             const itemWidth = item.getBoundingClientRect().width;
-            const gap = parseFloat(getComputedStyle(reel).columnGap) || 0;
-            const landingFraction = .04 + Math.random() * .92;
-            const destination = windowRect.width / 2 - (target * (itemWidth + gap) + itemWidth * landingFraction);
+            const separatorWidth = reel.querySelector('.mc-reel-separator')?.getBoundingClientRect().width || 0;
+            const winningZoneStart = item.offsetLeft - separatorWidth / 2;
+            const landingOffset = winningZoneStart + Math.random() * (itemWidth + separatorWidth);
+            const destination = windowRect.width / 2 - landingOffset;
             const start = Math.min(70, windowRect.width * .18);
             reel.animate([
                 { transform:`translate3d(${start}px,0,0)` },
                 { transform:`translate3d(${destination}px,0,0)` },
-            ], { duration:5600, easing:'cubic-bezier(.07,.72,.16,1)', fill:'forwards' })
-                .onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 420);
+            ], { duration:7400, easing:'cubic-bezier(.08,.62,.18,1)', fill:'forwards' })
+                .onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 520);
         }));
     }
     function showWin(opening, pending) {
