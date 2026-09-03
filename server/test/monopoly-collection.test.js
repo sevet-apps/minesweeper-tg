@@ -113,10 +113,12 @@ test('duplicate exchange migration qualifies inventory columns and stays service
 });
 
 test('collection UI uses compact roulette cells, random landing position and draggable sheets', () => {
-    assert.match(collectionUi, /const target = 48/);
-    assert.match(collectionUi, /landingFraction = \.04 \+ Math\.random\(\) \* \.92/);
-    assert.match(collectionUi, /duration:5600/);
-    assert.match(collectionUi, /cubic-bezier\(\.07,\.72,\.16,1\)/);
+    assert.match(collectionUi, /const target = 58/);
+    assert.match(collectionUi, /winningZoneStart = item\.offsetLeft - separatorWidth \/ 2/);
+    assert.match(collectionUi, /Math\.random\(\) \* \(itemWidth \+ separatorWidth\)/);
+    assert.match(collectionUi, /duration:7400/);
+    assert.match(collectionUi, /cubic-bezier\(\.08,\.62,\.18,1\)/);
+    assert.match(collectionUi, /mc-reel-separator/);
     assert.doesNotMatch(collectionUi, /const at = part/);
     assert.match(collectionUi, /function bindSheetDrag/);
     assert.match(collectionUi, /buttonRect\.left - railRect\.left \+ rail\.scrollLeft/);
