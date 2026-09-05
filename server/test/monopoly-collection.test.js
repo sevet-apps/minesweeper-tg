@@ -116,13 +116,24 @@ test('collection UI uses compact roulette cells, random landing position and dra
     assert.match(collectionUi, /const target = 58/);
     assert.match(collectionUi, /winningZoneStart = item\.offsetLeft - separatorWidth \/ 2/);
     assert.match(collectionUi, /Math\.random\(\) \* \(itemWidth \+ separatorWidth\)/);
-    assert.match(collectionUi, /duration:7400/);
-    assert.match(collectionUi, /cubic-bezier\(\.08,\.62,\.18,1\)/);
+    assert.match(collectionUi, /ROULETTE_DURATION = 9200/);
+    assert.match(collectionUi, /ROULETTE_EASING = \[\.08, \.74, \.14, 1\]/);
+    assert.match(collectionUi, /trackRouletteHaptics/);
+    assert.match(collectionUi, /selectionChanged/);
     assert.match(collectionUi, /mc-reel-separator/);
     assert.doesNotMatch(collectionUi, /const at = part/);
     assert.match(collectionUi, /function bindSheetDrag/);
     assert.match(collectionUi, /buttonRect\.left - railRect\.left \+ rail\.scrollLeft/);
     assert.match(collectionUi, /setTimeout\(alignActive, 80\)/);
+});
+
+test('collection UI keeps case flow active, fits logos and describes occupied loadout slots', () => {
+    assert.match(collectionUi, /activeTab = 'cases'; await refresh\(\)/);
+    assert.match(collectionUi, /function logoHtml/);
+    assert.match(collectionUi, /mc-logo-frame/);
+    assert.match(collectionUi, /function loadoutAt/);
+    assert.match(collectionUi, /Занято/);
+    assert.match(collectionUi, /occupied\.skin\.name/);
 });
 
 test('active company names and skins are used throughout match UI', () => {
