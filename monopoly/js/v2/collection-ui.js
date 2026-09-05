@@ -20,6 +20,7 @@
     let busy = false;
     let tabProgress = 0;
     let tabDrag = null;
+    const logoPreloads = new Map();
 
     async function request(path, options = {}) {
         const bases = global.Lobby?.serverCandidates?.() || ['https://spark-game-backend.onrender.com'];
@@ -53,6 +54,33 @@
         throw networkError || new Error('network_error');
     }
     function asset(path) { return path ? String(path).replace(/^\//, '') : ''; }
+    function preloadLogo(path) {
+        const src = asset(path);
+        if (!src || typeof global.Image !== 'function') return Promise.resolve();
+        if (logoPreloads.has(src)) return logoPreloads.get(src).promise;
+        const image = new global.Image();
+        image.decoding = 'async';
+        image.loading = 'eager';
+        const promise = new Promise(resolve => {
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                resolve();
+            };
+            image.addEventListener('load', finish, { once:true });
+            image.addEventListener('error', finish, { once:true });
+            image.src = src;
+            if (image.complete) finish();
+        });
+        /* Keep the Image object alive: WebKit may otherwise cancel speculative
+           downloads before the same SVG is requested by the roulette. */
+        logoPreloads.set(src, { image, promise });
+        return promise;
+    }
+    function preloadCatalogLogos(catalog) {
+        (catalog?.skins || []).forEach(skin => preloadLogo(skin.asset));
+    }
     function logoHtml(skin, className = '') {
         if (!skin?.asset) return '';
         return `<span class="mc-logo-frame${className ? ' ' + esc(className) : ''}" data-layout="${esc(skin.layout || 'badge')}"><img src="${esc(asset(skin.asset))}" alt="" draggable="false" decoding="async"></span>`;
@@ -62,6 +90,13 @@
     }
     function resultHaptic() {
         try { global.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); } catch (_) {}
+    }
+    function rouletteHaptic() {
+        try {
+            const feedback = global.Telegram?.WebApp?.HapticFeedback;
+            if (typeof feedback?.impactOccurred === 'function') feedback.impactOccurred('light');
+            else feedback?.selectionChanged?.();
+        } catch (_) {}
     }
     function avatar(user, fallback) {
         const name = user?.first_name || user?.username || fallback?.name || 'Игрок';
@@ -80,15 +115,20 @@
         renderLoading();
         try {
             current = await request('/api/monopoly/collection/me');
+            preloadCatalogLogos(current.catalog);
             render();
         } catch (error) { renderError(error); }
     }
     async function refresh() {
         current = await request('/api/monopoly/collection/me');
+        preloadCatalogLogos(current.catalog);
         render();
     }
     async function loadSelf() {
-        if (!current) current = await request('/api/monopoly/collection/me');
+        if (!current) {
+            current = await request('/api/monopoly/collection/me');
+            preloadCatalogLogos(current.catalog);
+        }
         return current;
     }
     function renderLoading() {
@@ -108,6 +148,7 @@
     function render() {
         const root = $('#monoCollectionRoot');
         if (!root || !current) return;
+        preloadCatalogLogos(current.catalog);
         if (!root.querySelector('.mc-page')) buildShell(root);
         updateProfile(root);
         renderCasesPanel(root);
@@ -523,17 +564,6 @@
         const pool = current.catalog.skins.filter(skin => skin.rarity === rarity);
         return pool[Math.floor(Math.random() * pool.length)] || current.catalog.skins[0];
     }
-    function decodeLogos(root) {
-        const images = Array.from(root.querySelectorAll('img'));
-        return Promise.all(images.map(image => {
-            if (typeof image.decode === 'function') return image.decode().catch(() => undefined);
-            if (image.complete) return Promise.resolve();
-            return new Promise(resolve => {
-                image.addEventListener('load', resolve, { once:true });
-                image.addEventListener('error', resolve, { once:true });
-            });
-        }));
-    }
     function cubicBezierProgress(x1, y1, x2, y2, progress) {
         const sample = (a, b, t) => 3 * a * (1 - t) * (1 - t) * t + 3 * b * (1 - t) * t * t + t * t * t;
         const slope = (a, b, t) => 3 * a * (1 - t) * (1 - 3 * t) + 3 * b * t * (2 - 3 * t) + 3 * t * t;
@@ -559,7 +589,7 @@
             /* Telegram haptics crosses a native bridge. Capping the pulse rate keeps
                the reel on the compositor thread even on older iPhones/iPads. */
             if (previousCell != null && cell !== previousCell && now - lastPulse >= 40) {
-                selectionHaptic();
+                rouletteHaptic();
                 lastPulse = now;
             }
             previousCell = cell;
@@ -572,10 +602,11 @@
         const target = 58;
         const items = Array.from({ length: 66 }, weightedSkin);
         items[target] = result.skin;
-        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map((skin, index) => `<div class="mc-reel-item" data-index="${index}" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><div class="mc-reel-logo">${logoHtml(skin)}</div><span>${esc(skin.name)}</span></div>${index < items.length - 1 ? '<i class="mc-reel-separator" aria-hidden="true"></i>' : ''}`).join('')}</div></div></div>`;
+        items.forEach(skin => preloadLogo(skin.asset));
+        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map((skin, index) => `<div class="mc-reel-item" data-index="${index}" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><div class="mc-reel-logo">${logoHtml(skin)}</div><span class="mc-reel-name">${esc(skin.name)}</span></div>${index < items.length - 1 ? '<i class="mc-reel-separator" aria-hidden="true"></i>' : ''}`).join('')}</div></div></div>`;
         const reel = overlay.querySelector('.mc-reel');
         const reelWindow = overlay.querySelector('.mc-reel-window');
-        decodeLogos(reel).then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             const windowRect = overlay.querySelector('.mc-reel-window').getBoundingClientRect();
             const item = reel.querySelector(`[data-index="${target}"]`);
             const itemWidth = item.getBoundingClientRect().width;
@@ -600,7 +631,7 @@
                 resultHaptic();
                 setTimeout(() => { overlay.remove(); showWin(result, false); }, 620);
             };
-        })));
+        }));
     }
     function showWin(opening, pending) {
         const skin = opening.skin;

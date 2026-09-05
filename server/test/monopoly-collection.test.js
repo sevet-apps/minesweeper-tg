@@ -17,6 +17,7 @@ const exchangeFixMigration = fs.readFileSync(path.join(
     root, 'supabase', 'migrations', '202609020001_fix_monopoly_duplicate_exchange.sql'
 ), 'utf8');
 const collectionUi = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'collection-ui.js'), 'utf8');
+const collectionCss = fs.readFileSync(path.join(root, 'monopoly', 'css', 'collection.css'), 'utf8');
 const gameUi = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'game-ui.js'), 'utf8');
 const tradesUi = fs.readFileSync(path.join(root, 'monopoly', 'js', 'v2', 'trades.js'), 'utf8');
 
@@ -119,7 +120,12 @@ test('collection UI uses compact roulette cells, random landing position and dra
     assert.match(collectionUi, /ROULETTE_DURATION = 9200/);
     assert.match(collectionUi, /ROULETTE_EASING = \[\.08, \.74, \.14, 1\]/);
     assert.match(collectionUi, /trackRouletteHaptics/);
-    assert.match(collectionUi, /selectionChanged/);
+    assert.match(collectionUi, /feedback\.impactOccurred\('light'\)/);
+    assert.match(collectionUi, /function preloadCatalogLogos/);
+    assert.match(collectionUi, /preloadCatalogLogos\(current\.catalog\)/);
+    assert.doesNotMatch(collectionUi, /decodeLogos\(reel\)/);
+    assert.match(collectionCss, /\.mc-reel-item > \.mc-reel-name/);
+    assert.doesNotMatch(collectionCss, /\.mc-reel-item span\s*\{/);
     assert.match(collectionUi, /mc-reel-separator/);
     assert.doesNotMatch(collectionUi, /const at = part/);
     assert.match(collectionUi, /function bindSheetDrag/);
