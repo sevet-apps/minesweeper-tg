@@ -53,6 +53,16 @@
         throw networkError || new Error('network_error');
     }
     function asset(path) { return path ? String(path).replace(/^\//, '') : ''; }
+    function logoHtml(skin, className = '') {
+        if (!skin?.asset) return '';
+        return `<span class="mc-logo-frame${className ? ' ' + esc(className) : ''}" data-layout="${esc(skin.layout || 'badge')}"><img src="${esc(asset(skin.asset))}" alt="" draggable="false" decoding="async"></span>`;
+    }
+    function selectionHaptic() {
+        try { global.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch (_) {}
+    }
+    function resultHaptic() {
+        try { global.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); } catch (_) {}
+    }
     function avatar(user, fallback) {
         const name = user?.first_name || user?.username || fallback?.name || 'Игрок';
         const photo = user?.photo_url || fallback?.avatar;
@@ -222,13 +232,14 @@
         const equipped = !duplicate && loadout.some(item => item.skin_id === skin.id);
         return `<button class="mc-skin${duplicate ? ' is-duplicate' : ''}" data-skin="${esc(skin.id)}" data-copy="${copyIndex}" data-rarity="${skin.rarity}" data-layout="${skin.layout}">
             ${duplicate ? '<span class="mc-duplicate-badge">Повторка</span>' : ''}
-            <div class="mc-skin-img"><img src="${esc(asset(skin.asset))}" alt=""></div>
+            <div class="mc-skin-img">${logoHtml(skin)}</div>
             <b>${esc(skin.name)}</b><small>${RARITY[skin.rarity]?.[0] || skin.rarity}${equipped ? ' · установлена' : ''}</small>
         </button>`;
     }
     function bindCompanies(panel) {
         const order = ['all','cars','web','food','tech','duplicates'];
         panel.querySelectorAll('.mc-filter').forEach(button => button.onclick = () => {
+            selectionHaptic();
             if (button.dataset.filter === filter) return;
             const oldIndex = order.indexOf(filter), nextIndex = order.indexOf(button.dataset.filter);
             filter = button.dataset.filter;
@@ -407,6 +418,9 @@
     }
     function closeLayers() { document.querySelectorAll('.mc-layer,.mc-roulette-layer').forEach(el => el.remove()); }
 
+    function loadoutAt(tileId) {
+        return (current?.loadout || []).find(item => Number(item.tile_id) === Number(tileId)) || null;
+    }
     function boardPreviewHtml(skin, equipped) {
         const D = global.MonopolyDataV2;
         if (!D?.TILES || !global.BoardUI?.placeOf) return '';
@@ -415,12 +429,13 @@
             const pos = global.BoardUI.placeOf(tile.i);
             const candidate = compatible.get(tile.i);
             const selected = Number(equipped?.tile_id) === tile.i;
+            const occupied = candidate ? loadoutAt(tile.i) : null;
             const color = tile.group && D.GROUPS?.[tile.group]?.color || '#3b3d46';
             const style = `grid-row:${pos.r};grid-column:${pos.c};--tile-color:${esc(color)}`;
             if (!candidate) return `<i class="mc-board-cell${pos.corner ? ' corner' : ''}" style="${style}"></i>`;
-            return `<button type="button" class="mc-board-cell candidate${selected ? ' selected' : ''}" style="${style}"
-                data-equip-tile="${tile.i}" aria-label="${esc(TILE_NAMES[tile.i] || 'Поле ' + tile.i)}">
-                ${selected ? `<img src="${esc(asset(skin.asset))}" alt="">` : `<b>${candidate}</b>`}
+            return `<button type="button" class="mc-board-cell candidate${selected ? ' selected' : ''}${occupied ? ' occupied' : ''}" style="${style}"
+                data-equip-tile="${tile.i}" aria-label="${esc(TILE_NAMES[tile.i] || 'Поле ' + tile.i)}${occupied?.skin ? ': ' + esc(occupied.skin.name) : ''}">
+                ${occupied?.skin ? logoHtml(occupied.skin, 'mc-board-logo') : `<b>${candidate}</b>`}
             </button>`;
         }).join('');
         return `<div class="mc-board-preview" aria-label="Расположение полей на карте">
@@ -436,13 +451,21 @@
         const equipped = current.loadout.find(item => item.skin_id === id);
         const html = `<div class="mc-sheet mc-detail" data-rarity="${skin.rarity}"><div class="mc-grabber"></div>
             <div class="mc-sheet-head"><h3>${duplicate ? 'Повторка' : 'Компания'}</h3><button class="mc-close">×</button></div>
-            <div class="mc-detail-top"><div class="mc-detail-img"><img src="${esc(asset(skin.asset))}" alt=""></div>
+            <div class="mc-detail-top"><div class="mc-detail-img">${logoHtml(skin)}</div>
                 <div class="mc-detail-copy"><b>${RARITY[skin.rarity]?.[0] || skin.rarity}</b><h4>${esc(skin.name)}</h4>
                 <p>${duplicate ? `Первый экземпляр уже хранится в коллекции. Этот можно обменять на ${skin.exchangeValue} монет.` : `${esc(skin.groupName)} · +${skin.bonusBps / 100}% ко всем уровням аренды после сбора монополии.`}</p></div></div>
             ${duplicate ? '' : `<div class="mc-section-title"><b>Расположение на карте</b><span>без перехода в игру</span></div>
             ${boardPreviewHtml(skin, equipped)}
-            <div class="mc-section-title"><b>Выберите поле</b><span>в той же тематике</span></div>
-            <div class="mc-map">${skin.compatibleTiles.map(tile => `<button data-equip-tile="${tile}" class="${equipped?.tile_id === tile ? 'on equipped' : ''}">${esc(TILE_NAMES[tile] || 'Поле ' + tile)}</button>`).join('')}</div>`}
+            <div class="mc-section-title"><b>Выберите поле</b><span>занятые слоты отмечены</span></div>
+            <div class="mc-map">${skin.compatibleTiles.map(tile => {
+                const occupied = loadoutAt(tile);
+                const selected = Number(equipped?.tile_id) === Number(tile);
+                return `<button data-equip-tile="${tile}" class="${selected ? 'on equipped' : ''}${occupied ? ' occupied' : ''}" ${selected ? 'disabled' : ''}>
+                    <span class="mc-map-logo">${occupied?.skin ? logoHtml(occupied.skin) : '<i aria-hidden="true"></i>'}</span>
+                    <span class="mc-map-copy"><b>${esc(TILE_NAMES[tile] || 'Поле ' + tile)}</b><small>${occupied?.skin ? `${selected ? 'Установлена' : 'Занято'} · ${esc(occupied.skin.name)}` : 'Сейчас оригинал'}</small></span>
+                    <span class="mc-map-action">${selected ? '✓' : occupied ? 'Заменить' : 'Выбрать'}</span>
+                </button>`;
+            }).join('')}</div>`}
             <div class="mc-sheet-actions">
                 ${!duplicate && equipped ? '<button class="mc-secondary mc-original">Вернуть оригинал</button>' : ''}
                 ${duplicate ? `<button class="mc-primary mc-exchange">Обменять на ${skin.exchangeValue} монет</button>` : ''}
@@ -500,13 +523,59 @@
         const pool = current.catalog.skins.filter(skin => skin.rarity === rarity);
         return pool[Math.floor(Math.random() * pool.length)] || current.catalog.skins[0];
     }
+    function decodeLogos(root) {
+        const images = Array.from(root.querySelectorAll('img'));
+        return Promise.all(images.map(image => {
+            if (typeof image.decode === 'function') return image.decode().catch(() => undefined);
+            if (image.complete) return Promise.resolve();
+            return new Promise(resolve => {
+                image.addEventListener('load', resolve, { once:true });
+                image.addEventListener('error', resolve, { once:true });
+            });
+        }));
+    }
+    function cubicBezierProgress(x1, y1, x2, y2, progress) {
+        const sample = (a, b, t) => 3 * a * (1 - t) * (1 - t) * t + 3 * b * (1 - t) * t * t + t * t * t;
+        const slope = (a, b, t) => 3 * a * (1 - t) * (1 - 3 * t) + 3 * b * t * (2 - 3 * t) + 3 * t * t;
+        let t = Math.max(0, Math.min(1, progress));
+        for (let i = 0; i < 5; i++) {
+            const dx = sample(x1, x2, t) - progress;
+            const d = slope(x1, x2, t);
+            if (Math.abs(d) < 1e-5) break;
+            t = Math.max(0, Math.min(1, t - dx / d));
+        }
+        return sample(y1, y2, t);
+    }
+    const ROULETTE_DURATION = 9200;
+    const ROULETTE_EASING = [.08, .74, .14, 1];
+    function trackRouletteHaptics(animation, geometry) {
+        let frame = 0, previousCell = null, lastPulse = 0;
+        const tick = now => {
+            if (!animation || animation.playState === 'idle') return;
+            const time = Math.max(0, Math.min(geometry.duration, Number(animation.currentTime) || 0));
+            const progress = cubicBezierProgress(...ROULETTE_EASING, time / geometry.duration);
+            const x = geometry.start + (geometry.destination - geometry.start) * progress;
+            const cell = Math.floor((geometry.center - x) / geometry.step);
+            /* Telegram haptics crosses a native bridge. Capping the pulse rate keeps
+               the reel on the compositor thread even on older iPhones/iPads. */
+            if (previousCell != null && cell !== previousCell && now - lastPulse >= 40) {
+                selectionHaptic();
+                lastPulse = now;
+            }
+            previousCell = cell;
+            if (time < geometry.duration && animation.playState !== 'finished') frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+    }
     function playRoulette(overlay, result) {
         const target = 58;
         const items = Array.from({ length: 66 }, weightedSkin);
         items[target] = result.skin;
-        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map((skin, index) => `<div class="mc-reel-item" data-index="${index}" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><div class="mc-reel-logo"><img src="${esc(asset(skin.asset))}" alt=""></div><span>${esc(skin.name)}</span></div>${index < items.length - 1 ? '<i class="mc-reel-separator" aria-hidden="true"></i>' : ''}`).join('')}</div></div></div>`;
+        overlay.innerHTML = `<div class="mc-roulette-card"><h2>Открываем кейс</h2><div class="mc-reel-window"><div class="mc-reel">${items.map((skin, index) => `<div class="mc-reel-item" data-index="${index}" data-rarity="${skin.rarity}" data-layout="${skin.layout || 'badge'}"><div class="mc-reel-logo">${logoHtml(skin)}</div><span>${esc(skin.name)}</span></div>${index < items.length - 1 ? '<i class="mc-reel-separator" aria-hidden="true"></i>' : ''}`).join('')}</div></div></div>`;
         const reel = overlay.querySelector('.mc-reel');
-        requestAnimationFrame(() => requestAnimationFrame(() => {
+        const reelWindow = overlay.querySelector('.mc-reel-window');
+        decodeLogos(reel).then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
             const windowRect = overlay.querySelector('.mc-reel-window').getBoundingClientRect();
             const item = reel.querySelector(`[data-index="${target}"]`);
             const itemWidth = item.getBoundingClientRect().width;
@@ -515,25 +584,36 @@
             const landingOffset = winningZoneStart + Math.random() * (itemWidth + separatorWidth);
             const destination = windowRect.width / 2 - landingOffset;
             const start = Math.min(70, windowRect.width * .18);
-            reel.animate([
+            const duration = ROULETTE_DURATION;
+            reelWindow.classList.add('is-spinning');
+            const animation = reel.animate([
                 { transform:`translate3d(${start}px,0,0)` },
                 { transform:`translate3d(${destination}px,0,0)` },
-            ], { duration:7400, easing:'cubic-bezier(.08,.62,.18,1)', fill:'forwards' })
-                .onfinish = () => setTimeout(() => { overlay.remove(); showWin(result, false); }, 520);
-        }));
+            ], { duration, easing:`cubic-bezier(${ROULETTE_EASING.join(',')})`, fill:'forwards' });
+            const stopHaptics = trackRouletteHaptics(animation, {
+                duration, start, destination, center:windowRect.width / 2,
+                step:itemWidth + separatorWidth,
+            });
+            animation.onfinish = () => {
+                stopHaptics();
+                reelWindow.classList.remove('is-spinning');
+                resultHaptic();
+                setTimeout(() => { overlay.remove(); showWin(result, false); }, 620);
+            };
+        })));
     }
     function showWin(opening, pending) {
         const skin = opening.skin;
         const id = opening.opening_id || opening.id;
         const overlay = document.createElement('div');
         overlay.className = 'mc-roulette-layer on';
-        overlay.innerHTML = `<div class="mc-roulette-card mc-win" data-rarity="${skin.rarity}"><div class="mc-win-art"><img src="${esc(asset(skin.asset))}" alt=""></div>
+        overlay.innerHTML = `<div class="mc-roulette-card mc-win" data-rarity="${skin.rarity}"><div class="mc-win-art">${logoHtml(skin)}</div>
             <small>${RARITY[skin.rarity]?.[0] || skin.rarity}</small><h2>${esc(skin.name)}</h2><p>${esc(skin.groupName)} · +${skin.bonusBps / 100}% к аренде</p>
             <button class="mc-primary">Принять</button></div>`;
         document.body.appendChild(overlay);
         overlay.querySelector('.mc-primary').onclick = async () => {
             if (!id) return;
-            try { await request('/api/monopoly/cases/claim', { method:'POST', body:JSON.stringify({ openingId:id }) }); overlay.remove(); busy = false; activeTab = 'skins'; await refresh(); }
+            try { await request('/api/monopoly/cases/claim', { method:'POST', body:JSON.stringify({ openingId:id }) }); overlay.remove(); busy = false; activeTab = 'cases'; await refresh(); }
             catch (error) { global.Lobby?.toast?.(humanError(error), true); }
         };
         if (pending) busy = false;
