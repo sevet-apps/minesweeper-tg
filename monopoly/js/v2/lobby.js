@@ -84,8 +84,8 @@
             duckAnim = global.lottie.loadAnimation({
                 container: holder,
                 renderer: 'svg',
-                loop: true,
-                autoplay: true,
+                loop: !global.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+                autoplay: !global.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
                 path: 'assets/lottie/duck.json',
             });
         } catch (e) { /* без анимации — просто пустое место */ }
@@ -96,6 +96,7 @@
     function renderRooms() {
         const box = $('#lbRooms');
         if (!rooms.length) {
+            if (box.querySelector('.lb-duck')) return;
             box.innerHTML = `<div class="lb-empty">
                 <div class="lb-duck"></div>
                 <div>Сейчас открытых комнат нет</div>
@@ -122,20 +123,45 @@
     }
 
     /* ---------- переходы ---------- */
+    let activeScreen = 'lbMain';
+    let sheetOpener = null;
     function show(id) {
-        document.querySelectorAll('.lb-screen').forEach(s => s.classList.toggle('on', s.id === id));
+        const previous = document.getElementById(activeScreen);
+        const target = document.getElementById(id);
+        if (!target || id === activeScreen) return;
+        const isSheet = target.classList.contains('lb-sheet');
+        if (isSheet) sheetOpener = document.activeElement;
+        document.querySelectorAll('.lb-sheet').forEach(s => {
+            if (s === target) return;
+            if (s.classList.contains('on')) {
+                s.classList.add('closing');
+                s.inert = true;
+                clearTimeout(s.closeTimer);
+                s.closeTimer = setTimeout(() => s.classList.remove('closing'), 300);
+            }
+        });
+        clearTimeout(target.closeTimer);
+        target.classList.remove('closing');
+        target.inert = false;
+        document.querySelectorAll('.lb-screen').forEach(s => s.classList.toggle('on', s === target || (isSheet && s.id === 'lbMain')));
+        activeScreen = id;
+        $('#lobby').classList.toggle('has-sheet', isSheet);
+        $('#lbMain').inert = isSheet;
+        $('.lb-top').inert = isSheet;
+        if (isSheet) target.querySelector('.lb-card').focus({ preventScroll: true });
+        else if (previous?.classList.contains('lb-sheet') && id === 'lbMain') sheetOpener?.focus({ preventScroll: true });
         syncBackButton();
         /* размеры кнопок известны только когда экран показан */
         if (id === 'lbCreate') requestAnimationFrame(() => SEGS.forEach(moveSeg));
     }
     function currentScreen() {
-        const el = document.querySelector('.lb-screen.on');
-        return el ? el.id : 'lbMain';
+        return activeScreen;
     }
     function toast(text, bad) {
         const t = $('#lbToast');
         t.textContent = text;
         t.className = 'lb-toast show' + (bad ? ' bad' : '');
+        try { TG?.HapticFeedback?.notificationOccurred(bad ? 'error' : 'success'); } catch (_) {}
         clearTimeout(toast._t);
         toast._t = setTimeout(() => t.className = 'lb-toast', 2600);
     }
@@ -372,9 +398,32 @@
     function timersOn() { return $('#lbTimers .lb-sw').classList.contains('on'); }
     function syncTimerField() {
         $('#lbTurnSecsField').classList.toggle('off', !timersOn());
+        $('#lbTurnSecs').querySelectorAll('button').forEach(button => { button.disabled = !timersOn(); });
+    }
+
+    let roomRequestPending = false;
+    async function roomRequest(event, payload, button) {
+        const label = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Подключаемся…';
+        button.setAttribute('aria-busy', 'true');
+        roomRequestPending = true;
+        try {
+            await ensureNet();
+            return await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Сервер недоступен')), 12000);
+                net().socket().emit(event, payload, result => { clearTimeout(timeout); resolve(result); });
+            });
+        } finally {
+            roomRequestPending = false;
+            button.disabled = false;
+            button.textContent = label;
+            button.removeAttribute('aria-busy');
+        }
     }
 
     async function createRoom() {
+        if (roomRequestPending) return;
         const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
         const orderRoll = $('#lbOrderRoll .lb-sw').classList.contains('on');
         const botsAllowed = $('#lbBotSeats .lb-sw').classList.contains('on');
@@ -384,28 +433,26 @@
         const maxPlayers = teams ? 4 : pick;
         const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
         try {
-            await ensureNet();
-            net().socket().emit('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed, teams }, res => {
-                net().setMe(res.you);
-                net().setRoom(res.roomId);
-                openWaitRoom(res.roomId, true, isPrivate, maxPlayers, botsAllowed);
-            });
+            const res = await roomRequest('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed, teams }, $('#lbCreateGo'));
+            if (!res || !res.roomId) return toast('Сервер недоступен', true);
+            net().setMe(res.you);
+            net().setRoom(res.roomId);
+            openWaitRoom(res.roomId, true, isPrivate, maxPlayers, botsAllowed);
         } catch (e) { toast(e.message, true); }
     }
     async function joinRoom(code) {
+        if (roomRequestPending) return;
         const rid = String(code || $('#lbCode').value || '').trim().toUpperCase();
         if (rid.length < 4) return toast('Введите код комнаты', true);
         try {
-            await ensureNet();
-            net().socket().emit('m2:join', { roomId: rid, profile: ME }, res => {
-                if (!res || !res.ok) {
-                    const msg = { 'no-room': 'Комната не найдена', started: 'Игра уже началась', full: 'В комнате нет мест' };
-                    return toast(msg[res && res.error] || 'Не удалось войти', true);
-                }
-                net().setMe(res.you);
-                net().setRoom(res.roomId);
-                openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
-            });
+            const res = await roomRequest('m2:join', { roomId: rid, profile: ME }, $('#lbJoinGo'));
+            if (!res || !res.ok) {
+                const msg = { 'no-room': 'Комната не найдена', started: 'Игра уже началась', full: 'В комнате нет мест' };
+                return toast(msg[res && res.error] || 'Не удалось войти', true);
+            }
+            net().setMe(res.you);
+            net().setRoom(res.roomId);
+            openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
         } catch (e) { toast(e.message, true); }
     }
     function leaveRoom() {
@@ -552,18 +599,64 @@
         root.style.setProperty('--safe-bottom', bottom + 'px');
     }
 
+    function setupInteractions() {
+        const lobby = $('#lobby');
+        lobby.addEventListener('click', e => {
+            const control = e.target.closest('button, [role="button"], .lb-switch-row');
+            if (!control || control.disabled || control.closest('.collection-screen, .lb-field.off')) return;
+            try { TG?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+            requestAnimationFrame(() => document.querySelectorAll('.lb-switch-row').forEach(row =>
+                row.setAttribute('aria-checked', String(row.querySelector('.lb-sw').classList.contains('on')))));
+        }, true);
+        document.querySelectorAll('.lb-switch-row').forEach(row => {
+            row.tabIndex = 0;
+            row.setAttribute('role', 'switch');
+            row.setAttribute('aria-label', row.querySelector('b').textContent);
+            row.setAttribute('aria-checked', String(row.querySelector('.lb-sw').classList.contains('on')));
+            row.addEventListener('keydown', e => {
+                if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); row.click(); }
+            });
+        });
+        document.querySelectorAll('.lb-sheet').forEach(sheet => {
+            sheet.addEventListener('click', e => { if (e.target === sheet) show('lbMain'); });
+        });
+        document.addEventListener('keydown', e => {
+            const sheet = document.querySelector('.lb-sheet.on');
+            if (!sheet) return;
+            if (e.key === 'Escape') { e.preventDefault(); show('lbMain'); }
+            if (e.key !== 'Tab') return;
+            const controls = [...sheet.querySelectorAll('button:not(:disabled), input, [tabindex="0"]')].filter(el => el.getClientRects().length && !el.closest('.off'));
+            const first = controls[0], last = controls[controls.length - 1];
+            if (e.shiftKey && (document.activeElement === first || document.activeElement === sheet.querySelector('.lb-card'))) {
+                e.preventDefault(); last?.focus();
+            } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        });
+        const updateViewport = () => {
+            const viewport = global.visualViewport;
+            lobby.style.setProperty('--lb-viewport-height', (viewport?.height || innerHeight) + 'px');
+            lobby.style.setProperty('--lb-viewport-top', (viewport?.offsetTop || 0) + 'px');
+            SEGS.forEach(moveSeg);
+        };
+        global.visualViewport?.addEventListener('resize', updateViewport);
+        global.visualViewport?.addEventListener('scroll', updateViewport);
+        addEventListener('resize', updateViewport);
+        updateViewport();
+    }
+
     /* ---------- инициализация ---------- */
     function init() {
         applyTheme();
         applySafeInsets();
         paintIcons();
         setupFullscreen();
+        setupInteractions();
 
-        $('#lbMe').innerHTML = ava(ME, 40) + `<div class="lb-me-name">${ME.name}</div>`;
+        $('#lbMe').innerHTML = ava(ME, 40) + '<div class="lb-me-name">Профиль <span>›</span></div>';
+        $('#lbMe').setAttribute('aria-label', 'Открыть профиль и коллекцию');
         $('#lbMe').role = 'button';
         $('#lbMe').tabIndex = 0;
         $('#lbMe').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
-        $('#lbMe').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') $('#lbMe').click(); };
+        $('#lbMe').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#lbMe').click(); } };
         $('#lbBots').onclick = () => startGame('bots');
         $('#lbCollectionOpen').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
         $('#lbCreateGo').onclick = createRoom;
