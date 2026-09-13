@@ -14,12 +14,14 @@
     (global.MonopolyDataV2?.TILES || []).forEach(tile => { TILE_NAMES[tile.i] = tile.name; });
 
     let current = null;
-    let activeTab = 'cases';
+    let activeTab = 'progress';
+    const TAB_IDS = ['progress', 'cases', 'skins'];
     let filter = 'all';
     let sortMode = 'collection';
     let busy = false;
     let tabProgress = 0;
     let tabDrag = null;
+    let panelObserver = null;
     const logoPreloads = new Map();
 
     async function request(path, options = {}) {
@@ -106,7 +108,7 @@
     }
     function ownerName(data) {
         const me = global.Lobby?.profile?.();
-        return data.user?.first_name || data.user?.username || me?.name || 'Игрок';
+        return me?.name || [data.user?.first_name, data.user?.last_name].filter(Boolean).join(' ') || data.user?.username || 'Игрок';
     }
     function compact(value) { return Number(value || 0).toLocaleString('ru-RU'); }
 
@@ -138,7 +140,7 @@
     function renderError(error) {
         const root = $('#monoCollectionRoot');
         if (!root) return;
-        root.innerHTML = `<div class="mc-page"><div class="mc-head"><button class="mc-back">‹</button><div class="mc-head-copy"><h2>Коллекция</h2></div></div>
+        root.innerHTML = `<div class="mc-page"><div class="mc-head"><button class="mc-back" aria-label="Назад"><span aria-hidden="true"></span></button><div class="mc-head-copy"><h2>Коллекция</h2></div></div>
             <div class="mc-empty"><b>Не удалось открыть профиль</b><span>${esc(error.message)}</span><br><br><button class="mc-primary mc-retry">Повторить</button></div></div>`;
         root.querySelector('.mc-back').onclick = back;
         root.querySelector('.mc-retry').onclick = openSelf;
@@ -151,6 +153,7 @@
         preloadCatalogLogos(current.catalog);
         if (!root.querySelector('.mc-page')) buildShell(root);
         updateProfile(root);
+        renderProgressPanel(root);
         renderCasesPanel(root);
         renderSkinsPanel(root, { animate: false });
         setTab(activeTab, false);
@@ -161,7 +164,7 @@
         root.dataset.unique = unique; root.dataset.total = total;
     }
     function buildShell(root) {
-        root.innerHTML = `<div class="mc-page" style="--mc-tab-progress:${activeTab === 'skins' ? 1 : 0}">
+        root.innerHTML = `<div class="mc-page" style="--mc-tab-progress:${TAB_IDS.indexOf(activeTab)}">
             <div class="mc-head">
                 <button class="mc-back" aria-label="Назад"><span aria-hidden="true"></span></button>
                 <div class="mc-head-copy"><h2>Профиль</h2><p>Монополия</p></div>
@@ -172,11 +175,13 @@
             </div>
             <section class="mc-hero" data-mc-profile></section>
             <div class="mc-tabs" role="tablist" aria-label="Раздел профиля">
+                <button class="mc-tab" data-tab="progress" role="tab">Прогресс</button>
                 <button class="mc-tab" data-tab="cases" role="tab">Кейсы</button>
                 <button class="mc-tab" data-tab="skins" role="tab">Компании</button>
             </div>
             <div class="mc-tab-viewport">
                 <div class="mc-tab-track">
+                    <section class="mc-tab-panel" id="mcProgressPanel" role="tabpanel"></section>
                     <section class="mc-tab-panel" id="mcCasesPanel" role="tabpanel"></section>
                     <section class="mc-tab-panel" id="mcSkinsPanel" role="tabpanel"></section>
                 </div>
@@ -187,17 +192,66 @@
             if (Date.now() - Number(root.dataset.mcDraggedAt || 0) < 250) return;
             setTab(button.dataset.tab, true);
         });
+        root.querySelector('.mc-tabs').addEventListener('keydown', event => {
+            if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+            event.preventDefault();
+            const index = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (TAB_IDS.indexOf(activeTab) + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
+            setTab(TAB_IDS[index], true); root.querySelectorAll('.mc-tab')[index].focus();
+        });
         bindTabDrag(root);
+        panelObserver?.disconnect();
+        if (global.ResizeObserver) {
+            panelObserver = new global.ResizeObserver(syncViewportHeight);
+            root.querySelectorAll('.mc-tab-panel').forEach(panel => panelObserver.observe(panel));
+        }
     }
     function updateProfile(root) {
         const account = current.account || {};
         const rating = current.rating || {};
         root.querySelector('[data-mc-cases]').textContent = compact(account.cases_count);
         root.querySelector('[data-mc-coins]').textContent = compact(account.coins);
-        root.querySelector('[data-mc-profile]').innerHTML = `<div class="mc-person">${avatar(current.user, global.Lobby?.profile?.())}<div><b>${esc(ownerName(current))}</b><small>${current.user?.username ? '@' + esc(current.user.username) : 'Профиль игрока'}</small></div></div>
-            <div class="mc-stats"><div class="mc-stat"><span>Рейтинг</span><b>${compact(rating.points)}</b></div>
-            <div class="mc-stat"><span>Победы</span><b>${compact(rating.wins)}</b></div>
-            <div class="mc-stat"><span>Игры</span><b>${compact(rating.games)}</b></div></div>`;
+        root.querySelector('[data-mc-profile]').innerHTML = `<div class="mc-person">${avatar(current.user, global.Lobby?.profile?.())}<div><b>${esc(ownerName(current))}</b><small>${current.user?.username ? '@' + esc(current.user.username) : 'Профиль игрока'}</small></div></div>`;
+    }
+    function renderProgressPanel(root) {
+        const panel = root.querySelector('#mcProgressPanel');
+        const rating = current.rating || {};
+        const points = Math.max(0, Number(rating.points) || 0);
+        const titles = current.catalog?.titles || [];
+        const index = titles.reduce((found, rank, i) => points >= rank.from ? i : found, 0);
+        const title = titles[index], next = titles[index + 1];
+        const progress = title ? (next ? Math.min(1, (points - title.from) / (next.from - title.from)) : 1) : 0;
+        const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>';
+        const lock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+        panel.innerHTML = `<section class="mc-experience">
+            <div class="mc-xp-heading"><div><small>Ваше звание</small><h3>${esc(title?.name || 'Рейтинг')}</h3></div><b>${compact(points)} <small>очков</small></b></div>
+            <div class="mc-xp-bar" role="progressbar" aria-label="Прогресс звания" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><span style="--xp:${progress}"></span></div>
+            <p>${next ? `${esc(next.name)} · ${compact(points)} / ${compact(next.from)}` : title ? 'Максимальный титул' : 'Рейтинг'}</p>
+            <div class="mc-stats"><div class="mc-stat"><span>Победы</span><b>${compact(rating.wins)}</b></div><div class="mc-stat"><span>Игры</span><b>${compact(rating.games)}</b></div></div>
+        </section>
+        <div class="mc-ranks-heading"><h3>Все звания</h3><div><button class="mc-rank-prev" aria-label="Предыдущее звание">${arrow}</button><button class="mc-rank-next" aria-label="Следующее звание">${arrow}</button></div></div>
+        <div class="mc-ranks" tabindex="0" aria-label="Все звания">${titles.map((rank, i) => `<article class="mc-rank ${i === index ? 'current' : ''} ${points < rank.from ? 'locked' : ''}" data-rank="${i}">
+            <div class="mc-rank-status">${points < rank.from ? lock + '<span>Закрыто</span>' : i === index ? '<span>Текущее звание</span>' : '<span>Получено</span>'}</div>
+            <div class="mc-rank-emblem" style="--rank-hue:${145 + i * 15}"><span>${String(i + 1).padStart(2, '0')}</span></div>
+            <h4>${esc(rank.name)}</h4><p>${compact(rank.from)} <span>очков</span></p>
+            <small>${points < rank.from ? `${compact(rank.from - points)} · <span>до открытия</span>` : '<span>Звание открыто</span>'}</small>
+        </article>`).join('')}</div>`;
+        const rail = panel.querySelector('.mc-ranks');
+        let selected = index;
+        const update = () => {
+            const width = rail.firstElementChild?.getBoundingClientRect().width || 1;
+            selected = Math.max(0, Math.min(titles.length - 1, Math.round(rail.scrollLeft / (width + 12))));
+            panel.querySelector('.mc-rank-prev').disabled = selected <= 0;
+            panel.querySelector('.mc-rank-next').disabled = rail.scrollLeft >= rail.scrollWidth - rail.clientWidth - 2;
+        };
+        const navigate = delta => {
+            const card = rail.children[Math.max(0, Math.min(titles.length - 1, selected + delta))];
+            if (card) { rail.scrollTo({ left:card.offsetLeft - rail.firstElementChild.offsetLeft, behavior:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); selectionHaptic(); }
+        };
+        panel.querySelector('.mc-rank-prev').onclick = () => navigate(-1);
+        panel.querySelector('.mc-rank-next').onclick = () => navigate(1);
+        rail.addEventListener('scroll', update, { passive:true });
+        rail.addEventListener('keydown', event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowRight' ? 1 : -1); } });
+        requestAnimationFrame(() => { const card = rail.children[index]; if (card) rail.scrollLeft = card.offsetLeft - rail.firstElementChild.offsetLeft; update(); syncViewportHeight(); });
     }
     function renderCasesPanel(root) {
         const panel = root.querySelector('#mcCasesPanel');
@@ -302,27 +356,33 @@
         root.querySelectorAll('.mc-skin').forEach(button => button.onclick = () => openSkin(button.dataset.skin, Number(button.dataset.copy || 0)));
     }
     function applyTabProgress(value) {
-        tabProgress = Math.max(0, Math.min(1, Number(value) || 0));
+        tabProgress = Math.max(0, Math.min(2, Number(value) || 0));
         const page = $('#monoCollectionRoot .mc-page');
         if (!page) return;
         page.style.setProperty('--mc-tab-progress', tabProgress);
         const panels = page.querySelectorAll('.mc-tab-panel');
         const viewport = page.querySelector('.mc-tab-viewport');
-        if (viewport && panels.length === 2) {
+        if (viewport && panels.length === 3) {
             if (viewport.scrollLeft) viewport.scrollLeft = 0;
-            viewport.style.height = `${Math.round(panels[0].scrollHeight * (1 - tabProgress) + panels[1].scrollHeight * tabProgress)}px`;
+            const index = Math.min(1, Math.floor(tabProgress)), mix = tabProgress - index;
+            viewport.style.height = Math.round(panels[index].scrollHeight * (1 - mix) + panels[index + 1].scrollHeight * mix) + 'px';
         }
     }
     function setTab(tab, animate = true) {
-        activeTab = tab === 'skins' ? 'skins' : 'cases';
+        activeTab = TAB_IDS.includes(tab) ? tab : 'progress';
         const page = $('#monoCollectionRoot .mc-page');
         if (!page) return;
         page.classList.toggle('mc-no-tab-motion', !animate);
         page.querySelectorAll('.mc-tab').forEach(button => {
             const on = button.dataset.tab === activeTab;
             button.classList.toggle('on', on); button.setAttribute('aria-selected', String(on));
+            button.tabIndex = on ? 0 : -1;
+            button.id = 'mc-tab-' + button.dataset.tab;
+            const panel = page.querySelectorAll('.mc-tab-panel')[TAB_IDS.indexOf(button.dataset.tab)];
+            button.setAttribute('aria-controls', panel.id); panel.setAttribute('aria-labelledby', button.id); panel.inert = !on;
         });
-        applyTabProgress(activeTab === 'skins' ? 1 : 0);
+        applyTabProgress(TAB_IDS.indexOf(activeTab));
+        if (animate) selectionHaptic();
         if (activeTab === 'skins') {
             const alignActive = () => {
                 const rail = page.querySelector('.mc-filter-row');
@@ -338,20 +398,23 @@
         const tabs = root.querySelector('.mc-tabs');
         tabs.addEventListener('pointerdown', event => {
             if (event.button != null && event.button !== 0) return;
-            tabDrag = { id:event.pointerId, x:event.clientX, time:performance.now(), start:activeTab === 'skins' ? 1 : 0, moved:false };
-            tabs.setPointerCapture?.(event.pointerId); tabs.classList.add('dragging');
+            tabDrag = { id:event.pointerId, x:event.clientX, time:performance.now(), start:TAB_IDS.indexOf(activeTab), moved:false };
+
         });
         tabs.addEventListener('pointermove', event => {
             if (!tabDrag || tabDrag.id !== event.pointerId) return;
             const dx = event.clientX - tabDrag.x;
-            if (Math.abs(dx) > 3) tabDrag.moved = true;
-            applyTabProgress(tabDrag.start + dx / Math.max(1, tabs.clientWidth * .72));
+            if (!tabDrag.moved && Math.abs(dx) < 7) return;
+            if (!tabDrag.moved) { tabDrag.moved = true; tabs.setPointerCapture?.(event.pointerId); tabs.classList.add('dragging'); }
+            applyTabProgress(tabDrag.start + dx / Math.max(1, tabs.clientWidth / 3));
         });
         const finish = event => {
             if (!tabDrag || tabDrag.id !== event.pointerId) return;
             const elapsed = Math.max(1, performance.now() - tabDrag.time);
             const velocity = (event.clientX - tabDrag.x) / elapsed;
-            const next = velocity > .35 ? 'skins' : velocity < -.35 ? 'cases' : tabProgress >= .5 ? 'skins' : 'cases';
+            if (!tabDrag.moved) { tabDrag = null; return; }
+            const index = event.type === 'pointercancel' ? tabDrag.start : Math.round(tabProgress + (Math.abs(velocity) > .35 ? Math.sign(velocity) * .35 : 0));
+            const next = TAB_IDS[Math.max(0, Math.min(2, index))];
             if (tabDrag.moved) root.dataset.mcDraggedAt = Date.now();
             tabDrag = null; tabs.classList.remove('dragging'); setTab(next, true);
         };
@@ -367,7 +430,7 @@
     }
     function openSortSheet() {
         const options = [['collection','По коллекциям'],['rarity','По редкости'],['newest','Сначала новые'],['duplicates','Сначала повторки']];
-        const el = layer(`<div class="mc-sheet mc-sort-sheet"><div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Сортировать по</h3><button class="mc-close">×</button></div>
+        const el = layer(`<div class="mc-sheet mc-sort-sheet"><div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Сортировать по</h3><button class="mc-close" aria-label="Закрыть"></button></div>
             <div class="mc-sort-options">${options.map(([id,title]) => `<button data-sort="${id}" class="${sortMode === id ? 'on' : ''}"><span>${title}</span><i></i></button>`).join('')}</div></div>`);
         el.querySelectorAll('[data-sort]').forEach(button => button.onclick = () => {
             sortMode = button.dataset.sort; closeLayer(el); renderSkinsPanel($('#monoCollectionRoot'), { animate:true, direction:1 });
@@ -379,7 +442,8 @@
         el.className = `mc-layer ${cls}`;
         el.innerHTML = html;
         document.body.appendChild(el);
-        requestAnimationFrame(() => el.classList.add('on'));
+        void el.offsetHeight;
+        requestAnimationFrame(() => requestAnimationFrame(() => { if (el.isConnected && !el.dataset.closing) el.classList.add('on'); }));
         el.addEventListener('click', event => { if (event.target === el) closeLayer(el); });
         el.querySelector('.mc-close')?.addEventListener('click', () => closeLayer(el));
         bindSheetDrag(el);
@@ -449,11 +513,12 @@
         });
         sheet.addEventListener('pointermove', event => { if (event.pointerType === 'mouse') move(event.clientY, event); });
         sheet.addEventListener('pointerup', event => { if (event.pointerType === 'mouse') finish(event.clientY); });
-        sheet.addEventListener('pointercancel', () => { drag = null; resetSheetDrag(el); });
+        sheet.addEventListener('pointercancel', event => { if (event.pointerType === 'mouse') { drag = null; resetSheetDrag(el); } });
     }
     function closeLayer(el) {
         if (!el) return;
-        resetSheetDrag(el);
+        el.dataset.closing = 'true';
+        el.classList.remove('mc-dragging');
         requestAnimationFrame(() => el.classList.remove('on'));
         setTimeout(() => el.remove(), 540);
     }
@@ -491,7 +556,7 @@
         const duplicate = Number(copyIndex) > 0;
         const equipped = current.loadout.find(item => item.skin_id === id);
         const html = `<div class="mc-sheet mc-detail" data-rarity="${skin.rarity}"><div class="mc-grabber"></div>
-            <div class="mc-sheet-head"><h3>${duplicate ? 'Повторка' : 'Компания'}</h3><button class="mc-close">×</button></div>
+            <div class="mc-sheet-head"><h3>${duplicate ? 'Повторка' : 'Компания'}</h3><button class="mc-close" aria-label="Закрыть"></button></div>
             <div class="mc-detail-top"><div class="mc-detail-img">${logoHtml(skin)}</div>
                 <div class="mc-detail-copy"><b>${RARITY[skin.rarity]?.[0] || skin.rarity}</b><h4>${esc(skin.name)}</h4>
                 <p>${duplicate ? `Первый экземпляр уже хранится в коллекции. Этот можно обменять на ${skin.exchangeValue} монет.` : `${esc(skin.groupName)} · +${skin.bonusBps / 100}% ко всем уровням аренды после сбора монополии.`}</p></div></div>
@@ -657,12 +722,12 @@
     }
 
     async function openPlayer(id) {
-        const overlay = layer('<div class="mc-sheet"><div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Профиль игрока</h3><button class="mc-close">×</button></div><div class="mc-spinner"></div></div>');
+        const overlay = layer('<div class="mc-sheet"><div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Профиль игрока</h3><button class="mc-close" aria-label="Закрыть"></button></div><div class="mc-spinner"></div></div>');
         try {
             const data = await request('/api/monopoly/collection/player/' + encodeURIComponent(id));
             const rating = data.rating || {}, inv = data.inventory || [], user = data.user || {};
             const stats = otherStats(user);
-            overlay.querySelector('.mc-sheet').innerHTML = `<div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Профиль игрока</h3><button class="mc-close">×</button></div>
+            overlay.querySelector('.mc-sheet').innerHTML = `<div class="mc-grabber"></div><div class="mc-sheet-head"><h3>Профиль игрока</h3><button class="mc-close" aria-label="Закрыть"></button></div>
                 <section class="mc-hero"><div class="mc-person">${avatar(user,{name:'Игрок'})}<div><b>${esc(user.first_name || user.username || 'Игрок')}</b><small>${user.username ? '@'+esc(user.username) : ''}</small></div></div>
                 <div class="mc-stats"><div class="mc-stat"><span>Рейтинг</span><b>${compact(rating.points)}</b></div><div class="mc-stat"><span>Победы</span><b>${compact(rating.wins)}</b></div><div class="mc-stat"><span>Игры</span><b>${compact(rating.games)}</b></div></div></section>
                 ${stats ? `<div class="mc-section-title"><b>Все игры</b><span>статистика Spark</span></div><div class="mc-stats">${stats}</div>` : ''}

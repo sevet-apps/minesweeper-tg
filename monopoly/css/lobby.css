@@ -503,3 +503,23 @@ html[data-theme="light"] #lobby .lb-btn:not(.ghost):not(:disabled) { background:
 #lobby #lbWaitHint { font-size: 11px; line-height: 1.5; }
 #lobby .lb-leave { font-size: 13px; min-height: 44px; margin-top: 8px; }
 #lobby .lb-toast { max-width: calc(100% - 32px); text-align: center; bottom: max(26px, env(safe-area-inset-bottom)); }
+/* Lobby refinement: quiet header, consistent vector controls, draggable sheets. */
+#lobby, #lobby *, .mc-sheet { scrollbar-width:none; }
+#lobby::-webkit-scrollbar, #lobby *::-webkit-scrollbar, .mc-sheet::-webkit-scrollbar { display:none; width:0; height:0; }
+.lb-top { margin-bottom:28px; }
+.lb-top[hidden] { display:none; }
+.lb-me-name { max-width:155px; white-space:normal; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.35; text-align:right; font-size:12px; }
+#lbMe { max-width:55%; }
+.lb-title { flex-shrink:0; }
+[data-lb-icon] { display:grid; place-items:center; }
+[data-lb-icon] svg { width:24px; height:24px; display:block; }
+.lb-sheet-close { padding:0; display:grid; place-items:center; }
+#lbJoin .lb-sheet-close { top:39px; width:52px; height:52px; right:22px; }
+.lb-sheet-handle { width:72px; height:24px; top:0; left:calc(50% - 36px); background:transparent; opacity:1; touch-action:none; cursor:grab; }
+.lb-sheet-handle:after { content:''; position:absolute; top:10px; left:18px; width:36px; height:4px; background:var(--text-dim); opacity:.3; border-radius:9px; }
+.lb-sheet.on, .lb-sheet.closing { animation:none; }
+#lobby .lb-sheet .lb-card, #lobby .lb-sheet.closing .lb-card { animation:none; will-change:transform; }
+@media(max-width:360px) { .lb-me-name { font-size:11px; max-width:110px; } #lbJoin .lb-sheet-close { right:18px; } }
+#lobby .lb-wrap { max-width:440px; }
+@media(min-width:760px) { #lobby .lb-wrap.lb-profile-wide { max-width:720px; } }
+@media(min-width:1100px) { #lobby .lb-wrap.lb-profile-wide { max-width:940px; } }

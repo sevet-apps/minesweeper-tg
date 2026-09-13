@@ -1,6 +1,7 @@
 'use strict';
 
 const catalog = require('../monopoly/assets/skins/catalog.json');
+const { TITLES } = require('./monopoly-rating');
 const { normalizeTelegramId } = require('./telegram-id');
 
 const SKINS = new Map(catalog.skins.map(skin => [skin.id, Object.freeze({ ...skin })]));
@@ -43,6 +44,7 @@ function applyRentBonus(amount, bonusBps) {
 function publicCatalog() {
     return {
         version: catalog.version,
+        titles: TITLES,
         case: catalog.case,
         rarities: catalog.rarities,
         skins: catalog.skins,
