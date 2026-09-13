@@ -37,7 +37,7 @@
             const name = full || uname || 'Игрок';
             return {
                 uid: 'tg' + u.id,
-                name: name.slice(0, 24),
+                name,
                 username: uname || null,
                 avatar: u.photo_url || null,
                 initials: initials(full, uname),
@@ -137,7 +137,8 @@
                 s.classList.add('closing');
                 s.inert = true;
                 clearTimeout(s.closeTimer);
-                s.closeTimer = setTimeout(() => s.classList.remove('closing'), 300);
+                animateSheet(s, false);
+                s.closeTimer = setTimeout(() => { s.classList.remove('closing'); s.querySelector('.lb-card').style.transform = ''; }, 300);
             }
         });
         clearTimeout(target.closeTimer);
@@ -148,11 +149,13 @@
         $('#lobby').classList.toggle('has-sheet', isSheet);
         $('#lbMain').inert = isSheet;
         $('.lb-top').inert = isSheet;
+        $('.lb-top').hidden = id === 'lbCollection';
+        $('.lb-wrap').classList.toggle('lb-profile-wide', id === 'lbCollection');
         if (isSheet) target.querySelector('.lb-card').focus({ preventScroll: true });
         else if (previous?.classList.contains('lb-sheet') && id === 'lbMain') sheetOpener?.focus({ preventScroll: true });
         syncBackButton();
         /* размеры кнопок известны только когда экран показан */
-        if (id === 'lbCreate') requestAnimationFrame(() => SEGS.forEach(moveSeg));
+        if (isSheet) { animateSheet(target, true); requestAnimationFrame(() => SEGS.forEach(moveSeg)); }
     }
     function currentScreen() {
         return activeScreen;
@@ -394,7 +397,7 @@
         });
         requestAnimationFrame(() => moveSeg(id));
     }
-    const SEGS = ['lbMaxPlayers', 'lbTurnSecs'];
+    const SEGS = ['lbMaxPlayers', 'lbTurnSecs', 'lbBotCount'];
     function timersOn() { return $('#lbTimers .lb-sw').classList.contains('on'); }
     function syncTimerField() {
         $('#lbTurnSecsField').classList.toggle('off', !timersOn());
@@ -530,9 +533,9 @@
             global.Engine.start([
                 { id: ME.uid, name: ME.name, color: 'var(--p4)', host: true,
                   avatar: ME.avatar, initials: ME.initials },
-                { id: 'b1', name: 'Бот 1', color: 'var(--p1)', bot: true, initials: 'Б1' },
-                { id: 'b2', name: 'Бот 2', color: 'var(--p2)', bot: true, initials: 'Б2' },
-                { id: 'b3', name: 'Бот 3', color: 'var(--p3)', bot: true, initials: 'Б3' },
+                ...Array.from({ length: Math.max(1, Math.min(5, segValue('lbBotCount', 3))) }, (_, i) => ({
+                    id: 'b' + (i + 1), name: 'Бот ' + (i + 1), color: ['var(--p1)','var(--p2)','var(--p3)','var(--p5)','var(--p6)'][i], bot: true, initials: String(i + 1),
+                })),
             ]);
         } else {
             global.MONO_LOCAL = false;
@@ -599,6 +602,62 @@
         root.style.setProperty('--safe-bottom', bottom + 'px');
     }
 
+    function paintVectorIcons() {
+        const paths = { plus: '<path d="M12 5v14M5 12h14"/>', arrow: '<path d="M7 17 17 7M7 7h10v10"/>', close: '<path d="m6 6 12 12M18 6 6 18"/>' };
+        document.querySelectorAll('[data-lb-icon]').forEach(el => { el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[el.dataset.lbIcon] + '</svg>'; });
+    }
+    function animateSheet(sheet, opening) {
+        const card = sheet.querySelector('.lb-card');
+        const from = opening ? 'translateY(100%)' : getComputedStyle(card).transform;
+        card.getAnimations().forEach(animation => animation.cancel());
+        card.style.transform = '';
+        const reduce = global.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const opacity = opening ? 0 : getComputedStyle(sheet).opacity;
+        sheet.getAnimations().forEach(animation => animation.cancel());
+        sheet.animate([{ opacity }, { opacity:opening ? 1 : 0 }], { duration:reduce ? 0 : 300, fill:'both' });
+        card.animate([{ transform: from === 'none' ? 'translateY(0)' : from }, { transform: opening ? 'translateY(0)' : 'translateY(110%)' }],
+            { duration: reduce ? 0 : opening ? 480 : 300, easing: opening ? 'cubic-bezier(.22,1,.36,1)' : 'cubic-bezier(.4,0,1,1)', fill: 'both' });
+    }
+    function bindLobbySheetDrag(sheet) {
+        const card = sheet.querySelector('.lb-card');
+        let drag = null;
+        const begin = (y, target) => {
+            if (card.scrollTop > 0 || target.closest('button,input,a,[role="switch"],.lb-switch-row')) return false;
+            drag = { y, lastY:y, lastAt:performance.now(), velocity:0, active:false }; return true;
+        };
+        const move = (y, event) => {
+            if (!drag) return;
+            const distance = y - drag.y;
+            if (!drag.active && distance < 7) return;
+            if (!drag.active && card.scrollTop > 0) { drag = null; return; }
+            if (!drag.active) { card.getAnimations().forEach(a => a.cancel()); drag.active = true; }
+            if (event.cancelable) event.preventDefault();
+            const now = performance.now();
+            drag.velocity = (y - drag.lastY) / Math.max(1, now - drag.lastAt);
+            drag.lastY = y; drag.lastAt = now;
+            card.style.transform = 'translateY(' + Math.max(0, distance) + 'px)';
+        };
+        const finish = (cancelled = false) => {
+            if (!drag) return;
+            const distance = Math.max(0, drag.lastY - drag.y);
+            const dismiss = !cancelled && drag.active && (distance > Math.min(130, card.offsetHeight * .24) || (performance.now() - drag.lastAt < 100 && drag.velocity > .7));
+            const wasActive = drag.active; drag = null;
+            if (dismiss) show('lbMain');
+            else if (wasActive) {
+                const from = card.style.transform; card.style.transform = '';
+                card.animate([{transform:from},{transform:'translateY(0)'}], {duration:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 280,easing:'cubic-bezier(.22,1,.36,1)'});
+            }
+        };
+        card.addEventListener('touchstart', e => { if (e.touches.length === 1) begin(e.touches[0].clientY,e.target); }, {passive:true});
+        card.addEventListener('touchmove', e => { if (e.touches.length === 1) move(e.touches[0].clientY,e); }, {passive:false});
+        card.addEventListener('touchend', () => finish());
+        card.addEventListener('touchcancel', () => finish(true));
+        card.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button === 0 && begin(e.clientY,e.target)) card.setPointerCapture(e.pointerId); });
+        card.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') move(e.clientY,e); });
+        card.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') finish(); });
+        card.addEventListener('pointercancel', e => { if (e.pointerType === 'mouse') finish(true); });
+    }
+
     function setupInteractions() {
         const lobby = $('#lobby');
         lobby.addEventListener('click', e => {
@@ -619,6 +678,7 @@
         });
         document.querySelectorAll('.lb-sheet').forEach(sheet => {
             sheet.addEventListener('click', e => { if (e.target === sheet) show('lbMain'); });
+            bindLobbySheetDrag(sheet);
         });
         document.addEventListener('keydown', e => {
             const sheet = document.querySelector('.lb-sheet.on');
@@ -648,23 +708,27 @@
         applyTheme();
         applySafeInsets();
         paintIcons();
+        paintVectorIcons();
         setupFullscreen();
         setupInteractions();
 
-        $('#lbMe').innerHTML = ava(ME, 40) + '<div class="lb-me-name">Профиль <span>›</span></div>';
+        $('#lbMe').innerHTML = ava(ME, 40) + '<div class="lb-me-name"></div>';
+        $('#lbMe .lb-me-name').textContent = ME.name;
+        $('#lbMe').title = ME.name;
         $('#lbMe').setAttribute('aria-label', 'Открыть профиль и коллекцию');
         $('#lbMe').role = 'button';
         $('#lbMe').tabIndex = 0;
         $('#lbMe').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
         $('#lbMe').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#lbMe').click(); } };
-        $('#lbBots').onclick = () => startGame('bots');
-        $('#lbCollectionOpen').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
+        $('#lbBots').onclick = () => show('lbBotsSetup');
+        $('#lbBotsStart').onclick = () => startGame('bots');
         $('#lbCreateGo').onclick = createRoom;
         $('#lbJoinGo').onclick = () => joinRoom();
         $('#lbRefresh').onclick = manualRefresh;
 
         bindSeg('lbMaxPlayers');
         bindSeg('lbTurnSecs');
+        bindSeg('lbBotCount');
         $('#lbTimers').onclick = () => {
             $('#lbTimers .lb-sw').classList.toggle('on');
             syncTimerField();
