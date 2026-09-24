@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
+  <defs>
+    <clipPath id="paint-clip"><rect x="4" y="4" width="88" height="88" rx="17"/></clipPath>
+    <linearGradient id="paint-ridge" x1="0" y1="0" x2=".2" y2="1">
+      <stop stop-color="#fff" stop-opacity=".36"/>
+      <stop offset=".36" stop-color="#fff" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".08"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#paint-clip)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 21C23 16 48 8 68 7M-2 73C20 65 60 72 98 53" stroke="#fff" stroke-opacity=".08" stroke-width="16"/>
+    <path d="M13 40C24 37 34 34 46 30S70 24 82 24L88 30 83 33 78 34 74 38 69 36 62 41 57 39 51 43 47 42 39 47 35 45 29 49 24 48 17 50 12 47Z" fill="#000" fill-opacity=".21"/>
+    <path d="M9 31L14 27 20 28 25 23 31 24 38 19 44 20 51 15 57 16 64 11 71 12 78 9 84 12 87 18 84 24 79 25 75 30 69 29 63 34 57 32 51 37 46 35 39 41 34 38 29 43 24 41 17 45 11 41 8 36Z" fill="url(#paint-ridge)"/>
+    <path d="M12 31L18 29 23 30C40 23 55 20 70 16L78 14" stroke="#fff" stroke-opacity=".43" stroke-width="2.4"/>
+    <path d="M18 36C37 30 51 28 67 22M30 37C45 32 60 28 79 22M16 39L25 36M72 27L78 25" stroke="#fff" stroke-opacity=".24" stroke-width="1.4"/>
+    <path d="M22 34C37 29 55 24 72 20M33 40C43 36 54 32 67 29M53 21L64 18" stroke="#000" stroke-opacity=".14" stroke-width="1.2"/>
+    <path d="M6 48C21 43 31 45 46 49L84 61 88 67 83 72 77 70 73 73 66 70 60 71 53 66 46 67 40 62 33 63 26 58 20 59 14 55 9 57 5 53Z" fill="#000" fill-opacity=".23"/>
+    <path d="M4 43L10 38 16 41 22 39 29 43 36 42 44 47 50 46 58 51 64 50 71 55 77 54 85 59 88 65 83 68 77 65 73 68 66 64 60 66 53 61 47 63 40 58 34 60 27 55 20 57 14 51 8 53 4 48Z" fill="url(#paint-ridge)"/>
+    <path d="M9 43C20 45 25 44 37 48S62 55 80 61" stroke="#fff" stroke-opacity=".53" stroke-width="2.7"/>
+    <path d="M13 48C27 47 47 56 62 59M22 51L37 54M45 56L74 64" stroke="#fff" stroke-opacity=".29" stroke-width="1.7"/>
+    <path d="M19 46C37 49 49 54 67 59M29 54L48 60M56 60L72 65" stroke="#000" stroke-opacity=".17" stroke-width="1.15"/>
+    <path d="M23 83C36 77 61 69 85 65L91 72 87 77 80 78 75 83 69 82 63 86 57 85 51 89 45 88 38 93 32 91 26 93 21 90Z" fill="#000" fill-opacity=".23"/>
+    <path d="M18 78L24 72 31 73 38 67 45 69 51 64 58 65 64 61 71 62 77 59 84 60 89 64 88 70 83 74 77 73 72 78 65 77 59 82 52 80 46 85 40 83 34 89 28 87 22 89 18 84Z" fill="url(#paint-ridge)"/>
+    <path d="M24 77L31 76C42 72 63 66 80 64" stroke="#fff" stroke-opacity=".47" stroke-width="2.6"/>
+    <path d="M26 82C39 77 57 73 76 69M38 82L63 75M68 74L79 71" stroke="#fff" stroke-opacity=".26" stroke-width="1.6"/>
+    <path d="M32 79C45 74 60 71 76 67M45 82L64 77M26 84L34 81" stroke="#000" stroke-opacity=".18" stroke-width="1.2"/>
+    <path d="M11 66L18 63M79 44L86 41M48 9L56 7" stroke="#fff" stroke-opacity=".28" stroke-width="2.5"/>
+    <path d="M12 69L20 65M81 47L88 44" stroke="#000" stroke-opacity=".13" stroke-width="1.4"/>
+  </g>
+</svg>

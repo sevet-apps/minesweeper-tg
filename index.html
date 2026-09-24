@@ -933,39 +933,6 @@
 
         /* Combo buffer bar — square brick segments, always visible, shows how
            many no-line moves remain before the combo streak resets. */
-        /* Очки за закрытую линию плавно увеличиваются на месте, затем
-           удаляются из DOM без движения и затухания. */
-        .bb-line-score {
-            position: fixed;
-            z-index: 10500;
-            pointer-events: none;
-            font-weight: 900;
-            font-size: 34px;
-            line-height: 1;
-            color: transparent;
-            background: linear-gradient(100deg,
-                #ff3b30 0%, #ff9500 15%, #ffdd00 30%, #34c759 45%,
-                #00c7ff 60%, #5856d6 75%, #af52de 88%, #ff2d75 100%);
-            background-size: 100% 100%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,.72))
-                drop-shadow(0 0 7px rgba(255,255,255,.2));
-            transform: translate(-50%, -50%);
-            animation: bbLineScoreIn .28s cubic-bezier(.18, 1.32, .34, 1) both;
-            will-change: transform, opacity;
-        }
-        .bb-line-score.big { font-size: 43px; }
-        @keyframes bbLineScoreIn {
-            0%   { opacity: 0; transform: translate(-50%,-50%) scale(.78); }
-            100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-        }
-        body.lite-mode .bb-line-score {
-            animation: bbLineScoreIn .22s cubic-bezier(.18, 1.2, .34, 1) both;
-            background-position: 50% 50%;
-        }
-
         .bb-combo-bar {
             display: flex;
             gap: 5px;
@@ -3534,6 +3501,8 @@
         }
 
     </style>
+    <link rel="stylesheet" href="assets/block-blast/visuals.css">
+    <script src="assets/block-blast/visuals.js"></script>
 </head>
 <body>
     <div class="app-loader" id="appLoader" aria-hidden="true">
@@ -4193,7 +4162,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><button id="bbMaterialButton" class="bb-style-button" aria-label="Оформление" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.5 1.5 0 0 1 1.1-2.5H17a4 4 0 0 0 4-4A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="10" r=".8"/><circle cx="11" cy="7" r=".8"/><circle cx="15.5" cy="8.5" r=".8"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -4753,7 +4722,7 @@
         }
         function bbStartSparks() {
             if (bbSparkTimer) return;
-            if (document.body.classList.contains('lite-mode')) return;
+            if (BBVisuals.reduced() || document.hidden) return;
             bbSparkBase = bbComputeSparkBase();
             bbSparkTimer = setInterval(() => {
                 if (!bbSparkCells.length) return;
@@ -4767,6 +4736,7 @@
         function bbStopSparks() {
             if (bbSparkTimer) { clearInterval(bbSparkTimer); bbSparkTimer = null; }
             bbSparkCells = [];
+            bbSparkPool.forEach(p => { p.getAnimations().forEach(a => a.cancel()); p.__busy = false; });
             bbSparkBase = null;
         }
 
@@ -5739,6 +5709,7 @@
         function applyLanguage() {
             const tr = translations[currentLang] || translations.ru;
             document.documentElement.lang = currentLang;
+            BBVisuals.refreshLanguage();
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.dataset.i18n;
                 if(tr[key]) el.textContent = tr[key];
@@ -6028,7 +5999,7 @@
             stopGamePlaytime(game);
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
-            if(game==='bb') { try { bbStopSparks(); } catch(_) {} saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
+            if(game==='bb') { try { bbStopSparks(); BBVisuals.cleanup(); } catch(_) {} bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter(); updateBBScoreUI(); saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
             if(game==='sudoku') saveSudokuState();
             if(game==='tower') { 
                 twGameOverToken++;
@@ -6237,6 +6208,7 @@
             return currentLang === 'zh' ? '< 1分钟' : `< 1 ${currentLang === 'en' ? 'min' : 'мин'}`;
         }
         document.addEventListener('visibilitychange', () => {
+            if (document.hidden && document.getElementById('bb-screen').classList.contains('visible')) { bbStopSparks(); bbDisplayedScore = bbScore; updateBBScoreUI(); }
             if (!activePlaytime) return;
             if (document.hidden) flushGamePlaytime(true, true);
         });
@@ -6352,7 +6324,7 @@
                 const el = document.getElementById(`time-${game}`);
                 if (el) el.textContent = `${t('totalTime')}: ${(times[game] || 0) > 0 ? formatPlaytime(times[game]) : '—'}`;
             });
-            const value = key => localNumber(key).toLocaleString(currentLocale());
+            const value = key => BBVisuals.formatNumber(localNumber(key));
             const valueOrDash = key => localNumber(key) > 0 ? value(key) : '—';
             const blocks = {
                 bb: [detailCard(t('bestScore'), valueOrDash('bb_best_score')), detailCard(t('totalGames'), valueOrDash('bb_total_games')), detailCard(t('top'), rankText(profileRankData.bb_best_score)), detailCard(t('totalTime'), (times.bb || 0) > 0 ? formatPlaytime(times.bb) : '—')],
@@ -6412,7 +6384,7 @@
             candidates.forEach(item => {
                 const config = PROFILE_GAMES[item.game];
                 const isTime = item.key.startsWith('saper_best_');
-                const gap = isTime ? formatSaperSeconds(item.data.goal.gap) : Math.ceil(item.data.goal.gap).toLocaleString(currentLocale());
+                const gap = isTime ? formatSaperSeconds(item.data.goal.gap) : BBVisuals.formatNumber(Math.ceil(item.data.goal.gap));
                 const row = document.createElement('div');
                 row.className = 'nearest-goal';
                 row.innerHTML = `<img class="nearest-goal-icon" src="${config.icon}" alt=""><div class="nearest-goal-copy"><div class="nearest-goal-title">${t(config.nameKey)}</div><div class="nearest-goal-subtitle">${t('goalPlace').replace('{place}', item.data.goal.place).replace('{gap}', gap)}</div></div><button class="nearest-goal-play" type="button">${t('play')}</button>`;
@@ -6444,14 +6416,14 @@
             const checkersScore = localStorage.getItem('checkers_wins_pve') || 0;
             const wordleScore = localStorage.getItem('wordle_wins') || 0;
             
-            document.getElementById('rec-bb').innerText = bbScore > 0 ? bbScore.toLocaleString() : '--';
+            document.getElementById('rec-bb').innerText = bbScore > 0 ? BBVisuals.formatNumber(bbScore) : '--';
             document.getElementById('rec-saper').innerText = saperWins > 0 ? saperWins + ' ' + t('winsShort') : '--';
             document.getElementById('rec-tower').innerText = towerScore > 0 ? towerScore : '--';
             document.getElementById('rec-sudoku').innerText = sudokuScore > 0 ? sudokuScore + ' ' + t('winsShort') : '--';
             document.getElementById('rec-checkers').innerText = checkersScore > 0 ? checkersScore + ' ' + t('winsShort') : '--';
             document.getElementById('rec-wordle').innerText = wordleScore > 0 ? wordleScore + ' ' + t('winsShort') : '--';
             
-            if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = bbScore || 0;
+            if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = BBVisuals.formatNumber(bbScore);
             updateFavoriteGame();
             renderProfileStatsDetails();
             
@@ -7378,7 +7350,7 @@
                             <div style="font-size:13px; color:#8e8e93;">${t('tournamentHistoryYourPlace')}</div>
                             <div style="font-size:22px; font-weight:700; color:var(--accent);">#${myEntry.rank}</div>
                         </div>
-                        <div style="font-size:22px; font-weight:700;">${myEntry.score}</div>`;
+                        <div style="font-size:22px; font-weight:700;">${BBVisuals.formatNumber(myEntry.score)}</div>`;
                     listEl.appendChild(banner);
                 } else if (me) {
                     const banner = document.createElement('div');
@@ -7397,7 +7369,7 @@
                     const avatarHtml = u.photo_url && u.photo_url.startsWith('http')
                         ? `<img src="${u.photo_url}" class="lb-avatar">`
                         : `<div class="lb-avatar" style="background:#ddd"></div>`;
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${isMe ? t('you') : ''}</div></div><div class="lb-val">${u.score}</div>`;
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}</div>`;
                     listEl.appendChild(item);
                 });
             } catch (e) {
@@ -7517,7 +7489,7 @@
                     else document.getElementById('stickyAvatar').style.background = '#ddd';
                     if (myRank > 0) {
                         document.getElementById('stickyRank').innerText = myRank;
-                        document.getElementById('stickyVal').innerText = meEntry.score;
+                        document.getElementById('stickyVal').innerText = BBVisuals.formatNumber(meEntry.score);
                     } else {
                         document.getElementById('stickyRank').innerText = '- -';
                         document.getElementById('stickyVal').innerText = t('noData');
@@ -7551,7 +7523,7 @@
                         const multBadge = (u.multiplier && u.multiplier > 1.0)
                             ? `<span style="margin-left:6px; font-size:10px; color:#ffa500; font-weight:700;">×${u.multiplier}</span>`
                             : '';
-                        item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${u.score}${multBadge}</div>`;
+                        item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}${multBadge}</div>`;
                         listEl.appendChild(item);
                     });
                 } catch (error) {
@@ -7604,11 +7576,11 @@
                 listEl.innerHTML = ''; const finalDisplayList = displayList.slice(0, 100); const meInList = finalDisplayList.find(u => u.isMe); const myRank = meInList ? finalDisplayList.indexOf(meInList) + 1 : 0;
                 document.getElementById('stickyName').innerText = tgName(user) + " " + t('you');
                 if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url; else document.getElementById('stickyAvatar').style.background = '#ddd';
-                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? formatSaperSeconds(userVal) : userVal; } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
+                if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? formatSaperSeconds(userVal) : BBVisuals.formatNumber(userVal); } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
                 if(hasStats && myRank > 0) { lbObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) stickyEl.classList.remove('visible'); else if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }); }, { threshold: 0.1 }); } else { if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }
                 finalDisplayList.forEach((u, index) => {
                     const rank = index + 1; let medal = ''; if(rank <= 3) medal = `<div class="lb-rank-badge">${rank}</div>`;
-                    let displayVal = u.score; if(category.isTime) displayVal = formatSaperSeconds(u.score);
+                    let displayVal = BBVisuals.formatNumber(u.score); if(category.isTime) displayVal = formatSaperSeconds(u.score);
                     const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
                     let avatarHtml = u.photo_url && u.photo_url.startsWith('http') ? `<img src="${u.photo_url}" class="lb-avatar">` : `<div class="lb-avatar" style="background:#ddd"></div>`;
                     item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}${u.isLive ? `<span class="lb-live-badge" onclick="event.stopPropagation(); openBBSpectator('${u.user_id}', '${u.username.replace(/'/g, "\\'")}')">LIVE</span>` : ''}</div></div><div class="lb-val">${displayVal}</div>`;
@@ -7700,7 +7672,7 @@
                         ? `<img src="${u.photo_url}" class="lb-avatar">` 
                         : `<div class="lb-avatar" style="background:#ddd"></div>`;
                     
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${u.score}</div>`;
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}</div>`;
                     listEl.appendChild(item);
                 });
                 
@@ -7710,7 +7682,7 @@
                 if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url;
                 if(myData) {
                     document.getElementById('stickyRank').innerText = displayList.indexOf(myData) + 1;
-                    document.getElementById('stickyVal').innerText = myData.score;
+                    document.getElementById('stickyVal').innerText = BBVisuals.formatNumber(myData.score);
                 } else {
                     document.getElementById('stickyRank').innerText = "--";
                     document.getElementById('stickyVal').innerText = "0";
@@ -8059,6 +8031,7 @@
             [[0, 1], [1, 0], [1, 0]],
             [[1, 0], [0, 1], [0, 1]]
         ];
+        BBVisuals.onSelect = () => { if (vibrationEnabled) tg.HapticFeedback.selectionChanged(); };
         const COLORS = ['bb-c-1','bb-c-2','bb-c-3','bb-c-4','bb-c-5','bb-c-6','bb-c-7'];
         const DRAG_LIFT_Y = 150;
         const isDesktop = () => document.body.classList.contains('desktop');
@@ -8104,7 +8077,7 @@
         }
         function updateBBHeaderBest() {
             const el = document.getElementById('bbBestScore');
-            if (el) el.innerText = getDisplayedBest();
+            if (el) el.innerText = BBVisuals.formatNumber(getDisplayedBest());
         }
 
         function normalizedBBShapes(shapes) {
@@ -8121,7 +8094,7 @@
             const localGrid = bbGrid;
             bbGrid = mergeBBServerGrid(data.server_grid, localGrid);
             bbScore = Number(data.server_score) || 0;
-            bbDisplayedScore = bbScore;
+            bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter();
             bbCombo = Number(data.combo) || 0;
             bbComboBuffer = Number(data.comboBuffer) || 0;
             bbRevision = Number.isInteger(data.revision) ? data.revision : 0;
@@ -8145,16 +8118,15 @@
                 renderBBShapeSlots();
             }
             if (!preserveOptimisticHand && Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
-            // Local clearing animations finish asynchronously. Reconcile after
-            // them so the visible score can never drift from the server score.
-            const acceptedRevision = bbRevision;
-            setTimeout(() => {
-                if (bbGameEnded || bbRevision !== acceptedRevision || !Number.isFinite(Number(data.server_score))) return;
-                bbScore = Number(data.server_score);
+            // Visual effects never defer points. Only reconcile the last acknowledged move:
+            // older replies must not overwrite points from moves still waiting in the queue.
+            const serverScore = Number(data.server_score);
+            if (!preserveOptimisticHand && !bbGameEnded && Number.isFinite(serverScore) && bbScore !== serverScore) {
+                bbScore = serverScore;
                 bbDisplayedScore = bbScore;
+                if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter();
                 updateBBScoreUI();
-                saveBBState();
-            }, 1200);
+            }
         }
 
         function showBBStaleSession(data) {
@@ -8651,6 +8623,7 @@
             initBB();
         }
         async function initBB() {
+            BBVisuals.cleanup();
             if (bbMoveRetryTimer) clearTimeout(bbMoveRetryTimer);
             bbMoveRetryTimer = null;
             bbMoveQueue = []; bbMoveProcessing = false;
@@ -8661,7 +8634,7 @@
             bbIsAnimating = false;
             updateBBScoreUI();
             bbLastComboFilled = -1;
-            document.getElementById('bbBestScore').innerText = getDisplayedBest();
+            document.getElementById('bbBestScore').innerText = BBVisuals.formatNumber(getDisplayedBest());
             renderBBGrid();
             // Both modes share the SAME backend session ('bb_best_score')
             const started = await startGameSession('bb_best_score', { newGame: true });
@@ -8908,13 +8881,13 @@
                 else document.getElementById(`shape${i}`).innerHTML = '';
             }
         }
-        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview'; preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); if (dragData && dragData.slotId === slotId) preview.style.opacity = 0; container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
+        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); const signature = JSON.stringify([matrix, color]); const fresh = !container.firstElementChild || container.dataset.shapeSignature !== signature; container.dataset.shapeSignature = signature; container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview' + (fresh ? ' bb-deal-in' : ''); preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); if (dragData && dragData.slotId === slotId) preview.style.opacity = 0; container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0; let bbLastTouchDragStart = 0;
         function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
 
         // --- FIXED DRAG FUNCTION ---
         function startDrag(e, slotId, matrix, color) { 
-            if(bbIsAnimating || bbInputLocked || dragData) return;
+            if(bbIsAnimating || bbInputLocked || bbGameEnded || dragData) return;
             if (e.type === 'mousedown' && Date.now() - bbLastTouchDragStart < 800) return;
             if (e.type === 'touchstart') bbLastTouchDragStart = Date.now();
             e.preventDefault();
@@ -8922,8 +8895,9 @@
             bbPlayPickup();
             const touch = e.touches ? e.touches[0] : e; 
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
-            const cellFullSize = gridRect.width / 8; 
-            dragData = { slotId, matrix, color, startX: touch.clientX, startY: touch.clientY, gridRect, cellSize: cellFullSize }; 
+            const firstCell = getCellFast(0, 0).getBoundingClientRect();
+            const cellFullSize = firstCell.width;
+            dragData = { slotId, matrix, color, startX: touch.clientX, startY: touch.clientY, gridRect: { left: firstCell.left, top: firstCell.top }, cellSize: cellFullSize + 4 };
             dragGhost = document.createElement('div'); 
             dragGhost.className = 'drag-ghost'; 
             dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
@@ -9089,7 +9063,9 @@
         function canPlace(matrix, r, c) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { let nr = r + i; let nc = c + j; if(nr < 0 || nr >= BB_ROWS || nc < 0 || nc >= BB_COLS || bbGrid[nr][nc] !== 0) return false; } } } return true; }
         function drawShadow(matrix, r, c, color) { for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { const cell = getCellFast(r+i, c+j); if(cell) cell.classList.add('bb-shadow', color); } } } }
         
-        function onTouchEnd(e) { 
+        function onTouchEnd(e) {
+            if (dragData && e?.type === 'touchcancel') dragData.validPos = null;
+            else if (dragData && __movePending) handleMove(__moveX, __moveY);
             lastPlacementRow = -1; lastPlacementCol = -1;
             bbStopSparks();
             document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); document.removeEventListener('touchcancel', onTouchEnd); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onTouchEnd);
@@ -9111,13 +9087,8 @@
                 }));
                 const linesCleared = checkLines(completedDrag.color, placedCells);
                 if (bbShapes.every(shape => shape === null) && Number.isInteger(bbNextHandSeed)) {
-                    let authoritativeScore = bbScore;
-                    if (linesCleared > 0) {
-                        authoritativeScore += bbLineScore(linesCleared, bbCombo);
-                        if (countFreeCells() === BB_ROWS * BB_COLS) {
-                            authoritativeScore += 500 * (bbCombo > 0 ? bbCombo : 1);
-                        }
-                    }
+                    // Clear bonuses are already committed before generating the next hand.
+                    const authoritativeScore = bbScore;
                     bbShapes = generateSeededBBHand(bbNextHandSeed, authoritativeScore);
                     bbNextHandSeed = advanceBBHandSeed(bbNextHandSeed);
                     renderBBShapeSlots();
@@ -9132,269 +9103,82 @@
 
         function placeShape(matrix, r, c, color) { 
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); bbPlayPlace(); let placedCount = 0; 
-            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = getCellFast(r+i, c+j); cell.classList.add('no-transition'); cell.classList.add('filled', color, 'place-pop'); cell.style.backgroundColor = ''; setTimeout(() => { cell.classList.remove('no-transition', 'place-pop'); }, 150); placedCount++; } } } addScore(placedCount); 
+            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = getCellFast(r+i, c+j); cell.classList.add('no-transition'); cell.classList.add('filled', color, 'place-pop'); cell.style.backgroundColor = ''; setTimeout(() => { cell.classList.remove('no-transition', 'place-pop'); }, 230); placedCount++; } } } addScore(placedCount);
         }
-        function checkLines(triggerColor, placedCells) { 
-            let linesCleared = 0; const rowsToClear = []; const colsToClear = []; 
-            for(let r=0; r<BB_ROWS; r++) { if(bbGrid[r].every(val => val !== 0)) rowsToClear.push(r); } 
-            for(let c=0; c<BB_COLS; c++) { let full = true; for(let r=0; r<BB_ROWS; r++) if(bbGrid[r][c] === 0) full = false; if(full) colsToClear.push(c); } 
-            const totalCleared = rowsToClear.length + colsToClear.length; 
-            if(totalCleared > 0) { 
-                // Комбо растёт на число закрытых линий за ход; буфер держит серию 3 хода
-                bbCombo += totalCleared; bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES; updateBBScoreUI(); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); 
-                bbPlayClear();
-                if(!isLiteMode) document.querySelector('.bb-game-container').classList.add('shake-screen');
-                
-                // Снапшот значений на момент этого хода
-                const kThisMove = totalCleared;
-                const nThisMove = bbCombo; // N уже после увеличения
-                const flashHex = COLOR_MAP[triggerColor] || '#ffffff';
-                
-                // Вспышка рамки в цвет фигуры + рассыпание линий (осколки)
-                bbFlashBorder(flashHex);
-                bbSpawnLineShards(rowsToClear, colsToClear, flashHex);
-                
-                // All cells in line clear at once
-                rowsToClear.forEach(r => { 
-                    if(!isLiteMode) fireNeonParticles(r, -1, triggerColor); 
-                    const center = (BB_COLS - 1) / 2;
-                    for(let c=0; c<BB_COLS; c++) { 
-                        bbGrid[r][c] = 0; 
-                        animateClear(r, c, triggerColor, 0, center);
-                    } 
-                }); 
-                colsToClear.forEach(c => { 
-                    if(!isLiteMode) fireNeonParticles(-1, c, triggerColor); 
-                    const center = (BB_ROWS - 1) / 2;
-                    for(let r=0; r<BB_ROWS; r++) { 
-                        bbGrid[r][c] = 0; 
-                        animateClear(r, c, triggerColor, 0, undefined);
-                    } 
-                }); 
-                setTimeout(() => { 
-                    document.querySelector('.bb-game-container').classList.remove('shake-screen'); 
-                    // Очки за закрытые линии: round( k * 20 * N * M(N) * S(k) )
-                    const points = bbLineScore(kThisMove, nThisMove);
-                    // Простой попап по центру (как было до сочной версии)
-                    if (nThisMove > 1) {
-                        showComboPopup(`COMBO x${nThisMove}!`);
-                    } else if (kThisMove >= 2) {
-                        showComboPopup(`X${kThisMove} LINES!`);
-                    }
-                    addScore(points); 
-                    showLineScore(points, placedCells, triggerColor);
-                    saveBBState(); 
-                    setTimeout(checkAllClear, 50); 
-                    checkGameOver(); 
-                }, 350); 
-                return totalCleared; 
-            } return 0; 
+        function checkLines(triggerColor, placedCells) {
+            const rows = [], cols = [];
+            for (let r = 0; r < BB_ROWS; r++) if (bbGrid[r].every(Boolean)) rows.push(r);
+            for (let c = 0; c < BB_COLS; c++) if (bbGrid.every(row => row[c] !== 0)) cols.push(c);
+            const total = rows.length + cols.length;
+            if (!total) return 0;
+            bbCombo += total;
+            bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES;
+            if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+            bbPlayClear();
+            BBVisuals.clearLines(rows, cols, getCellFast);
+            BBVisuals.uniqueCells(rows, cols).forEach(({ r, c }) => { bbGrid[r][c] = 0; });
+            const points = bbLineScore(total, bbCombo);
+            addScore(points);
+            BBVisuals.lineScore(points, placedCells, getCellFast);
+            BBVisuals.combo(bbCombo);
+            checkAllClear();
+            saveBBState();
+            checkGameOver();
+            return total;
         }
-        /** Очки за закрытие линий — прямо на месте поставленной фигуры.
-            Точку берём из клеток, куда лёг блок: так число появляется там,
-            куда игрок только что смотрел. */
-        function showLineScore(points, cells) {
-            if (!points || !cells || !cells.length) return;
-            let sx = 0, sy = 0, n = 0;
-            cells.forEach(({ r, c }) => {
-                const cell = getCellFast(r, c);
-                if (!cell) return;
-                const b = cell.getBoundingClientRect();
-                sx += b.left + b.width / 2;
-                sy += b.top + b.height / 2;
-                n++;
-            });
-            if (!n) return;
-            const el = document.createElement('div');
-            el.className = 'bb-line-score' + (points >= 500 ? ' big' : '');
-            el.textContent = '+' + points;
-            el.style.left = (sx / n) + 'px';
-            el.style.top = (sy / n) + 'px';
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 900);
+        function addScore(points) {
+            bbScore += points;
+            BBVisuals.count(bbDisplayedScore, bbScore, value => { bbDisplayedScore = value; updateBBScoreUI(); });
         }
-
-        function fireNeonParticles(row, col, colorClass) {
-            // Лёгкая вспышка линии через один CSS-элемент вместо confetti canvas
-            const hex = COLOR_MAP[colorClass] || '#ffffff';
-            const grid = document.getElementById('bbGrid');
-            const gridRect = grid.getBoundingClientRect();
-            const flash = document.createElement('div');
-            
-            if(row !== -1) {
-                // Горизонтальная вспышка
-                const cellH = gridRect.height / 8;
-                const y = row * cellH;
-                flash.style.cssText = `position:absolute;left:0;top:${y}px;width:100%;height:${cellH}px;background:linear-gradient(90deg,transparent,${hex}40,${hex}80,${hex}40,transparent);border-radius:4px;pointer-events:none;z-index:5;opacity:1;transition:opacity 0.3s ease-out;`;
-            } else {
-                // Вертикальная вспышка
-                const cellW = gridRect.width / 8;
-                const x = col * cellW;
-                flash.style.cssText = `position:absolute;left:${x}px;top:0;width:${cellW}px;height:100%;background:linear-gradient(180deg,transparent,${hex}40,${hex}80,${hex}40,transparent);border-radius:4px;pointer-events:none;z-index:5;opacity:1;transition:opacity 0.3s ease-out;`;
-            }
-            
-            grid.appendChild(flash);
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => { flash.style.opacity = '0'; });
-            });
-            setTimeout(() => flash.remove(), 350);
+        function updateBBScoreUI() {
+            const el = document.getElementById('bbScore');
+            el.innerText = BBVisuals.formatNumber(bbDisplayedScore);
+            el.classList.toggle('active-combo', bbCombo > 0);
+            BBVisuals.combo(bbCombo, false);
+            updateComboBar();
         }
-        function showComboPopup(text) { const p = document.createElement('div'); p.className = 'combo-popup'; p.innerText = text; document.querySelector('.bb-game-container').appendChild(p); setTimeout(() => p.remove(), 1000); }
-
-        // ===================== BB LINE SHATTER FX =====================
-        // Оставлено только рассыпание линий на осколки (по просьбе).
-        function _bbFxBase() {
-            const grid = document.getElementById('bbGrid');
-            const container = document.querySelector('.bb-game-container');
-            if (!grid || !container) return null;
-            const g = grid.getBoundingClientRect();
-            const cont = container.getBoundingClientRect();
-            return {
-                grid, container,
-                offX: g.left - cont.left,
-                offY: g.top - cont.top,
-                w: g.width, h: g.height,
-                cellW: g.width / BB_COLS,
-                cellH: g.height / BB_ROWS,
-            };
-        }
-
-        // Вспышка окантовки — класс прямо на гриде, контур совпадает идеально
-        function bbFlashBorder(hex) {
-            if (isLiteMode) return;
-            const grid = document.getElementById('bbGrid');
-            if (!grid) return;
-            grid.style.setProperty('--flash-color', hex);
-            grid.classList.remove('grid-flash');
-            void grid.offsetWidth;
-            grid.classList.add('grid-flash');
-            setTimeout(() => grid.classList.remove('grid-flash'), 520);
-        }
-
-        // Осколки с параболой (внешний слой X-линейно, внутренний Y-гравитация)
-        function bbSpawnLineShards(rowsToClear, colsToClear, hex) {
-            if (isLiteMode) return;
-            const base = _bbFxBase();
-            if (!base) return;
-
-            const cells = [];
-            rowsToClear.forEach(r => { for (let c = 0; c < BB_COLS; c++) cells.push([r, c]); });
-            colsToClear.forEach(c => { for (let r = 0; r < BB_ROWS; r++) cells.push([r, c]); });
-
-            const budget = 32;
-            const perCell = Math.max(1, Math.floor(budget / cells.length));
-            const frag = document.createDocumentFragment();
-
-            cells.forEach(([r, c]) => {
-                const cx = base.offX + c * base.cellW + base.cellW / 2;
-                const cy = base.offY + r * base.cellH + base.cellH / 2;
-                for (let i = 0; i < perCell; i++) {
-                    const outer = document.createElement('div');
-                    outer.className = 'bb-shard';
-                    const inner = document.createElement('div');
-                    inner.className = 'bb-shard-inner';
-                    const sz = 7 + Math.random() * 9;
-                    const dx = (Math.random() - 0.5) * 130;
-                    const up = -(15 + Math.random() * 55);
-                    const down = 50 + Math.random() * 70;
-                    const rot = (Math.random() - 0.5) * 720;
-                    outer.style.cssText = `left:${cx - sz / 2}px;top:${cy - sz / 2}px;--dx:${dx}px;`;
-                    inner.style.cssText = `--sz:${sz}px;--up:${up}px;--down:${down}px;--rot:${rot}deg;--shard-color:${hex};`;
-                    outer.appendChild(inner);
-                    outer.addEventListener('animationend', () => outer.remove(), { once: true });
-                    frag.appendChild(outer);
-                }
-            });
-            base.container.appendChild(frag);
-            setTimeout(() => {
-                base.container.querySelectorAll('.bb-shard').forEach(s => s.remove());
-            }, 900);
-        }
-        // ===================== END BB LINE SHATTER FX =====================
-
-        function animateClear(r, c, color, delay, lineCenter) { 
-            const cell = getCellFast(r, c); 
-            if(!cell) return;
-            
-            if(isLiteMode) {
-                cell.className = 'bb-cell';
-                cell.style.backgroundColor = '';
-                cell.style.boxShadow = '';
-                return;
-            }
-            
-            const hex = COLOR_MAP[color] || '#00ffff';
-            
-            // Волновой delay — от центра линии к краям
-            let waveDelay = 0;
-            if(lineCenter !== undefined) {
-                const dist = Math.abs(c - lineCenter);
-                waveDelay = dist * 25;
-            } else {
-                const dist = Math.abs(r - 3.5);
-                waveDelay = dist * 25;
-            }
-            
-            // Яркая вспышка перед анимацией
-            cell.style.boxShadow = `0 0 8px ${hex}`;
-            
-            setTimeout(() => {
-                cell.classList.add('clearing-anim');
-                cell.style.boxShadow = '';
-                
-                // После анимации — очищаем
-                setTimeout(() => {
-                    cell.className = 'bb-cell';
-                    cell.style.backgroundColor = '';
-                    cell.style.boxShadow = '';
-                    cell.style.background = '';
-                }, 320);
-            }, waveDelay);
-        }
-        function addScore(points) { bbScore += points; const target = bbScore; const step = Math.ceil((target - bbDisplayedScore) / 10); const int = setInterval(() => { bbDisplayedScore += step; if(bbDisplayedScore >= target) { bbDisplayedScore = target; clearInterval(int); } updateBBScoreUI(); }, 30); }
-        function updateBBScoreUI() { const el = document.getElementById('bbScore'); el.innerText = bbDisplayedScore; if(bbCombo > 0) el.classList.add('active-combo'); else el.classList.remove('active-combo'); updateComboBar(); }
 
         // Combo buffer bar: reflects bbComboBuffer out of COMBO_BUFFER_MOVES.
         // Segments fill left→right and drain right→left with smooth animation.
         function updateComboBar() {
             const bar = document.getElementById('bbComboBar');
             if (!bar) return;
-            const max = BB_SCORING.COMBO_BUFFER_MOVES;
-            const segs = bar.querySelectorAll('.bb-combo-seg');
-            // Bar is always visible. Filled bricks reflect the remaining buffer
-            // while a combo streak is alive; empty when there's no streak.
-            const active = bbCombo > 0 && bbComboBuffer > 0;
-            const filledCount = active ? Math.min(bbComboBuffer, max) : 0;
-
-            // Collect segments that need draining so we can stagger them
-            // right→left for a cascading empty effect.
-            const toDrain = [];
-            segs.forEach((seg, i) => {
-                const shouldFill = i < filledCount;
-                const isFilled = seg.classList.contains('filled');
-                if (shouldFill && !isFilled) {
-                    seg.classList.remove('draining');
+            const count = bbCombo > 0 ? Math.max(0, Math.min(bbComboBuffer, BB_SCORING.COMBO_BUFFER_MOVES)) : 0;
+            if (bar.dataset.filledCount === String(count)) return;
+            bar.dataset.filledCount = String(count);
+            const token = Symbol('combo');
+            bar.__bbRenderToken = token;
+            const segments = bar.querySelectorAll('.bb-combo-seg');
+            segments.forEach((seg, i) => {
+                seg.classList.remove('draining', 'just-filled');
+                if (i < count) {
+                    const fresh = !seg.classList.contains('filled');
                     seg.classList.add('filled');
-                    if (i > bbLastComboFilled) {
+                    if (fresh && !BBVisuals.reduced()) {
                         seg.classList.add('just-filled');
-                        setTimeout(() => seg.classList.remove('just-filled'), 400);
+                        setTimeout(() => { if (bar.__bbRenderToken === token) seg.classList.remove('just-filled'); }, 400);
                     }
-                } else if (!shouldFill && isFilled) {
-                    toDrain.push({ seg, i });
+                } else if (seg.classList.contains('filled')) {
+                    const drain = () => {
+                        if (bar.__bbRenderToken !== token) return;
+                        seg.classList.remove('filled');
+                        if (!BBVisuals.reduced()) {
+                            seg.classList.add('draining');
+                            setTimeout(() => { if (bar.__bbRenderToken === token) seg.classList.remove('draining'); }, 550);
+                        }
+                    };
+                    if (BBVisuals.reduced()) drain();
+                    else setTimeout(drain, (segments.length - 1 - i) * 70);
                 }
             });
-            // Drain highest index first (rightmost), each slightly delayed
-            toDrain.sort((a, b) => b.i - a.i);
-            toDrain.forEach((item, order) => {
-                setTimeout(() => {
-                    item.seg.classList.remove('filled');
-                    item.seg.classList.add('draining');
-                    setTimeout(() => item.seg.classList.remove('draining'), 550);
-                }, order * 120);
-            });
-            bbLastComboFilled = filledCount - 1;
+            bbLastComboFilled = count - 1;
         }
-        function checkAllClear() { if(bbIsAnimating) return; const free = countFreeCells(); if(free === BB_ROWS * BB_COLS) { bbIsAnimating = true; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const bonus = 500 * (bbCombo > 0 ? bbCombo : 1); let delay = 0; for(let r=BB_ROWS-1; r>=0; r--) { setTimeout(() => { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); const randColor = COLORS[Math.floor(Math.random()*COLORS.length)]; cell.className = `bb-cell filled ${randColor}`; } if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); }, delay); delay += 50; } setTimeout(() => { for(let r=0; r<BB_ROWS; r++) { for(let c=0; c<BB_COLS; c++) { const cell = getCellFast(r, c); cell.className = 'bb-cell clearing'; } } setTimeout(() => { renderBBGrid(); }, 200); const container = document.querySelector('.bb-game-container'); const pop = document.createElement('div'); pop.className = 'all-clear-popup'; pop.innerHTML = `<div class="ac-text">UNBELIEVABLE</div><div class="ac-score">+${bonus}</div>`; container.appendChild(pop); confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, zIndex: 11000 }); addScore(bonus); setTimeout(() => { pop.remove(); bbIsAnimating = false; saveBBState(); }, 2000); }, delay + 200); } }
+        function checkAllClear() {
+            if (countFreeCells() !== BB_ROWS * BB_COLS) return;
+            const bonus = 500 * (bbCombo > 0 ? bbCombo : 1);
+            addScore(bonus);
+            BBVisuals.allClear(bonus);
+        }
         async function checkGameOver() {
             if (bbIsAnimating || bbGameEnded) return;
             const shapesLeft = bbShapes.filter(s => s !== null);
@@ -9488,7 +9272,7 @@
                 function frame(now) {
                     const t = Math.min(1, (now - start) / duration);
                     const v = Math.round(from + (to - from) * ease(t));
-                    el.innerText = v.toLocaleString(currentLocale());
+                    el.innerText = BBVisuals.formatNumber(v);
                     if (t < 1) requestAnimationFrame(frame);
                     else resolve();
                 }
@@ -9516,7 +9300,7 @@
                 : '';
 
             if (isRecord) {
-                confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 22000 });
+                if (!BBVisuals.reduced()) confetti({ particleCount: 36, spread: 70, origin: { y: 0.6 }, zIndex: 22000, disableForReducedMotion: true });
 
                 const titleKey = isTournament ? 'bbTournamentNewBest' : 'newRecord';
                 modal.innerHTML = `
@@ -9564,7 +9348,7 @@
                     finalLine.style.transition = 'opacity 0.25s';
                     await new Promise(r => requestAnimationFrame(r));
                     finalLine.style.opacity = '1';
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.55 }, colors: ['#ffa500', '#ff3b30', '#ffd700'], zIndex: 22001 });
+                    if (!BBVisuals.reduced()) confetti({ particleCount: 24, spread: 60, origin: { y: 0.55 }, colors: ['#ffa500', '#ff3b30', '#ffd700'], zIndex: 22001, disableForReducedMotion: true });
                     if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
                     await animateNumber(document.getElementById('bbFinalCounter'), score, finalScore, 800);
                 });
@@ -9572,7 +9356,7 @@
                 modal.innerHTML = `
                     <h2 style="margin:0 0 5px 0;">${saveFailed ? t('recordSaveFailed') : t('recordNotBeat')}</h2>
                     <p style="color:#8e8e93; margin:0 0 20px 0;">${saveFailed ? t('recordSaveRetry') : t('tryAgain')}</p>
-                    <div style="font-size:32px; font-weight:700;" id="bbScoreNum">${score}</div>
+                    <div style="font-size:32px; font-weight:700;" id="bbScoreNum">${BBVisuals.formatNumber(score)}</div>
                     ${showMultAnim ? `
                         <div id="bbMultLine" style="display:none; margin:8px 0 4px 0;">
                             <span style="font-size:14px; color:#8e8e93;">×</span>
@@ -9580,10 +9364,10 @@
                         </div>
                         <div id="bbFinalLine" style="display:none;">
                             <div style="font-size:13px; color:#8e8e93;">${t('bbFinalScore')}</div>
-                            <div id="bbFinalCounter" style="font-size:30px; font-weight:800; color:#ffa500;">${score}</div>
+                            <div id="bbFinalCounter" style="font-size:30px; font-weight:800; color:#ffa500;">${BBVisuals.formatNumber(score)}</div>
                         </div>
                     ` : ''}
-                    <div style="font-size:14px; color:#8e8e93; margin: 14px 0 0;">${t('best')}: ${oldBest}</div>
+                    <div style="font-size:14px; color:#8e8e93; margin: 14px 0 0;">${t('best')}: ${BBVisuals.formatNumber(oldBest)}</div>
                     ${ctaHtml}
                     <button class="btn-main" style="margin-top:14px;" onclick="closeResult(); newGameBB();">${t('newGame')}</button>
                     <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`;
@@ -9614,7 +9398,7 @@
             overlay.classList.add('visible');
         }
         function saveBBState() { if(bbGameEnded) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, revision: bbRevision, nextHandSeed: bbNextHandSeed, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbNextHandSeed = Number.isInteger(data.nextHandSeed) ? data.nextHandSeed >>> 0 : null; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
+        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbNextHandSeed = Number.isInteger(data.nextHandSeed) ? data.nextHandSeed >>> 0 : null; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter(); bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;
@@ -9735,7 +9519,7 @@
         socket.on('bb_live_frame', (data) => {
             if (String(data.userId) !== String(bbWatchingId)) return;
             if (data.username) document.getElementById('bbSpectatorName').innerText = data.username;
-            document.getElementById('bbSpectatorScore').innerText = data.score || 0;
+            document.getElementById('bbSpectatorScore').innerText = BBVisuals.formatNumber(data.score);
             if (data.grid) renderSpectatorGrid(data.grid);
             if (data.shapes) renderSpectatorShapes(data.shapes);
         });

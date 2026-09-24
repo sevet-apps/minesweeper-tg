@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
+  <defs>
+    <clipPath id="honey-clip"><rect x="4" y="4" width="88" height="88" rx="15"/></clipPath>
+    <linearGradient id="honey-depth" x1="-8" y1="-14" x2="7" y2="15" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#713507" stop-opacity=".61"/>
+      <stop offset=".55" stop-color="#a95709" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#ffc843" stop-opacity=".16"/>
+    </linearGradient>
+    <linearGradient id="honey-drop" x1="68" y1="60" x2="81" y2="87" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff3a3" stop-opacity=".93"/>
+      <stop offset=".45" stop-color="#ffc52d" stop-opacity=".88"/>
+      <stop offset="1" stop-color="#d67605" stop-opacity=".86"/>
+    </linearGradient>
+    <g id="honey-cell" stroke-linejoin="round">
+      <path d="M0-17 14.7-8.5V8.5L0 17-14.7 8.5V-8.5Z" fill="url(#honey-depth)" stroke="#763a09" stroke-opacity=".28" stroke-width="3"/>
+      <path d="M-14.7 8.5V-8.5L0-17 14.7-8.5" stroke="#fff0a0" stroke-opacity=".73" stroke-width="2.8"/>
+      <path d="M14.7-8.5V8.5L0 17-14.7 8.5" stroke="#ffce50" stroke-opacity=".76" stroke-width="2.8"/>
+      <path d="M-11.6 6.7V-6.7L0-13.4 11.6-6.7 8.6-4.8 0-9.8-8.6-4.8V5Z" fill="#713307" fill-opacity=".24"/>
+      <path d="M-10 7 0 12.8 10 7" stroke="#ffe278" stroke-opacity=".37" stroke-width="1.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <g clip-path="url(#honey-clip)">
+    <use href="#honey-cell" x="33" y="22"/>
+    <use href="#honey-cell" x="63" y="22"/>
+    <use href="#honey-cell" x="18" y="48"/>
+    <use href="#honey-cell" x="48" y="48"/>
+    <use href="#honey-cell" x="78" y="48"/>
+    <use href="#honey-cell" x="33" y="74"/>
+    <use href="#honey-cell" x="63" y="74"/>
+    <path d="M73 61C71 68 64 73 64 80a11 11 0 0 0 22 0c0-7-9-13-13-19Z" fill="#753408" fill-opacity=".25"/>
+    <path d="M73 58C71 66 63 72 63 78a11 11 0 0 0 22 0c0-7-9-13-12-20Z" fill="url(#honey-drop)" stroke="#ffde6b" stroke-opacity=".68" stroke-width="1.3"/>
+    <path d="M71 69c-3 4-5 7-4 10" stroke="#fff9cf" stroke-opacity=".84" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M78 84c3-1 4-3 4-5" stroke="#ab5408" stroke-opacity=".34" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
