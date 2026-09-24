@@ -353,10 +353,10 @@ test('Chinese flag and Block Blast counters use the refreshed visual treatment',
     assert.match(zhButton, /translate\(17\.5 30\) scale\(7\.2\)/,
         'the large star must be vertically centered inside the four-star group');
 
-    assert.match(indexSource, /\.bb-line-score\s*\{[\s\S]*?linear-gradient\(100deg,[\s\S]*?background-clip:\s*text/s);
-    assert.match(indexSource, /@keyframes bbLineScoreIn\s*\{[\s\S]*?scale\(\.78\)[\s\S]*?scale\(1\)/s);
-    assert.doesNotMatch(indexSource, /@keyframes bbLineScoreRainbow/,
-        'the rainbow is a fixed gradient and must not shimmer');
+    const visualsCss = fs.readFileSync(path.join(root, 'assets/block-blast/visuals.css'), 'utf8');
+    assert.match(visualsCss, /body \.bb-line-score[^}]*-webkit-text-fill-color: #fff9e9/);
+    assert.doesNotMatch(indexSource, /@keyframes bbLineScore(?:Rainbow|In)/,
+        'legacy rainbow and competing score animations must be removed');
     assert.match(indexSource, /\.bb-best,[\s\S]*?#bbScoreNum\s*\{[\s\S]*?SF Pro Display/s);
 });
 
