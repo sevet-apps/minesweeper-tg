@@ -3,13 +3,40 @@
     'use strict';
     const clamp = n => Math.max(0, Math.min(1, n));
     const ease = n => 1 - Math.pow(1 - clamp(n), 3);
-    const duration = effect => ({ paint: 720, honey: 820, soft: 1150, porcelain: 1050, squish: 1015, ice: 980 })[effect] || 930;
+    const duration = effect => ({ classic: 650, paint: 760, honey: 760, soft: 1150, porcelain: 880, squish: 1015, ice: 800, candy: 720, shatter: 820, crumb: 820, wood: 840 })[effect] || 930;
     const budget = (cells, reduced, lowPower) => reduced ? 0 : Math.min(lowPower ? 192 : 360, cells * 12);
     const colors = [
         ['#ff5c52','#ff3b30','#d62d24'], ['#ffab30','#ff9500','#d67e00'], ['#ffe033','#ffcc00','#d6ab00'],
         ['#4cd964','#34c759','#28a745'], ['#339aff','#007aff','#0062cc'], ['#7472e8','#5856d6','#4745ab'], ['#c76ef0','#af52de','#8c42b2'],
     ];
-    const mono = { cheese: ['#ffe487','#f8bd44','#e8a630'], honey: ['#ffd473','#efaf45','#dc9226'], porcelain: ['#fffdf4','#eef4f7','#d4e3ef'], wood: ['#dfb184','#c28d61','#aa7149'], ice: ['#d2faff','#9cdef0','#66bedf'] };
+    const mono = { cheese: ['#ffe487','#f8bd44','#e8a630'], honey: ['#ffcb38','#f5a409','#c97404'], porcelain: ['#fffdf4','#eef4f7','#d4e3ef'], wood: ['#dfb184','#c28d61','#aa7149'], ice: ['#d9f9ff','#8bd5ed','#479abd'] };
+    // A small Voronoi fracture is baked once, never recomputed during animation.
+    // Unequal cells preserve the material's texture, instead of sampling rectangular confetti.
+    function fractureMesh(effect) {
+        if (!['shatter', 'porcelain', 'ice', 'crumb', 'wood'].includes(effect)) return null;
+        const sites = [[8,12],[34,8],[64,19],[86,7],[18,43],[43,31],[74,45],[91,65],[8,79],[37,68],[58,90],[83,87]];
+        const weightY = effect === 'wood' ? .22 : 1;
+        return sites.map(([x, y], index) => {
+            let points = [[5,0],[91,0],[96,5],[96,91],[91,96],[5,96],[0,91],[0,5]];
+            sites.forEach(([ox, oy], other) => {
+                if (other === index) return;
+                const nx = ox - x, ny = (oy - y) * weightY;
+                const edge = (ox * ox - x * x + (oy * oy - y * y) * weightY) / 2;
+                const next = [];
+                points.forEach((p, i) => {
+                    const q = points[(i + 1) % points.length], a = p[0] * nx + p[1] * ny - edge, b = q[0] * nx + q[1] * ny - edge;
+                    if (a <= 0) next.push(p);
+                    if ((a <= 0) !== (b <= 0)) { const t = a / (a - b); next.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+                });
+                points = next;
+            });
+            const left = Math.min(...points.map(p => p[0])), top = Math.min(...points.map(p => p[1]));
+            const w = Math.max(...points.map(p => p[0])) - left, h = Math.max(...points.map(p => p[1])) - top;
+            return { points, left, top, w, h };
+        });
+    }
+    // Two distinct right-to-left passes: cover, a 34ms hold, then lift the tail.
+    const paintProgress = t => ({ head: 1 - ease(t / .46), tail: 1 - ease((t - .505) / .495) });
     function create({ document: doc, textureBase, lowPower = false, now = () => performance.now(), schedule = requestAnimationFrame, cancel = cancelAnimationFrame }) {
         let canvas, ctx, frame = 0, bursts = [], geometry, slowFrames = 0, previous = 0, constrained = lowPower;
         const banks = new Map(), occupied = new Set();
@@ -38,27 +65,51 @@
                         a.lineWidth = 2.2 + i % 3 * .4; a.lineCap = 'round'; a.strokeStyle = palette[1];
                         a.beginPath(); a.moveTo(5, 20); a.bezierCurveTo(2, 2 + i, 26, 3, 29, 14); a.bezierCurveTo(38, 28, 12, 36, 9, 22); a.bezierCurveTo(6, 13, 27, 12, 35, 32); a.stroke();
                         a.strokeStyle = '#ffffff35'; a.lineWidth = .7; a.stroke();
-                    } else if (['honey', 'squish'].includes(bank.theme.effect)) {
+                    } else if (bank.theme.effect === 'squish') {
                         const g = a.createLinearGradient(8, 8, 32, 35); g.addColorStop(0, palette[0]); g.addColorStop(1, palette[2]);
                         a.fillStyle = g; a.beginPath();
-                        if (bank.theme.effect === 'squish') { a.moveTo(10, 12); a.bezierCurveTo(17, 4, 33, 9, 33, 21); a.bezierCurveTo(35, 35, 10, 37, 8, 24); a.bezierCurveTo(7, 19, 6, 16, 10, 12); }
-                        else { a.moveTo(20, 3); a.bezierCurveTo(19, 13, 8, 18, 9, 27); a.bezierCurveTo(10, 40, 33, 39, 32, 26); a.bezierCurveTo(31, 17, 21, 11, 20, 3); }
+                        a.moveTo(10, 12); a.bezierCurveTo(17, 4, 33, 9, 33, 21); a.bezierCurveTo(35, 35, 10, 37, 8, 24); a.bezierCurveTo(7, 19, 6, 16, 10, 12);
                         a.fill();
                         a.strokeStyle = '#fff6cf90'; a.lineWidth = 2; a.beginPath(); a.moveTo(15, 23); a.quadraticCurveTo(12, 30, 18, 32); a.stroke();
                     } else {
-                        const effect = bank.theme.effect;
-                        a.beginPath();
-                        if (effect === 'wood') { a.moveTo(15, 2); a.lineTo(25, 5); a.lineTo(22, 38); a.lineTo(13, 34); }
-                        else if (effect === 'shatter') { a.moveTo(20, 2); a.lineTo(37, 19); a.lineTo(18, 38); a.lineTo(3, 17); }
-                        else if (effect === 'ice') { a.moveTo(7, 8); a.lineTo(25, 2); a.lineTo(36, 33); a.lineTo(18, 37); }
-                        else if (effect === 'crumb') roundRect(a, 7, 8, 26, 25, 7);
-                        else if (effect === 'candy') roundRect(a, 4, 4, 32, 32, 11);
-                        else if (effect === 'classic') a.rect(6, 6, 28, 28);
-                        else { a.moveTo(4 + i % 4, 3); a.lineTo(35, 5 + i % 5); a.lineTo(32 - i % 7, 21); a.lineTo(35, 31); a.lineTo(11, 37); a.lineTo(3, 19); }
-                        a.closePath(); a.clip();
-                        // Real fragments retain the original grain, facets and porcelain decoration.
-                        a.drawImage(tile, (i % 3) * 28, Math.floor(i / 3) * 20, 40, 40, 0, 0, FRAG, FRAG);
-                        a.strokeStyle = '#ffffff80'; a.lineWidth = 1.5; a.stroke();
+                        const effect = bank.theme.effect, fragment = bank.mesh?.[i];
+                        if (fragment) {
+                            const points = fragment.points.map(([px, py]) => [2 + (px - fragment.left) / fragment.w * 36, 2 + (py - fragment.top) / fragment.h * 36]);
+                            a.beginPath(); a.moveTo(...points[0]);
+                            points.forEach((point, j) => {
+                                const next = points[(j + 1) % points.length];
+                                if (effect === 'crumb') {
+                                    // Torn, scalloped edges, not straight chips or yarn.
+                                    const mx = (point[0] + next[0]) / 2, my = (point[1] + next[1]) / 2;
+                                    a.quadraticCurveTo(mx + (20 - mx) * .2, my + (20 - my) * .2, ...next);
+                                } else if (effect === 'wood') {
+                                    a.lineTo(point[0] * .55 + next[0] * .45 + (j % 2 ? 1.8 : -1.8), point[1] * .55 + next[1] * .45);
+                                    a.lineTo(...next);
+                                } else a.lineTo(...next);
+                            });
+                            a.closePath(); a.save(); a.clip();
+                            a.drawImage(tile, fragment.left, fragment.top, fragment.w, fragment.h, 2, 2, 36, 36);
+                            if (effect === 'crumb') {
+                                a.fillStyle = '#bf770e80'; a.beginPath(); a.ellipse(12 + i % 4 * 4, 15 + i % 3 * 5, 3.5, 2.5, i, 0, Math.PI * 2); a.fill();
+                            } else if (['shatter', 'ice'].includes(effect)) {
+                                a.fillStyle = effect === 'ice' ? '#ffffff65' : '#ffffff38'; a.beginPath(); a.moveTo(...points[0]); a.lineTo(...points[1]); a.lineTo(20, 20); a.closePath(); a.fill();
+                                a.strokeStyle = '#ffffffb0'; a.lineWidth = .8; a.beginPath(); a.moveTo(...points[0]); a.lineTo(20, 20); a.stroke();
+                            }
+                            a.restore();
+                            a.beginPath(); a.moveTo(...points[0]);
+                            points.slice(1).forEach(point => a.lineTo(...point)); a.closePath();
+                            if (effect !== 'crumb' && effect !== 'wood') { a.strokeStyle = '#ffffff70'; a.lineWidth = .7; a.stroke(); }
+                        } else if (effect === 'honey') {
+                            a.beginPath(); a.moveTo(20, 2); a.lineTo(36, 11); a.lineTo(36, 29); a.lineTo(20, 38); a.lineTo(4, 29); a.lineTo(4, 11); a.closePath();
+                            a.fillStyle = palette[1]; a.fill(); a.strokeStyle = '#9d5004'; a.lineWidth = 3; a.stroke();
+                            a.beginPath(); a.moveTo(20, 9); a.lineTo(30, 15); a.lineTo(30, 25); a.lineTo(20, 31); a.lineTo(10, 25); a.lineTo(10, 15); a.closePath();
+                            a.fillStyle = '#c97706'; a.fill(); a.strokeStyle = '#ffdf58'; a.lineWidth = 2.3; a.stroke();
+                            a.strokeStyle = '#fff1a5'; a.lineWidth = 1.3; a.beginPath(); a.moveTo(10, 15); a.lineTo(20, 9); a.lineTo(30, 15); a.stroke();
+                        } else {
+                            roundRect(a, effect === 'classic' ? 6 : 4, effect === 'classic' ? 6 : 4, effect === 'classic' ? 28 : 32, effect === 'classic' ? 28 : 32, effect === 'classic' ? 3 : 11);
+                            a.save(); a.clip();
+                            a.drawImage(tile, i % 3 * 24, Math.floor(i / 3) * 16, 40, 40, 0, 0, FRAG, FRAG); a.restore();
+                        }
                     }
                     a.restore();
                 }
@@ -66,7 +117,7 @@
         }
         function prepare(theme) {
             if (banks.has(theme.id)) return banks.get(theme.id);
-            const bank = { theme, atlas: makeCanvas(SIZE + TYPES * FRAG, SIZE * 7) };
+            const bank = { theme, mesh: fractureMesh(theme.effect), atlas: makeCanvas(SIZE + TYPES * FRAG, SIZE * 7) };
             banks.set(theme.id, bank); bake(bank);
             // Two small atlases bound memory even after visiting every material.
             while (banks.size > 2) banks.delete(banks.keys().next().value);
@@ -113,7 +164,7 @@
             ensure(grid, size);
             // Natural fast moves may overlap. Only extreme synthetic bursts replace the oldest.
             bursts = bursts.filter(b => start - b.start < b.duration).slice(-2);
-            const density = ({ soft: 16, porcelain: 12, shatter: 10, ice: 9, honey: 5, squish: 7, paint: 0 })[theme.effect] ?? 8;
+            const density = ({ soft: 16, porcelain: 12, shatter: 12, ice: 12, crumb: 12, wood: 12, honey: 7, squish: 7, classic: 4, paint: 0 })[theme.effect] ?? 8;
             const limit = budget(64, false, constrained);
             let remaining = Math.max(0, limit - bursts.reduce((n, b) => n + b.particles.length, 0));
             // An overlapping clear still needs an immediate burst, even with no intact-tile layer.
@@ -126,9 +177,17 @@
             }
             const count = Math.min(remaining, snapshots.length * density);
             const particles = Array.from({ length: count }, (_, i) => {
-                const cell = snapshots[Math.floor(i * snapshots.length / count)], angle = (i * 2.39996) % (Math.PI * 2), power = 14 + Math.random() * 40;
-                const size = theme.effect === 'soft' ? 12 + Math.random() * 9 : theme.effect === 'crumb' ? 7 + Math.random() * 7 : theme.effect === 'wood' ? 17 + Math.random() * 13 : 8 + Math.random() * 12;
-                return { cell, x: cell.x + cell.w * (.2 + Math.random() * .6), y: cell.y + cell.w * (.2 + Math.random() * .6), dx: Math.cos(angle) * power, dy: Math.sin(angle) * power - 14, spin: (Math.random() - .5) * 5, type: i % TYPES, size };
+                const cellIndex = Math.floor(i * snapshots.length / count), cell = snapshots[cellIndex];
+                const localIndex = i - Math.ceil(cellIndex * count / snapshots.length);
+                const localCount = Math.ceil((cellIndex + 1) * count / snapshots.length) - Math.ceil(cellIndex * count / snapshots.length);
+                const type = bank.mesh ? Math.floor(localIndex * TYPES / localCount) : i % TYPES;
+                const fragment = bank.mesh?.[type], angle = (i * 2.39996) % (Math.PI * 2), power = 14 + Math.random() * 40;
+                const size = theme.effect === 'soft' ? 12 + Math.random() * 9 : theme.effect === 'honey' ? cell.w * .44 : 8 + Math.random() * 12;
+                const honeySite = theme.effect === 'honey' ? [[33,22],[63,22],[18,48],[48,48],[78,48],[33,74],[63,74]][localIndex % 7] : null;
+                const x = cell.x + cell.w * (fragment ? (fragment.left + fragment.w / 2) / SIZE : honeySite ? honeySite[0] / SIZE : .2 + Math.random() * .6);
+                const y = cell.y + cell.w * (fragment ? (fragment.top + fragment.h / 2) / SIZE : honeySite ? honeySite[1] / SIZE : .2 + Math.random() * .6);
+                return { cell, x, y, dx: Math.cos(angle) * power, dy: Math.sin(angle) * power - (['soft', 'squish'].includes(theme.effect) ? 14 : 24), spin: (Math.random() - .5) * 5, type, size,
+                    w: fragment ? cell.w * fragment.w / SIZE * FRAG / 36 : honeySite ? cell.w * .38 : size, h: fragment ? cell.w * fragment.h / SIZE * FRAG / 36 : size };
             });
             const bands = theme.effect === 'paint' ? [
                 ...rows.map(r => ({ cells: snapshots.filter(s => s.r === r), vertical: false })),
@@ -142,43 +201,70 @@
         function particle(b, p, t) {
             const effect = b.bank.theme.effect, u = clamp(t);
             if (u >= 1 || b.excluded.has(p.cell.r * 8 + p.cell.c)) return;
-            let x = p.x + p.dx * ease(u), y = p.y + p.dy * ease(u) + 50 * u * u, stretch = 1, spin = p.spin * ease(u);
-            if (effect === 'soft') { y = p.y - 20 * u + Math.sin(u * 5 + p.type) * u * 12; x += Math.sin(u * 4 + p.type) * u * 9; }
-            if (effect === 'honey') { x = p.x + p.dx * .2 * ease(u); y = p.y + (25 + p.type * 2) * (.55 * ease(u) + .45 * u * u); stretch = 1 + Math.sin(u * Math.PI) * .3; spin = 0; }
-            if (effect === 'squish') { y = p.y + p.dy * ease(u) + 45 * u * u; stretch = 1 + Math.sin(u * 7) * .2; }
-            if (effect === 'wood') { x = p.x + p.dx * .55 * ease(u); y = p.y - 12 * Math.sin(u * Math.PI) + 65 * u * u; spin *= .55; }
-            if (effect === 'ice') { x = p.x + p.dx * .65 * ease(u); y = p.y - 26 * ease(u) + Math.sin(p.type + u * 3) * 7 * u; spin *= .4; }
-            if (effect === 'crumb') { y = p.y + p.dy * .35 * u + 64 * u * u; x = p.x + p.dx * .65 * ease(u); }
-            if (effect === 'candy') { y = p.y - (25 + p.type * 2) * Math.sin(u * Math.PI) + 28 * u * u; spin *= 1.8; }
-            if (effect === 'shatter') { x = p.x + p.dx * 1.25 * ease(u); y = p.y + p.dy * ease(u) + 23 * u * u; }
-            const alpha = 1 - Math.pow(u, 1.8), size = p.size * (1 - .25 * u);
-            ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + PAD, y + PAD); ctx.rotate(spin);
-            if (effect === 'honey' && u < .3) {
-                ctx.strokeStyle = '#e9a83ba0'; ctx.lineWidth = Math.max(.6, 2 * (1 - u)); ctx.beginPath(); ctx.moveTo(0, -(y - p.y)); ctx.quadraticCurveTo(3, -8, 0, 0); ctx.stroke();
+            const kick = 1 - Math.pow(1 - u, 2);
+            let x = p.x + p.dx * kick, y = p.y + p.dy * kick + 82 * u * u, stretch = 1, spin = p.spin * u;
+            if (effect === 'soft') { y = p.y - 20 * u + Math.sin(u * 5 + p.type) * u * 12; x = p.x + p.dx * ease(u) + Math.sin(u * 4 + p.type) * u * 9; spin = p.spin * ease(u); }
+            if (effect === 'honey') {
+                // Honeycomb peels apart, pulls inward on short sticky bridges, then snaps free.
+                x = p.x + p.dx * .35 * kick; y = p.y - 13 * kick + 83 * u * u;
+                stretch = 1 + Math.sin(Math.PI * clamp(u / .45)) * .12; spin *= .65;
             }
-            ctx.drawImage(b.bank.atlas, SIZE + p.type * FRAG, p.cell.color * SIZE, FRAG, FRAG, -size / 2, -size * stretch / 2, size, size * stretch); ctx.restore();
+            if (effect === 'squish') { x = p.x + p.dx * ease(u); y = p.y + p.dy * ease(u) + 45 * u * u; stretch = 1 + Math.sin(u * 7) * .2; spin = p.spin * ease(u); }
+            if (effect === 'wood') { x = p.x + p.dx * .7 * kick; y = p.y + p.dy * .45 * kick + 90 * u * u; spin *= .85; }
+            if (effect === 'ice') { x = p.x + p.dx * 1.15 * kick; y = p.y + p.dy * .75 * kick + 85 * u * u; spin *= 1.3; }
+            if (effect === 'crumb') { y = p.y + p.dy * .6 * kick + 92 * u * u; x = p.x + p.dx * .85 * kick; }
+            if (effect === 'candy') { x = p.x + p.dx * u; y = p.y - (45 + p.type * 2) * u + 150 * u * u; spin *= 2.1; }
+            if (effect === 'shatter') { x = p.x + p.dx * 1.25 * kick; y = p.y + p.dy * kick + 90 * u * u; }
+            if (effect === 'classic') { x = p.x + p.dx * 1.5 * u; y = p.y - (50 + p.type * 4) * u + 120 * u * u; spin *= 2; }
+            const alpha = effect === 'classic' ? 1 - clamp((u - .8) / .2) : 1 - Math.pow(u, ['soft', 'squish'].includes(effect) ? 1.8 : 2.5);
+            const scale = effect === 'classic' ? 1 - .55 * u : ['soft', 'squish'].includes(effect) ? 1 - .25 * u : .97 - .2 * u;
+            ctx.save(); ctx.globalAlpha = alpha;
+            if (effect === 'honey' && u > 0 && u < .34) {
+                ctx.strokeStyle = '#eca10b'; ctx.lineWidth = Math.max(.4, 2.3 * (1 - u / .34)); ctx.beginPath();
+                ctx.moveTo(p.x + PAD, p.y + PAD); ctx.quadraticCurveTo(p.x + PAD + 4, p.y + PAD + 10 * u, x + PAD, y + PAD); ctx.stroke();
+            }
+            ctx.translate(x + PAD, y + PAD); ctx.rotate(spin);
+            ctx.drawImage(b.bank.atlas, SIZE + p.type * FRAG, p.cell.color * SIZE, FRAG, FRAG, -p.w * scale / 2, -p.h * stretch * scale / 2, p.w * scale, p.h * stretch * scale); ctx.restore();
+        }
+        function classic(b, t) {
+            if (b.bank.theme.effect !== 'classic' || t > .4) return;
+            const scale = 1 - ease(t / .4);
+            for (const cell of b.cells) {
+                if (b.excluded.has(cell.r * 8 + cell.c)) continue;
+                const w = cell.w * scale;
+                ctx.save(); ctx.globalAlpha = 1 - t / .4;
+                ctx.drawImage(b.bank.atlas, 0, cell.color * SIZE, SIZE, SIZE, PAD + cell.x + (cell.w - w) / 2, PAD + cell.y + (cell.w - w) / 2, w, w); ctx.restore();
+            }
         }
         function paint(b, t) {
-            const wipe = ease(t / .92), alpha = 1 - clamp((t - .65) / .35);
+            if (!b.bands.length) return;
+            const { head, tail } = paintProgress(t);
+            // Canvas copies live above the board while the brush covers them; board state is already clear.
+            for (const cell of b.cells) {
+                if (b.excluded.has(cell.r * 8 + cell.c)) continue;
+                const covered = b.bands.some(band => {
+                    if (!band.cells.includes(cell)) return false;
+                    return head <= (band.vertical ? cell.r : cell.c) / 8;
+                });
+                if (!covered) ctx.drawImage(b.bank.atlas, 0, cell.color * SIZE, SIZE, SIZE, PAD + cell.x, PAD + cell.y, cell.w, cell.w);
+            }
             for (const band of b.bands) {
                 const first = band.cells[0], step = first.w + 4, length = 8 * step - 4;
-                ctx.save(); ctx.globalAlpha = alpha;
+                ctx.save(); ctx.globalAlpha = 1;
                 const origin = band.vertical ? { x: first.x + first.w, y: 4 } : { x: 4, y: first.y };
                 ctx.translate(origin.x + PAD, origin.y + PAD);
                 if (band.vertical) ctx.rotate(Math.PI / 2);
                 if (b.excluded.size) {
                     ctx.beginPath();
-                    for (const cell of band.cells) if (!b.excluded.has(cell.r * 8 + cell.c)) {
-                        ctx.rect((band.vertical ? cell.r : cell.c) * step, 0, step, first.w);
-                    }
+                    for (const cell of band.cells) if (!b.excluded.has(cell.r * 8 + cell.c)) ctx.rect((band.vertical ? cell.r : cell.c) * step, 0, step, first.w);
                     ctx.clip();
                 }
-                // Ten bristle lanes keep a crisp moving edge without a tapered/rainbow band.
                 for (let lane = 0; lane < 10; lane++) {
-                    const edge = clamp(wipe + Math.sin(lane * 2.4) * .018 * Math.sin(t * Math.PI));
-                    if (edge >= 1) continue;
-                    ctx.drawImage(band.image, 640 * edge, lane * 8.4, 640 * (1 - edge), 8.4,
-                        length * edge, first.w * lane / 10, length * (1 - edge), first.w / 10 + .2);
+                    const bristle = Math.sin(lane * 2.4) * .008;
+                    const left = clamp(head + bristle * Math.sin(head * Math.PI)), right = clamp(tail + bristle * Math.sin(tail * Math.PI));
+                    if (right <= left) continue;
+                    ctx.drawImage(band.image, 640 * left, lane * 8.4, 640 * (right - left), 8.4,
+                        length * left, first.w * lane / 10, length * (right - left), first.w / 10 + .2);
                 }
                 ctx.restore();
             }
@@ -189,6 +275,7 @@
             bursts = bursts.filter(b => time - b.start < b.duration);
             for (const b of bursts) {
                 const t = clamp((time - b.start) / b.duration);
+                classic(b, t);
                 b.particles.forEach(p => particle(b, p, t));
                 paint(b, t);
             }
@@ -216,7 +303,7 @@
             // Deterministic local visual QA; never used by the game loop.
             inspectFrame(elapsed) { cancel(frame); frame = 0; if (bursts.length) render(bursts[bursts.length - 1].start + elapsed); } };
     }
-    const api = { create, duration, budget };
+    const api = { create, duration, budget, fractureMesh, paintProgress };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.BBMaterialMotion = api;
 })(typeof window !== 'undefined' ? window : globalThis);

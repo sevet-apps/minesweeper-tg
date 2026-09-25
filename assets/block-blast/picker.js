@@ -7,7 +7,7 @@
 
     function create(options) {
         const doc = root.document;
-        let overlay, panel, backdrop, header, choices, calmInput, closeButton;
+        let overlay, panel, backdrop, header, choices, calmInput, shakeInput, closeButton;
         let state = 'closed', restoreFocus, drag, panelAnimation, backdropAnimation;
         let inertSiblings = [];
         const titleId = 'bbPickerTitle' + (++nextId);
@@ -50,6 +50,9 @@
                 button.setAttribute('aria-pressed', String(button.dataset.materialChoice === selected));
             });
             calmInput.checked = !!options.isCalm();
+            shakeInput.checked = options.isShake?.() !== false;
+            shakeInput.disabled = reduced();
+            shakeInput.closest('label').classList.toggle('is-disabled', reduced());
         }
         function refresh() {
             if (!overlay) return;
@@ -58,6 +61,8 @@
             choices.setAttribute('aria-label', copy('Материал блоков', 'Block material', '方块材质'));
             panel.querySelector('.bb-picker-motion-title').textContent = copy('Спокойные эффекты', 'Gentle effects', '轻柔效果');
             panel.querySelector('.bb-picker-motion-detail').textContent = copy('Меньше движения и частиц', 'Less motion and fewer particles', '减少动画和粒子');
+            panel.querySelector('.bb-picker-shake-title').textContent = copy('Встряска поля', 'Board shake', '棋盘震动');
+            panel.querySelector('.bb-picker-shake-detail').textContent = reduced() ? copy('Отключена в спокойном режиме', 'Off with gentle effects', '轻柔模式下关闭') : copy('Лёгкий отклик при закрытии линии', 'A subtle kick when a line clears', '消除时轻轻震动');
             choices.querySelectorAll('[data-material-choice]').forEach(button => {
                 const item = options.catalog.find(item => item.id === button.dataset.materialChoice);
                 button.querySelector('.bb-picker-name').textContent = item.name[options.lang?.() || 'ru'] || item.name.ru;
@@ -113,13 +118,14 @@
             overlay = doc.createElement('div');
             overlay.className = 'bb-picker-overlay';
             overlay.hidden = true;
-            overlay.innerHTML = `<div class="bb-picker-backdrop" aria-hidden="true"></div><section class="bb-picker-panel" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><header class="bb-picker-header"><div class="bb-picker-grab" aria-hidden="true"><span></span></div><div class="bb-picker-heading"><h2 class="bb-picker-title" id="${titleId}"></h2><button type="button" class="bb-picker-close">${cross}</button></div></header><div class="bb-picker-content"><div class="bb-picker-choices" role="group"></div></div><label class="bb-picker-motion"><span><span class="bb-picker-motion-title"></span><small class="bb-picker-motion-detail"></small></span><input type="checkbox" role="switch"><i aria-hidden="true"></i></label></section>`;
+            overlay.innerHTML = `<div class="bb-picker-backdrop" aria-hidden="true"></div><section class="bb-picker-panel" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><header class="bb-picker-header"><div class="bb-picker-grab" aria-hidden="true"><span></span></div><div class="bb-picker-heading"><h2 class="bb-picker-title" id="${titleId}"></h2><button type="button" class="bb-picker-close">${cross}</button></div></header><div class="bb-picker-content"><div class="bb-picker-choices" role="group"></div></div><label class="bb-picker-motion"><span><span class="bb-picker-motion-title"></span><small class="bb-picker-motion-detail"></small></span><input class="bb-calm-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><label class="bb-picker-motion bb-picker-shake"><span><span class="bb-picker-motion-title bb-picker-shake-title"></span><small class="bb-picker-motion-detail bb-picker-shake-detail"></small></span><input class="bb-shake-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label></section>`;
             doc.body.appendChild(overlay);
             panel = overlay.querySelector('.bb-picker-panel');
             backdrop = overlay.querySelector('.bb-picker-backdrop');
             header = overlay.querySelector('.bb-picker-header');
             choices = overlay.querySelector('.bb-picker-choices');
-            calmInput = overlay.querySelector('input');
+            calmInput = overlay.querySelector('.bb-calm-input');
+            shakeInput = overlay.querySelector('.bb-shake-input');
             closeButton = overlay.querySelector('.bb-picker-close');
             for (const item of options.catalog) {
                 const button = doc.createElement('button');
@@ -139,7 +145,8 @@
                 });
                 choices.appendChild(button);
             }
-            calmInput.addEventListener('change', () => options.setCalm(calmInput.checked));
+            calmInput.addEventListener('change', () => { options.setCalm(calmInput.checked); refresh(); });
+            shakeInput.addEventListener('change', () => options.setShake?.(shakeInput.checked));
             closeButton.addEventListener('click', () => close());
             backdrop.addEventListener('click', () => close());
             bindSwipe();
@@ -161,7 +168,8 @@
             setBackgroundInert();
             // These explicit first keyframes apply before the browser's first paint.
             if (!reduced()) {
-                panelAnimation = panel.animate([{ transform: 'translate3d(0,100%,0)' }, { transform: 'translate3d(0,0,0)' }], { duration: 420, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' });
+                const touch = root.matchMedia?.('(pointer: coarse)').matches || !doc.body.classList.contains('desktop');
+                panelAnimation = panel.animate([{ transform: 'translate3d(0,100%,0)' }, { transform: 'translate3d(0,0,0)' }], { duration: touch ? 580 : 420, delay: 32, easing: 'cubic-bezier(.25,.72,.2,1)', fill: 'both' });
                 backdropAnimation = backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease-out', fill: 'both' });
             }
             panel.style.transform = 'translate3d(0,0,0)';

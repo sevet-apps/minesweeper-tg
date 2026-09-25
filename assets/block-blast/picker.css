@@ -42,3 +42,8 @@
 @media (max-width: 350px) { .bb-picker-heading { padding-left: 14px; } .bb-picker-content { padding-inline: 14px; } .bb-picker-motion { margin-inline: 14px; gap: 8px; padding-inline: 12px; } .bb-picker-choices { gap: 8px; } .bb-picker-choice { padding-block: 10px 9px; font-size: 11px; } .bb-picker-motion-title { font-size: 13px; } .bb-picker-motion-detail { font-size: 10px; } }
 @media (prefers-reduced-motion: reduce) { .bb-picker-choice,.bb-picker-close,.bb-picker-check,.bb-picker-motion > i,.bb-picker-motion > i::after { transition: none; } }
 body[data-bb-motion="calm"] :is(.bb-picker-choice,.bb-picker-close,.bb-picker-check,.bb-picker-motion > i,.bb-picker-motion > i::after), body.lite-mode :is(.bb-picker-choice,.bb-picker-close,.bb-picker-check,.bb-picker-motion > i,.bb-picker-motion > i::after) { transition: none; }
+
+.bb-picker-overlay:not([hidden]) .bb-picker-panel { will-change: transform; }
+.bb-picker-shake { margin-top: 8px; }
+.bb-picker-motion.is-disabled { opacity: .55; cursor: default; }
+.bb-picker-motion input:disabled { cursor: default; }

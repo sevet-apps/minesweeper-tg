@@ -2,8 +2,8 @@
   <defs>
     <clipPath id="honey-clip"><rect x="4" y="4" width="88" height="88" rx="15"/></clipPath>
     <linearGradient id="honey-depth" x1="-8" y1="-14" x2="7" y2="15" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#713507" stop-opacity=".61"/>
-      <stop offset=".55" stop-color="#a95709" stop-opacity=".35"/>
+      <stop stop-color="#713507" stop-opacity=".79"/>
+      <stop offset=".55" stop-color="#a95709" stop-opacity=".5"/>
       <stop offset="1" stop-color="#ffc843" stop-opacity=".16"/>
     </linearGradient>
     <linearGradient id="honey-drop" x1="68" y1="60" x2="81" y2="87" gradientUnits="userSpaceOnUse">
@@ -12,9 +12,9 @@
       <stop offset="1" stop-color="#d67605" stop-opacity=".86"/>
     </linearGradient>
     <g id="honey-cell" stroke-linejoin="round">
-      <path d="M0-17 14.7-8.5V8.5L0 17-14.7 8.5V-8.5Z" fill="url(#honey-depth)" stroke="#763a09" stroke-opacity=".28" stroke-width="3"/>
-      <path d="M-14.7 8.5V-8.5L0-17 14.7-8.5" stroke="#fff0a0" stroke-opacity=".73" stroke-width="2.8"/>
-      <path d="M14.7-8.5V8.5L0 17-14.7 8.5" stroke="#ffce50" stroke-opacity=".76" stroke-width="2.8"/>
+      <path d="M0-17 14.7-8.5V8.5L0 17-14.7 8.5V-8.5Z" fill="url(#honey-depth)" stroke="#763a09" stroke-opacity=".52" stroke-width="3"/>
+      <path d="M-14.7 8.5V-8.5L0-17 14.7-8.5" stroke="#ffd84b" stroke-opacity=".73" stroke-width="2.8"/>
+      <path d="M14.7-8.5V8.5L0 17-14.7 8.5" stroke="#ffbd17" stroke-opacity=".76" stroke-width="2.8"/>
       <path d="M-11.6 6.7V-6.7L0-13.4 11.6-6.7 8.6-4.8 0-9.8-8.6-4.8V5Z" fill="#713307" fill-opacity=".24"/>
       <path d="M-10 7 0 12.8 10 7" stroke="#ffe278" stroke-opacity=".37" stroke-width="1.5" stroke-linecap="round"/>
     </g>
