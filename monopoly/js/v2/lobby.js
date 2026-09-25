@@ -138,7 +138,7 @@
                 s.inert = true;
                 clearTimeout(s.closeTimer);
                 animateSheet(s, false);
-                s.closeTimer = setTimeout(() => { s.classList.remove('closing'); s.querySelector('.lb-card').style.transform = ''; }, 300);
+                s.closeTimer = setTimeout(() => { s.classList.remove('closing'); s.querySelector('.lb-card').style.transform = ''; }, 340);
             }
         });
         clearTimeout(target.closeTimer);
@@ -370,15 +370,14 @@
         const n = parseInt(raw, 10);
         return isNaN(n) ? raw : n;                 // «2×2» приходит словом
     }
-    /** Сегментный переключатель с бегунком: подложка плавно едет к выбранной
-        кнопке. Ровный ease без пружины. */
+    /** Shared blue pill: equal-width choices, transform-only animation. */
     function moveSeg(id) {
         const box = document.querySelector('#' + id);
         if (!box) return;
-        const on = box.querySelector('button.on'), ind = box.querySelector('.lb-seg-ind');
-        if (!on || !ind || !box.offsetWidth) return;      // экран ещё скрыт — размеров нет
-        ind.style.left = on.offsetLeft + 'px';
-        ind.style.width = on.offsetWidth + 'px';
+        const buttons = [...box.querySelectorAll('button')];
+        box.style.setProperty('--lb-options', buttons.length);
+        box.style.setProperty('--lb-selection', Math.max(0,buttons.findIndex(b => b.classList.contains('on'))));
+        buttons.forEach(button => button.setAttribute('aria-pressed',String(button.classList.contains('on'))));
     }
     function bindSeg(id) {
         const box = document.querySelector('#' + id);
@@ -388,6 +387,15 @@
             ind.className = 'lb-seg-ind';
             box.prepend(ind);
         }
+        box.addEventListener('keydown', event => {
+            if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+            const buttons = [...box.querySelectorAll('button')];
+            const index = buttons.indexOf(event.target);
+            if (index < 0) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+            buttons[next].click(); buttons[next].focus();
+        });
         box.querySelectorAll('button').forEach(b => {
             b.onclick = () => {
                 box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
@@ -519,6 +527,7 @@
 
     /* ---------- запуск игры ---------- */
     function startGame(mode) {
+        document.body.classList.remove('monopoly-pregame');
         $('#lobby').style.display = 'none';
         $('#game').style.display = '';
         setBackButton(false);
@@ -603,8 +612,8 @@
     }
 
     function paintVectorIcons() {
-        const paths = { plus: '<path d="M12 5v14M5 12h14"/>', arrow: '<path d="M7 17 17 7M7 7h10v10"/>', close: '<path d="m6 6 12 12M18 6 6 18"/>' };
-        document.querySelectorAll('[data-lb-icon]').forEach(el => { el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[el.dataset.lbIcon] + '</svg>'; });
+        const paths = { plus: '<path d="M12 5v14M5 12h14"/>', arrow: '<path d="M7 17 17 7M7 7h10v10"/>', close: '<path d="m7 7 10 10M17 7 7 17"/>' };
+        document.querySelectorAll('[data-lb-icon]').forEach(el => { el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[el.dataset.lbIcon] + '</svg>'; });
     }
     function animateSheet(sheet, opening) {
         const card = sheet.querySelector('.lb-card');
@@ -615,21 +624,24 @@
         const opacity = opening ? 0 : getComputedStyle(sheet).opacity;
         sheet.getAnimations().forEach(animation => animation.cancel());
         sheet.animate([{ opacity }, { opacity:opening ? 1 : 0 }], { duration:reduce ? 0 : 300, fill:'both' });
+        const enterMs = parseFloat(getComputedStyle(card).getPropertyValue('--ui-sheet-enter')) || 580;
         card.animate([{ transform: from === 'none' ? 'translateY(0)' : from }, { transform: opening ? 'translateY(0)' : 'translateY(110%)' }],
-            { duration: reduce ? 0 : opening ? 480 : 300, easing: opening ? 'cubic-bezier(.22,1,.36,1)' : 'cubic-bezier(.4,0,1,1)', fill: 'both' });
+            { duration: reduce ? 0 : opening ? enterMs : 320, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
     }
     function bindLobbySheetDrag(sheet) {
         const card = sheet.querySelector('.lb-card');
         let drag = null;
         const begin = (y, target) => {
-            if (card.scrollTop > 0 || target.closest('button,input,a,[role="switch"],.lb-switch-row')) return false;
-            drag = { y, lastY:y, lastAt:performance.now(), velocity:0, active:false }; return true;
+            if (target.closest('button,input,a,[role="switch"],.lb-switch-row')) return false;
+            const fromHeader = !!target.closest('.lb-sheet-heading');
+            if (!fromHeader && card.scrollTop > 0) return false;
+            drag = { y, lastY:y, lastAt:performance.now(), velocity:0, active:false, fromHeader }; return true;
         };
         const move = (y, event) => {
             if (!drag) return;
             const distance = y - drag.y;
             if (!drag.active && distance < 7) return;
-            if (!drag.active && card.scrollTop > 0) { drag = null; return; }
+            if (!drag.active && !drag.fromHeader && card.scrollTop > 0) { drag = null; return; }
             if (!drag.active) { card.getAnimations().forEach(a => a.cancel()); drag.active = true; }
             if (event.cancelable) event.preventDefault();
             const now = performance.now();
@@ -705,6 +717,7 @@
 
     /* ---------- инициализация ---------- */
     function init() {
+        document.body.classList.add('monopoly-pregame');
         applyTheme();
         applySafeInsets();
         paintIcons();
