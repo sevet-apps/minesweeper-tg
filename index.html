@@ -128,7 +128,7 @@
             backface-visibility: hidden;
         }
         
-        img { pointer-events: none; } canvas:not(#towerCanvas) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
+        img { pointer-events: none; } canvas:not(#towerCanvas):not(#bbMaterialCanvas) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483647 !important; pointer-events: none; }
         
         html, body {
             margin: 0;
@@ -3502,6 +3502,9 @@
 
     </style>
     <link rel="stylesheet" href="assets/block-blast/visuals.css">
+    <link rel="stylesheet" href="assets/block-blast/picker.css">
+    <script src="assets/block-blast/motion.js"></script>
+    <script src="assets/block-blast/picker.js"></script>
     <script src="assets/block-blast/visuals.js"></script>
 </head>
 <body>
@@ -4162,7 +4165,7 @@
             </div>
         </div> 
     </div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span>: <span id="bbBestScore">0</span></div><button id="bbMaterialButton" class="bb-style-button" aria-label="Оформление" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.5 1.5 0 0 1 1.1-2.5H17a4 4 0 0 0 4-4A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="10" r=".8"/><circle cx="11" cy="7" r=".8"/><circle cx="15.5" cy="8.5" r=".8"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span><span id="bbBestScore">0</span></div><button id="bbMaterialButton" class="bb-style-button" aria-label="Оформление" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.5 1.5 0 0 1 1.1-2.5H17a4 4 0 0 0 4-4A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="10" r=".8"/><circle cx="11" cy="7" r=".8"/><circle cx="15.5" cy="8.5" r=".8"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -4726,12 +4729,12 @@
             bbSparkBase = bbComputeSparkBase();
             bbSparkTimer = setInterval(() => {
                 if (!bbSparkCells.length) return;
-                const emitCount = Math.min(3, bbSparkCells.length);
+                const emitCount = Math.min(1, bbSparkCells.length);
                 for (let i = 0; i < emitCount; i++) {
                     const pick = bbSparkCells[Math.floor(Math.random() * bbSparkCells.length)];
                     if (pick) bbSpawnSparkAt(pick.r, pick.c, pick.colorHex);
                 }
-            }, 120);
+            }, 190);
         }
         function bbStopSparks() {
             if (bbSparkTimer) { clearInterval(bbSparkTimer); bbSparkTimer = null; }
@@ -8881,7 +8884,7 @@
                 else document.getElementById(`shape${i}`).innerHTML = '';
             }
         }
-        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); const signature = JSON.stringify([matrix, color]); const fresh = !container.firstElementChild || container.dataset.shapeSignature !== signature; container.dataset.shapeSignature = signature; container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview' + (fresh ? ' bb-deal-in' : ''); preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); if (dragData && dragData.slotId === slotId) preview.style.opacity = 0; container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
+        function renderShapePreview(slotId, matrix, color) { const container = document.getElementById(`shape${slotId}`); const signature = JSON.stringify([matrix, color]); const fresh = !container.firstElementChild || container.dataset.shapeSignature !== signature; if (!fresh) { container.firstElementChild.style.opacity = dragData?.slotId === slotId ? 0 : 1; return; } container.dataset.shapeSignature = signature; container.innerHTML = ''; if(!matrix) return; const preview = document.createElement('div'); preview.className = 'bb-shape-preview' + (fresh ? ' bb-deal-in' : ''); preview.style.gridTemplateColumns = `repeat(${matrix[0].length}, 18px)`; matrix.forEach((row, ri) => { row.forEach((val, ci) => { const b = document.createElement('div'); if(val) { b.className = `bb-block ${color}`; b.dataset.ri = ri; b.dataset.ci = ci; } else { b.style.opacity = 0; } preview.appendChild(b); }); }); if (dragData && dragData.slotId === slotId) preview.style.opacity = 0; container.appendChild(preview); container.ontouchstart = (e) => startDrag(e, slotId, matrix, color); container.onmousedown = (e) => startDrag(e, slotId, matrix, color); }
         let draggedElement = null; let dragGhost = null; let dragData = null; let touchOffsetX = 0, touchOffsetY = 0; let bbLastTouchDragStart = 0;
         function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
 
@@ -8895,9 +8898,11 @@
             bbPlayPickup();
             const touch = e.touches ? e.touches[0] : e; 
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
-            const firstCell = getCellFast(0, 0).getBoundingClientRect();
-            const cellFullSize = firstCell.width;
-            dragData = { slotId, matrix, color, startX: touch.clientX, startY: touch.clientY, gridRect: { left: firstCell.left, top: firstCell.top }, cellSize: cellFullSize + 4 };
+            const logicalCell = (gridRect.width - 36) / 8;
+            const cellFullSize = logicalCell * 1.12;
+            const logicalWidth = matrix[0].length * (logicalCell + 4) - 4;
+            const logicalHeight = matrix.length * (logicalCell + 4) - 4;
+            dragData = { slotId, matrix, color, startX: touch.clientX, startY: touch.clientY, gridRect: { left: gridRect.left + 4, top: gridRect.top + 4 }, cellSize: logicalCell + 4, logicalWidth, logicalHeight };
             dragGhost = document.createElement('div'); 
             dragGhost.className = 'drag-ghost'; 
             dragGhost.style.gridTemplateColumns = `repeat(${matrix[0].length}, ${cellFullSize}px)`; 
@@ -8966,8 +8971,8 @@
             
             const gridRect = dragData.gridRect; 
             const cellFullSize = dragData.cellSize; 
-            const relX = ghostX - gridRect.left; 
-            const relY = ghostY - gridRect.top; 
+            const relX = ghostX + touchOffsetX - dragData.logicalWidth / 2 - gridRect.left;
+            const relY = ghostY + touchOffsetY - dragData.logicalHeight / 2 - gridRect.top;
             const col = Math.round(relX / cellFullSize); 
             const row = Math.round(relY / cellFullSize); 
             if(row !== lastPlacementRow || col !== lastPlacementCol) {
@@ -9101,9 +9106,33 @@
             }
         }
 
-        function placeShape(matrix, r, c, color) { 
-            if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); bbPlayPlace(); let placedCount = 0; 
-            for(let i=0; i<matrix.length; i++) { for(let j=0; j<matrix[0].length; j++) { if(matrix[i][j] === 1) { bbGrid[r+i][c+j] = color; const cell = getCellFast(r+i, c+j); cell.classList.add('no-transition'); cell.classList.add('filled', color, 'place-pop'); cell.style.backgroundColor = ''; setTimeout(() => { cell.classList.remove('no-transition', 'place-pop'); }, 230); placedCount++; } } } addScore(placedCount);
+        function placeShape(matrix, r, c, color) {
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+            bbPlayPlace();
+            const occupied = [];
+            matrix.forEach((row, i) => row.forEach((v, j) => { if (v) occupied.push({ r: r + i, c: c + j }); }));
+            BBVisuals.occlude(occupied);
+            for (const pos of occupied) {
+                bbGrid[pos.r][pos.c] = color;
+                const cell = getCellFast(pos.r, pos.c);
+                cell.bbPlacementCleanup?.();
+                const finish = () => {
+                    cell.classList.remove('no-transition', 'place-pop');
+                    cell.removeEventListener('animationend', finish);
+                    cell.removeEventListener('animationcancel', cancelled);
+                    cell.bbPlacementCleanup = null;
+                };
+                const cancelled = () => {
+                    // A late cancellation from an older placement must not stop a new wobble.
+                    if (getComputedStyle(cell).animationName === 'none') finish();
+                };
+                cell.bbPlacementCleanup = finish;
+                cell.classList.add('no-transition', 'filled', color, 'place-pop');
+                cell.style.backgroundColor = '';
+                if (BBVisuals.reduced()) finish();
+                else { cell.addEventListener('animationend', finish); cell.addEventListener('animationcancel', cancelled); }
+            }
+            addScore(occupied.length);
         }
         function checkLines(triggerColor, placedCells) {
             const rows = [], cols = [];

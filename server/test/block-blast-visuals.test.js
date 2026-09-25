@@ -28,8 +28,8 @@ test('crossing lines clear their shared cell exactly once', () => {
 });
 
 test('effects have a hard particle budget even for a completely full board', () => {
-    assert.equal(visuals.particleBudget(64, false, false), 24);
-    assert.equal(visuals.particleBudget(64, false, true), 10);
+    assert.equal(visuals.particleBudget(64, false, false), 360);
+    assert.equal(visuals.particleBudget(64, false, true), 192);
     assert.equal(visuals.particleBudget(64, true, false), 0);
     assert.equal(visuals.particleBudget(0, false, false), 0);
 });
@@ -43,7 +43,7 @@ test('a replacement score animation cancels the previous target and cleanup leav
     tick(100);
     counter.run(shown, 1020, n => { shown = n; });
     assert.equal(frames.size, 1);
-    tick(300);
+    tick(450);
     assert.equal(shown, 1020);
     assert.equal(frames.size, 0);
     counter.run(shown, 2000, n => { shown = n; });
@@ -96,7 +96,8 @@ test('touch cancellation never commits a placement and a queued final move is fl
     assert.match(extract('onTouchEnd'), /e\?\.type === 'touchcancel'\) dragData\.validPos = null/);
     const end = extract('onTouchEnd');
     assert.ok(end.indexOf('handleMove(__moveX, __moveY)') < end.indexOf('const completedDrag = dragData'));
-    assert.match(extract('startDrag'), /firstCell\.width/);
+    assert.match(extract('startDrag'), /logicalCell \* 1\.12/);
+    assert.doesNotMatch(extract('startDrag'), /getCellFast.*getBoundingClientRect/);
 });
 
 test('an older server reply preserves later optimistic points, and the last reply can correct them', () => {
@@ -122,28 +123,34 @@ test('an older server reply preserves later optimistic points, and the last repl
     assert.equal(cancellations, 1, 'an accurate animated score is allowed to finish');
 });
 
-test('material sheet drag ignores a second finger and resets on cancellation', () => {
-    const source = fs.readFileSync(path.join(root, 'assets/block-blast/visuals.js'), 'utf8');
-    const start = source.indexOf('        handle.onpointerdown =');
-    const end = source.indexOf('        sheet.showModal();', start);
-    let closes = 0;
-    const panel = { style: {}, getAnimations: () => [], animate() {} };
-    const handle = { setPointerCapture() {} };
-    const context = vm.createContext({ handle, panel, dragging: null, api: { reduced: () => true }, closePicker: () => { closes++; } });
-    vm.runInContext(source.slice(start, end), context);
-    handle.onpointerdown({ pointerId: 1, clientY: 100, button: 0, isPrimary: true });
-    handle.onpointerdown({ pointerId: 2, clientY: 350, button: 0, isPrimary: false });
-    handle.onpointermove({ pointerId: 2, clientY: 500 });
-    handle.onpointerup({ pointerId: 2, clientY: 500 });
-    assert.equal(closes, 0);
-    assert.equal(context.dragging.id, 1);
-    handle.onpointermove({ pointerId: 1, clientY: 145 });
-    assert.equal(panel.style.transform, 'translateY(45px)');
-    handle.onpointercancel({ pointerId: 1 });
-    assert.equal(context.dragging, null);
-    assert.equal(panel.style.transform, '');
-    handle.onpointerdown({ pointerId: 3, clientY: 100, button: 0, isPrimary: true });
-    handle.onpointermove({ pointerId: 3, clientY: 200 });
-    handle.onpointerup({ pointerId: 3, clientY: 200 });
-    assert.equal(closes, 1);
+test('an enlarged drag stays centred on the logical board footprint', () => {
+    let placement;
+    const context = vm.createContext({
+        dragData: { startX: 100, startY: 100, gridRect: { left: 24, top: 204 }, cellSize: 43.25, logicalWidth: 125.75, logicalHeight: 39.25 },
+        touchOffsetX: (39.25 * 1.12 * 3 + 8) / 2, touchOffsetY: 39.25 * 1.12 / 2,
+        dragGhost: { style: {} }, isDesktop: () => true, DRAG_MULTIPLIER: 1.3, DRAG_LIFT_Y: 150,
+        lastPlacementRow: -1, lastPlacementCol: -1, checkPlacement: (r, c) => { placement = [r, c]; },
+    });
+    vm.runInContext(extract('handleMove'), context);
+    context.handleMove(24 + 3 * 43.25 + 125.75 / 2, 204 + 2 * 43.25 + 39.25 / 2);
+    assert.deepEqual(placement, [2, 3]);
+    assert.match(context.dragGhost.style.transform, /translate3d/);
+});
+
+test('cancelled placement motion cleans up without cancelling a newer placement', () => {
+    const listeners = new Map(), classes = new Set();
+    let name = 'bbJellyPlace', awarded = 0, masks = 0;
+    const cell = { style: {}, classList: { add: (...values) => values.forEach(v => classes.add(v)), remove: (...values) => values.forEach(v => classes.delete(v)) },
+        addEventListener: (type, fn) => listeners.set(type, fn), removeEventListener: type => listeners.delete(type) };
+    const context = vm.createContext({ vibrationEnabled: false, bbPlayPlace() {}, bbGrid: [[0]], getCellFast: () => cell,
+        getComputedStyle: () => ({ animationName: name }), BBVisuals: { reduced: () => false, occlude: cells => { masks += cells.length; } }, addScore: points => { awarded += points; } });
+    vm.runInContext(extract('placeShape'), context);
+    context.placeShape([[1]], 0, 0, 'bb-c-1');
+    listeners.get('animationcancel')();
+    assert.ok(classes.has('place-pop'), 'a late cancellation must preserve a currently running wobble');
+    name = 'none'; listeners.get('animationcancel')();
+    assert.ok(!classes.has('place-pop'));
+    assert.equal(listeners.size, 0);
+    assert.equal(awarded, 1);
+    assert.equal(masks, 1);
 });

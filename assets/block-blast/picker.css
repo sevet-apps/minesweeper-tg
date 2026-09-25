@@ -1,0 +1,44 @@
+/* Match the app's neutral settings sheets and blue controls. No backdrop filters. */
+.bb-picker-overlay { position: fixed; inset: 0; z-index: 24000; isolation: isolate; color: var(--text-color); touch-action: none; }
+.bb-picker-overlay[hidden] { display: none !important; }
+.bb-picker-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.48); opacity: 0; }
+.bb-picker-panel { position: absolute; bottom: 0; left: 0; right: 0; margin: 0 auto; width: min(100%,480px); max-height: min(90vh,760px); max-height: min(90dvh,760px); display: flex; flex-direction: column; background: var(--sheet-bg); border: 1px solid var(--glass-border); border-bottom: 0; border-radius: 22px 22px 0 0; padding: 0 0 max(14px,env(safe-area-inset-bottom)); box-sizing: border-box; transform: translate3d(0,100%,0); outline: none; overflow: hidden; contain: layout style; }
+.bb-picker-header { flex: 0 0 auto; touch-action: none; cursor: grab; }
+.bb-picker-header.is-dragging { cursor: grabbing; }
+.bb-picker-grab { height: 24px; display: flex; justify-content: center; align-items: center; }
+.bb-picker-grab span { display: block; width: 36px; height: 4px; border-radius: 4px; background: var(--icon-color); opacity: .35; }
+.bb-picker-heading { padding: 0 14px 10px 20px; min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.bb-picker-title { margin: 0; color: var(--text-color); font-family: inherit; font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -.035em; }
+.bb-picker-close { position: relative; appearance: none; -webkit-appearance: none; flex: 0 0 44px; width: 44px; height: 44px; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--icon-color); line-height: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .18s; }
+.bb-picker-close::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--toggle-bg); }
+.bb-picker-close svg { position: relative; width: 20px; height: 20px; flex: 0 0 20px; display: block; }
+.bb-picker-close:active { transform: scale(.9); }
+.bb-picker-content { min-height: 0; overflow-y: auto; padding: 0 20px 4px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; scrollbar-width: none; }
+.bb-picker-content::-webkit-scrollbar { display: none; }
+.bb-picker-choices { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; padding: 3px 0; }
+.bb-picker-choice { position: relative; appearance: none; -webkit-appearance: none; min-width: 0; margin: 0; padding: 12px 3px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 2px solid transparent; box-shadow: inset 0 0 0 1px var(--glass-border); border-radius: 16px; background: var(--glass-bg); color: var(--text-color); font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.25; cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent; transition: transform .18s, border-color .18s; }
+.bb-picker-choice:active { transform: scale(.95); }
+.bb-picker-choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: none; }
+.bb-picker-name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bb-picker-check { position: absolute; right: 4px; top: 4px; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; opacity: 0; transform: scale(.65); transition: opacity .18s, transform .24s; }
+.bb-picker-check svg { width: 16px; height: 16px; display: block; }
+.bb-picker-choice[aria-pressed="true"] .bb-picker-check { opacity: 1; transform: scale(1); }
+.bb-picker-swatch { display: grid; grid-template-columns: repeat(2,22px); grid-template-rows: repeat(2,22px); gap: 2px; }
+.bb-picker-swatch i { display: block; position: relative; border-radius: 5px; background: linear-gradient(135deg,#7472e8,#4745ab); box-shadow: inset 0 1px 0 #ffffff50,inset 0 -1px 0 #00000024; }
+.bb-picker-swatch i:nth-child(2) { background: linear-gradient(135deg,#4cd964,#28a745); }
+.bb-picker-swatch i:nth-child(3) { background: linear-gradient(135deg,#ffab30,#d67e00); }
+.bb-picker-swatch i::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--swatch-texture) center / 100% 100% no-repeat; }
+.bb-picker-swatch[data-bb-swatch="jelly"] i { border-radius: 27%; }
+.bb-picker-swatch[data-bb-swatch="gem"] i { border-radius: 15%; }
+.bb-picker-motion { flex: 0 0 auto; position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 20px 0; padding: 13px 14px; border: 1px solid var(--glass-border); border-radius: 16px; background: var(--glass-bg); color: var(--text-color); cursor: pointer; touch-action: manipulation; }
+.bb-picker-motion-title { display: block; font-size: 14px; font-weight: 600; line-height: 1.2; }
+.bb-picker-motion-detail { display: block; margin-top: 4px; color: var(--icon-color); font-size: 11px; font-weight: 400; line-height: 1.3; }
+.bb-picker-motion input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.bb-picker-motion > i { flex: 0 0 46px; width: 46px; height: 28px; padding: 3px; box-sizing: border-box; border-radius: 18px; background: var(--toggle-bg); pointer-events: none; transition: background .2s; }
+.bb-picker-motion > i::after { content: ''; display: block; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0002; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.bb-picker-motion input:checked + i { background: var(--accent); }
+.bb-picker-motion input:checked + i::after { transform: translateX(18px); }
+.bb-picker-choice:focus-visible, .bb-picker-close:focus-visible, .bb-picker-motion input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 350px) { .bb-picker-heading { padding-left: 14px; } .bb-picker-content { padding-inline: 14px; } .bb-picker-motion { margin-inline: 14px; gap: 8px; padding-inline: 12px; } .bb-picker-choices { gap: 8px; } .bb-picker-choice { padding-block: 10px 9px; font-size: 11px; } .bb-picker-motion-title { font-size: 13px; } .bb-picker-motion-detail { font-size: 10px; } }
+@media (prefers-reduced-motion: reduce) { .bb-picker-choice,.bb-picker-close,.bb-picker-check,.bb-picker-motion > i,.bb-picker-motion > i::after { transition: none; } }
+body[data-bb-motion="calm"] :is(.bb-picker-choice,.bb-picker-close,.bb-picker-check,.bb-picker-motion > i,.bb-picker-motion > i::after), body.lite-mode :is(.bb-picker-choice,.bb-picker-close,.bb-picker-check,.bb-picker-motion > i,.bb-picker-motion > i::after) { transition: none; }
