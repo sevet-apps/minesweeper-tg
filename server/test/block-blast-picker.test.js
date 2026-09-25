@@ -25,6 +25,7 @@ class Element extends Events {
         this.classList = {
             add: name => { this.className = [...new Set([...this.className.split(' '), name])].join(' ').trim(); },
             remove: name => { this.className = this.className.split(' ').filter(item => item !== name).join(' '); },
+            toggle: (name, force) => { if (force) this.classList.add(name); else this.classList.remove(name); },
             contains: name => this.className.split(' ').includes(name),
         };
     }
@@ -77,10 +78,11 @@ class Element extends Events {
     }
     getAnimations() { return this.animations.filter(animation => !animation.cancelled); }
 }
-function fixture({ reduced = false } = {}) {
+function fixture({ reduced = false, desktop = false } = {}) {
     const doc = new Events();
     doc.createElement = tag => new Element(doc, tag);
     doc.body = doc.createElement('body');
+    if (desktop) doc.body.classList.add('desktop');
     const background = doc.body.appendChild(doc.createElement('main'));
     background.setAttribute('aria-hidden', 'false');
     const trigger = background.appendChild(doc.createElement('button'));
@@ -96,9 +98,9 @@ function fixture({ reduced = false } = {}) {
         },
     };
     vm.runInNewContext(source, { window });
-    let theme = 'jelly', calm = false, language = 'ru';
+    let theme = 'jelly', calm = false, shake = true, language = 'ru';
     const catalog = ['classic', 'jelly', 'porcelain'].map(id => ({ id, name: { ru: id, en: id, zh: id } }));
-    const picker = window.BBMaterialPicker.create({ catalog, textureBase: '/themes/', getTheme: () => ({ id: theme }), isCalm: () => calm, setCalm: value => { calm = value; }, selectTheme: id => { theme = id; }, reduced: () => reduced || calm, lang: () => language });
+    const picker = window.BBMaterialPicker.create({ catalog, textureBase: '/themes/', getTheme: () => ({ id: theme }), isCalm: () => calm, isShake: () => shake, setShake: value => { shake = value; }, setCalm: value => { calm = value; }, selectTheme: id => { theme = id; }, reduced: () => reduced || calm, lang: () => language });
     const get = selector => doc.body.querySelector(selector);
     const pointer = (type, fields = {}) => get('.bb-picker-header').emit(type, { pointerId: 1, clientY: 100, isPrimary: true, button: 0, timeStamp: 0, ...fields });
     return { doc, picker, get, pointer, background, trigger, alreadyInert, script, setLanguage: value => { language = value; } };
@@ -113,7 +115,8 @@ test('opening has an offscreen first frame before animation, and reopening reuse
     assert.equal(opening.inlineAtStart.transform, 'translate3d(0,100%,0)');
     assert.equal(opening.frames[0].transform, 'translate3d(0,100%,0)');
     assert.equal(opening.frames.at(-1).transform, 'translate3d(0,0,0)');
-    assert.equal(opening.options.duration, 420);
+    assert.equal(opening.options.duration, 580);
+    assert.equal(opening.options.delay, 32);
     assert.equal(opening.options.fill, 'both');
     assert.equal(f.get('.bb-picker-backdrop').animations[0].inlineAtStart.opacity, '0');
     assert.equal(panel.getAttribute('role'), 'dialog');
@@ -214,7 +217,7 @@ test('interrupting an opening animation picks up its current visual position wit
 
 test('keyboard focus stays in the sheet, Escape closes it, and a subsequent backdrop click also closes', () => {
     const f = fixture(); f.picker.open();
-    const close = f.get('.bb-picker-close'), input = f.get('input');
+    const close = f.get('.bb-picker-close'), input = f.get('.bb-shake-input');
     assert.equal(f.doc.activeElement, close);
     const backwards = f.doc.emit('keydown', { key: 'Tab', shiftKey: true });
     assert.equal(backwards.defaultPrevented, true);
@@ -267,4 +270,25 @@ test('immediate cleanup during a close cancels animations and restores backgroun
     assert.equal(f.get('.bb-picker-overlay').hidden, false, 'an old completion cannot close a reopened sheet');
     assert.equal(f.background.inert, true);
     f.picker.close(true);
+});
+
+
+test('shake preference survives reopening and gentle effects disable it without losing the preference', () => {
+    const f = fixture(); f.picker.open();
+    const shake = f.get('.bb-shake-input'), calm = f.get('.bb-calm-input');
+    assert.equal(shake.checked, true);
+    shake.checked = false; shake.emit('change');
+    f.picker.close(true); f.picker.open();
+    assert.equal(shake.checked, false);
+    shake.checked = true; shake.emit('change');
+    calm.checked = true; calm.emit('change');
+    assert.equal(shake.disabled, true);
+    assert.equal(shake.checked, true);
+    calm.checked = false; calm.emit('change');
+    assert.equal(shake.disabled, false);
+    assert.equal(shake.checked, true);
+    f.picker.close(true);
+    const desktop = fixture({ desktop: true }); desktop.picker.open();
+    assert.equal(desktop.get('.bb-picker-panel').animations[0].options.duration, 420);
+    desktop.picker.close(true);
 });

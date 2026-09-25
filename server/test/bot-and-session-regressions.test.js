@@ -239,7 +239,7 @@ test('Block Blast retries a final save without forking the authoritative session
         'the next signed hand must render locally without a network gap');
     assert.match(client, /acceptBBServerMove\(data, bbMoveQueue\.length > 1\)/,
         'older queued acknowledgements must not replace an already predicted next hand');
-    assert.match(client, /dragData && dragData\.slotId === slotId[\s\S]*?preview\.style\.opacity = 0/,
+    assert.match(client, /dragData && dragData\.slotId === slotId[\s\S]*?preview\.classList\.add\('is-held'\)/,
         'an in-flight server render must not reveal the held source shape');
 });
 

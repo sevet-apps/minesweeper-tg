@@ -43,10 +43,10 @@ body .bb-line-score { font-family: inherit; font-size: clamp(25px, 7vw, 34px); f
 @keyframes bbCelebration { 0% { opacity: 0; transform: translate(-50%,-35%) scale(.92); } 20%,75% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(-50%,-65%) scale(.98); } }
 .bb-material-ring { position: absolute; inset: -4px; border: 2px solid var(--bb-material-accent); border-radius: 28px; }
 body[data-bb-material="cheese"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="cheese"] i { background: linear-gradient(135deg,#ffe487,#f8bd44 70%,#e8a630) !important; }
-body[data-bb-material="honey"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="honey"] i { background: linear-gradient(135deg,#ffd473,#dc9226 90%) !important; }
+body[data-bb-material="honey"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="honey"] i { background: linear-gradient(135deg,#ffcb38,#f5a409 55%,#c97404) !important; }
 body[data-bb-material="porcelain"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="porcelain"] i { background: linear-gradient(135deg,#fffdf4,#d4e3ef) !important; }
 body[data-bb-material="wood"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="wood"] i { background: linear-gradient(135deg,#dfb184,#aa7149) !important; }
-body[data-bb-material="ice"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="ice"] i { background: linear-gradient(135deg,#d2faff,#66bedf) !important; }
+body[data-bb-material="ice"] :is(.bb-cell.filled,.bb-block,.bb-cell.bb-shadow,.bb-cell.pre-clear), [data-bb-swatch="ice"] i { background: linear-gradient(135deg,#d9f9ff,#8bd5ed 48%,#479abd) !important; }
 body[data-bb-material="jelly"] :is(.bb-cell.filled,.bb-block) { border-radius: 27%; }
 body[data-bb-material="gem"] :is(.bb-cell.filled,.bb-block) { border-radius: 15%; }
 /* A candidate placement remains visibly translucent for monochrome materials too. */
@@ -64,3 +64,16 @@ body[data-bb-motion="calm"] .bb-combo-seg::after, body.lite-mode .bb-combo-seg::
 body[data-bb-motion="calm"] .bb-material-celebration, body.lite-mode .bb-material-celebration { animation: none; }
 @media (prefers-reduced-motion: reduce) { .bb-cell.place-pop,.bb-material-celebration,.bb-shape-preview,.bb-combo-seg::after { animation: none !important; } .bb-style-button,.bb-combo-seg::after { transition: none; } }
 @media (max-height: 700px) { #bb-screen .bb-score-box { font-size: 30px; } #bb-screen .bb-game-container { padding-top: 0; } body:not(.desktop) #bb-screen .bb-grid { --bb-board-size: min(90vw,350px,calc(100dvh - 370px - var(--safe-top) - var(--safe-bottom))); } }
+
+/* Visibility is unaffected by the tray's fill-mode opacity animation. */
+.bb-shape-preview.is-held { visibility: hidden; }
+.bb-clear-rim { position: absolute; inset: -1px; border: 2px solid var(--bb-clear-color); border-radius: 13px; box-shadow: 0 0 13px var(--bb-clear-color), inset 0 0 7px var(--bb-clear-color); pointer-events: none; z-index: 6; }
+body[data-bb-material="ice"] #bb-screen .bb-cell.pre-clear { animation: bbIceTremble var(--ice-speed,190ms) linear var(--ice-phase,0ms) infinite; transform-origin: 50% 60%; }
+@keyframes bbIceTremble {
+    0%,100% { transform: translate(var(--ice-x,.7px),0) rotate(var(--ice-angle,1deg)); }
+    23% { transform: translate(0,var(--ice-y,-.6px)) rotate(calc(var(--ice-angle,1deg) * -.6)); }
+    51% { transform: translate(calc(var(--ice-x,.7px) * -1),calc(var(--ice-y,-.6px) * -.5)) rotate(calc(var(--ice-angle,1deg) * -1)); }
+    77% { transform: translate(calc(var(--ice-x,.7px) * .4),var(--ice-y,-.6px)) rotate(calc(var(--ice-angle,1deg) * .3)); }
+}
+body[data-bb-motion="calm"] #bb-screen .bb-cell.pre-clear, body.lite-mode #bb-screen .bb-cell.pre-clear { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { #bb-screen .bb-cell.pre-clear { animation: none !important; } }

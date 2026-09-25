@@ -71,19 +71,42 @@ test('a second clear gets visible fragments immediately even when the first used
     f.renderer.cleanup();
 });
 
-test('paint starts as an even full-width stroke and erases from an advancing bristled edge', () => {
+test('paint covers blocks right-to-left, pauses briefly, then removes its tail in the same direction', () => {
     const f = fixture(false, { id: 'paint', effect: 'paint' });
     f.clear(f.cells.slice(0, 8).map(cell => ({ ...cell, color: 4 })));
-    const first = f.canvas().calls;
-    assert.equal(first.length, 10);
-    assert.ok(first.every(call => call[1] === 0 && call[3] === 640 && call[7] === 342));
-    assert.equal(new Set(first.map(call => call[8])).size, 1, 'every bristle lane has equal thickness');
+    assert.equal(f.canvas().calls.length, 8, 'initial copies retain the cubes below the brush');
+    assert.ok(f.canvas().calls.every(call => call[1] === 0 && call[3] === 96));
     f.canvas().calls.length = 0; f.tick(100);
-    assert.ok(f.canvas().calls.every(call => call[1] > 0 && call[7] < 342), 'wipe begins immediately across the uniform band');
-    f.tick(650);
-    assert.equal(f.canvas().dataset.bursts, '0');
-    assert.equal(f.frames.size, 0);
+    const covering = f.canvas().calls.filter(call => call[4] === 8.4);
+    assert.equal(covering.length, 10);
+    assert.ok(covering.every(call => call[1] > 0 && Math.abs(call[1] + call[3] - 640) < .001));
+    assert.equal(new Set(covering.map(call => call[8])).size, 1, 'uniform thickness');
+    f.canvas().calls.length = 0; f.tick(260);
+    assert.equal(f.canvas().calls.length, 10);
+    assert.ok(f.canvas().calls.every(call => call[1] === 0 && call[3] === 640), 'full cover before lifting');
+    f.canvas().calls.length = 0; f.tick(140);
+    assert.equal(f.canvas().calls.length, 10, 'no original cells reappear behind the tail');
+    assert.ok(f.canvas().calls.every(call => call[1] === 0 && call[3] < 640), 'right edge retreats towards the left');
+    f.tick(300); assert.equal(f.frames.size, 0);
     f.renderer.cleanup();
+});
+
+test('fracture meshes cover each block with unequal non-rectangular pieces and safe texture crops', () => {
+    const { fractureMesh } = require('../../assets/block-blast/motion');
+    for (const effect of ['shatter', 'porcelain', 'ice', 'crumb', 'wood']) {
+        const pieces = fractureMesh(effect);
+        assert.equal(pieces.length, 12);
+        let total = 0;
+        const areas = pieces.map(p => {
+            assert.ok(p.left >= -1e-8 && p.top >= -1e-8 && p.left + p.w <= 96.00001 && p.top + p.h <= 96.00001);
+            assert.ok(p.points.length >= 3);
+            const area = Math.abs(p.points.reduce((n, a, i) => { const b = p.points[(i + 1) % p.points.length]; return n + a[0] * b[1] - a[1] * b[0]; }, 0)) / 2;
+            total += area; return area;
+        });
+        assert.ok(Math.abs(total - 9166) < .01, 'complete coverage without outside crops');
+        assert.ok(Math.max(...areas) / Math.min(...areas) > 2, 'visibly different shard sizes');
+        assert.ok(pieces.some(p => p.points.length > 4));
+    }
 });
 
 test('limited devices reduce fragment and backing-store costs without accelerating effects', () => {

@@ -96,8 +96,9 @@ test('line and all-clear bonuses settle before saving and cannot be lost on imme
 test('every crossed-line fragment receives the triggering piece colour instead of the old board colours', () => {
     let snapshots;
     const cells = Array.from({ length: 64 }, (_, i) => ({ className: 'bb-cell filled bb-c-' + (i % 7 + 1), removeAttribute() {} }));
-    const document = { currentScript: { src: 'https://example.test/assets/block-blast/visuals.js' }, hidden: false,
-        body: { classList: { contains: () => false } }, addEventListener() {}, getElementById: () => ({ getBoundingClientRect: () => ({ width: 350 }) }) };
+    const gridElement = { getBoundingClientRect: () => ({ width: 350 }), querySelectorAll: () => [], appendChild() {} };
+    const document = { createElement: () => ({ className: '', setAttribute() {}, style: { setProperty() {} }, animate: () => ({}) }), querySelector: () => null, currentScript: { src: 'https://example.test/assets/block-blast/visuals.js' }, hidden: false,
+        body: { classList: { contains: () => false } }, addEventListener() {}, getElementById: () => gridElement };
     const window = { document, matchMedia: () => ({ matches: false }), BBMaterialMotion: { create: () => ({ clear: (theme, items) => { snapshots = items; } }) } };
     vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/block-blast/visuals.js'), 'utf8'), {
         window, URL, navigator: {}, localStorage: { getItem: () => null }, requestAnimationFrame() {}, cancelAnimationFrame() {},
@@ -169,4 +170,49 @@ test('cancelled placement motion cleans up without cancelling a newer placement'
     assert.equal(listeners.size, 0);
     assert.equal(awarded, 1);
     assert.equal(masks, 1);
+});
+
+
+test('touch cancellation returns the held tray piece even while its entrance animation is active', () => {
+    const classes = new Set(['bb-shape-preview', 'bb-deal-in', 'is-held']);
+    let commits = 0, removed = false;
+    const context = vm.createContext({
+        dragData: { slotId: 0, validPos: { r: 2, c: 2 } }, __movePending: false,
+        lastPlacementRow: 2, lastPlacementCol: 2, BB_ROWS: 0, BB_COLS: 0,
+        dragGhost: { remove() { removed = true; } }, bbStopSparks() {},
+        document: { removeEventListener() {}, querySelector: () => ({ classList: { remove: c => classes.delete(c) } }) },
+        onTouchMove() {}, onMouseMove() {}, placeShape() { commits++; },
+    });
+    vm.runInContext(extract('onTouchEnd'), context);
+    context.onTouchEnd({ type: 'touchcancel' });
+    assert.equal(commits, 0); assert.equal(removed, true); assert.equal(context.dragData, null);
+    assert.equal(classes.has('is-held'), false); assert.equal(classes.has('bb-deal-in'), true);
+});
+
+test('ice preview has independent cell phases and clear feedback respects the saved shake preference', () => {
+    for (const shake of ['on', 'off']) {
+        const animations = [], rims = [], styles = new Map();
+        const grid = { getBoundingClientRect: () => ({ width: 350 }), querySelectorAll: () => [], appendChild: el => rims.push(el) };
+        const document = { currentScript: { src: 'https://example.test/assets/block-blast/visuals.js' }, hidden: false,
+            body: { classList: { contains: () => false } }, addEventListener() {}, getElementById: () => grid,
+            querySelector: () => ({ animate: (frames, timing) => { animations.push({ frames, timing }); return {}; } }),
+            createElement: () => ({ setAttribute() {}, style: { setProperty: (k, v) => styles.set(k, v) }, animate: () => ({}) }),
+        };
+        const window = { document, matchMedia: () => ({ matches: false }), BBMaterialMotion: { create: () => ({ clear() {} }) } };
+        vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/block-blast/visuals.js'), 'utf8'), {
+            window, URL, navigator: {}, localStorage: { getItem: key => key === 'bb_shake' ? shake : key === 'bb_material' ? 'ice' : null }, requestAnimationFrame() {}, cancelAnimationFrame() {},
+        });
+        const phases = [], speeds = [];
+        for (let c = 0; c < 8; c++) {
+            const values = {};
+            window.BBVisuals.preparePreClear({ style: { setProperty: (k, v) => { values[k] = v; } } }, 2, c);
+            phases.push(values['--ice-phase']); speeds.push(values['--ice-speed']);
+        }
+        assert.equal(new Set(phases).size, 8); assert.equal(new Set(speeds).size, 8);
+        window.BBVisuals.clearLines([2], [], () => ({ removeAttribute() {} }), 'bb-c-1');
+        assert.equal(rims.length, 1);
+        assert.equal(styles.get('--bb-clear-color'), '#8bd5ed', 'rim follows the visible ice palette');
+        assert.equal(animations.length, shake === 'on' ? 1 : 0);
+        if (animations.length) assert.equal(animations[0].timing.duration, 260);
+    }
 });
