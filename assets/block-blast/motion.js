@@ -3,7 +3,7 @@
     'use strict';
     const clamp = n => Math.max(0, Math.min(1, n));
     const ease = n => 1 - Math.pow(1 - clamp(n), 3);
-    const duration = effect => ({ paint: 1180, honey: 1320, soft: 1380, porcelain: 1260, squish: 1220, ice: 1180 })[effect] || 1120;
+    const duration = effect => ({ paint: 720, honey: 820, soft: 1150, porcelain: 1050, squish: 1015, ice: 980 })[effect] || 930;
     const budget = (cells, reduced, lowPower) => reduced ? 0 : Math.min(lowPower ? 192 : 360, cells * 12);
     const colors = [
         ['#ff5c52','#ff3b30','#d62d24'], ['#ffab30','#ff9500','#d67e00'], ['#ffe033','#ffcc00','#d6ab00'],
@@ -92,96 +92,94 @@
             canvas.style.left = canvas.style.top = -PAD + 'px';
             canvas.dataset.particles = '0';
         }
-        function makeBand(bank, snapshots, vertical) {
+        function makeBand(bank, color) {
+            if (!bank.brushes) bank.brushes = new Map();
+            if (bank.brushes.has(color)) return bank.brushes.get(color);
             const band = makeCanvas(640, 84), b = band.getContext('2d');
-            const ordered = [...snapshots].sort((a, z) => vertical ? a.r - z.r : a.c - z.c);
-            const g = b.createLinearGradient(0, 0, 640, 0);
-            ordered.forEach((s, i) => g.addColorStop(i / Math.max(1, ordered.length - 1), colors[s.color][1]));
-            b.fillStyle = g;
-            b.beginPath(); b.moveTo(0, 21); b.bezierCurveTo(180, 3, 430, 11, 635, 24); b.lineTo(620, 64); b.bezierCurveTo(440, 80, 150, 68, 0, 61); b.closePath(); b.fill();
+            // Constant coverage and a single piece colour along the entire stroke.
+            b.fillStyle = colors[color][1]; b.fillRect(0, 0, 640, 84);
             for (let i = 0; i < 24; i++) {
                 b.strokeStyle = i % 3 ? '#ffffff16' : '#18263724'; b.lineWidth = 1 + i % 3;
-                b.beginPath(); b.moveTo(i % 5 * 4, 20 + i * 1.8); b.bezierCurveTo(180, 11 + i * 2, 430, 24 + i, 640 - i % 7 * 5, 23 + i * 1.8); b.stroke();
+                b.beginPath(); b.moveTo(0, 2 + i * 3.5); b.lineTo(640, 2 + i * 3.5); b.stroke();
             }
+            bank.brushes.set(color, band);
             return band;
         }
         function clear(theme, snapshots, rows, cols, grid, size) {
+            if (!snapshots.length) return;
             const bank = prepare(theme), start = now();
             snapshots.forEach(s => occupied.delete(s.r * 8 + s.c));
             if (geometry !== size || !canvas?.isConnected) { bursts = []; geometry = size; }
             ensure(grid, size);
             // Natural fast moves may overlap. Only extreme synthetic bursts replace the oldest.
             bursts = bursts.filter(b => start - b.start < b.duration).slice(-2);
-            const remaining = Math.max(0, budget(64, false, constrained) - bursts.reduce((n, b) => n + b.particles.length, 0));
             const density = ({ soft: 16, porcelain: 12, shatter: 10, ice: 9, honey: 5, squish: 7, paint: 0 })[theme.effect] ?? 8;
+            const limit = budget(64, false, constrained);
+            let remaining = Math.max(0, limit - bursts.reduce((n, b) => n + b.particles.length, 0));
+            // An overlapping clear still needs an immediate burst, even with no intact-tile layer.
+            let needed = Math.max(0, Math.min(snapshots.length * density, Math.floor(limit / 2)) - remaining);
+            for (const old of bursts) {
+                if (!needed) break;
+                const length = old.particles.length, release = Math.min(needed, length), keep = length - release;
+                old.particles = old.particles.filter((_, i) => Math.floor((i + 1) * keep / length) > Math.floor(i * keep / length));
+                remaining += release; needed -= release;
+            }
             const count = Math.min(remaining, snapshots.length * density);
             const particles = Array.from({ length: count }, (_, i) => {
                 const cell = snapshots[Math.floor(i * snapshots.length / count)], angle = (i * 2.39996) % (Math.PI * 2), power = 14 + Math.random() * 40;
                 const size = theme.effect === 'soft' ? 12 + Math.random() * 9 : theme.effect === 'crumb' ? 7 + Math.random() * 7 : theme.effect === 'wood' ? 17 + Math.random() * 13 : 8 + Math.random() * 12;
-                return { cell, x: cell.x + cell.w * (.2 + Math.random() * .6), y: cell.y + cell.w * (.2 + Math.random() * .6), dx: Math.cos(angle) * power, dy: Math.sin(angle) * power - 14, spin: (Math.random() - .5) * 5, type: i % TYPES, size, delay: .16 + Math.random() * .11 };
+                return { cell, x: cell.x + cell.w * (.2 + Math.random() * .6), y: cell.y + cell.w * (.2 + Math.random() * .6), dx: Math.cos(angle) * power, dy: Math.sin(angle) * power - 14, spin: (Math.random() - .5) * 5, type: i % TYPES, size };
             });
             const bands = theme.effect === 'paint' ? [
                 ...rows.map(r => ({ cells: snapshots.filter(s => s.r === r), vertical: false })),
                 ...cols.map(c => ({ cells: snapshots.filter(s => s.c === c), vertical: true })),
-            ].map(b => ({ ...b, image: makeBand(bank, b.cells, b.vertical) })) : [];
+            ].map(b => ({ ...b, image: makeBand(bank, b.cells[0].color) })) : [];
             bursts.push({ start, duration: duration(theme.effect), bank, cells: snapshots, particles, bands, excluded: new Set() });
+            // Present fragments in the same frame as release, with no intact-tile hold.
+            render(start);
             if (!frame) { previous = start; frame = schedule(tick); }
         }
-        function tile(b, cell, t) {
-            if (b.excluded.has(cell.r * 8 + cell.c)) return;
-            const e = b.bank.theme.effect;
-            let sx = 1, sy = 1, y = 0, alpha = 1, rotation = 0;
-            if (e === 'paint') {
-                const pos = b.bands.some(band => !band.vertical && band.cells.some(s => s.r === cell.r)) ? cell.c : cell.r;
-                alpha = 1 - ease((t - .12 - pos * .045) / .2);
-            } else if (e === 'squish') {
-                const bounce = Math.sin(clamp(t / .54) * Math.PI * 2.4) * (1 - clamp(t / .65));
-                sx = 1 + bounce * .22; sy = 1 - bounce * .23;
-                const pop = ease((t - .44) / .27); sx *= 1 - pop * .8; sy *= 1 + pop * .5; y = -pop * 14;
-                alpha = 1 - ease((t - .48) / .26);
-            } else if (e === 'honey') {
-                const melt = ease(t / .75); sx = 1 - melt * .27; sy = 1 + melt * .48; y = melt * 19;
-                alpha = 1 - ease((t - .32) / .4);
-            } else if (e === 'soft') {
-                sx = sy = 1 + Math.sin(t * Math.PI * 2) * .08; alpha = 1 - ease((t - .15) / .37); rotation = t * -.12;
-            } else {
-                const fracture = ease((t - .16) / .3);
-                sx = sy = 1 + Math.sin(t * Math.PI * 5) * .035; alpha = 1 - fracture; y = fracture * 4;
-            }
-            if (alpha <= 0) return;
-            ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cell.x + cell.w / 2 + PAD, cell.y + cell.w / 2 + PAD + y); ctx.rotate(rotation); ctx.scale(sx, sy);
-            ctx.drawImage(b.bank.atlas, 0, cell.color * SIZE, SIZE, SIZE, -cell.w / 2, -cell.w / 2, cell.w, cell.w); ctx.restore();
-        }
         function particle(b, p, t) {
-            const effect = b.bank.theme.effect, start = effect === 'squish' ? p.delay + .23 : p.delay;
-            const u = clamp((t - start) / (1 - start));
-            if (!u || u >= 1 || b.excluded.has(p.cell.r * 8 + p.cell.c)) return;
-            let x = p.x + p.dx * ease(u), y = p.y + p.dy * u + 50 * u * u, stretch = 1, spin = p.spin * u;
+            const effect = b.bank.theme.effect, u = clamp(t);
+            if (u >= 1 || b.excluded.has(p.cell.r * 8 + p.cell.c)) return;
+            let x = p.x + p.dx * ease(u), y = p.y + p.dy * ease(u) + 50 * u * u, stretch = 1, spin = p.spin * ease(u);
             if (effect === 'soft') { y = p.y - 20 * u + Math.sin(u * 5 + p.type) * u * 12; x += Math.sin(u * 4 + p.type) * u * 9; }
-            if (effect === 'honey') { x = p.x + p.dx * .17 * u; y = p.y + (24 + p.type * 4) * u * u; stretch = 1 + u * .8; spin = 0; }
+            if (effect === 'honey') { x = p.x + p.dx * .2 * ease(u); y = p.y + (25 + p.type * 2) * (.55 * ease(u) + .45 * u * u); stretch = 1 + Math.sin(u * Math.PI) * .3; spin = 0; }
             if (effect === 'squish') { y = p.y + p.dy * ease(u) + 45 * u * u; stretch = 1 + Math.sin(u * 7) * .2; }
             if (effect === 'wood') { x = p.x + p.dx * .55 * ease(u); y = p.y - 12 * Math.sin(u * Math.PI) + 65 * u * u; spin *= .55; }
             if (effect === 'ice') { x = p.x + p.dx * .65 * ease(u); y = p.y - 26 * ease(u) + Math.sin(p.type + u * 3) * 7 * u; spin *= .4; }
             if (effect === 'crumb') { y = p.y + p.dy * .35 * u + 64 * u * u; x = p.x + p.dx * .65 * ease(u); }
             if (effect === 'candy') { y = p.y - (25 + p.type * 2) * Math.sin(u * Math.PI) + 28 * u * u; spin *= 1.8; }
             if (effect === 'shatter') { x = p.x + p.dx * 1.25 * ease(u); y = p.y + p.dy * ease(u) + 23 * u * u; }
-            const alpha = Math.min(1, u * 10) * (1 - Math.pow(u, 3)), size = p.size * (1 - .25 * u);
+            const alpha = 1 - Math.pow(u, 1.8), size = p.size * (1 - .25 * u);
             ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + PAD, y + PAD); ctx.rotate(spin);
-            if (effect === 'honey' && u < .68) {
+            if (effect === 'honey' && u < .3) {
                 ctx.strokeStyle = '#e9a83ba0'; ctx.lineWidth = Math.max(.6, 2 * (1 - u)); ctx.beginPath(); ctx.moveTo(0, -(y - p.y)); ctx.quadraticCurveTo(3, -8, 0, 0); ctx.stroke();
             }
             ctx.drawImage(b.bank.atlas, SIZE + p.type * FRAG, p.cell.color * SIZE, FRAG, FRAG, -size / 2, -size * stretch / 2, size, size * stretch); ctx.restore();
         }
         function paint(b, t) {
-            if (t < .1) return;
-            const wipe = ease((t - .1) / .64), alpha = 1 - ease((t - .69) / .31);
+            const wipe = ease(t / .92), alpha = 1 - clamp((t - .65) / .35);
             for (const band of b.bands) {
                 const first = band.cells[0], step = first.w + 4, length = 8 * step - 4;
                 ctx.save(); ctx.globalAlpha = alpha;
                 const origin = band.vertical ? { x: first.x + first.w, y: 4 } : { x: 4, y: first.y };
                 ctx.translate(origin.x + PAD, origin.y + PAD);
                 if (band.vertical) ctx.rotate(Math.PI / 2);
-                ctx.drawImage(band.image, 0, 0, 640 * wipe, 84, 0, -first.w * .08, length * wipe, first.w * 1.16);
+                if (b.excluded.size) {
+                    ctx.beginPath();
+                    for (const cell of band.cells) if (!b.excluded.has(cell.r * 8 + cell.c)) {
+                        ctx.rect((band.vertical ? cell.r : cell.c) * step, 0, step, first.w);
+                    }
+                    ctx.clip();
+                }
+                // Ten bristle lanes keep a crisp moving edge without a tapered/rainbow band.
+                for (let lane = 0; lane < 10; lane++) {
+                    const edge = clamp(wipe + Math.sin(lane * 2.4) * .018 * Math.sin(t * Math.PI));
+                    if (edge >= 1) continue;
+                    ctx.drawImage(band.image, 640 * edge, lane * 8.4, 640 * (1 - edge), 8.4,
+                        length * edge, first.w * lane / 10, length * (1 - edge), first.w / 10 + .2);
+                }
                 ctx.restore();
             }
         }
@@ -191,7 +189,6 @@
             bursts = bursts.filter(b => time - b.start < b.duration);
             for (const b of bursts) {
                 const t = clamp((time - b.start) / b.duration);
-                b.cells.forEach(cell => tile(b, cell, t));
                 b.particles.forEach(p => particle(b, p, t));
                 paint(b, t);
             }

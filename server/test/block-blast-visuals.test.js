@@ -74,11 +74,11 @@ test('all ten material assets are local, small, static and match their catalog e
 test('line and all-clear bonuses settle before saving and cannot be lost on immediate exit', () => {
     const grid = Array.from({ length: 8 }, () => Array(8).fill(0));
     grid[4].fill('bb-c-1');
-    let savedScore = 0, cleared = 0, awarded = 0;
+    let savedScore = 0, cleared = 0, awarded = 0, clearColor;
     const context = vm.createContext({
         BB_ROWS: 8, BB_COLS: 8, bbGrid: grid, bbCombo: 0, bbComboBuffer: 0, bbScore: 8,
         BB_SCORING: { COMBO_BUFFER_MOVES: 3 }, vibrationEnabled: false,
-        BBVisuals: { uniqueCells: visuals.uniqueCells, clearLines: (rows, cols) => { cleared = visuals.uniqueCells(rows, cols).length; }, lineScore() {}, combo() {}, allClear: bonus => { awarded = bonus; } },
+        BBVisuals: { uniqueCells: visuals.uniqueCells, clearLines: (rows, cols, getCell, color) => { cleared = visuals.uniqueCells(rows, cols).length; clearColor = color; }, lineScore() {}, combo() {}, allClear: bonus => { awarded = bonus; } },
         getCellFast() {}, bbPlayClear() {}, bbLineScore: () => 20, checkGameOver() {},
         saveBBState() { savedScore = context.bbScore; },
         addScore(points) { context.bbScore += points; },
@@ -86,10 +86,26 @@ test('line and all-clear bonuses settle before saving and cannot be lost on imme
     vm.runInContext(extract('countFreeCells') + extract('checkAllClear') + extract('checkLines'), context);
     assert.equal(context.checkLines('bb-c-1', [{ r: 4, c: 4 }]), 1);
     assert.equal(cleared, 8);
+    assert.equal(clearColor, 'bb-c-1');
     assert.equal(awarded, 500);
     assert.equal(context.bbScore, 528);
     assert.equal(savedScore, 528);
     assert.equal(context.countFreeCells(), 64);
+});
+
+test('every crossed-line fragment receives the triggering piece colour instead of the old board colours', () => {
+    let snapshots;
+    const cells = Array.from({ length: 64 }, (_, i) => ({ className: 'bb-cell filled bb-c-' + (i % 7 + 1), removeAttribute() {} }));
+    const document = { currentScript: { src: 'https://example.test/assets/block-blast/visuals.js' }, hidden: false,
+        body: { classList: { contains: () => false } }, addEventListener() {}, getElementById: () => ({ getBoundingClientRect: () => ({ width: 350 }) }) };
+    const window = { document, matchMedia: () => ({ matches: false }), BBMaterialMotion: { create: () => ({ clear: (theme, items) => { snapshots = items; } }) } };
+    vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/block-blast/visuals.js'), 'utf8'), {
+        window, URL, navigator: {}, localStorage: { getItem: () => null }, requestAnimationFrame() {}, cancelAnimationFrame() {},
+    });
+    window.BBVisuals.clearLines([4], [3], (r, c) => cells[r * 8 + c], 'bb-c-2');
+    assert.equal(snapshots.length, 15);
+    assert.ok(snapshots.every(cell => cell.color === 1));
+    assert.ok(snapshots.every(cell => cell.cell.className === 'bb-cell'));
 });
 
 test('touch cancellation never commits a placement and a queued final move is flushed', () => {

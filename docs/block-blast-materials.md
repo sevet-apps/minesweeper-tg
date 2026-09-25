@@ -4,13 +4,13 @@ The palette button beside the best score opens eleven choices: the original styl
 
 | Material | Clear motion |
 | --- | --- |
-| Jelly | A held wobble, squash/stretch and soft gel droplets (1.22 s) |
-| Wool | Unravelling into many drifting threads (1.38 s) |
+| Jelly | Immediate soft gel fragments with elastic motion (1.015 s) |
+| Wool | Immediate unravelling into many drifting threads (1.15 s) |
 | Crystal | Faceted contraction and angular shards |
-| Paint | A blended brush stroke following each row/column, then dissolution (1.18 s) |
+| Paint | An even single-colour stroke with a brisk bristled erase edge (0.72 s) |
 | Cheese | Compression and falling crumbs |
-| Honey | Slow stretching and visible falling honey drops/strings (1.32 s) |
-| Porcelain | Recoil and numerous ceramic shards retaining the blue pattern (1.26 s) |
+| Honey | Immediate drops, a short downward kick and brief strings (0.82 s) |
+| Porcelain | Immediate patterned ceramic shards (1.05 s) |
 | Wood | A short lift followed by falling slivers |
 | Candy | A springy pop and spinning fragments |
 | Ice | A restrained fade and rising icy flecks |
@@ -28,11 +28,12 @@ The motion recipes are our own interpretation of each material, not a frame-for-
 
 ## Performance and state integrity
 
+- The cleared row/column uses the triggering piece colour throughout. Monochrome materials retain the visible material palette of that piece. Fragments are drawn synchronously on release, without intact-cell copies, particle delays or an initial fade-in.
 - One canvas draws pre-baked texture/fragment atlases. There are no cloned board cells and no per-fragment DOM nodes. Two cached atlases bound texture memory. Canvas resolution is capped at 1.75×, or 1.25× on constrained devices.
-- Up to three bursts may overlap. All bursts together are limited to 360 fragments, or 192 on constrained devices. Repeated slow frames also reduce the budget. Gentle effects, Lite mode and reduced-motion preference disable the canvas effects; duration is never shortened to reduce load.
+- Up to three bursts may overlap. All bursts together are limited to 360 fragments, or 192 on constrained devices. New clears reserve a share of that budget by thinning older bursts, so an exhausted pool cannot suppress the immediate response. Repeated slow frames also reduce the budget. Gentle effects, Lite mode and reduced-motion preference disable the canvas effects; duration is never shortened to reduce load.
 - The renderer reads board geometry once, before writes. It derives cell size from the grid, so a placement wobble cannot distort snapping or clear geometry. Newly occupied cells mask old effects; clearing them again removes the live mask without reviving the old burst.
 - The single rendering loop stops after the last burst. Closing or hiding the game cancels visual work. Placement listeners clean up both completed and cancelled animations. Unchanged tray shapes retain their DOM instead of being rebuilt on server acknowledgements. Drag sparks emit less often, and the ghost uses smaller static shadows.
-- Placement lasts 440 ms (wool 500 ms, jelly 560 ms). Clear effects last 1.12–1.38 s. Score labels last 2.1 s with a readable hold, independently of subsequent clears; at most three labels coexist. The score counter owns one cancellable frame sequence.
+- Placement lasts 370 ms (wool 420 ms, jelly 470 ms). Standard clear effects run about 1.2× faster than the preceding revision; paint and honey run faster still. Durations range from 720 to 1150 ms. Score labels last 2.1 s with a readable hold, independently of subsequent clears; at most three labels coexist. The score counter owns one cancellable frame sequence.
 - The intentionally enlarged drag is restored: visual cells are 12% bigger, while logical dimensions determine the board target.
 - The picker uses the app's neutral settings colors and blue accent. Its panel is anchored to the bottom on every screen, with an explicit offscreen initial frame, 420 ms opening, 300 ms closing, primary-pointer swipe, keyboard focus containment and restored background accessibility state.
 - Intersecting lines deduplicate their shared cell. Line/all-clear bonuses settle immediately, before saving and generating the next hand. Intermediate server replies cannot replace newer optimistic points. Scoring, hand generation and server reconciliation were unchanged in this refinement.
@@ -46,3 +47,5 @@ Run `node scripts/preview-block-blast.cjs`, then open `http://127.0.0.1:4173/bb-
 Browser QA covered 320×568, 390×844 and 412×844 mobile layouts, desktop layout, light/dark contrast, theme persistence, enlarged dragging and placement, sheet scrolling/dismissal, and intermediate paint/jelly/wool/honey/porcelain frames. Recorded sheet travel began at the bottom and was monotonic (no reversal/jump). Stress scenes retained one canvas and respected the 360-fragment bound; after completion no bursts remained. Automated tests also exercise overlaps, newly occupied cells, slow-frame adaptation and complete renderer cleanup.
 
 The current in-app browser throttled animation callbacks to roughly 1 Hz during the cadence benchmark, including with its panel shown. That timing result is not a useful FPS measurement and is not reported as mobile performance evidence. These checks do not replace physical iPhone/Android GPU profiling.
+
+The response refinement was additionally checked at release (0 ms) and 150 ms: jelly fragments were already visible and blue throughout, paint covered crossed lines uniformly before a crisp directional erase, and honey drops appeared immediately. Tests cover trigger-colour propagation, the synchronous fragment-only release frame, uniform paint geometry and new-burst visibility under a saturated particle budget.
