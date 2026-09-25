@@ -3503,6 +3503,9 @@
     </style>
     <link rel="stylesheet" href="assets/block-blast/visuals.css">
     <link rel="stylesheet" href="assets/block-blast/picker.css">
+    <link rel="stylesheet" href="assets/ui/tokens.css">
+    <link rel="stylesheet" href="assets/ui/app.css">
+    <script src="assets/ui/sheets.js" defer></script>
     <script src="assets/block-blast/motion.js"></script>
     <script src="assets/block-blast/picker.js"></script>
     <script src="assets/block-blast/visuals.js"></script>
@@ -3735,20 +3738,13 @@
         </div>
         <div class="lb-title-lg" data-i18n="bbModeTitle">Выберите режим</div>
         <div class="bb-mode-wrap">
+            <div class="segment-control bb-mode-tabs" id="bbModeDots" aria-label="Режим Блок Бласта"></div>
             <div class="bb-mode-slider">
                 <div class="bb-mode-track" id="bbModeTrack">
                     <!-- cards rendered by JS -->
                 </div>
             </div>
-            <div class="bb-mode-controls">
-                <div class="bb-mode-arrow" id="bbModeArrowLeft" onclick="bbModeStep(-1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-                </div>
-                <div class="bb-mode-dots" id="bbModeDots"></div>
-                <div class="bb-mode-arrow" id="bbModeArrowRight" onclick="bbModeStep(1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                </div>
-            </div>
+
         </div>
     </div>
     
@@ -4188,38 +4184,51 @@
         </div> 
     </div>
 
-    <div class="modal-overlay" id="modalSaper"><div class="modal"><h2 data-i18n="minesweeper">Сапёр</h2><div class="diff-grid"><div class="diff-btn" onclick="setSaperDiff(6,6,5,this)">6x6</div><div class="diff-btn selected" onclick="setSaperDiff(8,8,10,this)">8x8</div><div class="diff-btn" onclick="setSaperDiff(10,10,15,this)">10x10</div><div class="diff-btn" onclick="setSaperDiff(15,15,30,this)">15x15</div></div><button class="btn-main" onclick="launchSaper()" data-i18n="start">Начать</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSaper').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay ui-mode-sheet" id="modalSaper"><section class="modal ui-mode-panel">
+        <div class="ui-sheet-grab" aria-hidden="true"></div>
+        <div class="ui-sheet-heading"><h2 data-i18n="minesweeper">Сапёр</h2><button class="ui-close" type="button" onclick="document.getElementById('modalSaper').classList.remove('visible')" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+        <p data-i18n="chooseDifficulty">Выберите сложность</p>
+        <div class="segment-control vertical" style="--ui-options:4">
+            <div class="segment-glider" id="saperDifficultyGlider" style="transform:translateY(100%)"></div>
+            <button class="segment-item diff-btn" onclick="setSaperDiff(6,6,5,this)"><span data-i18n="easy">Легко</span><span class="ui-option-note">6 × 6</span></button>
+            <button class="segment-item diff-btn active selected" onclick="setSaperDiff(8,8,10,this)"><span data-i18n="medium">Средне</span><span class="ui-option-note">8 × 8</span></button>
+            <button class="segment-item diff-btn" onclick="setSaperDiff(10,10,15,this)"><span data-i18n="hard">Сложно</span><span class="ui-option-note">10 × 10</span></button>
+            <button class="segment-item diff-btn" onclick="setSaperDiff(15,15,30,this)"><span data-i18n="expert">Эксперт</span><span class="ui-option-note">15 × 15</span></button>
+        </div>
+        <button class="btn-main" onclick="launchSaper()" data-i18n="start">Начать</button>
+    </section></div>
     
-    <div class="modal-overlay" id="modalCheckers">
-        <div class="modal">
-            <h2 data-i18n="checkers">Шашки</h2>
+    <div class="modal-overlay ui-mode-sheet" id="modalCheckers">
+        <div class="modal ui-mode-panel">
+            <div class="ui-sheet-grab" aria-hidden="true"></div>
+            <div class="ui-sheet-heading"><h2 data-i18n="checkers">Шашки</h2><button class="ui-close" type="button" onclick="document.getElementById('modalCheckers').classList.remove('visible')" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
             
             <div class="segment-control" style="margin-bottom: 15px;">
                 <div class="segment-glider" id="checkersMainGlider"></div>
-                <div class="segment-item active" onclick="setCheckersMainMode('offline', this, 0)">Offline</div>
-                <div class="segment-item" onclick="setCheckersMainMode('online', this, 1)">Online</div>
+                <button class="segment-item active" onclick="setCheckersMainMode('offline', this, 0)" data-i18n="playOffline">На устройстве</button>
+                <button class="segment-item" onclick="setCheckersMainMode('online', this, 1)" data-i18n="playOnline">Онлайн</button>
             </div>
 
             <div id="ch-offline-panel" class="panel-visible">
-                <p style="color:#8e8e93; margin-bottom:15px; margin-top:0;" data-i18n="chooseGameMode">Выберите режим игры</p>
-                <div class="segment-control">
+                <p style=" margin-bottom:15px; margin-top:0;" data-i18n="chooseGameMode">Выберите режим игры</p>
+                <div class="segment-control vertical" style="--ui-options:2">
                     <div class="segment-glider" id="checkersGlider"></div>
-                    <div class="segment-item active" onclick="setCheckersMode(false, this, 0)" data-i18n="twoPlayers">2 Игрока</div>
-                    <div class="segment-item" onclick="setCheckersMode(true, this, 1)" data-i18n="vsRobot">С Роботом</div>
+                    <button class="segment-item active" onclick="setCheckersMode(false, this, 0)" data-i18n="twoPlayers">2 Игрока</button>
+                    <button class="segment-item" onclick="setCheckersMode(true, this, 1)" data-i18n="vsRobot">С Роботом</button>
                 </div>
                 <button class="btn-main" onclick="launchCheckers()" data-i18n="play">Играть</button>
             </div>
 
             <div id="ch-online-panel" class="panel-hidden">
-                <button class="btn-main" style="margin-top:0; margin-bottom:8px; background:linear-gradient(135deg, #007aff, #00c6ff); padding: 12px;" onclick="joinGame()" data-i18n="findOpponent">Найти соперника</button>
+                <button class="btn-main" style="margin-top:0; margin-bottom:8px; padding: 12px;" onclick="joinGame()" data-i18n="findOpponent">Найти соперника</button>
                 <div class="input-group">
                     <input type="text" id="joinCodeInput" class="input-glass" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5">
                     <button class="btn-secondary" onclick="joinGameByCode()" data-i18n="join">Войти</button>
                 </div>
-                <button class="btn-secondary" style="width:100%; margin-top:8px; color:#8e8e93; padding: 10px;" onclick="createGame()" data-i18n="createRoom">Создать комнату</button>
+                <button class="btn-secondary" style="width:100%; margin-top:8px;  padding: 10px;" onclick="createGame()" data-i18n="createRoom">Создать комнату</button>
             </div>
 
-            <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalCheckers').classList.remove('visible')" data-i18n="cancel">Отмена</button>
+
         </div>
     </div>
     
@@ -4238,7 +4247,7 @@
             </div>
             <h2 style="margin: 0 0 8px 0; font-size: 22px;" data-i18n="multPromoTitle">Получите ×1.5 к итоговым очкам</h2>
             <p style="color: #8e8e93; margin: 0 0 18px 0; line-height: 1.5; font-size: 14px;" data-i18n="multPromoDesc">Каждый итоговый счёт в турнирном режиме умножается на 1.5, если вы оформили подписку у нашего партнёра — VPN-сервиса.</p>
-            <button class="btn-main" style="background: linear-gradient(135deg, #ffa500, #ff3b30);" onclick="closeMultPromoModalAndOpenPartner()" data-i18n="multPromoGoBtn">Перейти к партнёру</button>
+            <button class="btn-main" onclick="closeMultPromoModalAndOpenPartner()" data-i18n="multPromoGoBtn">Перейти к партнёру</button>
             <button style="margin-top: 10px; background: none; border: none; color: #8e8e93; font-size: 16px; width: 100%; padding: 10px;" onclick="closeMultPromoModal()" data-i18n="cancel">Отмена</button>
         </div>
     </div>
@@ -4246,15 +4255,16 @@
     
     <div class="modal-overlay" id="modalLoading"><div class="modal" style="display:flex; flex-direction:column; align-items:center;"><div class="loader"></div><h3 data-i18n="creatingRoom">Создание комнаты...</h3></div></div>
 
-    <div class="modal-overlay" id="modalSudoku"><div class="modal"><h2 data-i18n="sudoku">Судоку</h2><p style="color:#8e8e93; margin-bottom:20px;" data-i18n="chooseDifficulty">Выберите сложность</p>
-        <div class="segment-control vertical" style="height: 180px;">
+    <div class="modal-overlay ui-mode-sheet" id="modalSudoku"><div class="modal ui-mode-panel">
+            <div class="ui-sheet-grab" aria-hidden="true"></div><div class="ui-sheet-heading"><h2 data-i18n="sudoku">Судоку</h2><button class="ui-close" type="button" onclick="document.getElementById('modalSudoku').classList.remove('visible')" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div><p style=" margin-bottom:20px;" data-i18n="chooseDifficulty">Выберите сложность</p>
+        <div class="segment-control vertical" >
             <div class="segment-glider" id="sudokuGlider" style="transform: translateY(100%);"></div>
-            <div class="segment-item" onclick="selectSudokuDiff(30, this, 0)"><span data-i18n="easy">Легко</span> (+1)</div>
-            <div class="segment-item active" onclick="selectSudokuDiff(40, this, 1)"><span data-i18n="medium">Средне</span> (+2)</div>
-            <div class="segment-item" onclick="selectSudokuDiff(50, this, 2)"><span data-i18n="hard">Сложно</span> (+3)</div>
+            <button class="segment-item" onclick="selectSudokuDiff(30, this, 0)"><span data-i18n="easy">Легко</span><span class="ui-option-note">+1</span></button>
+            <button class="segment-item active" onclick="selectSudokuDiff(40, this, 1)"><span data-i18n="medium">Средне</span><span class="ui-option-note">+2</span></button>
+            <button class="segment-item" onclick="selectSudokuDiff(50, this, 2)"><span data-i18n="hard">Сложно</span><span class="ui-option-note">+3</span></button>
         </div>
         <button class="btn-main" onclick="startSudoku()" data-i18n="start">Начать</button>
-        <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudoku').classList.remove('visible')" data-i18n="cancel">Отмена</button>
+
     </div></div>
     
     <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2 data-i18n="sudoku">Судоку</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
@@ -4989,94 +4999,18 @@
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
         
-        // Settings Sheet with swipe to close
-        let sheetStartY = 0;
-        let sheetStartX = 0;
-        let sheetStartTime = 0;
-        let sheetCurrentY = 0;
-        let sheetDragging = false;
-        let sheetGestureCandidate = false;
-
-        function isSettingsControl(target) {
-            return !!target.closest('button, a, input, textarea, select, .theme-switch');
-        }
-
-        function bindSettingsSheetGesture(sheet) {
-            if (sheet.dataset.dragBound === '1') return;
-            sheet.dataset.dragBound = '1';
-            sheet.addEventListener('touchstart', sheetTouchStart, { passive: true });
-            sheet.addEventListener('touchmove', sheetTouchMove, { passive: false });
-            sheet.addEventListener('touchend', sheetTouchEnd);
-            sheet.addEventListener('touchcancel', sheetTouchEnd);
-        }
-        
+        // Sheet gestures and keyboard behaviour are shared in assets/ui/sheets.js.
         function openSettingsSheet() {
             const overlay = document.getElementById('settingsSheet');
             const sheet = overlay.querySelector('.bottom-sheet');
             sheet.classList.remove('dragging');
             sheet.style.transform = '';
             overlay.classList.add('visible');
-            bindSettingsSheetGesture(sheet);
             applyLiteMode();
             applyVibration();
             soundsEnabled = localStorage.getItem('sounds_enabled') !== 'false';
             applySounds();
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
-        }
-        
-        function sheetTouchStart(e) {
-            const sheet = e.currentTarget;
-            sheetGestureCandidate = !isSettingsControl(e.target) && sheet.scrollTop <= 0;
-            sheetDragging = false;
-            sheetCurrentY = 0;
-            if (!sheetGestureCandidate) return;
-            sheetStartY = e.touches[0].clientY;
-            sheetStartX = e.touches[0].clientX;
-            sheetStartTime = performance.now();
-        }
-        
-        function sheetTouchMove(e) {
-            if (!sheetGestureCandidate) return;
-            const deltaY = e.touches[0].clientY - sheetStartY;
-            const deltaX = e.touches[0].clientX - sheetStartX;
-            if (!sheetDragging) {
-                if (Math.abs(deltaY) < 6) return;
-                if (deltaY <= 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
-                    sheetGestureCandidate = false;
-                    return;
-                }
-                sheetDragging = true;
-                e.currentTarget.classList.add('dragging');
-            }
-            e.preventDefault();
-            sheetCurrentY = Math.max(0, deltaY);
-            const sheet = e.currentTarget;
-            sheet.style.transform = `translateY(${sheetCurrentY}px)`;
-        }
-        
-        function sheetTouchEnd(e) {
-            if (!sheetGestureCandidate && !sheetDragging) return;
-            const sheet = e.currentTarget;
-            const elapsed = Math.max(1, performance.now() - sheetStartTime);
-            const velocity = sheetCurrentY / elapsed;
-            const shouldClose = sheetDragging && (sheetCurrentY > Math.min(120, sheet.offsetHeight * 0.2) || velocity > 0.55);
-            sheetDragging = false;
-            sheetGestureCandidate = false;
-            sheet.classList.remove('dragging');
-
-            if (shouldClose) {
-                closeSettingsSheet();
-            } else {
-                sheet.style.transform = 'translateY(0)';
-                const cleanup = () => {
-                    if (document.getElementById('settingsSheet').classList.contains('visible')) {
-                        sheet.style.transform = '';
-                    }
-                    sheet.removeEventListener('transitionend', cleanup);
-                };
-                sheet.addEventListener('transitionend', cleanup);
-            }
-            sheetCurrentY = 0;
         }
         
         function closeSettingsSheet() {
@@ -5248,7 +5182,7 @@
                 gotIt: 'Понятно',
                 easy: 'Легко',
                 medium: 'Средне',
-                hard: 'Сложно',
+                hard: 'Сложно', expert: 'Эксперт', playOffline: 'На устройстве', playOnline: 'Онлайн',
                 chooseGameMode: 'Выберите режим игры',
                 twoPlayers: '2 Игрока',
                 vsRobot: 'С Роботом',
@@ -5499,7 +5433,7 @@
                 gotIt: 'Got it',
                 easy: 'Easy',
                 medium: 'Medium',
-                hard: 'Hard',
+                hard: 'Hard', expert: 'Expert', playOffline: 'Offline', playOnline: 'Online',
                 chooseGameMode: 'Choose game mode',
                 twoPlayers: '2 Players',
                 vsRobot: 'Vs Robot',
@@ -5647,7 +5581,7 @@
                 topsCheckers: '跳棋排行榜', topsWordle: '猜词排行榜', topsMonopoly: '大富翁排行榜', topsReferrals: '邀请排行榜',
                 tapToStart: '点击开始', refCondition2: '好友首次通过链接进入后将永久归属于您的邀请。',
                 refCondition3: '好友在方块爆破中达到 1000 分后才会进入排行榜；此前只显示在个人资料中。',
-                gotIt: '知道了', easy: '简单', medium: '中等', hard: '困难', chooseGameMode: '选择游戏模式',
+                gotIt: '知道了', easy: '简单', medium: '中等', hard: '困难', expert: '专家', playOffline: '离线', playOnline: '在线', chooseGameMode: '选择游戏模式',
                 twoPlayers: '双人游戏', vsRobot: '对战机器人', play: '开始游戏', findOpponent: '寻找对手', join: '加入',
                 createRoom: '创建房间', top: '排行', seconds: '秒', errors: '错误', input: '输入', boom: '爆炸！',
                 badLuck: '运气不佳。', tooManyErrors: '错误太多。', hugeTower: '您建造了一座高塔！', botTurn: '机器人回合',
@@ -7008,82 +6942,6 @@
             sheet.classList.remove('dragging');
             sheet.style.transform = '';
             overlay.classList.add('visible');
-            bindReferralSheetGesture(sheet);
-        }
-        
-        let refSheetStartY = 0;
-        let refSheetStartX = 0;
-        let refSheetStartTime = 0;
-        let refSheetCurrentY = 0;
-        let refSheetDragging = false;
-        let refSheetGestureCandidate = false;
-
-        function bindReferralSheetGesture(sheet) {
-            if (sheet.dataset.refDragBound === '1') return;
-            sheet.dataset.refDragBound = '1';
-            sheet.addEventListener('touchstart', refSheetTouchStart, { passive: true });
-            sheet.addEventListener('touchmove', refSheetTouchMove, { passive: false });
-            sheet.addEventListener('touchend', refSheetTouchEnd);
-            sheet.addEventListener('touchcancel', refSheetTouchEnd);
-        }
-
-        function isReferralSheetControl(target) {
-            return !!target.closest('button, a, input, textarea, select');
-        }
-        
-        function refSheetTouchStart(e) {
-            const sheet = e.currentTarget;
-            refSheetGestureCandidate = !isReferralSheetControl(e.target) && sheet.scrollTop <= 0;
-            refSheetDragging = false;
-            refSheetCurrentY = 0;
-            if (!refSheetGestureCandidate) return;
-            refSheetStartY = e.touches[0].clientY;
-            refSheetStartX = e.touches[0].clientX;
-            refSheetStartTime = performance.now();
-        }
-        
-        function refSheetTouchMove(e) {
-            if (!refSheetGestureCandidate) return;
-            const deltaY = e.touches[0].clientY - refSheetStartY;
-            const deltaX = e.touches[0].clientX - refSheetStartX;
-            if (!refSheetDragging) {
-                if (Math.abs(deltaY) < 6) return;
-                if (deltaY <= 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
-                    refSheetGestureCandidate = false;
-                    return;
-                }
-                refSheetDragging = true;
-                e.currentTarget.classList.add('dragging');
-            }
-            e.preventDefault();
-            refSheetCurrentY = Math.max(0, deltaY);
-            e.currentTarget.style.transform = `translateY(${refSheetCurrentY}px)`;
-        }
-        
-        function refSheetTouchEnd(e) {
-            if (!refSheetGestureCandidate && !refSheetDragging) return;
-            const sheet = e.currentTarget;
-            const elapsed = Math.max(1, performance.now() - refSheetStartTime);
-            const velocity = refSheetCurrentY / elapsed;
-            const shouldClose = refSheetDragging &&
-                (refSheetCurrentY > Math.min(120, sheet.offsetHeight * 0.2) || velocity > 0.55);
-            refSheetDragging = false;
-            refSheetGestureCandidate = false;
-            sheet.classList.remove('dragging');
-
-            if (shouldClose) {
-                hideReferralConditions();
-            } else {
-                sheet.style.transform = 'translateY(0)';
-                const cleanup = () => {
-                    if (document.getElementById('referralConditionsSheet').classList.contains('visible')) {
-                        sheet.style.transform = '';
-                    }
-                    sheet.removeEventListener('transitionend', cleanup);
-                };
-                sheet.addEventListener('transitionend', cleanup);
-            }
-            refSheetCurrentY = 0;
         }
         
         function hideReferralConditions() {
@@ -7698,7 +7556,7 @@
 
         /* --- SAPER WITH MS TIMER --- */
         let sRows=8, sCols=8, sMines=10, sMode='dig', sGrid=[], sTimer=0, sTimerInt, sFlags=0, sFirst=true, sOver=false, sStartTime=0, sSessionReady=null, sUsedFlag=false;
-        function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; document.querySelectorAll('#modalSaper .diff-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
+        function setSaperDiff(r,c,m,btn) { sRows=r; sCols=c; sMines=m; const items = [...document.querySelectorAll('#modalSaper .diff-btn')]; items.forEach(b=>b.classList.remove('selected','active')); btn.classList.add('selected','active'); document.getElementById('saperDifficultyGlider').style.transform = `translateY(${items.indexOf(btn)*100}%)`; if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); beginGamePlaytime('saper'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; sUsedFlag=false; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
@@ -7739,7 +7597,7 @@
         function joinGameByCode() { const code = document.getElementById('joinCodeInput').value; if (code.length < 5) { if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); return; } onlineRoomCode = code; const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = tgName(user); socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } }); }
         function cancelOnlineWait() { document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
 
-        function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
+        function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchCheckers(){
             const choices = document.querySelectorAll('#ch-offline-panel .segment-item');
             const activeChoice = document.querySelector('#ch-offline-panel .segment-item.active');
@@ -8321,12 +8179,22 @@
             track.appendChild(tournCard);
             _bbModeSlides.push({ key: 'tournament', clickable: !!tournament });
 
-            // Render dots
+            // Same labelled blue pill used by the other game selectors.
+            dotsEl.innerHTML = '<div class="segment-glider" aria-hidden="true"></div>';
             for (let i = 0; i < _bbModeSlides.length; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'bb-mode-dot' + (i === _bbModeIndex ? ' active' : '');
-                dot.onclick = () => bbModeGoTo(i);
-                dotsEl.appendChild(dot);
+                const tab = document.createElement('button');
+                tab.className = 'segment-item bb-mode-tab';
+                tab.type = 'button';
+                tab.textContent = t(i === 0 ? 'bbModeOriginal' : 'bbModeTournament');
+                tab.onclick = () => bbModeGoTo(i);
+                tab.onkeydown = event => {
+                    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+                    event.preventDefault();
+                    const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - i;
+                    bbModeGoTo(next);
+                    dotsEl.querySelectorAll('button')[next].focus();
+                };
+                dotsEl.appendChild(tab);
             }
             updateBBModeSlider();
             attachBBModeSwipe();
@@ -8335,11 +8203,13 @@
         function updateBBModeSlider() {
             const track = document.getElementById('bbModeTrack');
             if (!track) return;
-            track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+            track.style.transition = 'transform var(--ui-slide) var(--ui-ease)';
             track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
 
-            const dots = document.querySelectorAll('#bbModeDots .bb-mode-dot');
-            dots.forEach((d, i) => d.classList.toggle('active', i === _bbModeIndex));
+            const tabs = document.querySelectorAll('#bbModeDots .bb-mode-tab');
+            tabs.forEach((tab, i) => { tab.classList.toggle('active', i === _bbModeIndex); tab.setAttribute('aria-pressed',String(i === _bbModeIndex)); });
+            const glider = document.querySelector('#bbModeDots .segment-glider');
+            if (glider) glider.style.transform = `translateX(${_bbModeIndex * 100}%)`;
 
             const arrL = document.getElementById('bbModeArrowLeft');
             const arrR = document.getElementById('bbModeArrowRight');
@@ -8397,7 +8267,7 @@
                         locked = true;
                         if (Math.abs(dy) > Math.abs(dx)) {
                             dragging = false;
-                            track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+                            track.style.transition = 'transform var(--ui-slide) var(--ui-ease)';
                             track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
                             return;
                         }
@@ -8420,7 +8290,7 @@
             slider.addEventListener('touchend', () => {
                 if (!dragging) return;
                 dragging = false;
-                track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+                track.style.transition = 'transform var(--ui-slide) var(--ui-ease)';
 
                 const threshold = sliderWidth * 0.18; // commit if moved >18% of width
                 if (deltaX <= -threshold && _bbModeIndex < _bbModeSlides.length - 1) {
@@ -8436,7 +8306,7 @@
             slider.addEventListener('touchcancel', () => {
                 if (!dragging) return;
                 dragging = false;
-                track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+                track.style.transition = 'transform var(--ui-slide) var(--ui-ease)';
                 track.style.transform = `translate3d(-${_bbModeIndex * 100}%, 0, 0)`;
             });
         }
@@ -12413,9 +12283,9 @@
     <div class="privacy-screen" id="privacyScreen">
         <div class="privacy-header">
             <div class="privacy-header-title" data-i18n="privacyTitle">Политика конфиденциальности</div>
-            <div class="privacy-close-btn" onclick="closePrivacyPolicy()">
+            <button class="privacy-close-btn" type="button" aria-label="Закрыть" onclick="closePrivacyPolicy()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </div>
+            </button>
         </div>
         <div class="privacy-body">
             <div data-lang-content="ru">

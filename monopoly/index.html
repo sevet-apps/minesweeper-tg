@@ -15,8 +15,10 @@ window.DICE_SIZE = 1.0;
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/masks.css">
 <link rel="stylesheet" href="css/v2.css">
+<link rel="stylesheet" href="../assets/ui/tokens.css">
 <link rel="stylesheet" href="css/lobby.css">
 <link rel="stylesheet" href="css/collection.css">
+<link rel="stylesheet" href="css/collection-pregame.css">
 </head>
 <body>
 
@@ -69,9 +71,11 @@ window.DICE_SIZE = 1.0;
     <!-- Создание комнаты -->
     <div class="lb-screen lb-sheet" id="lbCreate" role="dialog" aria-modal="true" aria-labelledby="lbCreateTitle">
       <div class="lb-card" tabindex="-1">
+        <div class="lb-sheet-heading">
         <div class="lb-sheet-handle" aria-hidden="true"></div>
-        <button class="lb-sheet-close" data-go="lbMain" aria-label="Закрыть создание игры"><span data-lb-icon="close"></span></button>
+        <button class="lb-sheet-close ui-close" data-go="lbMain" aria-label="Закрыть создание игры"><span data-lb-icon="close"></span></button>
         <h3 id="lbCreateTitle">Создать игру</h3>
+        </div>
         <p>Получите код и отправьте его друзьям</p>
 
         <div class="lb-field">
@@ -123,10 +127,11 @@ window.DICE_SIZE = 1.0;
     <!-- Вход по коду -->
     <div class="lb-screen lb-sheet" id="lbJoin" role="dialog" aria-modal="true" aria-labelledby="lbJoinTitle">
       <div class="lb-card" tabindex="-1">
+        <div class="lb-sheet-heading">
         <div class="lb-sheet-handle" aria-hidden="true"></div>
-        <button class="lb-sheet-close" data-go="lbMain" aria-label="Закрыть ввод кода"><span data-lb-icon="close"></span></button>
-        <span class="lb-sheet-symbol" aria-hidden="true"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="8.5" r="5.5"/><path d="m11.5 12.5-8 8H1v-3l2-2h3v-3l2-2M16 7h.01"/></svg></span>
+        <button class="lb-sheet-close ui-close" data-go="lbMain" aria-label="Закрыть ввод кода"><span data-lb-icon="close"></span></button>
         <h3 id="lbJoinTitle">Друзья уже ждут</h3>
+        </div>
         <p>Введите код комнаты из шести символов</p>
         <input class="lb-input" id="lbCode" maxlength="6" placeholder="······" aria-label="Код комнаты" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go">
         <button class="lb-btn" id="lbJoinGo">Войти</button>
@@ -135,9 +140,11 @@ window.DICE_SIZE = 1.0;
 
     <div class="lb-screen lb-sheet" id="lbBotsSetup" role="dialog" aria-modal="true" aria-labelledby="lbBotsTitle">
       <div class="lb-card" tabindex="-1">
+        <div class="lb-sheet-heading">
         <div class="lb-sheet-handle" aria-hidden="true"></div>
-        <button class="lb-sheet-close" data-go="lbMain" aria-label="Закрыть"><span data-lb-icon="close"></span></button>
+        <button class="lb-sheet-close ui-close" data-go="lbMain" aria-label="Закрыть"><span data-lb-icon="close"></span></button>
         <h3 id="lbBotsTitle">Игра с ботами</h3>
+        </div>
         <p>Выберите количество соперников</p>
         <div class="lb-field-lbl">Ботов в игре</div>
         <div class="lb-seg" id="lbBotCount">
@@ -157,7 +164,7 @@ window.DICE_SIZE = 1.0;
         </div>
         <div class="lb-wait-actions">
           <button class="lb-btn ghost" id="lbCopy">Скопировать код</button>
-          <button class="lb-btn ghost lb-invite" id="lbInvite">＋ Пригласить</button>
+          <button class="lb-btn ghost lb-invite" id="lbInvite">Пригласить</button>
         </div>
         <div id="lbWaitPlayers"></div>
         <button class="lb-btn" id="lbStart" disabled>Начать игру</button>

@@ -442,6 +442,7 @@
         el.className = `mc-layer ${cls}`;
         el.innerHTML = html;
         document.body.appendChild(el);
+        if (document.body.classList.contains('monopoly-pregame')) managePregameSheetFocus(el);
         void el.offsetHeight;
         requestAnimationFrame(() => requestAnimationFrame(() => { if (el.isConnected && !el.dataset.closing) el.classList.add('on'); }));
         el.addEventListener('click', event => { if (event.target === el) closeLayer(el); });
@@ -449,15 +450,46 @@
         bindSheetDrag(el);
         return el;
     }
+    function managePregameSheetFocus(el) {
+        const sheet = el.querySelector('.mc-sheet');
+        if (!sheet) return;
+        const opener = document.activeElement;
+        const background = [...document.body.children].filter(node => node !== el && !/^(SCRIPT|STYLE|LINK)$/.test(node.tagName)).map(node => [node,node.inert]);
+        background.forEach(([node]) => { node.inert = true; });
+        sheet.tabIndex = -1;
+        sheet.setAttribute('role','dialog'); sheet.setAttribute('aria-modal','true');
+        sheet.setAttribute('aria-label',sheet.querySelector('h3')?.textContent || 'Коллекция');
+        sheet.focus({preventScroll:true});
+        const keydown = event => {
+            if (el.inert || el.dataset.closing) return;
+            if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); closeLayer(el); }
+            if (event.key !== 'Tab') return;
+            const controls = [...sheet.querySelectorAll('button:not(:disabled),input:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
+            const first = controls[0], last = controls[controls.length-1];
+            if (!first) { event.preventDefault(); return; }
+            if (event.shiftKey && (document.activeElement === sheet || document.activeElement === first)) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && (document.activeElement === sheet || document.activeElement === last)) { event.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown',keydown,true);
+        el.restoreSheetFocus = () => {
+            document.removeEventListener('keydown',keydown,true);
+            background.forEach(([node,inert]) => { node.inert = inert; });
+            if (opener?.isConnected && !opener.closest('[inert]')) opener.focus({preventScroll:true});
+            el.restoreSheetFocus = null;
+        };
+    }
     function setSheetDrag(el, offset) {
         const sheet = el.querySelector('.mc-sheet');
         if (!sheet) return;
         const distance = Math.max(0, Number(offset) || 0);
         const progress = Math.min(1, distance / Math.max(280, sheet.offsetHeight * .72));
         sheet.style.setProperty('--mc-sheet-offset', `${distance}px`);
-        el.style.backgroundColor = `rgba(0,0,0,${(.54 * (1 - progress)).toFixed(3)})`;
-        el.style.backdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
-        el.style.webkitBackdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
+        const pregame = document.body.classList.contains('monopoly-pregame');
+        el.style.backgroundColor = `rgba(0,0,0,${((pregame ? .48 : .54) * (1 - progress)).toFixed(3)})`;
+        if (!pregame) {
+            el.style.backdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
+            el.style.webkitBackdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
+        }
     }
     function resetSheetDrag(el) {
         const sheet = el.querySelector('.mc-sheet');
@@ -516,13 +548,15 @@
         sheet.addEventListener('pointercancel', event => { if (event.pointerType === 'mouse') { drag = null; resetSheetDrag(el); } });
     }
     function closeLayer(el) {
-        if (!el) return;
+        if (!el || el.dataset.closing) return;
         el.dataset.closing = 'true';
+        el.restoreSheetFocus?.();
+        if (document.body.classList.contains('monopoly-pregame')) el.inert = true;
         el.classList.remove('mc-dragging');
         requestAnimationFrame(() => el.classList.remove('on'));
         setTimeout(() => el.remove(), 540);
     }
-    function closeLayers() { document.querySelectorAll('.mc-layer,.mc-roulette-layer').forEach(el => el.remove()); }
+    function closeLayers() { [...document.querySelectorAll('.mc-layer,.mc-roulette-layer')].reverse().forEach(el => { el.restoreSheetFocus?.(); el.remove(); }); }
 
     function loadoutAt(tileId) {
         return (current?.loadout || []).find(item => Number(item.tile_id) === Number(tileId)) || null;
