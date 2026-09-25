@@ -9144,7 +9144,7 @@
             bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES;
             if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
             bbPlayClear();
-            BBVisuals.clearLines(rows, cols, getCellFast);
+            BBVisuals.clearLines(rows, cols, getCellFast, triggerColor);
             BBVisuals.uniqueCells(rows, cols).forEach(({ r, c }) => { bbGrid[r][c] = 0; });
             const points = bbLineScore(total, bbCombo);
             addScore(points);

@@ -96,13 +96,14 @@
     };
     api.occlude = cells => renderer.occlude(cells);
     api.inspectFrame = elapsed => renderer.inspectFrame(elapsed);
-    api.clearLines = (rows, cols, getCell) => {
+    api.clearLines = (rows, cols, getCell, triggerColor = 'bb-c-5') => {
         const cells = uniqueCells(rows, cols), grid = doc.getElementById('bbGrid');
+        const color = Number(triggerColor.match(/^bb-c-([1-7])$/)?.[1] || 5) - 1;
         // One geometry read, before any writes. All fragments are cached canvas sprites.
         const size = grid.getBoundingClientRect().width, w = (size - 36) / 8;
         const snapshots = cells.map(({ r, c }) => {
             const cell = getCell(r, c);
-            return { cell, r, c, color: Math.max(0, Number(cell.className.match(/bb-c-(\d)/)?.[1] || 5) - 1), x: 4 + c * (w + 4), y: 4 + r * (w + 4), w };
+            return { cell, r, c, color, x: 4 + c * (w + 4), y: 4 + r * (w + 4), w };
         });
         if (!api.reduced() && !doc.hidden) renderer.clear(theme, snapshots, rows, cols, grid, size);
         for (const { cell } of snapshots) { cell.className = 'bb-cell'; cell.removeAttribute('style'); }

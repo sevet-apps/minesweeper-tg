@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-function fixture(lowPower = false) {
+function fixture(lowPower = false, theme = { id: 'porcelain', effect: 'porcelain' }) {
     const frames = new Map(), mounted = new Set(), clears = [], draws = [];
     let clock = 0, sequence = 0;
     const context2d = () => new Proxy({
@@ -13,8 +13,10 @@ function fixture(lowPower = false) {
         createLinearGradient() { return { addColorStop() {} }; },
     }, { get: (target, name) => target[name] || (() => {}), set: (target, name, value) => { target[name] = value; return true; } });
     const document = { createElement() {
-        const context = context2d();
-        return { style: {}, dataset: {}, isConnected: false, setAttribute() {}, getContext: () => context,
+        const context = context2d(), calls = [];
+        const recordDraw = context.drawImage;
+        context.drawImage = (...args) => { args.alpha = context.globalAlpha; calls.push(args); recordDraw(...args); };
+        return { style: {}, dataset: {}, calls, isConnected: false, setAttribute() {}, getContext: () => context,
             remove() { this.isConnected = false; mounted.delete(this); } };
     } };
     const grid = { appendChild(canvas) { canvas.isConnected = true; mounted.add(canvas); } };
@@ -23,7 +25,6 @@ function fixture(lowPower = false) {
     const api = scope.module.exports;
     const renderer = api.create({ document, textureBase: '/', lowPower, now: () => clock,
         schedule(fn) { frames.set(++sequence, fn); return sequence; }, cancel(id) { frames.delete(id); } });
-    const theme = { id: 'porcelain', effect: 'porcelain' };
     const cells = Array.from({ length: 64 }, (_, i) => ({ r: Math.floor(i / 8), c: i % 8, color: i % 7, x: 4 + i % 8 * 43.25, y: 4 + Math.floor(i / 8) * 43.25, w: 39.25 }));
     function tick(ms) { clock += ms; const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn(clock)); }
     return { api, renderer, mounted, frames, clears, draws, cells, tick,
@@ -45,9 +46,44 @@ test('rich effects keep readable timing, one canvas and a bounded budget during 
     assert.equal(f.canvas().dataset.particles, '0');
     assert.equal(f.canvas().dataset.bursts, '0');
     assert.equal(f.frames.size, 0, 'no idle rendering loop');
-    for (const effect of ['paint', 'honey', 'soft', 'porcelain', 'squish']) assert.ok(f.api.duration(effect) >= 1000);
+    for (const effect of ['paint', 'honey', 'soft', 'porcelain', 'squish']) assert.ok(f.api.duration(effect) >= 700 && f.api.duration(effect) <= 1150);
     f.renderer.cleanup();
     assert.equal(f.mounted.size, 0);
+});
+
+test('the release frame already contains fragments, with no intact-cell draw or fade-in delay', () => {
+    for (const theme of [{ id: 'porcelain', effect: 'porcelain' }, { id: 'jelly', effect: 'squish' }, { id: 'honey', effect: 'honey' }]) {
+        const f = fixture(false, theme);
+        f.clear(f.cells.slice(0, 8));
+        assert.ok(f.canvas().calls.length > 0, theme.id + ' draws before waiting for RAF');
+        assert.ok(f.canvas().calls.every(call => call[1] >= 96 && call[3] === 40), 'only fragment atlas regions are drawn');
+        assert.ok(f.canvas().calls.every(call => call.alpha === 1), 'fragments are visible at the instant of release');
+        f.renderer.cleanup();
+    }
+});
+
+test('a second clear gets visible fragments immediately even when the first used the full budget', () => {
+    const f = fixture(); f.clear(f.cells.map(cell => ({ ...cell, color: 0 })));
+    f.canvas().calls.length = 0;
+    f.clear(f.cells.slice(0, 8).map(cell => ({ ...cell, color: 6 })));
+    assert.ok(f.canvas().calls.filter(call => call[2] === 6 * 96).length >= 8);
+    assert.ok(Number(f.canvas().dataset.particles) <= 360);
+    f.renderer.cleanup();
+});
+
+test('paint starts as an even full-width stroke and erases from an advancing bristled edge', () => {
+    const f = fixture(false, { id: 'paint', effect: 'paint' });
+    f.clear(f.cells.slice(0, 8).map(cell => ({ ...cell, color: 4 })));
+    const first = f.canvas().calls;
+    assert.equal(first.length, 10);
+    assert.ok(first.every(call => call[1] === 0 && call[3] === 640 && call[7] === 342));
+    assert.equal(new Set(first.map(call => call[8])).size, 1, 'every bristle lane has equal thickness');
+    f.canvas().calls.length = 0; f.tick(100);
+    assert.ok(f.canvas().calls.every(call => call[1] > 0 && call[7] < 342), 'wipe begins immediately across the uniform band');
+    f.tick(650);
+    assert.equal(f.canvas().dataset.bursts, '0');
+    assert.equal(f.frames.size, 0);
+    f.renderer.cleanup();
 });
 
 test('limited devices reduce fragment and backing-store costs without accelerating effects', () => {
