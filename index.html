@@ -4216,6 +4216,17 @@
                     <button class="segment-item active" onclick="setCheckersMode(false, this, 0)" data-i18n="twoPlayers">2 Игрока</button>
                     <button class="segment-item" onclick="setCheckersMode(true, this, 1)" data-i18n="vsRobot">С Роботом</button>
                 </div>
+                <div class="checkers-difficulty-wrap" id="checkersDifficultyWrap" aria-hidden="true" inert>
+                    <div class="checkers-difficulty-inner">
+                        <p data-i18n="botDifficulty">Сложность бота</p>
+                        <div class="segment-control vertical" style="--ui-options:3" aria-label="Сложность бота">
+                            <div class="segment-glider" id="checkersDifficultyGlider" style="transform:translateY(100%)"></div>
+                            <button class="segment-item" onclick="setCheckersDifficulty('easy',this,0)"><span data-i18n="easy">Легко</span><span class="ui-option-note">+1</span></button>
+                            <button class="segment-item active" onclick="setCheckersDifficulty('medium',this,1)"><span data-i18n="medium">Средне</span><span class="ui-option-note">+2</span></button>
+                            <button class="segment-item" onclick="setCheckersDifficulty('hard',this,2)"><span data-i18n="hard">Сложно</span><span class="ui-option-note">+3</span></button>
+                        </div>
+                    </div>
+                </div>
                 <button class="btn-main" onclick="launchCheckers()" data-i18n="play">Играть</button>
             </div>
 
@@ -4223,16 +4234,16 @@
                 <button class="btn-main" style="margin-top:0; margin-bottom:8px; padding: 12px;" onclick="joinGame()" data-i18n="findOpponent">Найти соперника</button>
                 <div class="input-group">
                     <input type="text" id="joinCodeInput" class="input-glass" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5">
-                    <button class="btn-secondary" onclick="joinGameByCode()" data-i18n="join">Войти</button>
+                    <button class="btn-secondary checkers-join-btn" onclick="joinGameByCode()" data-i18n="join">Войти</button>
                 </div>
-                <button class="btn-secondary" style="width:100%; margin-top:8px;  padding: 10px;" onclick="createGame()" data-i18n="createRoom">Создать комнату</button>
+                <button class="btn-secondary checkers-create-btn" style="width:100%; margin-top:8px; padding:10px;" onclick="createGame()" data-i18n="createRoom">Создать комнату</button>
             </div>
 
 
         </div>
     </div>
     
-    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2 data-i18n="waitingOpponent">Ожидание...</h2><p style="color:#8e8e93;" data-i18n="roomCode">Код комнаты:</p><div style="font-size:32px; font-weight:800; letter-spacing:5px; margin:10px 0; color:var(--accent);" id="displayRoomCode">-----</div><p style="font-size:14px; color:#8e8e93;" data-i18n="shareCode">Передай этот код другу</p><button style="margin-top:10px; background:none; border:none; color:#ff3b30; font-size:16px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2 data-i18n="waitingOpponent">Ожидание...</h2><p style="color:#8e8e93;" data-i18n="roomCode">Код комнаты:</p><div style="font-size:32px; font-weight:800; letter-spacing:5px; margin:10px 0; color:var(--accent);" id="displayRoomCode">-----</div><p style="font-size:14px; color:#8e8e93;" data-i18n="shareCode">Передай этот код другу</p><button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
     <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" onclick="refreshBBFromServer()" data-i18n="refresh">Обновить</button></div></div>
@@ -5184,7 +5195,7 @@
                 medium: 'Средне',
                 hard: 'Сложно', expert: 'Эксперт', playOffline: 'На устройстве', playOnline: 'Онлайн',
                 chooseGameMode: 'Выберите режим игры',
-                twoPlayers: '2 Игрока',
+                botDifficulty: 'Сложность бота', checkersPoints: 'Очки с ботом', twoPlayers: '2 Игрока',
                 vsRobot: 'С Роботом',
                 play: 'Играть',
                 findOpponent: 'Найти соперника',
@@ -5435,7 +5446,7 @@
                 medium: 'Medium',
                 hard: 'Hard', expert: 'Expert', playOffline: 'Offline', playOnline: 'Online',
                 chooseGameMode: 'Choose game mode',
-                twoPlayers: '2 Players',
+                botDifficulty: 'Bot difficulty', checkersPoints: 'Bot points', twoPlayers: '2 Players',
                 vsRobot: 'Vs Robot',
                 play: 'Play',
                 findOpponent: 'Find opponent',
@@ -5582,7 +5593,7 @@
                 tapToStart: '点击开始', refCondition2: '好友首次通过链接进入后将永久归属于您的邀请。',
                 refCondition3: '好友在方块爆破中达到 1000 分后才会进入排行榜；此前只显示在个人资料中。',
                 gotIt: '知道了', easy: '简单', medium: '中等', hard: '困难', expert: '专家', playOffline: '离线', playOnline: '在线', chooseGameMode: '选择游戏模式',
-                twoPlayers: '双人游戏', vsRobot: '对战机器人', play: '开始游戏', findOpponent: '寻找对手', join: '加入',
+                botDifficulty: '机器人难度', checkersPoints: '对战积分', twoPlayers: '双人游戏', vsRobot: '对战机器人', play: '开始游戏', findOpponent: '寻找对手', join: '加入',
                 createRoom: '创建房间', top: '排行', seconds: '秒', errors: '错误', input: '输入', boom: '爆炸！',
                 badLuck: '运气不佳。', tooManyErrors: '错误太多。', hugeTower: '您建造了一座高塔！', botTurn: '机器人回合',
                 whiteTurn: '白方回合', blackTurn: '黑方回合', code: '代码', wordNotInDict: '词典中没有这个词',
@@ -5948,6 +5959,7 @@
                 twState='start'; 
             }
             if(game==='checkers') {
+                checkersAiWorker?.terminate(); checkersAiWorker=null; checkersAiPending=false; checkersAiRequest++;
                 clearInterval(checkersTimerInterval);
                 checkersTimerInterval=null;
                 isOnlineGame = false;
@@ -6274,7 +6286,7 @@
                 ],
                 tower: [detailCard(t('towerHeight'), valueOrDash('tower_best')), detailCard(t('cleanSeries'), valueOrDash('tower_combo')), detailCard(t('top'), rankText(profileRankData.tower_best)), detailCard(t('totalTime'), (times.tower || 0) > 0 ? formatPlaytime(times.tower) : '—')],
                 sudoku: [detailCard(t('numWins'), valueOrDash('sudoku_wins')), detailCard(t('top'), rankText(profileRankData.sudoku_wins)), detailCard(t('totalTime'), (times.sudoku || 0) > 0 ? formatPlaytime(times.sudoku) : '—')],
-                checkers: [detailCard(t('totalGames'), valueOrDash('checkers_total')), detailCard(t('winsVsBot'), valueOrDash('checkers_wins_pve')), detailCard(t('top'), rankText(profileRankData.checkers_wins_pve)), detailCard(t('totalTime'), (times.checkers || 0) > 0 ? formatPlaytime(times.checkers) : '—')],
+                checkers: [detailCard(t('totalGames'), valueOrDash('checkers_total')), detailCard(t('winsVsBot'), valueOrDash('checkers_wins_pve')), detailCard(t('checkersPoints'), valueOrDash('checkers_points')), detailCard(t('top'), rankText(profileRankData.checkers_wins_pve)), detailCard(t('totalTime'), (times.checkers || 0) > 0 ? formatPlaytime(times.checkers) : '—')],
                 wordle: [detailCard(t('numWins'), valueOrDash('wordle_wins')), detailCard(t('top'), rankText(profileRankData.wordle_wins)), detailCard(t('totalTime'), (times.wordle || 0) > 0 ? formatPlaytime(times.wordle) : '—')]
             };
             Object.entries(blocks).forEach(([game, cards]) => {
@@ -6775,7 +6787,7 @@
                 if (!data || !data.telegram_id) return;
                 
                 // Server → localStorage (server is source of truth)
-                const fields = ['bb_best_score','bb_total_games','saper_wins','saper_best_6','saper_best_8','saper_best_10','saper_best_15','checkers_total','checkers_wins_pve','sudoku_wins','tower_best','tower_combo','wordle_wins'];
+                const fields = ['bb_best_score','bb_total_games','saper_wins','saper_best_6','saper_best_8','saper_best_10','saper_best_15','checkers_total','checkers_wins_pve','checkers_points','sudoku_wins','tower_best','tower_combo','wordle_wins'];
                 fields.forEach(f => {
                     const isMinesweeperTime = f.startsWith('saper_best_');
                     const serverValue = Number(data[f]);
@@ -7074,7 +7086,7 @@
         let currentLbGame = 'saper';
         let currentLbCat = { id: 'saper_wins', name: 'Количество побед' };
         const SAPER_CATS = [{ id: 'saper_wins', nameKey: 'numWins' },{ id: 'saper_best_6', nameKey: 'bestTime6', isTime: true },{ id: 'saper_best_8', nameKey: 'bestTime8', isTime: true },{ id: 'saper_best_10', nameKey: 'bestTime10', isTime: true },{ id: 'saper_best_15', nameKey: 'bestTime15', isTime: true }];
-        const CHECKERS_CATS = [{ id: 'checkers_total', nameKey: 'totalGames' },{ id: 'checkers_wins_pve', nameKey: 'winsVsBot' }];
+        const CHECKERS_CATS = [{ id: 'checkers_total', nameKey: 'totalGames' },{ id: 'checkers_wins_pve', nameKey: 'winsVsBot' },{ id: 'checkers_points', nameKey: 'checkersPoints' }];
         const BB_CATS = [
             { id: 'bb_best_score', nameKey: 'bestScore' },
             { id: 'bb_total_games', nameKey: 'totalGames' }
@@ -7560,7 +7572,7 @@
         function launchSaper() { document.getElementById('modalSaper').classList.remove('visible'); document.getElementById('saper-screen').classList.add('visible'); beginGamePlaytime('saper'); setSaperMode('dig', document.querySelector('#saperGlider').nextElementSibling, 0); initSaper(); }
         function setSaperMode(m, btn, index) { sMode = m; const glider = document.getElementById('saperGlider'); if(glider) glider.style.transform = `translateX(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function initSaper() { sGrid=[]; sOver=false; sFirst=true; sFlags=sMines; sTimer=0; sSessionReady=null; sUsedFlag=false; delete activeSessionTokens['saper_best_' + sCols]; document.getElementById('saperFlags').innerText=sFlags; document.getElementById('saperTimer').innerText='000.000'; clearInterval(sTimerInt); const el=document.getElementById('saperGrid'); el.innerHTML=''; el.style.gridTemplateColumns=`repeat(${sCols}, 38px)`; const w=window.innerWidth-20, rw=sCols*43; el.style.transform=rw>w?`scale(${w/rw})`:`scale(1)`; for(let r=0;r<sRows;r++){const row=[];for(let c=0;c<sCols;c++){const cell=document.createElement('div');cell.className='cell';cell.onclick=()=>onSaperClick(r,c);cell.oncontextmenu=(e)=>{e.preventDefault();onSaperFlag(r,c);};let pt;cell.addEventListener('touchstart',()=>{if(!sOver)pt=setTimeout(()=>{onSaperFlag(r,c);if(vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');},500);});cell.addEventListener('touchend',()=>clearTimeout(pt));el.appendChild(cell);row.push({isMine:false,revealed:false,flagged:false,neighbor:0,el:cell});}sGrid.push(row);} }
-        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;const category='saper_best_' + sCols;if(sFirst){sFirst=false;sSessionReady=startGameSession(category);placeMinesSafe(r,c);sStartTime=Date.now();sTimerInt=setInterval(()=>{const diff=(Date.now()-sStartTime)/1000;sTimer=diff;document.getElementById('saperTimer').innerText=diff.toFixed(3);},16);sSessionReady.then(()=>reportGameMove(category));}else{reportGameMove(category);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
+        function onSaperClick(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(sMode==='flag'){onSaperFlag(r,c);return;}if(cell.flagged)return;const category='saper_best_' + sCols;if(sFirst){sFirst=false;sSessionReady=startGameSession(category);placeMinesSafe(r,c);sStartTime=Date.now();sTimerInt=setInterval(()=>{const diff=(Date.now()-sStartTime)/1000;sTimer=diff;if(!document.hidden)document.getElementById('saperTimer').innerText=diff.toFixed(3);},32);sSessionReady.then(()=>reportGameMove(category));}else{reportGameMove(category);}if(cell.isMine)loseSaper(cell);else{revealSaper(r,c);checkSaperWin();if(vibrationEnabled) tg.HapticFeedback.selectionChanged();}}
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;sUsedFlag=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
@@ -7569,6 +7581,7 @@
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
+        let checkersDifficulty='medium', checkersAiWorker=null, checkersAiRequest=0, checkersAiPending=false, checkersPointsReady=null;
         let checkersGameFinished = false;
         let moveHistory = [], historyIndex = -1, isViewingHistory = false;
         let checkersTimerInterval = null, checkersTimeLeft = 60, checkersTimerStartedAt = null;
@@ -7595,9 +7608,10 @@
             showResult(t('findOpponent'), t('comingSoon'), t('close'), closeResult);
         }
         function joinGameByCode() { const code = document.getElementById('joinCodeInput').value; if (code.length < 5) { if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); return; } onlineRoomCode = code; const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = tgName(user); socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } }); }
-        function cancelOnlineWait() { document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
+        function cancelOnlineWait() { if(onlineRoomCode) socket.emit('player_left',{roomCode:onlineRoomCode}); document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
 
-        function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
+        function setCheckersMode(pve, btn, index){ isPvE = pve; isOnlineGame = false; const glider = document.getElementById('checkersGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); const difficulty=document.getElementById('checkersDifficultyWrap'); difficulty.classList.toggle('is-open',pve); difficulty.setAttribute('aria-hidden',String(!pve)); difficulty.inert=!pve; if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
+        function setCheckersDifficulty(level,btn,index){ checkersDifficulty=level; document.getElementById('checkersDifficultyGlider').style.transform=`translateY(${index*100}%)`; btn.parentNode.querySelectorAll('.segment-item').forEach(item=>item.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function launchCheckers(){
             const choices = document.querySelectorAll('#ch-offline-panel .segment-item');
             const activeChoice = document.querySelector('#ch-offline-panel .segment-item.active');
@@ -7609,6 +7623,7 @@
             setTimeout(initCheckers,50);
         }
         function initCheckers(){
+            checkersAiWorker?.terminate(); checkersAiWorker=null; checkersAiPending=false; checkersAiRequest++;
             turn='white';selectedPiece=null;forcedPiece=null;
             checkersGameFinished=false;
             moveHistory=[];historyIndex=-1;isViewingHistory=false;
@@ -7620,7 +7635,11 @@
             for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}
             saveBoardState();
             if(isOnlineGame) startCheckersTimer();
-            if(isPvE) startGameSession('checkers_wins_pve');
+            if(isPvE) {
+                checkersPointsReady=startGameSession('checkers_points');
+                try { checkersAiWorker=new Worker('assets/checkers/ai-worker.js'); }
+                catch(error) { console.warn('Checkers worker unavailable:',error); }
+            }
         }
         function updateCheckersStatus(){
             const statusEl=document.getElementById('checkersStatus');
@@ -7760,7 +7779,7 @@
             if(isOnlineGame && isLocal) { socket.emit('move', { roomCode: onlineRoomCode, move: m }); }
             board[m.toR][m.toC].piece=p;board[m.fromR][m.fromC].piece=null;board[m.fromR][m.fromC].el.innerHTML='';const pd=document.createElement('div');pd.className=`checker ${p.color} ${p.isKing?'king':''}`;board[m.toR][m.toC].el.appendChild(pd);if(m.isCapture){board[m.midR][m.midC].piece=null;board[m.midR][m.midC].el.innerHTML='';if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('warning');let prom=false;if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');prom=true;}if(!prom){const next=getValidMoves(m.toR,m.toC,board);if(next.some(nm=>nm.isCapture)){forcedPiece={r:m.toR,c:m.toC};selectedPiece={r:m.toR,c:m.toC};pd.classList.add('selected');highlightMoves(m.toR,m.toC);updateHistoryButtons();if(isPvE && !isOnlineGame && turn==='black')setTimeout(aiMove,500);return;}}}else{if(vibrationEnabled) tg.HapticFeedback.selectionChanged();if(!p.isKing&&((p.color==='white'&&m.toR===0)||(p.color==='black'&&m.toR===7))){p.isKing=true;pd.classList.add('king');if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');}}board.forEach(row=>row.forEach(cl=>cl.el.classList.remove('highlight')));selectedPiece=null;forcedPiece=null;
             if(checkWin()) return;
-            if(isPvE && isLocal) reportGameMove('checkers_wins_pve');
+            if(isPvE && isLocal) reportGameMove('checkers_points');
             // Для онлайн игры turn придёт от сервера через move_confirmed/opponent_move
             if(!isOnlineGame) { 
                 turn=turn==='white'?'black':'white'; 
@@ -7783,14 +7802,39 @@
             // Локальная игра вдвоём не должна попадать в персональную статистику.
             if(isPvE){
                 const tot=parseInt(localStorage.getItem('checkers_total')||0)+1; saveStatToCloud('checkers_total',tot); sendStatToBackend('checkers_total', tot);
-                if(w==='white') { const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1; saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins); }
+                if(w==='white') {
+                    const wins = parseInt(localStorage.getItem('checkers_wins_pve')||0)+1;
+                    saveStatToCloud('checkers_wins_pve', wins); sendStatToBackend('checkers_wins_pve', wins);
+                    const award={easy:1,medium:2,hard:3}[checkersDifficulty]||2;
+                    const points=parseInt(localStorage.getItem('checkers_points')||0)+award;
+                    saveStatToCloud('checkers_points',points);
+                    Promise.resolve(checkersPointsReady).then(()=>sendStatToBackend('checkers_points',points,{statDelta:award}));
+                }
             }
             if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText'),btn=document.getElementById('resBtn');
-            if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText=t('victory');txt.innerText=t('youWon');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText=t('defeat');txt.innerText=t('noMovesOrPieces'); } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText=t('victory');txt.innerText=t('robotDefeated');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText=t('defeat');txt.innerText=t('robotWon'); } } else{ tit.innerText=w==='white'?t('whiteWon'):t('blackWon');txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
+            if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText=t('victory');txt.innerText=t('youWon');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText=t('defeat');txt.innerText=t('noMovesOrPieces'); } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText=t('victory');txt.innerText=`${t('robotDefeated')} · +${{easy:1,medium:2,hard:3}[checkersDifficulty]||2}`;confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText=t('defeat');txt.innerText=t('robotWon'); } } else{ tit.innerText=w==='white'?t('whiteWon'):t('blackWon');txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
             btn.innerText=t('close'); btn.onclick=()=>{ closeResult(); closeGame('checkers'); };
             setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
         }
-        function aiMove(){const pcs=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece&&board[r][c].piece.color==='black')pcs.push({r,c});if(forcedPiece){const ms=getValidMoves(forcedPiece.r,forcedPiece.c,board);if(ms.length>0)executeMove(ms[0]);return;}let all=[];pcs.forEach(p=>{const ms=getValidMoves(p.r,p.c,board);ms.forEach(m=>{let s=0;if(m.isCapture)s+=10;if(m.toR===7)s+=5;if(m.toR>p.r)s+=1;all.push({m,s:s+Math.random()});});});if(all.length>0){all.sort((a,b)=>b.s-a.s);executeMove(all[0].m);}else endGame('white');}
+        function aiMove(){
+            if(!isPvE || isOnlineGame || turn!=='black' || checkersGameFinished || checkersAiPending || !document.getElementById('checkers-screen').classList.contains('visible')) return;
+            const available=[];
+            for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c].piece?.color==='black' && (!forcedPiece || forcedPiece.r===r&&forcedPiece.c===c)) available.push(...getValidMoves(r,c,board));
+            if(!available.length) { endGame('white'); return; }
+            const play=proposed=>{
+                checkersAiPending=false;
+                if(!isPvE || turn!=='black' || checkersGameFinished || !document.getElementById('checkers-screen').classList.contains('visible')) return;
+                const legal=available.find(move=>move.fromR===proposed?.fromR && move.fromC===proposed?.fromC && move.toR===proposed?.toR && move.toC===proposed?.toC) || available.find(move=>move.isCapture) || available[0];
+                executeMove(legal,false);
+            };
+            if(!checkersAiWorker) { play(available.find(move=>move.isCapture)||available[0]); return; }
+            const id=++checkersAiRequest;
+            checkersAiPending=true;
+            checkersAiWorker.onmessage=event=>{ if(event.data.id===id && id===checkersAiRequest) play(event.data.move); };
+            checkersAiWorker.onerror=()=>{ checkersAiWorker?.terminate();checkersAiWorker=null; if(id===checkersAiRequest) play(null); };
+            const cells=board.flatMap(row=>row.map(cell=>cell.piece?(cell.piece.color==='black'?-1:1)*(cell.piece.isKing?2:1):0));
+            checkersAiWorker.postMessage({id,board:cells,level:checkersDifficulty,forced:forcedPiece?forcedPiece.r*8+forcedPiece.c:null});
+        }
         
         /* --- BLOCK BLAST (FIXED) --- */
         const BB_ROWS=8, BB_COLS=8; let bbGrid=[], bbScore=0, bbDisplayedScore=0, bbShapes=[], bbState=null, bbCombo=0, bbComboBuffer=0, bbIsAnimating=false, bbLastComboFilled=-1;
@@ -9527,9 +9571,10 @@
         
         function twResizeCanvas() {
             if(!twCanvas) return;
-            twCanvas.width = window.innerWidth * window.devicePixelRatio;
-            twCanvas.height = window.innerHeight * window.devicePixelRatio;
-            twCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            twCanvas.width = Math.ceil(window.innerWidth * dpr);
+            twCanvas.height = Math.ceil(window.innerHeight * dpr);
+            twCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
         function twResetGame() {

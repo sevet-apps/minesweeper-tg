@@ -6,13 +6,19 @@
     --mc-mythic: #ff4356; }
 .monopoly-pregame .mc-tabs { position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px;margin:14px 0 10px;border-radius:var(--ui-pill);background:var(--ui-track);overflow:hidden;touch-action:pan-y;user-select:none; }
 .monopoly-pregame .mc-tabs:before { content:"";position:absolute;left:4px;top:4px;bottom:4px;width:calc((100% - 8px)/3);border-radius:var(--ui-pill);background:var(--ui-accent);transform:translate3d(calc(var(--mc-tab-progress) * 100%),0,0);transition:transform var(--ui-slide) var(--ui-spring);will-change:transform; }
+.monopoly-pregame .mc-tab-track { display:grid;width:100%;transform:none!important;transition:none;will-change:auto; }
+.monopoly-pregame .mc-tab-panel { grid-area:1/1;width:100%;min-width:0;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(12px);transition:opacity .16s ease,transform .16s ease,visibility 0s .16s; }
+.monopoly-pregame .mc-tab-panel.is-active { opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);transition:opacity .26s ease .12s,transform .34s var(--ui-ease) .12s,visibility 0s; }
 .monopoly-pregame .mc-tab.on { color:#fff; }
 .monopoly-pregame .mc-primary, .monopoly-pregame .mc-secondary, .monopoly-pregame .mc-danger { border:0;border-radius:var(--ui-radius);min-height:48px;padding:0 15px;color:#fff;font:inherit;font-weight:750;cursor:pointer;transition:transform .12s,opacity .2s; }
 .monopoly-pregame .mc-secondary { background:var(--ui-track);color:var(--ui-text); }
 .monopoly-pregame .mc-filter.on { color:#fff;border-color:transparent;background:var(--ui-accent);box-shadow:0 2px 6px #0002; }
 .monopoly-pregame .mc-skin {position:relative;min-width:0;padding:9px 9px 11px;border:1px solid color-mix(in srgb,var(--rc) 52%,transparent);border-radius:20px;background:linear-gradient(150deg,color-mix(in srgb,var(--rc) 8%,var(--ui-surface)),var(--ui-surface));color:var(--text);text-align:left;cursor:pointer;overflow:hidden;transition:transform .2s cubic-bezier(.2,.8,.3,1),box-shadow .2s; }
-.monopoly-pregame .mc-layer { position:fixed;inset:0;z-index:5000;background:var(--ui-scrim);opacity:0;transition:opacity var(--ui-sheet-exit); }
-.monopoly-pregame .mc-layer.on { opacity:1;transition-duration:var(--ui-sheet-enter); }
+.monopoly-pregame .mc-layer { position:fixed;inset:0;z-index:5000;background:transparent;opacity:1;backdrop-filter:none;-webkit-backdrop-filter:none;transition:none; }
+.monopoly-pregame .mc-layer:before { content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background:var(--ui-scrim);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;transition:opacity var(--ui-sheet-enter) var(--ui-ease); }
+.monopoly-pregame .mc-layer.on:before { opacity:var(--mc-backdrop-opacity,1); }
+.monopoly-pregame .mc-layer.mc-dragging:before { transition:none; }
+.monopoly-pregame .mc-layer .mc-sheet { z-index:1; }
 .monopoly-pregame .mc-sheet { position:absolute;left:50%;bottom:0;width:min(480px,100%);max-height:min(88dvh,800px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y;transform:translate3d(-50%,105%,0);border:1px solid rgba(255,255,255,.07);border-bottom:0;border-radius:var(--ui-sheet-radius) var(--ui-sheet-radius) 0 0;background:var(--ui-sheet);color:var(--ui-text);padding:13px 20px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -12px 48px #0002;transition:transform var(--ui-sheet-exit) var(--ui-ease);will-change:transform; }
 .monopoly-pregame .mc-layer.on .mc-sheet { transform:translate3d(-50%,var(--mc-sheet-offset,0px),0);transition-duration:var(--ui-sheet-enter); }
 .monopoly-pregame .mc-grabber { position:relative;width:72px;height:24px;background:transparent;margin:-13px auto 8px;touch-action:none;cursor:grab; }
@@ -32,6 +38,11 @@
 .monopoly-pregame .mc-xp-bar span { display:block; height:100%; border-radius:inherit; background:var(--ui-accent); transform-origin:left; transform:scaleX(var(--xp)); animation:mcXpIn .75s cubic-bezier(.22,1,.36,1); }
 .monopoly-pregame .mc-rank.current { border-color:var(--ui-accent); background:linear-gradient(145deg,var(--ui-accent-soft),transparent),var(--panel); }
 .monopoly-pregame .mc-rank-status { display:flex; align-items:center; justify-content:center; gap:5px; color:var(--ui-accent); font-size:10px; min-height:20px; }
+.monopoly-pregame .mc-rank-emblem { position:relative;width:80px;height:88px;clip-path:none;border:1px solid color-mix(in srgb,var(--rank-accent) 75%,transparent);border-radius:24px 24px 30px 30px;background:linear-gradient(150deg,color-mix(in srgb,var(--rank-accent) 32%,var(--ui-surface)),color-mix(in srgb,var(--rank-accent) 9%,var(--ui-surface)));color:var(--rank-accent);box-shadow:inset 0 1px #fff2,0 10px 24px #0002; }
+.monopoly-pregame .mc-rank-emblem svg { width:48px;height:48px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 5px #0003); }
+.monopoly-pregame .mc-rank-emblem span { position:absolute;bottom:5px;right:8px;color:var(--ui-muted);font-size:11px;letter-spacing:0; }
+.monopoly-pregame .mc-rank.current .mc-rank-emblem { box-shadow:inset 0 1px #fff2,0 0 0 4px var(--ui-accent-soft),0 10px 24px #0003; }
+.monopoly-pregame .mc-rank.locked .mc-rank-emblem { filter:grayscale(1);opacity:.62; }
 html[data-theme="light"] .monopoly-pregame .mc-avatar { background:var(--ui-track); color:var(--ui-text); }
 .monopoly-pregame .mc-layer, .monopoly-pregame .mc-roulette-layer { --panel:var(--ui-surface); --panel-2:var(--ui-track); --text:var(--ui-text); --text-dim:var(--ui-muted); font-family:var(--ui-font); }
 .monopoly-pregame .mc-page button, .monopoly-pregame .mc-layer button { font-family:var(--ui-font); }
@@ -52,4 +63,6 @@ html[data-theme="light"] .monopoly-pregame .mc-tabs:before { background:var(--ui
 
 .monopoly-pregame .mc-sheet:focus { outline:none; }
 .monopoly-pregame .mc-map button { border-color:var(--ui-border); }
+.monopoly-pregame .mc-map button.on .mc-map-action { color:var(--ui-accent); }
 .monopoly-pregame .mc-sheet-head { position:sticky;top:-13px;z-index:3;margin-inline:-20px;padding:8px 20px;background:var(--ui-sheet); }
+@media(prefers-reduced-motion:reduce) { .monopoly-pregame .mc-tab-panel { transition:none;transform:none; } }

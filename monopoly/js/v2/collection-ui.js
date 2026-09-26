@@ -80,12 +80,9 @@
         logoPreloads.set(src, { image, promise });
         return promise;
     }
-    function preloadCatalogLogos(catalog) {
-        (catalog?.skins || []).forEach(skin => preloadLogo(skin.asset));
-    }
-    function logoHtml(skin, className = '') {
+    function logoHtml(skin, className = '', lazy = false) {
         if (!skin?.asset) return '';
-        return `<span class="mc-logo-frame${className ? ' ' + esc(className) : ''}" data-layout="${esc(skin.layout || 'badge')}"><img src="${esc(asset(skin.asset))}" alt="" draggable="false" decoding="async"></span>`;
+        return `<span class="mc-logo-frame${className ? ' ' + esc(className) : ''}" data-layout="${esc(skin.layout || 'badge')}"><img src="${esc(asset(skin.asset))}" alt="" draggable="false" decoding="async"${lazy ? ' loading="lazy"' : ''}></span>`;
     }
     function selectionHaptic() {
         try { global.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch (_) {}
@@ -117,19 +114,16 @@
         renderLoading();
         try {
             current = await request('/api/monopoly/collection/me');
-            preloadCatalogLogos(current.catalog);
             render();
         } catch (error) { renderError(error); }
     }
     async function refresh() {
         current = await request('/api/monopoly/collection/me');
-        preloadCatalogLogos(current.catalog);
         render();
     }
     async function loadSelf() {
         if (!current) {
             current = await request('/api/monopoly/collection/me');
-            preloadCatalogLogos(current.catalog);
         }
         return current;
     }
@@ -150,12 +144,12 @@
     function render() {
         const root = $('#monoCollectionRoot');
         if (!root || !current) return;
-        preloadCatalogLogos(current.catalog);
         if (!root.querySelector('.mc-page')) buildShell(root);
         updateProfile(root);
         renderProgressPanel(root);
         renderCasesPanel(root);
-        renderSkinsPanel(root, { animate: false });
+        root.dataset.skinsDirty='1';
+        if (activeTab==='skins') { renderSkinsPanel(root,{animate:false}); delete root.dataset.skinsDirty; }
         setTab(activeTab, false);
         const account = current.account || {};
         const inventory = current.inventory || [];
@@ -198,7 +192,7 @@
             const index = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (TAB_IDS.indexOf(activeTab) + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
             setTab(TAB_IDS[index], true); root.querySelectorAll('.mc-tab')[index].focus();
         });
-        bindTabDrag(root);
+        if (!document.body.classList.contains('monopoly-pregame')) bindTabDrag(root);
         panelObserver?.disconnect();
         if (global.ResizeObserver) {
             panelObserver = new global.ResizeObserver(syncViewportHeight);
@@ -222,6 +216,19 @@
         const progress = title ? (next ? Math.min(1, (points - title.from) / (next.from - title.from)) : 1) : 0;
         const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>';
         const lock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+        const rankMarks = [
+            '<path d="M18 23a6 6 0 1 1 6 6h-9v6h-5v-8l7-7"/><circle cx="23" cy="23" r="1"/>',
+            '<path d="M10 37V15h28v22H10ZM17 15v-5h14v5M20 37V26h8v11"/>',
+            '<path d="m9 23 15-13 15 13v14H9V23Zm10 14V26h10v11"/><circle cx="34" cy="15" r="4"/>',
+            '<path d="m7 23 17-15 17 15M11 21v20h26V21M20 41V29h8v12"/>',
+            '<path d="M9 38h30M13 32l8-9 6 5 10-15M30 13h7v7"/>',
+            '<path d="M8 39h32M12 39V20h9v19M21 39V10h8v29M29 39V25h8v14M18 15h3M27 16h2"/>',
+            '<path d="m6 19 18-10 18 10H6ZM10 22v15M18 22v15M30 22v15M38 22v15M7 40h34"/>',
+            '<path d="M8 39h32M11 39V24h7v15M20 39V15h8v24M30 39V20h7v19M23 10h2"/>',
+            '<path d="m7 17 9 7 8-14 8 14 9-7-4 21H11L7 17ZM14 42h20"/>',
+            '<path d="m24 7 4 10 11 1-8 8 2 11-9-6-9 6 2-11-8-8 11-1 4-10ZM8 39l6 3M40 39l-6 3"/>'
+        ];
+        const rankPalette = ['#7b9ac4','#7daee8','#66a5f4','#468dff','#6f8ef9','#4278e5','#6e75dd','#4564ce','#4665da','#d4a649'];
         panel.innerHTML = `<section class="mc-experience">
             <div class="mc-xp-heading"><div><small>Ваше звание</small><h3>${esc(title?.name || 'Рейтинг')}</h3></div><b>${compact(points)} <small>очков</small></b></div>
             <div class="mc-xp-bar" role="progressbar" aria-label="Прогресс звания" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><span style="--xp:${progress}"></span></div>
@@ -231,7 +238,7 @@
         <div class="mc-ranks-heading"><h3>Все звания</h3><div><button class="mc-rank-prev" aria-label="Предыдущее звание">${arrow}</button><button class="mc-rank-next" aria-label="Следующее звание">${arrow}</button></div></div>
         <div class="mc-ranks" tabindex="0" aria-label="Все звания">${titles.map((rank, i) => `<article class="mc-rank ${i === index ? 'current' : ''} ${points < rank.from ? 'locked' : ''}" data-rank="${i}">
             <div class="mc-rank-status">${points < rank.from ? lock + '<span>Закрыто</span>' : i === index ? '<span>Текущее звание</span>' : '<span>Получено</span>'}</div>
-            <div class="mc-rank-emblem" style="--rank-hue:${145 + i * 15}"><span>${String(i + 1).padStart(2, '0')}</span></div>
+            <div class="mc-rank-emblem" style="--rank-accent:${rankPalette[i] || '#0a84ff'}"><svg viewBox="0 0 48 48" aria-hidden="true">${rankMarks[i] || rankMarks[0]}</svg><span>${String(i + 1).padStart(2, '0')}</span></div>
             <h4>${esc(rank.name)}</h4><p>${compact(rank.from)} <span>очков</span></p>
             <small>${points < rank.from ? `${compact(rank.from - points)} · <span>до открытия</span>` : '<span>Звание открыто</span>'}</small>
         </article>`).join('')}</div>`;
@@ -327,7 +334,7 @@
         const equipped = !duplicate && loadout.some(item => item.skin_id === skin.id);
         return `<button class="mc-skin${duplicate ? ' is-duplicate' : ''}" data-skin="${esc(skin.id)}" data-copy="${copyIndex}" data-rarity="${skin.rarity}" data-layout="${skin.layout}">
             ${duplicate ? '<span class="mc-duplicate-badge">Повторка</span>' : ''}
-            <div class="mc-skin-img">${logoHtml(skin)}</div>
+            <div class="mc-skin-img">${logoHtml(skin,'',true)}</div>
             <b>${esc(skin.name)}</b><small>${RARITY[skin.rarity]?.[0] || skin.rarity}${equipped ? ' · установлена' : ''}</small>
         </button>`;
     }
@@ -362,6 +369,12 @@
         page.style.setProperty('--mc-tab-progress', tabProgress);
         const panels = page.querySelectorAll('.mc-tab-panel');
         const viewport = page.querySelector('.mc-tab-viewport');
+        if (document.body.classList.contains('monopoly-pregame')) {
+            const index=Math.round(tabProgress);
+            panels.forEach((panel,i)=>panel.classList.toggle('is-active',i===index));
+            if (viewport) viewport.style.height=Math.round(panels[index]?.scrollHeight||0)+'px';
+            return;
+        }
         if (viewport && panels.length === 3) {
             if (viewport.scrollLeft) viewport.scrollLeft = 0;
             const index = Math.min(1, Math.floor(tabProgress)), mix = tabProgress - index;
@@ -370,6 +383,8 @@
     }
     function setTab(tab, animate = true) {
         activeTab = TAB_IDS.includes(tab) ? tab : 'progress';
+        const root=$('#monoCollectionRoot');
+        if (activeTab==='skins' && root?.dataset.skinsDirty==='1') { renderSkinsPanel(root,{animate:false}); delete root.dataset.skinsDirty; }
         const page = $('#monoCollectionRoot .mc-page');
         if (!page) return;
         page.classList.toggle('mc-no-tab-motion', !animate);
@@ -485,8 +500,10 @@
         const progress = Math.min(1, distance / Math.max(280, sheet.offsetHeight * .72));
         sheet.style.setProperty('--mc-sheet-offset', `${distance}px`);
         const pregame = document.body.classList.contains('monopoly-pregame');
-        el.style.backgroundColor = `rgba(0,0,0,${((pregame ? .48 : .54) * (1 - progress)).toFixed(3)})`;
-        if (!pregame) {
+        if (pregame) {
+            el.style.setProperty('--mc-backdrop-opacity', String(1 - progress));
+        } else {
+            el.style.backgroundColor = `rgba(0,0,0,${(.54 * (1 - progress)).toFixed(3)})`;
             el.style.backdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
             el.style.webkitBackdropFilter = `blur(${(13 * (1 - progress)).toFixed(2)}px)`;
         }
@@ -498,6 +515,7 @@
         el.style.removeProperty('background-color');
         el.style.removeProperty('backdrop-filter');
         el.style.removeProperty('-webkit-backdrop-filter');
+        el.style.removeProperty('--mc-backdrop-opacity');
     }
     function bindSheetDrag(el) {
         const sheet = el.querySelector('.mc-sheet');
