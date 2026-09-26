@@ -34,6 +34,31 @@ test('effects have a hard particle budget even for a completely full board', () 
     assert.equal(visuals.particleBudget(0, false, false), 0);
 });
 
+test('monochrome materials keep their own line-preview colour', () => {
+    assert.equal(visuals.previewGlowHex('ice', '#ff3b30'), '#8bd5ed');
+    assert.equal(visuals.previewGlowHex('wood', '#007aff'), '#c28d61');
+    assert.equal(visuals.previewGlowHex('honey', '#34c759'), '#f5a409');
+    assert.equal(visuals.previewGlowHex('jelly', '#34c759'), '#34c759');
+});
+
+test('Block Blast volume scales every sample and zero volume avoids starting audio', () => {
+    const gains = [];
+    let contexts = 0, starts = 0;
+    let volume = 25;
+    const context = vm.createContext({
+        BBVisuals: { volume: () => volume },
+        getBBAudioCtx() { contexts++; return { createBufferSource: () => ({ connect() {}, start() { starts++; } }), createGain: () => { const gain = { gain: {}, connect() {} }; gains.push(gain); return gain; }, destination: {} }; },
+        bbSoundBuffers: { place: {} }, bbInitSounds() {},
+    });
+    vm.runInContext(extract('bbPlaySample'), context);
+    context.bbPlaySample('place', .9);
+    assert.equal(gains[0].gain.value, .225);
+    volume = 0;
+    context.bbPlaySample('place', .9);
+    assert.equal(contexts, 1);
+    assert.equal(starts, 1);
+});
+
 test('a replacement score animation cancels the previous target and cleanup leaves no frame', () => {
     let clock = 0, next = 0, shown = 0;
     const frames = new Map();
@@ -95,9 +120,11 @@ test('line and all-clear bonuses settle before saving and cannot be lost on imme
 
 test('every crossed-line fragment receives the triggering piece colour instead of the old board colours', () => {
     let snapshots;
+    let shakeFrames;
     const cells = Array.from({ length: 64 }, (_, i) => ({ className: 'bb-cell filled bb-c-' + (i % 7 + 1), removeAttribute() {} }));
     const gridElement = { getBoundingClientRect: () => ({ width: 350 }), querySelectorAll: () => [], appendChild() {} };
-    const document = { createElement: () => ({ className: '', setAttribute() {}, style: { setProperty() {} }, animate: () => ({}) }), querySelector: () => null, currentScript: { src: 'https://example.test/assets/block-blast/visuals.js' }, hidden: false,
+    const container = { animate: frames => { shakeFrames = frames; return { cancel() {} }; } };
+    const document = { createElement: () => ({ className: '', setAttribute() {}, style: { setProperty() {} }, animate: () => ({}) }), querySelector: selector => selector === '.bb-game-container' ? container : null, currentScript: { src: 'https://example.test/assets/block-blast/visuals.js' }, hidden: false,
         body: { classList: { contains: () => false } }, addEventListener() {}, getElementById: () => gridElement };
     const window = { document, matchMedia: () => ({ matches: false }), BBMaterialMotion: { create: () => ({ clear: (theme, items) => { snapshots = items; } }) } };
     vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/block-blast/visuals.js'), 'utf8'), {
@@ -107,6 +134,7 @@ test('every crossed-line fragment receives the triggering piece colour instead o
     assert.equal(snapshots.length, 15);
     assert.ok(snapshots.every(cell => cell.color === 1));
     assert.ok(snapshots.every(cell => cell.cell.className === 'bb-cell'));
+    assert.match(shakeFrames[1].transform, /-6\.15px/);
 });
 
 test('touch cancellation never commits a placement and a queued final move is flushed', () => {
@@ -213,6 +241,9 @@ test('ice preview has independent cell phases and clear feedback respects the sa
         assert.equal(rims.length, 1);
         assert.equal(styles.get('--bb-clear-color'), '#8bd5ed', 'rim follows the visible ice palette');
         assert.equal(animations.length, shake === 'on' ? 1 : 0);
-        if (animations.length) assert.equal(animations[0].timing.duration, 260);
+        if (animations.length) {
+            assert.equal(animations[0].timing.duration, 310);
+            assert.match(animations[0].frames[1].transform, /-5px/);
+        }
     }
 });
