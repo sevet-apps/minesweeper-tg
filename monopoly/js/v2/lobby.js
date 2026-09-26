@@ -286,7 +286,7 @@
         });
     }
     function refreshRooms() {
-        if (!connected) return;
+        if (!connected || document.hidden || $('#lobby').style.display === 'none') return;
         net().socket().emit('m2:rooms', null, list => { rooms = list || []; renderRooms(); });
         checkMyGame();
     }
@@ -527,6 +527,7 @@
 
     /* ---------- запуск игры ---------- */
     function startGame(mode) {
+        killDuck();
         document.body.classList.remove('monopoly-pregame');
         $('#lobby').style.display = 'none';
         $('#game').style.display = '';
@@ -617,13 +618,16 @@
     }
     function animateSheet(sheet, opening) {
         const card = sheet.querySelector('.lb-card');
+        let backdrop = sheet.querySelector('.lb-sheet-backdrop');
+        if (!backdrop) { backdrop = document.createElement('div'); backdrop.className = 'lb-sheet-backdrop'; sheet.prepend(backdrop); }
         const from = opening ? 'translateY(100%)' : getComputedStyle(card).transform;
         card.getAnimations().forEach(animation => animation.cancel());
         card.style.transform = '';
         const reduce = global.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        const opacity = opening ? 0 : getComputedStyle(sheet).opacity;
-        sheet.getAnimations().forEach(animation => animation.cancel());
-        sheet.animate([{ opacity }, { opacity:opening ? 1 : 0 }], { duration:reduce ? 0 : 300, fill:'both' });
+        const opacity = opening ? 0 : getComputedStyle(backdrop).opacity;
+        backdrop.getAnimations().forEach(animation => animation.cancel());
+        backdrop.style.opacity = opening ? '1' : '0';
+        backdrop.animate([{ opacity }, { opacity:opening ? 1 : 0 }], { duration:reduce ? 0 : opening ? 460 : 320, fill:'both' });
         const enterMs = parseFloat(getComputedStyle(card).getPropertyValue('--ui-sheet-enter')) || 580;
         card.animate([{ transform: from === 'none' ? 'translateY(0)' : from }, { transform: opening ? 'translateY(0)' : 'translateY(110%)' }],
             { duration: reduce ? 0 : opening ? enterMs : 320, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
@@ -642,12 +646,19 @@
             const distance = y - drag.y;
             if (!drag.active && distance < 7) return;
             if (!drag.active && !drag.fromHeader && card.scrollTop > 0) { drag = null; return; }
-            if (!drag.active) { card.getAnimations().forEach(a => a.cancel()); drag.active = true; }
+            if (!drag.active) {
+                card.getAnimations().forEach(a => a.cancel());
+                const backdrop = sheet.querySelector('.lb-sheet-backdrop');
+                if (backdrop) { const opacity = getComputedStyle(backdrop).opacity; backdrop.getAnimations().forEach(a => a.cancel()); backdrop.style.opacity = opacity; }
+                drag.active = true;
+            }
             if (event.cancelable) event.preventDefault();
             const now = performance.now();
             drag.velocity = (y - drag.lastY) / Math.max(1, now - drag.lastAt);
             drag.lastY = y; drag.lastAt = now;
             card.style.transform = 'translateY(' + Math.max(0, distance) + 'px)';
+            const backdrop = sheet.querySelector('.lb-sheet-backdrop');
+            if (backdrop) backdrop.style.opacity = String(Math.max(0,1-distance/Math.max(280,card.offsetHeight*.85)));
         };
         const finish = (cancelled = false) => {
             if (!drag) return;
@@ -658,6 +669,8 @@
             else if (wasActive) {
                 const from = card.style.transform; card.style.transform = '';
                 card.animate([{transform:from},{transform:'translateY(0)'}], {duration:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 280,easing:'cubic-bezier(.22,1,.36,1)'});
+                const backdrop = sheet.querySelector('.lb-sheet-backdrop');
+                if (backdrop) { const fromOpacity = getComputedStyle(backdrop).opacity; backdrop.style.opacity = '1'; backdrop.animate([{opacity:fromOpacity},{opacity:1}],{duration:280,fill:'both'}); }
             }
         };
         card.addEventListener('touchstart', e => { if (e.touches.length === 1) begin(e.touches[0].clientY,e.target); }, {passive:true});

@@ -22,7 +22,7 @@ function app(url) {
     const styles = [...s.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[0]).join('\n');
     let body = s.slice(s.indexOf('<body>')+6,s.lastIndexOf('</body>')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,'');
     body = body.replace(/<div class="app-loader"[\s\S]*?<\/div>/,'');
-    const names = ['setSaperDiff','selectSudokuDiff','setCheckersMainMode','setCheckersMode','openSettingsSheet','closeSettingsSheet','applyLiteMode','applyVibration','applySounds','showReferralConditions','hideReferralConditions','setProfileSection','openPrivacyPolicy','closePrivacyPolicy','renderBBModeCards','updateBBModeSlider','bbModeGoTo','bbModeStep','attachBBModeSwipe'];
+    const names = ['setSaperDiff','selectSudokuDiff','setCheckersMainMode','setCheckersMode','setCheckersDifficulty','openSettingsSheet','closeSettingsSheet','applyLiteMode','applyVibration','applySounds','showReferralConditions','hideReferralConditions','setProfileSection','openPrivacyPolicy','closePrivacyPolicy','renderBBModeCards','updateBBModeSlider','bbModeGoTo','bbModeStep','attachBBModeSwipe'];
     const functions = names.map(name=>extract(s,name)).join('\n');
     const dictionary = s.slice(s.indexOf('const translations ='),s.indexOf('        function t(key)'));
     const drag = s.slice(s.indexOf('(function initProfileSegmentDrag()'),s.indexOf('        function toggleProfileGameStats'));
@@ -46,8 +46,12 @@ function launchSaper(){document.getElementById('modalSaper').dataset.selection=[
 function startSudoku(){document.getElementById('modalSudoku').dataset.selection=selectedSudoDiff;document.getElementById('modalSudoku').classList.remove('visible')}
 function launchCheckers(){document.getElementById('modalCheckers').dataset.selection=isPvE;document.getElementById('modalCheckers').classList.remove('visible')}
 function openMonopolyLobby(){location.href='/monopoly/qa?theme='+document.documentElement.dataset.theme}
-function joinGame(){document.getElementById('modalCheckers').classList.remove('visible');document.getElementById('modalWaitOpponent').classList.add('visible')}
-function joinGameByCode(){joinGame()}function createGame(){joinGame()}function cancelOnlineWait(){document.getElementById('modalWaitOpponent').classList.remove('visible')}
+function showResult(title,message,label){document.getElementById('resTitle').textContent=title;document.getElementById('resText').textContent=message;document.getElementById('resBtn').textContent=label;document.getElementById('modalResult').classList.add('visible')}
+function closeResult(){document.getElementById('modalResult').classList.remove('visible')}
+function joinGame(){showResult('Найти соперника','Поиск пока недоступен','Закрыть')}
+function joinGameByCode(){document.getElementById('joinCodeInput').blur();document.getElementById('modalWaitOpponent').classList.add('visible')}
+function createGame(){document.getElementById('modalWaitOpponent').classList.add('visible')}
+function cancelOnlineWait(){document.getElementById('modalWaitOpponent').classList.remove('visible')}
 function toggleDropdown(){document.getElementById('lbDropdown').classList.toggle('show')}
 function setBBLbMode(mode){document.getElementById('bbLbSegment').classList.toggle('tournament-mode',mode==='tournament');document.querySelectorAll('.bb-lb-segment-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode))}
 document.getElementById('user-name').textContent='Святослав';document.getElementById('user-id').textContent='@svyatoslav';document.getElementById('profileFavoriteName').textContent='Блок Бласт';document.getElementById('profileFavoriteTime').textContent='12 ч 40 мин';document.getElementById('bbLbSegment').style.display='flex';qaScreen('games');

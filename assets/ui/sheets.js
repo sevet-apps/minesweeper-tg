@@ -9,7 +9,8 @@
     function bindDrag(panel, close) {
         if (bound.has(panel)) return;
         let drag = null;
-        const reset = () => { drag = null; panel.classList.remove('dragging'); panel.style.transform = ''; };
+        const overlay = panel.parentElement;
+        const reset = () => { drag = null; panel.classList.remove('dragging'); panel.style.transform = ''; overlay?.classList.remove('backdrop-dragging'); overlay?.style.removeProperty('--ui-backdrop-opacity'); };
         bound.set(panel, reset);
         const begin = (x, y, target) => {
             if (target.closest('button,a,input,select,textarea,[role="switch"],[role="tablist"],.segment-control')) return false;
@@ -27,12 +28,15 @@
                 const transform = root.getComputedStyle(panel).transform;
                 drag.offset = transform === 'none' ? 0 : new root.DOMMatrixReadOnly(transform).m42;
                 panel.classList.add('dragging'); drag.active = true;
+                overlay?.classList.add('backdrop-dragging');
             }
             if (event.cancelable) event.preventDefault();
             const now = performance.now();
             drag.velocity = (y-drag.lastY) / Math.max(1,now-drag.time);
             drag.lastY = y; drag.time = now;
-            panel.style.transform = `translate3d(0,${Math.max(0,distance+drag.offset)}px,0)`;
+            const offset = Math.max(0,distance+drag.offset);
+            panel.style.transform = `translate3d(0,${offset}px,0)`;
+            overlay?.style.setProperty('--ui-backdrop-opacity',String(Math.max(0,1-offset/Math.max(280,panel.offsetHeight*.85))));
         };
         const finish = (cancelled=false) => {
             if (!drag) return;
@@ -55,6 +59,7 @@
         const doc = root.document;
         const definitions = [
             ['modalSaper',null], ['modalSudoku',null], ['modalCheckers',null],
+            ['modalResult','closeResult',true], ['modalLoading',null,true], ['modalWaitOpponent','cancelOnlineWait',true],
             ['settingsSheet','closeSettingsSheet'], ['referralConditionsSheet','hideReferralConditions'],
             ['titleDetailOverlay','closeTitleDetail'], ['titleChoiceOverlay','closeTitleChoiceMenu'],
             ['privacyScreen','closePrivacyPolicy',true], ['titleLibraryOverlay','closeTitleLibrary',true]
@@ -62,7 +67,7 @@
         const sheets = definitions.map(([id, handler, fullScreen]) => {
             const overlay = doc.getElementById(id);
             if (!overlay) return null;
-            const panel = overlay.matches('.privacy-screen') ? overlay : overlay.querySelector('.ui-mode-panel,.bottom-sheet,.title-bottom-sheet,.title-library-sheet');
+            const panel = overlay.matches('.privacy-screen') ? overlay : overlay.querySelector('.ui-mode-panel,.bottom-sheet,.title-bottom-sheet,.title-library-sheet,.modal');
             if (!panel) return null;
             const close = () => { if (handler && typeof root[handler] === 'function') root[handler](); else overlay.classList.remove('visible'); };
             panel.tabIndex = -1; panel.setAttribute('role','dialog'); panel.setAttribute('aria-modal','true');

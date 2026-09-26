@@ -121,8 +121,9 @@ test('collection UI uses compact roulette cells, random landing position and dra
     assert.match(collectionUi, /ROULETTE_EASING = \[\.08, \.74, \.14, 1\]/);
     assert.match(collectionUi, /trackRouletteHaptics/);
     assert.match(collectionUi, /feedback\.impactOccurred\('light'\)/);
-    assert.match(collectionUi, /function preloadCatalogLogos/);
-    assert.match(collectionUi, /preloadCatalogLogos\(current\.catalog\)/);
+    assert.doesNotMatch(collectionUi, /function preloadCatalogLogos/,
+        'the 96 company logos must load lazily rather than warming the whole catalog on mobile');
+    assert.match(collectionUi, /loading="lazy"/);
     assert.doesNotMatch(collectionUi, /decodeLogos\(reel\)/);
     assert.match(collectionCss, /\.mc-reel-item > \.mc-reel-name/);
     assert.doesNotMatch(collectionCss, /\.mc-reel-item span\s*\{/);

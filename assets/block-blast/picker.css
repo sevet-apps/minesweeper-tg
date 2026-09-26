@@ -1,7 +1,8 @@
-/* Match the app's neutral settings sheets and blue controls. No backdrop filters. */
+/* Match the app's neutral settings sheets and blue controls. */
 .bb-picker-overlay { position: fixed; inset: 0; z-index: 24000; isolation: isolate; color: var(--text-color); touch-action: none; }
 .bb-picker-overlay[hidden] { display: none !important; }
-.bb-picker-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.48); opacity: 0; }
+.bb-picker-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.48); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); opacity: 0; }
+body.lite-mode .bb-picker-backdrop, body.android-opt .bb-picker-backdrop { backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
 .bb-picker-panel { position: absolute; bottom: 0; left: 0; right: 0; margin: 0 auto; width: min(100%,480px); max-height: min(90vh,760px); max-height: min(90dvh,760px); display: flex; flex-direction: column; background: var(--sheet-bg); border: 1px solid var(--glass-border); border-bottom: 0; border-radius: 22px 22px 0 0; padding: 0 0 max(14px,env(safe-area-inset-bottom)); box-sizing: border-box; transform: translate3d(0,100%,0); outline: none; overflow: hidden; contain: layout style; }
 .bb-picker-header { flex: 0 0 auto; touch-action: none; cursor: grab; }
 .bb-picker-header.is-dragging { cursor: grabbing; }

@@ -28,7 +28,9 @@ rendering and material effects separate from the application controls.
   controls and scrolled content must not accidentally dismiss it.
 - A sticky heading can be dragged even when the body is scrolled. Escape closes
   the top sheet; keyboard focus stays inside it and returns when it closes.
-- Avoid animated backdrop blur. Use a neutral scrim, opacity and transforms.
+- Sheets stay fully opaque. A fixed 5px blur and neutral scrim fade in on the
+  layer behind the sheet; dragging down reduces that layer's opacity in step
+  with the sheet. Lightweight mode uses 2px blur. Do not animate blur radius.
 
 ## Scope
 
@@ -43,8 +45,8 @@ Monopoly uses `lobby.css` and the scoped `collection-pregame.css`. The
 
 ## Verification
 
-Run `node --test server/test/*.test.js` (126 tests at this revision).
-Nine shared-sheet tests cover touch cancellation, parallel pointer cancellation,
+Run `node --test server/test/*.test.js` (132 tests at this revision).
+Ten shared-sheet tests cover touch cancellation, parallel pointer cancellation,
 scrolling, horizontal gestures, header dragging, mouse taps, interrupted entrance
 and duplicate binding. Existing tests cover Monopoly tabs and sheet interactions.
 
@@ -62,6 +64,8 @@ choices, settings, nested privacy, Monopoly create/join/bots/waiting room,
 profile ranks/cases/companies and case preview. Verified keyboard selection,
 Escape/focus restoration, drag dismissal, scrolling and equal pill widths.
 Recorded opening positions showed no reversal or centre-to-bottom jump.
+Monopoly profile tabs now replace one another with a short exit and rising
+entrance, while the in-match collection keeps its original interaction.
 
 Responsive browser review does not replace a real iPhone Telegram WebView check
 for device-specific frame pacing, haptics and the native keyboard.

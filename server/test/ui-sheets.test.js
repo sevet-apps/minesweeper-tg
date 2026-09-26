@@ -9,8 +9,10 @@ const source = fs.readFileSync(path.join(__dirname,'../../assets/ui/sheets.js'),
 
 function harness({scroll=0,interactive=false,offset=0,fromHeader=false}={}) {
     const handlers={},classes=new Set(),captures=[];
+    const backdropClasses=new Set(),backdropProperties=new Map();
+    const overlay={classList:{add:c=>backdropClasses.add(c),remove:c=>backdropClasses.delete(c)},style:{setProperty:(k,v)=>backdropProperties.set(k,v),removeProperty:k=>backdropProperties.delete(k)}};
     let closes=0,time=100;
-    const panel={scrollTop:scroll,offsetHeight:400,style:{},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c)},contains:el=>el===target||el===panel,
+    const panel={parentElement:overlay,scrollTop:scroll,offsetHeight:400,style:{},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c)},contains:el=>el===target||el===panel,
         addEventListener:(type,fn)=>handlers[type]=fn,hasPointerCapture:()=>captures.length>0,setPointerCapture:id=>captures.push(id)};
     const target={scrollTop:0,parentElement:panel,closest:selector=>(interactive||fromHeader&&selector.includes('.ui-sheet-topbar'))?{}:null};
     const window={getComputedStyle:()=>({transform:offset?'matrix(1,0,0,1,0,40)':'none'}),DOMMatrixReadOnly:class {constructor(){this.m42=offset}}};
@@ -19,7 +21,7 @@ function harness({scroll=0,interactive=false,offset=0,fromHeader=false}={}) {
     window.SparkSheets.bindDrag(panel,()=>closes++);
     const touch=(type,x,y)=>{time+=30;handlers[type]({touches:[{clientX:x,clientY:y}],target,cancelable:true,preventDefault(){}})};
     const pointer=(type,x,y,pointerType='mouse')=>{time+=30;handlers[type]({clientX:x,clientY:y,pointerType,pointerId:5,button:0,target,cancelable:true,preventDefault(){}})};
-    return {panel,touch,pointer,captures,classes,closes:()=>closes};
+    return {panel,touch,pointer,captures,classes,backdropClasses,backdropProperties,closes:()=>closes};
 }
 test('sheets require distance or a recent deliberate flick, and cancellation always returns home',()=>{
     assert.equal(shouldDismiss(110,0,500,400,false),true);
@@ -35,6 +37,15 @@ test('touch dismissal survives cancellation of the parallel pointer stream',()=>
 test('touch cancellation returns a dragged sheet without closing',()=>{
     const h=harness();h.touch('touchstart',100,100);h.touch('touchmove',100,300);h.touch('touchcancel',100,300);
     assert.equal(h.closes(),0);assert.equal(h.panel.style.transform,'');
+});
+test('backdrop blur and dimming fade proportionally while dragging and recover on cancel',()=>{
+    const h=harness();h.touch('touchstart',100,100);h.touch('touchmove',100,150);
+    const opacity=Number(h.backdropProperties.get('--ui-backdrop-opacity'));
+    assert.ok(opacity>0 && opacity<1);
+    assert.ok(h.backdropClasses.has('backdrop-dragging'));
+    h.touch('touchcancel',100,150);
+    assert.equal(h.backdropProperties.size,0);
+    assert.equal(h.backdropClasses.size,0);
 });
 test('controls and scrolled contents never initiate a sheet dismissal',()=>{
     for(const options of [{scroll:20},{interactive:true}]){

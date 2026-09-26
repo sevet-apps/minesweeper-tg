@@ -307,6 +307,7 @@ const SCORE_LIMITS = {
     'saper_best_15':      { min: 1, max: 86400 },
     'checkers_total':     { min: 1, max: 10000000 },
     'checkers_wins_pve':  { min: 1, max: 10000000 },
+    'checkers_points':    { min: 1, max: 30000000 },
     'sudoku_wins':        { min: 1, max: 10000000 },
     'tower_best':         { min: 1, max: 10000000 },
     'tower_combo':        { min: 1, max: 10000000 },
@@ -354,6 +355,7 @@ const MIN_GAME_DURATION = {
     'sudoku_wins': 10000,        // Sudoku takes at least 10 sec
     'wordle_wins': 3000,         // Wordle at least 3 sec
     'checkers_wins_pve': 15000,  // Checkers game at least 15 sec
+    'checkers_points': 15000,
 };
 
 // Generate session token (HMAC-signed, can't be forged by client)
@@ -1250,6 +1252,7 @@ const GAME_NAMES = {
     'saper_best_10': { ru: 'Сапёр 10×10', category: 'Лучшее время' },
     'saper_best_15': { ru: 'Сапёр 15×15', category: 'Лучшее время' },
     'checkers_wins_pve': { ru: 'Шашки', category: 'Победы' },
+    'checkers_points': { ru: 'Шашки', category: 'Очки' },
     'sudoku_wins': { ru: 'Судоку', category: 'Победы' },
     'tower_best': { ru: 'Башня', category: 'Лучший результат' },
     'tower_combo': { ru: 'Башня', category: 'Лучшее комбо' },
@@ -1501,7 +1504,7 @@ async function recordSavedStatTitles({
     } else {
         const games = {
             bb_total_games: 'bb', saper_wins: 'saper', checkers_total: 'checkers',
-            checkers_wins_pve: 'checkers', tower_combo: 'tower',
+            checkers_wins_pve: 'checkers', checkers_points: 'checkers', tower_combo: 'tower',
         };
         event.game = games[gameType] || null;
     }
@@ -1536,7 +1539,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Invalid score' });
     }
 
-    const completedSubmissionKey = game_type === 'sudoku_wins' && session_token
+    const completedSubmissionKey = (game_type === 'sudoku_wins' || game_type === 'checkers_points') && session_token
         ? `${user_id}:${game_type}:${session_token}`
         : null;
     if (completedSubmissionKey) {
@@ -1549,7 +1552,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     
     // ---- SESSION VALIDATION ----
     // Counter games (wins, total) don't need sessions — they increment by 1
-    const isCounter = ['saper_wins', 'bb_total_games', 'checkers_total', 'checkers_wins_pve', 'sudoku_wins', 'wordle_wins'].includes(game_type);
+    const isCounter = ['saper_wins', 'bb_total_games', 'checkers_total', 'checkers_wins_pve', 'checkers_points', 'sudoku_wins', 'wordle_wins'].includes(game_type);
     
     // tower_combo shares session with tower_best (same game, submitted together)
     // bb_tournament_score shares session with bb_best_score (identical gameplay)
@@ -1557,13 +1560,13 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
         (game_type === 'tower_combo')         ? 'tower_best'    :
         (game_type === 'bb_tournament_score') ? 'bb_best_score' :
         game_type;
-    const needsSession = !isCounter || game_type === 'sudoku_wins';
+    const needsSession = !isCounter || game_type === 'sudoku_wins' || game_type === 'checkers_points';
     
     if (needsSession) {
         const key = `${user_id}:${sessionGameType}`;
         let session = gameSessions.get(key);
         if ((!session || session.token !== session_token) &&
-            (TIME_BASED_TYPES.includes(game_type) || game_type === 'sudoku_wins')) {
+            (TIME_BASED_TYPES.includes(game_type) || game_type === 'sudoku_wins' || game_type === 'checkers_points')) {
             const recoveredStartTime = readSignedSessionStart(user_id, sessionGameType, session_token);
             if (recoveredStartTime !== null) {
                 session = {
@@ -1599,6 +1602,9 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             gameSessions.delete(key);
             return res.status(400).json({ error: 'Insufficient gameplay' });
         }
+        if (game_type === 'checkers_points' && session.moveCount < 3 && !session.recoveredAfterRestart) {
+            return res.status(400).json({ error: 'Insufficient checkers moves' });
+        }
         
         // Score-to-moves ratio check (only for non-BB games, BB is validated per-move)
         const SCORE_PER_MOVE_MAX = {
@@ -1632,7 +1638,7 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
             session.bbEnded = true;
             session.finishedAt = Date.now();
         // Session used — delete it (but keep for tower_combo if tower_best was just saved)
-        } else if (game_type === 'sudoku_wins') {
+        } else if (game_type === 'sudoku_wins' || game_type === 'checkers_points') {
             // Keep the signed token until the database increment succeeds. If
             // the network drops after saving, the completed response cache
             // makes the retry idempotent instead of awarding points twice.
@@ -1650,8 +1656,9 @@ app.post('/save-stat', authMiddleware, async (req, res) => {
     if (isCounter) {
         // Older cached clients did not send stat_delta. Preserve their +1
         // behavior while current clients submit the difficulty award (1..3).
-        const delta = game_type === 'sudoku_wins' ? Number(stat_delta ?? 1) : 1;
-        if (!Number.isInteger(delta) || delta < 1 || delta > (game_type === 'sudoku_wins' ? 3 : 1)) {
+        const difficultyAward = game_type === 'sudoku_wins' || game_type === 'checkers_points';
+        const delta = difficultyAward ? Number(stat_delta ?? 1) : 1;
+        if (!Number.isInteger(delta) || delta < 1 || delta > (difficultyAward ? 3 : 1)) {
             return res.status(400).json({ error: 'Invalid counter delta' });
         }
         try {
@@ -1855,7 +1862,7 @@ app.get('/leaderboard', async (req, res) => {
     }
     const allowed = [
         'saper_total', 'saper_wins', 'saper_best_6', 'saper_best_8', 'saper_best_10', 'saper_best_15', 
-        'checkers_total', 'checkers_wins_pve', 
+        'checkers_total', 'checkers_wins_pve', 'checkers_points',
         'bb_total_games', 'bb_best_score', 
         'sudoku_wins',
         'tower_best', 'tower_combo',
@@ -2010,6 +2017,7 @@ app.get('/user-ranks', async (req, res) => {
         { key: 'sudoku_wins', asc: false },
         { key: 'checkers_total', asc: false },
         { key: 'checkers_wins_pve', asc: false },
+        { key: 'checkers_points', asc: false },
         { key: 'wordle_wins', asc: false }
     ];
 
@@ -3617,7 +3625,7 @@ const GAME_CONFIG = {
 const GAME_ICON_BY_COLUMN = {
     bb_best_score: 'block-blast.png', saper_wins: 'minesweeper.png',
     saper_best_6: 'minesweeper.png', tower_best: 'tower.png',
-    sudoku_wins: 'sudoku.png', checkers_wins_pve: 'checkers.png',
+    sudoku_wins: 'sudoku.png', checkers_wins_pve: 'checkers.png', checkers_points: 'checkers.png',
     wordle_wins: 'wordle.png',
 };
 function gameThumbnail(config) {

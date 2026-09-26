@@ -13,8 +13,9 @@ function sheetHarness(scrollTop = 0) {
     const handlers = {}, navigations = [], animations = [];
     const card = { scrollTop, offsetHeight:300, style:{}, getAnimations:() => [],
         animate(frames) { animations.push(frames); }, addEventListener(name, callback) { handlers[name] = callback; } };
-    const sheet = { querySelector:() => card };
-    const context = vm.createContext({ sheet, performance:{ now:() => 100 }, global:{ matchMedia:() => ({matches:false}) }, show:id => navigations.push(id) });
+    const backdrop = { style:{ opacity:'1' }, getAnimations:() => [], animate() {} };
+    const sheet = { querySelector:selector => selector === '.lb-sheet-backdrop' ? backdrop : card };
+    const context = vm.createContext({ sheet, performance:{ now:() => 100 }, getComputedStyle:element => ({ opacity:element.style.opacity }), global:{ matchMedia:() => ({matches:false}) }, show:id => navigations.push(id) });
     vm.runInContext(`${lobbySource.slice(lobbySource.indexOf('    function bindLobbySheetDrag('), lobbySource.indexOf('    function setupInteractions('))}\n bindLobbySheetDrag(sheet);`, context);
     const touch = (type, y, interactive = false) => handlers[type]({ touches:[{clientY:y}], target:{closest:() => interactive ? {} : null}, cancelable:true, preventDefault(){} });
     return { touch, handlers, navigations, animations, card };

@@ -450,7 +450,9 @@ html[data-theme="light"] #lobby .lb-bg { filter:invert(1); opacity:.035; }
 .lb-screen { animation:lbIn var(--ui-slide) var(--ui-ease); }
 @keyframes lbIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 #lobby.has-sheet { overflow:hidden; }
-.lb-sheet { position:fixed; inset:auto 0; top:var(--lb-viewport-top,0px); height:var(--lb-viewport-height,100dvh); z-index:30; padding:max(16px,var(--safe-top)) 0 0; background:var(--ui-scrim); align-items:flex-end; justify-content:center; overscroll-behavior:contain; }
+.lb-sheet { position:fixed; inset:auto 0; top:var(--lb-viewport-top,0px); height:var(--lb-viewport-height,100dvh); z-index:30; padding:max(16px,var(--safe-top)) 0 0; background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; align-items:flex-end; justify-content:center; overscroll-behavior:contain; }
+.lb-sheet-backdrop { position:absolute; inset:0; background:var(--ui-scrim); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); opacity:0; pointer-events:none; }
+.lb-sheet .lb-card { z-index:1; }
 .lb-sheet.on, .lb-sheet.closing { display:flex; animation:none; }
 .lb-sheet.closing { pointer-events:none; }
 #lobby .lb-sheet .lb-card { position:relative; width:100%; max-width:480px; max-height:100%; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; background:var(--ui-sheet); border:1px solid var(--lb-line); border-bottom:0; border-radius:var(--ui-sheet-radius) var(--ui-sheet-radius) 0 0; padding:0 20px max(24px,env(safe-area-inset-bottom)); box-shadow:0 -12px 48px #0002; will-change:transform; }

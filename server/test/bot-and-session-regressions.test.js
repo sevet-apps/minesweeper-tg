@@ -212,8 +212,8 @@ test('score persistence is monotonic and leaderboard displacement is shared by e
         'counter updates must retry compare-and-swap conflicts instead of losing wins');
     assert.match(server, /update\.eq\(gameType, rawCurrent\)/,
         'counter writes must be conditional on the value that was read');
-    assert.match(server, /Number\(stat_delta \?\? 1\)[\s\S]*?delta > \(game_type === 'sudoku_wins' \? 3 : 1\)/,
-        'Sudoku awards its real difficulty points while cached clients remain compatible');
+    assert.match(server, /const difficultyAward = game_type === 'sudoku_wins' \|\| game_type === 'checkers_points'[\s\S]*?Number\(stat_delta \?\? 1\)[\s\S]*?delta > \(difficultyAward \? 3 : 1\)/,
+        'Sudoku and checkers award their difficulty points while cached clients remain compatible');
     assert.match(server, /function persistBestStat[\s\S]*?isTime \? score < current : score > current/,
         'a slower Minesweeper result can never replace the minimum record');
     assert.match(server, /getLeaderboardSnapshot\(game_type\)[\s\S]*?notifyLeaderboardDisplacements/,
