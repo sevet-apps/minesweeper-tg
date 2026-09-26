@@ -25,6 +25,10 @@
         return Array.from(keys, key => ({ r: Math.floor(key / 8), c: key % 8 }));
     };
     const particleBudget = (count, calm, lowPower) => calm ? 0 : Math.min(lowPower ? 192 : 360, count * 12);
+    const materialGlow = {
+        cheese: '#f8bd44', honey: '#f5a409', porcelain: '#a8c8ff', wood: '#c28d61', ice: '#8bd5ed',
+    };
+    const previewGlowHex = (themeId, pieceHex) => materialGlow[themeId] || pieceHex;
     // One cancellable counter; a newer score can never be overwritten by an older frame.
     function createCounter(schedule, cancel, now) {
         let frame = 0;
@@ -43,7 +47,7 @@
             },
         };
     }
-    const api = { catalog, formatNumber, uniqueCells, particleBudget, createCounter };
+    const api = { catalog, formatNumber, uniqueCells, particleBudget, createCounter, previewGlowHex };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (!root.document) return;
     root.BBVisuals = api;
@@ -55,6 +59,8 @@
     let theme = catalog.find(t => t.id === read('bb_material', 'jelly')) || catalog[1];
     let calm = read('bb_motion', 'full') === 'calm';
     let shake = read('bb_shake', 'on') !== 'off', shakeAnimation;
+    const storedVolume = Number(read('bb_volume', '100'));
+    let volume = Number.isFinite(storedVolume) ? Math.max(0, Math.min(100, storedVolume)) : 100;
     const lowPower = Number(navigator.hardwareConcurrency || 8) <= 4 || Number(navigator.deviceMemory || 8) <= 2;
     const active = new Map();
     let layer, feedback, feedbackTimer, picker;
@@ -66,6 +72,9 @@
     api.count = (from, to, update) => counter.run(from, to, update, api.reduced() || doc.hidden);
     api.stopCounter = () => counter.stop();
     api.theme = () => theme;
+    api.volume = () => volume;
+    api.setVolume = value => { volume = Math.max(0, Math.min(100, Math.round(Number(value) || 0))); write('bb_volume', String(volume)); };
+    api.previewGlow = pieceHex => previewGlowHex(theme.id, pieceHex);
     function motion(el, frames, options) {
         const animation = el.animate(frames, options);
         active.set(animation, el);
@@ -108,7 +117,7 @@
         cell.style.setProperty('--ice-angle', ((seed % 2 ? -1 : 1) * (.7 + seed % 4 * .25)) + 'deg');
     };
     function clearFeedback(grid, color, lines) {
-        const hex = ({ cheese: '#f8bd44', honey: '#f5a409', porcelain: '#d4e3ef', wood: '#c28d61', ice: '#8bd5ed' })[theme.id] || ['#ff3b30','#ff9500','#ffcc00','#34c759','#007aff','#5856d6','#af52de'][color];
+        const hex = previewGlowHex(theme.id, ['#ff3b30','#ff9500','#ffcc00','#34c759','#007aff','#5856d6','#af52de'][color]);
         // One composited rim fades; its shadow is static, never recalculated per frame.
         for (const el of grid.querySelectorAll('.bb-clear-rim')) { el.getAnimations().forEach(a => a.cancel()); el.remove(); }
         const rim = doc.createElement('div'); rim.className = 'bb-clear-rim'; rim.setAttribute('aria-hidden', 'true');
@@ -118,15 +127,15 @@
         const container = doc.querySelector('.bb-game-container');
         if (!container) return;
         shakeAnimation?.cancel();
-        const force = Math.min(2.5, 1.4 + (lines - 1) * .35);
+        const force = Math.min(8, 5 + (lines - 1) * 1.15);
         shakeAnimation = container.animate([
             { transform: 'translate3d(0,0,0)' },
-            { transform: `translate3d(${-force}px,${force * .5}px,0)`, offset: .16 },
-            { transform: `translate3d(${force}px,${-force * .4}px,0)`, offset: .36 },
-            { transform: `translate3d(${-force * .5}px,${force * .2}px,0)`, offset: .58 },
-            { transform: `translate3d(${force * .2}px,0,0)`, offset: .78 },
+            { transform: `translate3d(${-force}px,${force * .62}px,0)`, offset: .09 },
+            { transform: `translate3d(${force * .78}px,${-force * .5}px,0)`, offset: .25 },
+            { transform: `translate3d(${-force * .52}px,${force * .28}px,0)`, offset: .46 },
+            { transform: `translate3d(${force * .24}px,${-force * .13}px,0)`, offset: .7 },
             { transform: 'translate3d(0,0,0)' },
-        ], { duration: 260, easing: 'ease-out' });
+        ], { duration: 310, easing: 'ease-out' });
     }
     api.clearLines = (rows, cols, getCell, triggerColor = 'bb-c-5') => {
         const cells = uniqueCells(rows, cols), grid = doc.getElementById('bbGrid');
@@ -211,12 +220,12 @@
         if (persist) write('bb_material', theme.id);
         doc.querySelectorAll('[data-material-choice]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.materialChoice === theme.id)));
         const trigger = doc.getElementById('bbMaterialButton');
-        if (trigger) trigger.setAttribute('aria-label', text('Оформление: ', 'Style: ', '风格：') + theme.name[lang()]);
+        if (trigger) trigger.setAttribute('aria-label', text('Настройки Блок Бласта', 'Block Blast settings', '方块消除设置'));
     }
     api.selectTheme = selectTheme;
     api.refreshLanguage = () => { selectTheme(theme.id, false); picker?.refresh(); };
     api.openPicker = () => {
-        if (!picker) picker = root.BBMaterialPicker.create({ catalog, textureBase, getTheme: () => theme, isCalm: () => calm, isShake: () => shake,
+        if (!picker) picker = root.BBMaterialPicker.create({ catalog, textureBase, getTheme: () => theme, isCalm: () => calm, isShake: () => shake, getVolume: api.volume, setVolume: api.setVolume,
             setShake(value) { shake = value; write('bb_shake', shake ? 'on' : 'off'); if (!shake) shakeAnimation?.cancel(); },
             setCalm(value) { calm = value; write('bb_motion', calm ? 'calm' : 'full'); doc.body.dataset.bbMotion = calm ? 'calm' : 'full'; if (calm) { renderer.cleanup(); shakeAnimation?.cancel(); } },
             selectTheme, reduced: api.reduced, lang });

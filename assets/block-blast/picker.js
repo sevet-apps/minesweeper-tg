@@ -7,7 +7,8 @@
 
     function create(options) {
         const doc = root.document;
-        let overlay, panel, backdrop, header, choices, calmInput, shakeInput, closeButton;
+        let overlay, panel, backdrop, header, choices, calmInput, shakeInput, volumeInput, closeButton;
+        let activeTab = 'settings';
         let state = 'closed', restoreFocus, drag, panelAnimation, backdropAnimation;
         let inertSiblings = [];
         const titleId = 'bbPickerTitle' + (++nextId);
@@ -19,7 +20,7 @@
             panelAnimation = backdropAnimation = null;
         };
         const focus = element => { if (element?.isConnected) element.focus({ preventScroll: true }); };
-        const focusable = () => Array.from(panel.querySelectorAll('button:not(:disabled),input:not(:disabled),[tabindex="0"]')).filter(el => el.getClientRects().length);
+        const focusable = () => Array.from(panel.querySelectorAll('button:not(:disabled),input:not(:disabled),[tabindex="0"]')).filter(el => el.getClientRects().length && el.tabIndex !== -1);
 
         function setBackgroundInert() {
             inertSiblings = Array.from(doc.body.children).filter(el => el !== overlay && !/^(SCRIPT|STYLE|LINK|TEMPLATE)$/.test(el.tagName)).map(el => ({ el, inert: el.inert, hidden: el.getAttribute('aria-hidden') }));
@@ -53,16 +54,46 @@
             shakeInput.checked = options.isShake?.() !== false;
             shakeInput.disabled = reduced();
             shakeInput.closest('label').classList.toggle('is-disabled', reduced());
+            volumeInput.value = String(options.getVolume?.() ?? 100);
+            volumeInput.style.setProperty('--bb-volume-fill', volumeInput.value + '%');
+            panel.querySelector('.bb-picker-volume-value').textContent = volumeInput.value + '%';
+        }
+        function setTab(next, animate = true) {
+            activeTab = next;
+            const tabs = ['settings', 'skins', 'progress'];
+            panel.querySelector('.bb-picker-tabs').style.setProperty('--bb-tab-index', String(tabs.indexOf(next)));
+            for (const tab of tabs) {
+                const button = panel.querySelector(`[data-bb-tab="${tab}"]`);
+                button.setAttribute('aria-selected', String(tab === next));
+                button.tabIndex = tab === next ? 0 : -1;
+                const page = panel.querySelector(`[data-bb-page="${tab}"]`);
+                page.hidden = tab !== next;
+                page.classList.remove('is-entering');
+                if (tab === next && animate && !reduced()) {
+                    // A small entrance, with no layout-sized horizontal slide.
+                    void page.offsetWidth;
+                    page.classList.add('is-entering');
+                }
+            }
+            panel.querySelector('.bb-picker-content').scrollTop = 0;
         }
         function refresh() {
             if (!overlay) return;
-            panel.querySelector('.bb-picker-title').textContent = copy('Оформление', 'Style', '风格');
+            panel.querySelector('.bb-picker-title').textContent = copy('Блок Бласт', 'Block Blast', '方块消除');
             closeButton.setAttribute('aria-label', copy('Закрыть', 'Close', '关闭'));
+            panel.querySelector('[data-bb-tab="settings"]').textContent = copy('Настройки', 'Settings', '设置');
+            panel.querySelector('[data-bb-tab="skins"]').textContent = copy('Скины', 'Skins', '皮肤');
+            panel.querySelector('[data-bb-tab="progress"]').textContent = copy('Прогресс', 'Progress', '进度');
             choices.setAttribute('aria-label', copy('Материал блоков', 'Block material', '方块材质'));
             panel.querySelector('.bb-picker-motion-title').textContent = copy('Спокойные эффекты', 'Gentle effects', '轻柔效果');
             panel.querySelector('.bb-picker-motion-detail').textContent = copy('Меньше движения и частиц', 'Less motion and fewer particles', '减少动画和粒子');
             panel.querySelector('.bb-picker-shake-title').textContent = copy('Встряска поля', 'Board shake', '棋盘震动');
-            panel.querySelector('.bb-picker-shake-detail').textContent = reduced() ? copy('Отключена в спокойном режиме', 'Off with gentle effects', '轻柔模式下关闭') : copy('Лёгкий отклик при закрытии линии', 'A subtle kick when a line clears', '消除时轻轻震动');
+            panel.querySelector('.bb-picker-shake-detail').textContent = reduced() ? copy('Отключена в спокойном режиме', 'Off with gentle effects', '轻柔模式下关闭') : copy('Ощутимый толчок при закрытии линии', 'A satisfying kick when a line clears', '消除整行时有明显震动');
+            panel.querySelector('.bb-picker-volume-title').textContent = copy('Громкость звуков', 'Sound volume', '音效音量');
+            volumeInput.setAttribute('aria-label', copy('Громкость звуков', 'Sound volume', '音效音量'));
+            panel.querySelector('.bb-picker-volume-detail').textContent = copy('Звуки фигур и закрытия линий', 'Pieces and line clears', '方块与消除音效');
+            panel.querySelector('.bb-picker-progress-title').textContent = copy('Бонусы к очкам', 'Score bonuses', '分数奖励');
+            panel.querySelector('.bb-picker-progress-detail').textContent = copy('Условия и награды скоро появятся здесь.', 'Challenges and rewards will appear here soon.', '挑战与奖励即将开放。');
             choices.querySelectorAll('[data-material-choice]').forEach(button => {
                 const item = options.catalog.find(item => item.id === button.dataset.materialChoice);
                 button.querySelector('.bb-picker-name').textContent = item.name[options.lang?.() || 'ru'] || item.name.ru;
@@ -118,7 +149,7 @@
             overlay = doc.createElement('div');
             overlay.className = 'bb-picker-overlay';
             overlay.hidden = true;
-            overlay.innerHTML = `<div class="bb-picker-backdrop" aria-hidden="true"></div><section class="bb-picker-panel" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><header class="bb-picker-header"><div class="bb-picker-grab" aria-hidden="true"><span></span></div><div class="bb-picker-heading"><h2 class="bb-picker-title" id="${titleId}"></h2><button type="button" class="bb-picker-close">${cross}</button></div></header><div class="bb-picker-content"><div class="bb-picker-choices" role="group"></div></div><label class="bb-picker-motion"><span><span class="bb-picker-motion-title"></span><small class="bb-picker-motion-detail"></small></span><input class="bb-calm-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><label class="bb-picker-motion bb-picker-shake"><span><span class="bb-picker-motion-title bb-picker-shake-title"></span><small class="bb-picker-motion-detail bb-picker-shake-detail"></small></span><input class="bb-shake-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label></section>`;
+            overlay.innerHTML = `<div class="bb-picker-backdrop" aria-hidden="true"></div><section class="bb-picker-panel" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><header class="bb-picker-header"><div class="bb-picker-grab" aria-hidden="true"><span></span></div><div class="bb-picker-heading"><h2 class="bb-picker-title" id="${titleId}"></h2><button type="button" class="bb-picker-close">${cross}</button></div></header><div class="bb-picker-tabs" role="tablist" aria-label="Block Blast"><span class="bb-picker-tab-indicator" aria-hidden="true"></span><button type="button" role="tab" data-bb-tab="settings"></button><button type="button" role="tab" data-bb-tab="skins"></button><button type="button" role="tab" data-bb-tab="progress"></button></div><div class="bb-picker-content"><div class="bb-picker-page" data-bb-page="settings" role="tabpanel"><label class="bb-picker-motion"><span><span class="bb-picker-motion-title"></span><small class="bb-picker-motion-detail"></small></span><input class="bb-calm-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><label class="bb-picker-motion bb-picker-shake"><span><span class="bb-picker-motion-title bb-picker-shake-title"></span><small class="bb-picker-motion-detail bb-picker-shake-detail"></small></span><input class="bb-shake-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><div class="bb-picker-volume"><div class="bb-picker-volume-heading"><span><span class="bb-picker-volume-title"></span><small class="bb-picker-volume-detail"></small></span><strong class="bb-picker-volume-value"></strong></div><input class="bb-volume-input" type="range" min="0" max="100" step="1" value="100" aria-label="Sound volume"></div></div><div class="bb-picker-page" data-bb-page="skins" role="tabpanel" hidden><div class="bb-picker-choices" role="group"></div></div><div class="bb-picker-page" data-bb-page="progress" role="tabpanel" hidden><div class="bb-picker-progress"><span class="bb-picker-progress-icon" aria-hidden="true">✦</span><strong class="bb-picker-progress-title"></strong><p class="bb-picker-progress-detail"></p></div></div></div></section>`;
             doc.body.appendChild(overlay);
             panel = overlay.querySelector('.bb-picker-panel');
             backdrop = overlay.querySelector('.bb-picker-backdrop');
@@ -126,6 +157,7 @@
             choices = overlay.querySelector('.bb-picker-choices');
             calmInput = overlay.querySelector('.bb-calm-input');
             shakeInput = overlay.querySelector('.bb-shake-input');
+            volumeInput = overlay.querySelector('.bb-volume-input');
             closeButton = overlay.querySelector('.bb-picker-close');
             for (const item of options.catalog) {
                 const button = doc.createElement('button');
@@ -147,10 +179,34 @@
             }
             calmInput.addEventListener('change', () => { options.setCalm(calmInput.checked); refresh(); });
             shakeInput.addEventListener('change', () => options.setShake?.(shakeInput.checked));
+            volumeInput.addEventListener('input', () => {
+                options.setVolume?.(Number(volumeInput.value));
+                volumeInput.style.setProperty('--bb-volume-fill', volumeInput.value + '%');
+                panel.querySelector('.bb-picker-volume-value').textContent = volumeInput.value + '%';
+            });
+            const tabNames = ['settings', 'skins', 'progress'];
+            tabNames.forEach(tab => {
+                const button = panel.querySelector(`[data-bb-tab="${tab}"]`);
+                const page = panel.querySelector(`[data-bb-page="${tab}"]`);
+                button.id = `${titleId}-${tab}-tab`;
+                page.id = `${titleId}-${tab}-page`;
+                button.setAttribute('aria-controls', page.id);
+                page.setAttribute('aria-labelledby', button.id);
+                button.addEventListener('click', () => setTab(tab));
+            });
+            panel.querySelector('.bb-picker-tabs').addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const current = tabNames.indexOf(activeTab);
+                const index = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (current + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
+                setTab(tabNames[index]);
+                focus(panel.querySelector(`[data-bb-tab="${tabNames[index]}"]`));
+            });
             closeButton.addEventListener('click', () => close());
             backdrop.addEventListener('click', () => close());
             bindSwipe();
             refresh();
+            setTab(activeTab, false);
         }
         function open() {
             if (state !== 'closed') return;

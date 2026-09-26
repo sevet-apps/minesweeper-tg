@@ -55,6 +55,8 @@ class Element extends Events {
         if (selector.endsWith(':not(:disabled)')) return !this.disabled && this.matches(selector.replace(':not(:disabled)', ''));
         if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
         if (selector === '[data-material-choice]') return this.dataset.materialChoice !== undefined;
+        const attribute = selector.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
+        if (attribute) return this.getAttribute(attribute[1]) !== null && (attribute[2] === undefined || this.getAttribute(attribute[1]) === attribute[2]);
         if (selector === '[tabindex="0"]') return this.getAttribute('tabindex') === '0';
         return this.tagName === selector.toUpperCase();
     }
@@ -98,12 +100,12 @@ function fixture({ reduced = false, desktop = false } = {}) {
         },
     };
     vm.runInNewContext(source, { window });
-    let theme = 'jelly', calm = false, shake = true, language = 'ru';
+    let theme = 'jelly', calm = false, shake = true, volume = 100, language = 'ru';
     const catalog = ['classic', 'jelly', 'porcelain'].map(id => ({ id, name: { ru: id, en: id, zh: id } }));
-    const picker = window.BBMaterialPicker.create({ catalog, textureBase: '/themes/', getTheme: () => ({ id: theme }), isCalm: () => calm, isShake: () => shake, setShake: value => { shake = value; }, setCalm: value => { calm = value; }, selectTheme: id => { theme = id; }, reduced: () => reduced || calm, lang: () => language });
+    const picker = window.BBMaterialPicker.create({ catalog, textureBase: '/themes/', getTheme: () => ({ id: theme }), isCalm: () => calm, isShake: () => shake, getVolume: () => volume, setVolume: value => { volume = value; }, setShake: value => { shake = value; }, setCalm: value => { calm = value; }, selectTheme: id => { theme = id; }, reduced: () => reduced || calm, lang: () => language });
     const get = selector => doc.body.querySelector(selector);
     const pointer = (type, fields = {}) => get('.bb-picker-header').emit(type, { pointerId: 1, clientY: 100, isPrimary: true, button: 0, timeStamp: 0, ...fields });
-    return { doc, picker, get, pointer, background, trigger, alreadyInert, script, setLanguage: value => { language = value; } };
+    return { doc, picker, get, pointer, background, trigger, alreadyInert, script, getVolume: () => volume, setLanguage: value => { language = value; } };
 }
 
 test('opening has an offscreen first frame before animation, and reopening reuses a single sheet', () => {
@@ -221,7 +223,7 @@ test('keyboard focus stays in the sheet, Escape closes it, and a subsequent back
     assert.equal(f.doc.activeElement, close);
     const backwards = f.doc.emit('keydown', { key: 'Tab', shiftKey: true });
     assert.equal(backwards.defaultPrevented, true);
-    assert.equal(f.doc.activeElement, input);
+    assert.equal(f.doc.activeElement, f.get('.bb-volume-input'));
     f.doc.emit('keydown', { key: 'Tab', shiftKey: false });
     assert.equal(f.doc.activeElement, close);
     f.trigger.focus();
@@ -246,7 +248,7 @@ test('selection, language refresh and calm mode use the provided application cal
     assert.equal(buttons[2].getAttribute('aria-pressed'), 'true');
     assert.equal(buttons[1].getAttribute('aria-pressed'), 'false');
     f.setLanguage('en'); f.picker.refresh();
-    assert.equal(f.get('.bb-picker-title').textContent, 'Style');
+    assert.equal(f.get('.bb-picker-title').textContent, 'Block Blast');
     assert.equal(buttons[2].getAttribute('aria-pressed'), 'true');
     const input = f.get('input'); input.checked = true; input.emit('change');
     f.picker.close();
@@ -291,4 +293,34 @@ test('shake preference survives reopening and gentle effects disable it without 
     const desktop = fixture({ desktop: true }); desktop.picker.open();
     assert.equal(desktop.get('.bb-picker-panel').animations[0].options.duration, 420);
     desktop.picker.close(true);
+});
+
+test('three tabs switch content while volume updates and survives reopening', () => {
+    const f = fixture(); f.picker.open();
+    const settings = f.get('[data-bb-page="settings"]');
+    const skins = f.get('[data-bb-page="skins"]');
+    const progress = f.get('[data-bb-page="progress"]');
+    const volume = f.get('.bb-volume-input');
+    assert.equal(settings.hidden, false);
+    assert.equal(skins.hidden, true);
+    assert.equal(progress.hidden, true);
+    assert.equal(volume.value, '100');
+    volume.value = '37'; volume.emit('input');
+    assert.equal(f.getVolume(), 37);
+    assert.equal(f.get('.bb-picker-volume-value').textContent, '37%');
+    f.get('[data-bb-tab="skins"]').emit('click');
+    assert.equal(settings.hidden, true);
+    assert.equal(skins.hidden, false);
+    assert.equal(f.get('[data-bb-tab="skins"]').getAttribute('aria-selected'), 'true');
+    f.get('.bb-picker-tabs').emit('keydown', { key: 'ArrowRight' });
+    assert.equal(f.doc.activeElement, f.get('[data-bb-tab="progress"]'));
+    assert.equal(progress.hidden, false);
+    f.get('[data-bb-tab="progress"]').emit('click');
+    assert.equal(progress.hidden, false);
+    assert.equal(f.get('.bb-picker-progress-title').textContent, 'Бонусы к очкам');
+    f.picker.close(true); f.picker.open();
+    assert.equal(progress.hidden, false);
+    f.get('[data-bb-tab="settings"]').emit('click');
+    assert.equal(volume.value, '37');
+    f.picker.close(true);
 });
