@@ -206,6 +206,29 @@
         root.querySelector('[data-mc-coins]').textContent = compact(account.coins);
         root.querySelector('[data-mc-profile]').innerHTML = `<div class="mc-person">${avatar(current.user, global.Lobby?.profile?.())}<div><b>${esc(ownerName(current))}</b><small>${current.user?.username ? '@' + esc(current.user.username) : 'Профиль игрока'}</small></div></div>`;
     }
+    function rankPolygon(sides, radius) {
+        return Array.from({ length:sides }, (_, point) => {
+            const angle = -Math.PI / 2 + 2 * Math.PI * point / sides;
+            return `${(50 + Math.cos(angle) * radius).toFixed(1)},${(50 + Math.sin(angle) * radius).toFixed(1)}`;
+        }).join(' ');
+    }
+    function rankEmblem(index) {
+        // Every title keeps the same faceted crest; its outline gains a corner at each level.
+        const sides = Math.min(14, 5 + index);
+        const pips = Math.min(3, 1 + Math.floor(index / 3));
+        const dots = Array.from({ length:pips }, (_, dot) => {
+            const x = 50 + (dot - (pips - 1) / 2) * 9;
+            return `<path class="mc-rank-pip" d="M${x} 25l2.5 2.5-2.5 2.5-2.5-2.5Z"/>`;
+        }).join('');
+        return `<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+            <polygon class="mc-rank-shell" points="${rankPolygon(sides, 43)}"/>
+            <polygon class="mc-rank-face" points="${rankPolygon(sides, 35)}"/>
+            <path class="mc-rank-facet" d="M50 7v8"/>
+            ${dots}
+            <text class="mc-rank-number" x="50" y="63" text-anchor="middle">${String(index + 1).padStart(2, '0')}</text>
+            <path class="mc-rank-rule" d="M40 72h20"/>
+        </svg>`;
+    }
     function renderProgressPanel(root) {
         const panel = root.querySelector('#mcProgressPanel');
         const rating = current.rating || {};
@@ -216,19 +239,7 @@
         const progress = title ? (next ? Math.min(1, (points - title.from) / (next.from - title.from)) : 1) : 0;
         const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>';
         const lock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
-        const rankMarks = [
-            '<path d="M18 23a6 6 0 1 1 6 6h-9v6h-5v-8l7-7"/><circle cx="23" cy="23" r="1"/>',
-            '<path d="M10 37V15h28v22H10ZM17 15v-5h14v5M20 37V26h8v11"/>',
-            '<path d="m9 23 15-13 15 13v14H9V23Zm10 14V26h10v11"/><circle cx="34" cy="15" r="4"/>',
-            '<path d="m7 23 17-15 17 15M11 21v20h26V21M20 41V29h8v12"/>',
-            '<path d="M9 38h30M13 32l8-9 6 5 10-15M30 13h7v7"/>',
-            '<path d="M8 39h32M12 39V20h9v19M21 39V10h8v29M29 39V25h8v14M18 15h3M27 16h2"/>',
-            '<path d="m6 19 18-10 18 10H6ZM10 22v15M18 22v15M30 22v15M38 22v15M7 40h34"/>',
-            '<path d="M8 39h32M11 39V24h7v15M20 39V15h8v24M30 39V20h7v19M23 10h2"/>',
-            '<path d="m7 17 9 7 8-14 8 14 9-7-4 21H11L7 17ZM14 42h20"/>',
-            '<path d="m24 7 4 10 11 1-8 8 2 11-9-6-9 6 2-11-8-8 11-1 4-10ZM8 39l6 3M40 39l-6 3"/>'
-        ];
-        const rankPalette = ['#7b9ac4','#7daee8','#66a5f4','#468dff','#6f8ef9','#4278e5','#6e75dd','#4564ce','#4665da','#d4a649'];
+        const rankPalette = ['#91a9c3','#90b3d7','#7eb5ea','#62a7f1','#5198f5','#688ef3','#797fe9','#8f83e9','#a8b9f1','#e7bf70'];
         panel.innerHTML = `<section class="mc-experience">
             <div class="mc-xp-heading"><div><small>Ваше звание</small><h3>${esc(title?.name || 'Рейтинг')}</h3></div><b>${compact(points)} <small>очков</small></b></div>
             <div class="mc-xp-bar" role="progressbar" aria-label="Прогресс звания" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><span style="--xp:${progress}"></span></div>
@@ -238,7 +249,7 @@
         <div class="mc-ranks-heading"><h3>Все звания</h3><div><button class="mc-rank-prev" aria-label="Предыдущее звание">${arrow}</button><button class="mc-rank-next" aria-label="Следующее звание">${arrow}</button></div></div>
         <div class="mc-ranks" tabindex="0" aria-label="Все звания">${titles.map((rank, i) => `<article class="mc-rank ${i === index ? 'current' : ''} ${points < rank.from ? 'locked' : ''}" data-rank="${i}">
             <div class="mc-rank-status">${points < rank.from ? lock + '<span>Закрыто</span>' : i === index ? '<span>Текущее звание</span>' : '<span>Получено</span>'}</div>
-            <div class="mc-rank-emblem" style="--rank-accent:${rankPalette[i] || '#0a84ff'}"><svg viewBox="0 0 48 48" aria-hidden="true">${rankMarks[i] || rankMarks[0]}</svg><span>${String(i + 1).padStart(2, '0')}</span></div>
+            <div class="mc-rank-emblem" style="--rank-accent:${rankPalette[i] || '#0a84ff'}">${rankEmblem(i)}</div>
             <h4>${esc(rank.name)}</h4><p>${compact(rank.from)} <span>очков</span></p>
             <small>${points < rank.from ? `${compact(rank.from - points)} · <span>до открытия</span>` : '<span>Звание открыто</span>'}</small>
         </article>`).join('')}</div>`;

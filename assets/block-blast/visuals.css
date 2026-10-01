@@ -3,8 +3,31 @@
 #bb-screen { background: var(--bg-color); }
 #bb-screen .bb-top-bar { max-width: 460px; width: 100%; margin-inline: auto; }
 #bb-screen .bb-game-container { flex: 1; min-height: 0; height: auto; }
-#bb-screen .bb-grid { --bb-board-size: min(90vw,350px,calc(100dvh - 390px - var(--safe-top) - var(--safe-bottom))); width: var(--bb-board-size); height: var(--bb-board-size); flex: 0 0 var(--bb-board-size); }
-body.desktop #bb-screen .bb-grid { --bb-board-size: min(90vw,350px,calc(100dvh - 270px)); }
+#bb-screen .bb-grid {
+    /* Keep real dimensions on WebViews without dvh/min(), so the 8x8 grid never collapses. */
+    width: 90vw;
+    height: 90vw;
+    max-width: 350px;
+    max-height: 350px;
+    flex: 0 0 auto;
+}
+@supports (width: min(90vw, 350px)) and (width: max(160px, 180px)) {
+    #bb-screen .bb-grid {
+        --bb-board-reserve: 390px;
+        width: min(90vw, 350px, max(160px, calc(100vh - var(--bb-board-reserve))));
+        height: min(90vw, 350px, max(160px, calc(100vh - var(--bb-board-reserve))));
+    }
+    body.desktop #bb-screen .bb-grid { --bb-board-reserve: 270px; }
+    @media (max-height: 700px) {
+        body:not(.desktop) #bb-screen .bb-grid { --bb-board-reserve: 370px; }
+    }
+}
+@supports (height: 100dvh) and (width: min(90vw, 350px)) and (width: max(160px, 180px)) {
+    #bb-screen .bb-grid {
+        width: min(90vw, 350px, max(160px, calc(100dvh - var(--bb-board-reserve))));
+        height: min(90vw, 350px, max(160px, calc(100dvh - var(--bb-board-reserve))));
+    }
+}
 #bb-screen .bb-footer { position: relative; bottom: auto; max-width: 400px; height: 100px; flex: 0 0 100px; margin-top: 12px; }
 .bb-cell.filled::after, .bb-cell.bb-shadow::after, .bb-cell.pre-clear::after, .bb-block::after {
     content: ''; position: absolute; inset: 0; border-radius: inherit;
@@ -63,7 +86,7 @@ body[data-bb-motion="calm"] .bb-shape-preview, body.lite-mode .bb-shape-preview 
 body[data-bb-motion="calm"] .bb-combo-seg::after, body.lite-mode .bb-combo-seg::after { transition: none; animation: none; }
 body[data-bb-motion="calm"] .bb-material-celebration, body.lite-mode .bb-material-celebration { animation: none; }
 @media (prefers-reduced-motion: reduce) { .bb-cell.place-pop,.bb-material-celebration,.bb-shape-preview,.bb-combo-seg::after { animation: none !important; } .bb-style-button,.bb-combo-seg::after { transition: none; } }
-@media (max-height: 700px) { #bb-screen .bb-score-box { font-size: 30px; } #bb-screen .bb-game-container { padding-top: 0; } body:not(.desktop) #bb-screen .bb-grid { --bb-board-size: min(90vw,350px,calc(100dvh - 370px - var(--safe-top) - var(--safe-bottom))); } }
+@media (max-height: 700px) { #bb-screen .bb-score-box { font-size: 30px; } #bb-screen .bb-game-container { padding-top: 0; } }
 
 /* Visibility is unaffected by the tray's fill-mode opacity animation. */
 .bb-shape-preview.is-held { visibility: hidden; }
