@@ -88,6 +88,12 @@
         }).filter(Boolean);
         let background = new Map();
         const visible = () => sheets.filter(s => s.open).sort((a,b) => Number(root.getComputedStyle(a.overlay).zIndex)-Number(root.getComputedStyle(b.overlay).zIndex));
+        root.SparkSheets.closeTop = () => {
+            const top = visible().at(-1);
+            if (!top) return false;
+            top.close();
+            return true;
+        };
         const sync = () => {
             const changed = [];
             for (const sheet of sheets) {

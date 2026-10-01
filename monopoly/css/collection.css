@@ -224,12 +224,18 @@ html[data-theme="light"] .mc-stat { background:#eceef3; } html[data-theme="light
 .mc-ranks { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-inline:contain; position:relative; scrollbar-width:none; padding:2px 0 8px; }
 .mc-rank { flex:0 0 82%; scroll-snap-align:start; text-align:center; padding:18px; border:1px solid var(--lb-line); border-radius:22px; background:var(--panel); }
 .mc-rank.current { border-color:var(--lb-mint); background:linear-gradient(145deg,rgba(167,239,208,.08),transparent),var(--panel); }
-.mc-rank-status { display:flex; align-items:center; justify-content:center; gap:5px; color:var(--lb-mint); font-size:10px; min-height:20px; }
+.mc-rank-status { display:flex; align-items:center; justify-content:center; gap:5px; color:var(--ui-accent,#0a84ff); font-size:10px; min-height:20px; }
 .mc-rank-status svg { width:13px; height:13px; }
 .mc-rank.locked .mc-rank-status { color:var(--text-dim); }
-.mc-rank-emblem { display:grid; place-items:center; width:78px; height:88px; margin:15px auto; background:linear-gradient(145deg,hsl(var(--rank-hue) 65% 70%),hsl(var(--rank-hue) 35% 28%)); clip-path:polygon(50% 0,95% 22%,90% 75%,50% 100%,10% 75%,5% 22%); color:#102b23; }
-.mc-rank-emblem span { font-size:28px; font-weight:850; letter-spacing:-1px; }
-.mc-rank.locked .mc-rank-emblem { filter:grayscale(1); opacity:.4; }
+.mc-rank-emblem { display:grid;place-items:center;width:96px;height:96px;margin:10px auto 16px;color:var(--rank-accent); }
+.mc-rank-emblem svg { display:block;width:100%;height:100%;overflow:visible; }
+.mc-rank-shell { fill:rgba(80,150,240,.3);fill:color-mix(in srgb,var(--rank-accent) 36%,var(--panel));stroke:var(--rank-accent);stroke-width:1.7; }
+.mc-rank-face { fill:rgba(80,150,240,.12);fill:color-mix(in srgb,var(--rank-accent) 13%,var(--panel));stroke:var(--rank-accent);stroke:color-mix(in srgb,var(--rank-accent) 57%,var(--panel));stroke-width:1.1; }
+.mc-rank-facet,.mc-rank-rule { fill:none;stroke:var(--rank-accent);stroke-linecap:round;stroke-width:1.6; }
+.mc-rank-rule { opacity:.7; }
+.mc-rank-pip { fill:var(--rank-accent); }
+.mc-rank-number { fill:var(--text);font-family:Inter,Arial,sans-serif;font-size:28px;font-weight:800;letter-spacing:-1.3px; }
+.mc-rank.locked .mc-rank-emblem { filter:grayscale(1);opacity:.58; }
 .mc-rank h4 { margin:0; font-size:18px; }
 .mc-rank p { margin:7px 0 10px; font-size:15px; }
 .mc-rank p span, .mc-rank > small { color:var(--text-dim); font-size:11px; }

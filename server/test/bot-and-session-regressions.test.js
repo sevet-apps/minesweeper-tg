@@ -24,8 +24,10 @@ test('branded videos are bundled and the app loader releases all resources', () 
         'mobile WebKit must receive native muted autoplay without a pre-play seek');
     assert.match(client, /\.app-loader video\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?object-fit:\s*contain;[\s\S]*?object-position:\s*50% 50%;[\s\S]*?transform:\s*none/,
         'the portrait source must stay centered and uncropped while the logo is visible');
-    assert.match(client, /\.app-loader\.star-wipe video\s*\{[\s\S]*?object-fit:\s*cover;[\s\S]*?transform:\s*scale\(1\.02\)/,
-        'only the final solid star wipe may cover the viewport');
+    assert.match(client, /\.app-loader\.wipe-finishing video\s*\{[\s\S]*?background:\s*#000;[\s\S]*?transition:\s*background-color \.28s linear/,
+        'unused letterbox space should darken without resizing the visible wordmark');
+    assert.doesNotMatch(client, /\.app-loader\.[\w-]+ video\s*\{[^}]*?(?:object-fit:\s*cover|transform:\s*scale)/,
+        'the loader video must not jump in size while its text is visible');
     assert.doesNotMatch(client, /@media \(max-aspect-ratio:\s*4 \/ 5\)[\s\S]*?\.app-loader video/,
         'portrait sizing must not shrink the whole video element and reveal side bars');
     assert.match(client, /\.app-loader::after[\s\S]*?background:\s*#fff/,
@@ -43,10 +45,10 @@ test('branded videos are bundled and the app loader releases all resources', () 
         'programmatic pre-play seeking can stall muted autoplay on iOS');
     assert.match(client, /video\.currentTime\s*>=\s*0\.30[\s\S]*?classList\.add\('video-visible'\)/,
         'the black intro stays covered until the decoder reaches a real white frame');
-    assert.match(client, /video\.currentTime\s*>=\s*4\.82[\s\S]*?classList\.add\('star-wipe'\)[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
-        'Telegram safe areas and cover sizing must join the final star wipe');
-    assert.match(client, /video\.currentTime\s*>=\s*5\.38[\s\S]*?classList\.add\('ending-black'\)/,
-        'the outer background turns black only once the source itself is almost fully black');
+    assert.match(client, /video\.currentTime\s*>=\s*5\.0[\s\S]*?classList\.add\('wipe-finishing'\)/,
+        'letterbox fade starts after the star covers the wordmark');
+    assert.match(client, /video\.currentTime\s*>=\s*5\.28[\s\S]*?classList\.add\('ending-black'\)[\s\S]*?setSparkTelegramChrome\('#000000'\)/,
+        'the outer background and Telegram chrome turn black only after the video has turned black');
     assert.match(client, /root\.remove\(\)[\s\S]*?setSparkTelegramChrome\(color\)/,
         'Telegram chrome must return to the app theme after playback');
     assert.match(client, /video\.querySelectorAll\('source'\)[\s\S]*?source\.remove\(\)/);

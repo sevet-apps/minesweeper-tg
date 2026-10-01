@@ -193,14 +193,12 @@
             transform: none;
             background: #fff;
         }
-        /* Keep the portrait source uncropped while its logo is visible. At the
-           final black-star wipe the image can safely cover the viewport: the
-           jump is hidden inside the expanding solid shape and no side bars are
-           exposed on phones, tablets or landscape desktop windows. */
-        .app-loader.star-wipe video {
-            object-fit: cover;
-            transform: scale(1.02);
+        /* The video never changes scale: that would enlarge the remaining
+           letters during the star wipe on tall phones. Fade only the unused
+           letterbox area after the star has covered the wordmark. */
+        .app-loader.wipe-finishing video {
             background: #000;
+            transition: background-color .28s linear;
         }
         .app-loader.ending-black video { background: #000; }
         @media (prefers-reduced-motion: reduce) {
@@ -1207,6 +1205,7 @@
             will-change: transform;
             overscroll-behavior: contain;
         }
+        .settings-sheet .bottom-sheet-title { font-size: 28px; letter-spacing: -0.025em; }
         
         .settings-section-label {
             font-size: 13px;
@@ -1875,8 +1874,10 @@
         } 
 
         .grid { display: grid; gap: 5px; padding: 10px; background: var(--glass-bg); border-radius: 16px; transition: transform 0.3s; } 
-        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); [data-theme="dark"] & { background: rgba(255,255,255,0.12); } border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; } 
-        .cell.revealed { background: rgba(220,220,220,0.5); [data-theme="dark"] & { background: rgba(0,0,0,0.3); } } 
+        .cell { width: 38px; height: 38px; background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; cursor: pointer; }
+        [data-theme="dark"] #saperGrid .cell { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.06); }
+        .cell.revealed { background: rgba(220,220,220,0.5); }
+        [data-theme="dark"] #saperGrid .cell.revealed { background: rgba(0,0,0,0.3); }
         .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
         
         .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
@@ -3501,11 +3502,12 @@
         }
 
     </style>
-    <link rel="stylesheet" href="assets/block-blast/visuals.css">
+    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261001">
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css">
-    <script src="assets/ui/sheets.js" defer></script>
+    <script src="assets/ui/sheets.js?v=20261001" defer></script>
+    <script src="assets/ui/native-back.js?v=20261001"></script>
     <script src="assets/block-blast/motion.js"></script>
     <script src="assets/block-blast/picker.js"></script>
     <script src="assets/block-blast/visuals.js"></script>
@@ -3523,7 +3525,7 @@
             if (!root || !video) return;
             var removed = false;
             var animationFrame = 0;
-            var starWipeStarted = false;
+            var wipeFinishing = false;
             var endingBlack = false;
             var playbackStarted = false;
             var remove = function () {
@@ -3556,14 +3558,14 @@
             var syncLoaderFrame = function () {
                 if (removed) return;
                 if (video.currentTime >= 0.30) root.classList.add('video-visible');
-                if (!starWipeStarted && video.currentTime >= 4.82) {
-                    starWipeStarted = true;
-                    root.classList.add('star-wipe');
-                    if (window.setSparkTelegramChrome) window.setSparkTelegramChrome('#000000');
+                if (!wipeFinishing && video.currentTime >= 5.0) {
+                    wipeFinishing = true;
+                    root.classList.add('wipe-finishing');
                 }
-                if (!endingBlack && video.currentTime >= 5.38) {
+                if (!endingBlack && video.currentTime >= 5.28) {
                     endingBlack = true;
                     root.classList.add('ending-black');
+                    if (window.setSparkTelegramChrome) window.setSparkTelegramChrome('#000000');
                 }
                 animationFrame = window.requestAnimationFrame(syncLoaderFrame);
             };
@@ -7661,10 +7663,12 @@
             historyIndex=moveHistory.length-1;
             updateHistoryButtons();
         }
+        function canUseCheckersHistory(){
+            return !forcedPiece && (!isOnlineGame || turn === onlineMyColor) && (isOnlineGame || !isPvE || (turn === 'white' && !checkersAiPending));
+        }
         function updateHistoryButtons(){
             const controls = document.getElementById('checkersHistoryControls');
-            // Блокируем историю если не наш ход ИЛИ если мы в процессе рубки (forcedPiece)
-            const canUseHistory = (!isOnlineGame || turn === onlineMyColor) && !forcedPiece;
+            const canUseHistory = canUseCheckersHistory();
             controls.style.opacity = canUseHistory ? '1' : '0.3';
             controls.style.pointerEvents = canUseHistory ? 'auto' : 'none';
             document.getElementById('historyPrev').disabled=historyIndex<=0 || !canUseHistory;
@@ -7672,6 +7676,7 @@
             document.getElementById('historyIndicator').innerText=moveHistory.length>1?`${historyIndex+1}/${moveHistory.length}`:'';
         }
         function historyStep(dir){
+            if(!canUseCheckersHistory()) return;
             const newIdx=historyIndex+dir;
             if(newIdx<0||newIdx>=moveHistory.length)return;
             historyIndex=newIdx;
@@ -10675,19 +10680,18 @@
         // ---- Служебная кнопка Telegram для монополии ----
         // На внутренних экранах лобби вместо «Закрыть» показываем «Назад»;
         // нажатие пересылаем обратно в iframe.
-        let monoBackShown = false;
         function onMonopolyBackClick() {
             const frame = document.getElementById('monopolyFrame');
             try { frame?.contentWindow?.postMessage({ type: 'monopoly_back_pressed' }, '*'); } catch (_) {}
         }
+        const nativeBackRouter = window.SparkNativeBack.createNativeBackRouter(
+            document, tg?.BackButton, onMonopolyBackClick,
+            () => window.SparkSheets?.closeTop?.() || false
+        );
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => nativeBackRouter.start(), { once: true });
+        else nativeBackRouter.start();
         function setMonopolyBackButton(show) {
-            const bb = tg && tg.BackButton;
-            if (!bb || monoBackShown === show) return;
-            monoBackShown = show;
-            try {
-                if (show) { bb.onClick(onMonopolyBackClick); bb.show(); }
-                else { bb.hide(); bb.offClick(onMonopolyBackClick); }
-            } catch (_) {}
+            nativeBackRouter.setMonopolyBackButton(show);
         }
 
         // ---- «На весь экран» из монополии (десктоп) ----

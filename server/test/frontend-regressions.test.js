@@ -330,7 +330,7 @@ test('Referral terms and Wordle card keep touch-safe UI behavior', () => {
     const referralEnd = indexSource.indexOf('async function checkAndRegisterReferral', referralStart);
     const referral = indexSource.slice(referralStart, referralEnd);
     const sheets = fs.readFileSync(path.join(root, 'assets/ui/sheets.js'), 'utf8');
-    assert.match(indexSource, /src="assets\/ui\/sheets.js" defer/);
+    assert.match(indexSource, /src="assets\/ui\/sheets.js(?:\?v=\d+)?" defer/);
     assert.match(sheets, /\['referralConditionsSheet','hideReferralConditions'\]/);
     assert.match(sheets, /if \(!fullScreen\) bindDrag\(panel, close\)/);
     assert.doesNotMatch(referral, /referralConditionsHandle[^\n]*addEventListener/);
