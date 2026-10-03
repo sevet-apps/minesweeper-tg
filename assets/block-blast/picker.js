@@ -12,7 +12,10 @@
         let state = 'closed', restoreFocus, drag, panelAnimation, backdropAnimation;
         let inertSiblings = [];
         const titleId = 'bbPickerTitle' + (++nextId);
-        const copy = (ru, en, zh) => ({ ru, en, zh })[options.lang?.() || 'ru'] || ru;
+        const copy = (ru, en, zh) => {
+            const lang = options.lang?.() || 'ru';
+            return ({ ru, en, zh })[lang] || root.SparkLocalePacks?.[lang]?.extras?.[ru] || ru;
+        };
         const themeId = () => { const theme = options.getTheme(); return typeof theme === 'string' ? theme : theme.id; };
         const reduced = () => !!options.reduced?.();
         const stopAnimations = () => {
@@ -96,7 +99,8 @@
             panel.querySelector('.bb-picker-progress-detail').textContent = copy('Условия и награды скоро появятся здесь.', 'Challenges and rewards will appear here soon.', '挑战与奖励即将开放。');
             choices.querySelectorAll('[data-material-choice]').forEach(button => {
                 const item = options.catalog.find(item => item.id === button.dataset.materialChoice);
-                button.querySelector('.bb-picker-name').textContent = item.name[options.lang?.() || 'ru'] || item.name.ru;
+                const lang = options.lang?.() || 'ru';
+                button.querySelector('.bb-picker-name').textContent = item.name[lang] || root.SparkLocalePacks?.[lang]?.extras?.[item.name.ru] || item.name.ru;
             });
             updateSelection();
         }

@@ -285,10 +285,10 @@
         const count = Math.max(0, Number(account.cases_count) || 0);
         const visible = Math.min(count, 30);
         const cards = Array.from({ length: Math.max(visible, count ? 0 : 1) }, (_, index) => `<button class="mc-case-item" ${count ? '' : 'disabled'} aria-label="${count ? `Открыть кейс ${index + 1}` : 'Нет доступных кейсов'}">
-            <span class="mc-case-glow"></span><img src="assets/skins/case.svg" alt=""><b>Универсальный кейс</b><small>${count ? `Кейс ${index + 1} из ${count}` : 'Следующий — за 50 рейтинга'}</small></button>`).join('');
-        return `<div class="mc-section-title"><b>Ваши кейсы</b><span>${count} в профиле</span></div>
+            <span class="mc-case-glow"></span><img src="assets/skins/case.svg" alt=""><b>Универсальный кейс</b><small>${count ? `${index + 1}/${count}` : 'Следующий — за 50 рейтинга'}</small></button>`).join('');
+        return `<div class="mc-section-title"><b>Ваши кейсы</b><span>${count}</span></div>
             ${pending ? `<button class="mc-pending-case"><span>Открытая компания ждёт вас</span><b>Забрать находку</b></button>` : ''}
-            <div class="mc-case-carousel" aria-label="Доступные кейсы">${cards}${count > visible ? `<div class="mc-case-more"><b>+${count - visible}</b><span>ещё кейсов</span></div>` : ''}</div>
+            <div class="mc-case-carousel" aria-label="Доступные кейсы">${cards}${count > visible ? `<div class="mc-case-more"><b>+${count - visible}</b></div>` : ''}</div>
             <div class="mc-case-hint"><b>Одна компания внутри</b><span>Кейсы начисляются за каждые 50 очков рейтинга Монополии.</span></div>
             <div class="mc-odds"><span><i data-rarity="common"></i>Обычная <b>70%</b></span><span><i data-rarity="rare"></i>Редкая <b>22%</b></span><span><i data-rarity="epic"></i>Эпическая <b>7%</b></span><span><i data-rarity="mythic"></i>Мифическая <b>1%</b></span></div>`;
     }
@@ -319,7 +319,7 @@
                 <div class="mc-company-results"></div></div>`;
             bindCompanies(panel);
         }
-        panel.querySelector('[data-company-count]').textContent = `${inventory.length} из ${current.catalog?.skins?.length || 0} уникальных · ${total} всего`;
+        panel.querySelector('[data-company-count]').textContent = `${inventory.length}/${current.catalog?.skins?.length || 0} · Всего ${total}`;
         panel.querySelectorAll('.mc-filter').forEach(button => button.classList.toggle('on', button.dataset.filter === filter));
         const results = panel.querySelector('.mc-company-results');
         results.innerHTML = rows.length ? `<div class="mc-grid">${rows.map(item => skinCard(item)).join('')}</div>` : '<div class="mc-empty"><b>Здесь пока пусто</b>Откройте кейс — полученная компания появится в коллекции.</div>';
@@ -637,7 +637,7 @@
             }).join('')}</div>`}
             <div class="mc-sheet-actions">
                 ${!duplicate && equipped ? '<button class="mc-secondary mc-original">Вернуть оригинал</button>' : ''}
-                ${duplicate ? `<button class="mc-primary mc-exchange">Обменять на ${skin.exchangeValue} монет</button>` : ''}
+                ${duplicate ? `<button class="mc-primary mc-exchange">Обменять · +${skin.exchangeValue} 🪙</button>` : ''}
             </div></div>`;
         const el = layer(html);
         el.querySelectorAll('[data-equip-tile]').forEach(button => button.onclick = async () => {
@@ -666,7 +666,7 @@
             if (busy) return; busy = true;
             const button = el.querySelector('.mc-confirm-btn');
             button.disabled = true; button.textContent = 'Обмениваем…';
-            try { await request('/api/monopoly/skins/exchange', { method:'POST', body:JSON.stringify({ skinId:skin.id }) }); closeLayer(el); global.Lobby?.toast?.(`Получено ${skin.exchangeValue} монет`); await refresh(); }
+            try { await request('/api/monopoly/skins/exchange', { method:'POST', body:JSON.stringify({ skinId:skin.id }) }); closeLayer(el); global.Lobby?.toast?.(`+${skin.exchangeValue} 🪙`); await refresh(); }
             catch (error) {
                 button.disabled = false;
                 button.textContent = 'Обменять';

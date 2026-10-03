@@ -20,6 +20,10 @@ function load(lang) {
         window,
         document,
         location: { search: `?lang=${lang}` },
+        fetch: async url => ({
+            ok: true,
+            json: async () => JSON.parse(fs.readFileSync(path.resolve(monopolyRoot, url), 'utf8')),
+        }),
         URLSearchParams,
         Node: { TEXT_NODE: 3, ELEMENT_NODE: 1, DOCUMENT_NODE: 9 },
         NodeFilter: { SHOW_TEXT: 4 },
@@ -42,6 +46,17 @@ test('Monopoly translates static and dynamic phrases to Chinese', () => {
     assert.equal(i18n.translate('Монополия'), '大富翁');
     assert.equal(i18n.translate('Ваш ход!'), '轮到您！');
     assert.equal(i18n.translate('Код комнаты'), '房间代码');
+});
+
+test('Monopoly keeps variable exchange and rent messages grammatical in Japanese', async () => {
+    const i18n = load('ja');
+    await i18n.ready;
+    assert.equal(i18n.translate('Первый экземпляр уже хранится в коллекции. Этот можно обменять на 300 монет.'),
+        '最初の1枚はコレクションに残ります。この重複分は300コインと交換できます。');
+    assert.equal(i18n.translate('Авто · +4% ко всем уровням аренды после сбора монополии.'),
+        '自動車 · 同じ色の物件をすべてそろえると、すべての家賃に+4%のボーナスが適用されます。');
+    assert.equal(i18n.translate('Один лишний экземпляр «Tesla» исчезнет. Вы получите 300 монет. Первый экземпляр останется навсегда.'),
+        '重複している「Tesla」1枚が消えます。300コインを受け取ります。最初の1枚はずっと残ります。');
 });
 
 function collectSourceStrings(directory) {
