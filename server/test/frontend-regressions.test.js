@@ -349,11 +349,14 @@ test('Chinese flag and Block Blast counters use the refreshed visual treatment',
     const zhButtonStart = indexSource.indexOf('data-lang="zh"');
     const zhButtonEnd = indexSource.indexOf('</button>', zhButtonStart);
     const zhButton = indexSource.slice(zhButtonStart, zhButtonEnd);
-    assert.match(zhButton, /<circle cx="30" cy="30" r="30" fill="#DE2910"/);
-    assert.equal((zhButton.match(/<use href="#zhStar"/g) || []).length, 5,
-        'the Chinese flag must contain one large and four small stars');
-    assert.match(zhButton, /translate\(17\.5 30\) scale\(7\.2\)/,
-        'the large star must be vertically centered inside the four-star group');
+    assert.match(zhButton, /src="assets\/flags\/zh\.svg"/);
+    const zhFlag = fs.readFileSync(path.join(root, 'assets/flags/zh.svg'), 'utf8');
+    assert.match(zhFlag, /fill="#e32724"/);
+    assert.match(zhFlag, /<path fill="#ffdb31"/);
+    assert.equal((zhFlag.match(/<circle /g) || []).length, 4,
+        'the simplified flag keeps one large and four small stars');
+    assert.match(indexSource, /\.lang-flag\s*\{[^}]*border-radius:\s*50%/,
+        'every flag remains inside a circular window');
 
     const visualsCss = fs.readFileSync(path.join(root, 'assets/block-blast/visuals.css'), 'utf8');
     assert.match(visualsCss, /body \.bb-line-score[^}]*-webkit-text-fill-color: #fff9e9/);

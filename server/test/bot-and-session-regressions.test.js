@@ -101,7 +101,8 @@ test('inline games, referral links and account language use the new app identity
     assert.match(client, /languageStorageKey = languageUserId \? `language_\$\{languageUserId\}`/);
     assert.match(client, /legacyOwner === languageUserId/,
         'a language left by another Telegram account must not override the current account');
-    assert.match(client, /code\.startsWith\('zh'\)[\s\S]*?code\.startsWith\('en'\)/);
+    assert.match(client, /const supportedLanguages = Object\.freeze\(\['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'\]\)/);
+    assert.match(client, /const telegramLanguage = normalizedLanguage\(languageUser && languageUser\.language_code\)/);
     assert.match(client, /checking: 'Checking\.\.\.'[\s\S]*?welcome: 'Welcome!'/);
     assert.match(client, /t\('checking'\)[\s\S]*?t\('welcome'\)/);
 });
@@ -128,9 +129,9 @@ test('inline games use Telegram rich messages with in-message buttons and classi
     assert.match(server, /const TTT_EMPTY = '\\u2063\\u2002\\u2002'/,
         'empty tic-tac-toe controls must stay wide without exposing white square glyphs');
     assert.doesNotMatch(server.slice(server.indexOf('const TTT_X'), server.indexOf('// --- CHECKERS GAME ---')), /▫️/);
-    assert.match(server, /getTopsForGames\(topConfigs\.filter\(Boolean\), userId, true\)/,
+    assert.match(server, /getTopsForGames\(topConfigs\.filter\(Boolean\), userId, true, lang\)/,
         'rich leaderboards support custom premium emoji and should not downgrade them');
-    assert.match(server, /text:\s*'Открыть Spark'[\s\S]*?style:\s*'success'/,
+    assert.match(server, /text:\s*botText\(lang, 'openSpark'\)[\s\S]*?style:\s*'success'/,
         'the rich action must remain readable in Telegram themes that render primary buttons white');
     assert.doesNotMatch(
         server.slice(server.indexOf('// === КРЕСТИКИ-НОЛИКИ ===')),

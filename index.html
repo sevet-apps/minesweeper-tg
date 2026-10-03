@@ -96,6 +96,7 @@
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --pattern-opacity: 0.06;
             --sheet-bg: #f2f2f7;
+            --privacy-body-text: #55545a;
         }
         [data-theme="dark"] { 
             --bg-color: #000000; 
@@ -117,6 +118,7 @@
             --sudoku-err: rgba(255, 69, 58, 0.3);
             --pattern-opacity: 0.10;
             --sheet-bg: #2c2c2e;
+            --privacy-body-text: #b9b9bf;
         }
         
         /* Global performance optimizations */
@@ -1218,48 +1220,56 @@
         .settings-section-label:first-of-type { margin-top: 10px; }
         
         .language-selector {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
         }
         
         .lang-btn {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
+            justify-content: center;
+            gap: 5px;
+            min-width: 0;
+            min-height: 82px;
+            padding: 7px 2px;
             background: var(--glass-bg);
-            border: 2px solid var(--glass-border);
-            border-radius: 50px;
-            font-size: 15px;
-            font-weight: 700;
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            font-size: 11px;
+            font-weight: 650;
             color: var(--text-color);
             cursor: pointer;
-            transition: all 0.2s;
+            white-space: nowrap;
+            transition: transform 0.22s cubic-bezier(.2, 1.35, .45, 1), color .2s, background-color .2s, box-shadow .2s;
         }
         .lang-btn.active {
             background: var(--accent);
             border-color: var(--accent);
             color: #fff;
+            box-shadow: 0 7px 18px rgba(0, 122, 255, .25);
         }
-        [data-theme="dark"] .lang-btn.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-        .lang-btn:active { transform: scale(0.96); }
+        .lang-btn:active { transform: scale(0.9); }
+        .lang-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
         .lang-flag {
-            width: 22px;
-            height: 22px;
+            display: block;
+            width: 39px;
+            height: 39px;
             border-radius: 50%;
             overflow: hidden;
             flex-shrink: 0;
+            border: 2px solid var(--glass-border);
+            box-shadow: 0 2px 7px rgba(0, 0, 0, .20);
+            transition: border-color .2s, box-shadow .2s, transform .26s cubic-bezier(.2, 1.35, .45, 1);
         }
-        .lang-flag svg {
+        .lang-flag img {
             width: 100%;
             height: 100%;
             display: block;
+            object-fit: cover;
         }
+        .lang-btn.active .lang-flag { border-color: rgba(255,255,255,.85); box-shadow: 0 2px 8px rgba(0,0,0,.18); transform: scale(1.05); }
         
         .settings-group-sheet {
             background: var(--glass-bg);
@@ -1301,7 +1311,7 @@
         .settings-footer-btn {
             flex: 1;
             padding: 16px;
-            border-radius: 26px;
+            border-radius: 999px;
             font-size: 16px;
             font-weight: 600;
             border: none;
@@ -1326,6 +1336,12 @@
         .settings-row:last-child { border-bottom: none; }
         .settings-label { font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
         .theme-switch { position: relative; width: 64px; height: 34px; background: var(--toggle-bg); border-radius: 20px; cursor: pointer; padding: 2px; } 
+        #themeToggleSheet:is([data-active="true"]),
+        #liteToggleSheet.active,
+        #vibrationToggle.active,
+        #soundToggle.active { background: var(--accent); }
+        [data-theme="dark"] #themeToggleSheet { background: var(--accent); }
+        .theme-switch.active .toggle-labels, [data-theme="dark"] #themeToggleSheet .theme-icons { color: rgba(255,255,255,.82); }
         .theme-icons { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-between; align-items: center; padding: 0 7px; color: var(--icon-color); pointer-events: none; } 
         .switch-circle { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; background: var(--toggle-circle); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2; } 
         [data-theme="dark"] #themeToggle .switch-circle, [data-theme="dark"] #themeToggleSheet .switch-circle { transform: translateX(30px); }
@@ -1780,10 +1796,12 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
             padding: 20px;
             padding-bottom: calc(40px + var(--safe-bottom));
             touch-action: pan-y;
         }
+        .privacy-body::-webkit-scrollbar { display: none; }
         .privacy-body h2 {
             font-size: 22px;
             font-weight: 800;
@@ -1797,7 +1815,7 @@
         .privacy-body p, .privacy-body li {
             font-size: 14px;
             line-height: 1.6;
-            color: #8e8e93;
+            color: var(--privacy-body-text);
             margin: 0 0 8px;
         }
         .privacy-body ul {
@@ -3505,12 +3523,12 @@
     <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261001">
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
-    <link rel="stylesheet" href="assets/ui/app.css">
-    <script src="assets/ui/sheets.js?v=20261001" defer></script>
+    <link rel="stylesheet" href="assets/ui/app.css?v=20261003">
+    <script src="assets/ui/sheets.js?v=20261003" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
     <script src="assets/block-blast/motion.js"></script>
-    <script src="assets/block-blast/picker.js"></script>
-    <script src="assets/block-blast/visuals.js"></script>
+    <script src="assets/block-blast/picker.js?v=20261003"></script>
+    <script src="assets/block-blast/visuals.js?v=20261003"></script>
 </head>
 <body>
     <div class="app-loader" id="appLoader" aria-hidden="true">
@@ -3889,7 +3907,7 @@
             <div class="mono-join-wrap">
                 <div class="mono-join-icon">🔑</div>
                 <div class="mono-join-title">Введите код комнаты</div>
-                <div class="mono-join-sub">Спросите код у хоста</div>
+                <div class="mono-join-sub" data-i18n="monoAskHostCode">Спросите код у хоста</div>
 
                 <div class="mono-code-boxes" id="monoCodeBoxes" onclick="monoFocusCode(event)">
                     <div class="mono-code-cell" data-i="0"></div>
@@ -3900,7 +3918,7 @@
                 <input id="monoCodeInput" inputmode="numeric" maxlength="4"
                        autocomplete="off" class="mono-code-hidden-input"/>
 
-                <button class="mono-primary-btn" id="monoJoinBtn" onclick="monoSubmitJoin()" disabled>
+                <button class="mono-primary-btn" id="monoJoinBtn" onclick="monoSubmitJoin()" data-i18n="monoJoinRoom" disabled>
                     Присоединиться
                 </button>
             </div>
@@ -3932,7 +3950,7 @@
                 <div class="mono-wait-code" id="monoWaitCode">M0000</div>
                 <button class="mono-copy-btn" id="monoCopyBtn" onclick="monoCopyCode()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    <span id="monoCopyLabel">Копировать</span>
+                    <span id="monoCopyLabel" data-i18n="monoCopyCode">Копировать</span>
                 </button>
             </div>
 
@@ -3946,7 +3964,7 @@
                 <button class="mono-primary-btn" id="monoStartBtn" onclick="startMonopolyGame()" style="display:none;">
                     Начать игру
                 </button>
-                <div class="mono-wait-hint" id="monoWaitHint">Ждём, пока хост начнёт игру…</div>
+                <div class="mono-wait-hint" id="monoWaitHint" data-i18n="monoWaitingForHost">Ждём, пока хост начнёт игру…</div>
             </div>
         </div>
     </div>
@@ -3998,7 +4016,7 @@
             </div>
         </div>
 
-        <div class="profile-segment" id="profileSegment" role="tablist" aria-label="Profile sections">
+        <div class="profile-segment" id="profileSegment" role="tablist" aria-label="Разделы профиля" data-i18n-aria-label="profileSections">
             <div class="profile-segment-glider"></div>
             <button class="profile-segment-btn active" id="profileOverviewTab" type="button" role="tab" aria-selected="true" data-profile-section="overview" data-i18n="overview">Обзор</button>
             <button class="profile-segment-btn" id="profileStatsTab" type="button" role="tab" aria-selected="false" data-profile-section="stats" data-i18n="statistics">Статистика</button>
@@ -4024,7 +4042,7 @@
                     </div>
                     <div class="referral-buttons">
                         <button class="referral-invite-btn" onclick="shareReferralLink()" data-i18n="invite">Пригласить</button>
-                        <button class="referral-copy-btn" onclick="copyReferralLink()" aria-label="Copy referral link">
+                        <button class="referral-copy-btn" onclick="copyReferralLink()" aria-label="Скопировать ссылку-приглашение" data-i18n-aria-label="copyReferralLink">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -4447,19 +4465,19 @@
             
             <!-- Язык -->
             <div class="settings-section-label" data-i18n="language">ЯЗЫК</div>
-            <div class="language-selector">
-                <button class="lang-btn active" data-lang="ru" onclick="setLanguage('ru')">
-                    <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="ruClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#ruClip)"><rect width="60" height="20" fill="#fff"/><rect y="20" width="60" height="20" fill="#0039A6"/><rect y="40" width="60" height="20" fill="#D52B1E"/></g></svg></div>
-                    RU
-                </button>
-                <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">
-                    <div class="lang-flag"><svg viewBox="0 0 60 60"><clipPath id="enClip"><circle cx="30" cy="30" r="30"/></clipPath><g clip-path="url(#enClip)"><rect width="60" height="60" fill="#fff"/><rect y="0" width="60" height="9" fill="#E8323C"/><rect y="18" width="60" height="9" fill="#E8323C"/><rect y="36" width="60" height="9" fill="#E8323C"/><rect y="54" width="60" height="6" fill="#E8323C"/><rect width="30" height="36" fill="#3B5998"/><circle cx="8" cy="8" r="1.8" fill="#fff"/><circle cx="15" cy="8" r="1.8" fill="#fff"/><circle cx="22" cy="8" r="1.8" fill="#fff"/><circle cx="11.5" cy="14" r="1.8" fill="#fff"/><circle cx="18.5" cy="14" r="1.8" fill="#fff"/><circle cx="8" cy="20" r="1.8" fill="#fff"/><circle cx="15" cy="20" r="1.8" fill="#fff"/><circle cx="22" cy="20" r="1.8" fill="#fff"/><circle cx="11.5" cy="26" r="1.8" fill="#fff"/><circle cx="18.5" cy="26" r="1.8" fill="#fff"/><circle cx="8" cy="32" r="1.8" fill="#fff"/><circle cx="15" cy="32" r="1.8" fill="#fff"/><circle cx="22" cy="32" r="1.8" fill="#fff"/></g></svg></div>
-                    EN
-                </button>
-                <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">
-                    <div class="lang-flag"><svg viewBox="0 0 60 60" aria-hidden="true"><defs><path id="zhStar" d="M0-1 .224-.309 .951-.309 .363.118 .588.809 0 .382-.588.809-.363.118-.951-.309-.224-.309Z"/></defs><circle cx="30" cy="30" r="30" fill="#DE2910"/><g fill="#FFDE00"><use href="#zhStar" transform="translate(17.5 30) scale(7.2)"/><use href="#zhStar" transform="translate(31 18.5) rotate(-130) scale(3.1)"/><use href="#zhStar" transform="translate(39 25) rotate(-103) scale(3.1)"/><use href="#zhStar" transform="translate(39 34) rotate(-80) scale(3.1)"/><use href="#zhStar" transform="translate(31 41) rotate(-51) scale(3.1)"/></g></svg></div>
-                    中文
-                </button>
+            <div class="language-selector" role="group" aria-label="Language">
+                <button class="lang-btn active" type="button" data-lang="ru" onclick="setLanguage('ru')" aria-label="Русский" aria-pressed="true"><span class="lang-flag"><img src="assets/flags/ru.svg" alt="" loading="lazy"></span><span>Русский</span></button>
+                <button class="lang-btn" type="button" data-lang="en" onclick="setLanguage('en')" aria-label="English" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/en.svg" alt="" loading="lazy"></span><span>English</span></button>
+                <button class="lang-btn" type="button" data-lang="zh" onclick="setLanguage('zh')" aria-label="中文" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/zh.svg" alt="" loading="lazy"></span><span>中文</span></button>
+                <button class="lang-btn" type="button" data-lang="es" onclick="setLanguage('es')" aria-label="Español" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/es.svg" alt="" loading="lazy"></span><span>Español</span></button>
+                <button class="lang-btn" type="button" data-lang="pt" onclick="setLanguage('pt')" aria-label="Português (Brasil)" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/pt.svg" alt="" loading="lazy"></span><span>Português</span></button>
+                <button class="lang-btn" type="button" data-lang="id" onclick="setLanguage('id')" aria-label="Bahasa Indonesia" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/id.svg" alt="" loading="lazy"></span><span>Indonesia</span></button>
+                <button class="lang-btn" type="button" data-lang="fr" onclick="setLanguage('fr')" aria-label="Français" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/fr.svg" alt="" loading="lazy"></span><span>Français</span></button>
+                <button class="lang-btn" type="button" data-lang="ja" onclick="setLanguage('ja')" aria-label="日本語" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/ja.svg" alt="" loading="lazy"></span><span>日本語</span></button>
+                <button class="lang-btn" type="button" data-lang="de" onclick="setLanguage('de')" aria-label="Deutsch" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/de.svg" alt="" loading="lazy"></span><span>Deutsch</span></button>
+                <button class="lang-btn" type="button" data-lang="ko" onclick="setLanguage('ko')" aria-label="한국어" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/ko.svg" alt="" loading="lazy"></span><span>한국어</span></button>
+                <button class="lang-btn" type="button" data-lang="tr" onclick="setLanguage('tr')" aria-label="Türkçe" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/tr.svg" alt="" loading="lazy"></span><span>Türkçe</span></button>
+                <button class="lang-btn" type="button" data-lang="vi" onclick="setLanguage('vi')" aria-label="Tiếng Việt" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/vi.svg" alt="" loading="lazy"></span><span>Tiếng Việt</span></button>
             </div>
             
             <!-- Тема -->
@@ -4947,7 +4965,7 @@
             socket.on('opponent_left', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentLeft'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
             
             // Общие ошибки
-            socket.on('error_message', (msg) => { alert(msg); document.getElementById('modalLoading').classList.remove('visible'); });
+            socket.on('error_message', (msg) => { alert(localizeServerError(msg)); document.getElementById('modalLoading').classList.remove('visible'); });
         }
 
         function applyTheme() {
@@ -5040,22 +5058,22 @@
         const languageUser = tg.initDataUnsafe.user;
         const languageUserId = languageUser && String(languageUser.id);
         const languageStorageKey = languageUserId ? `language_${languageUserId}` : 'language';
-        const telegramLanguage = (() => {
-            const code = String(languageUser && languageUser.language_code || '').toLowerCase();
-            if (code.startsWith('zh')) return 'zh';
-            if (code.startsWith('en')) return 'en';
-            return 'ru';
-        })();
+        const supportedLanguages = Object.freeze(['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi']);
+        const normalizedLanguage = value => {
+            const code = String(value || '').toLowerCase().split(/[-_]/)[0];
+            return supportedLanguages.includes(code) ? code : 'ru';
+        };
+        const telegramLanguage = normalizedLanguage(languageUser && languageUser.language_code);
         let currentLang = localStorage.getItem(languageStorageKey);
         if (!currentLang && languageUserId) {
             const legacyOwner = localStorage.getItem('language_owner');
             const legacyLanguage = localStorage.getItem('language');
-            if (legacyOwner === languageUserId && ['ru', 'en', 'zh'].includes(legacyLanguage)) {
+            if (legacyOwner === languageUserId && supportedLanguages.includes(legacyLanguage)) {
                 currentLang = legacyLanguage;
                 localStorage.setItem(languageStorageKey, currentLang);
             }
         }
-        if (!['ru', 'en', 'zh'].includes(currentLang)) currentLang = telegramLanguage;
+        if (!supportedLanguages.includes(currentLang)) currentLang = telegramLanguage;
         const translations = {
             ru: {
                 settings: 'Настройки',
@@ -5074,6 +5092,8 @@
                 myRecords: 'Мои рекорды',
                 overview: 'Обзор',
                 statistics: 'Статистика',
+                profileSections: 'Разделы профиля',
+                copyReferralLink: 'Скопировать ссылку-приглашение',
                 favoriteGame: 'Любимая игра',
                 noPlaytime: 'Начните играть — время появится здесь',
                 nearestGoals: 'Ближайшие цели',
@@ -5101,6 +5121,19 @@
                 wordle: 'Вордли',
                 monopoly: 'Монополия',
                 referrals: 'Рефоводы',
+                playerFallback: 'Игрок',
+                playerLeftRoom: '{name} покинул комнату',
+                playerDisconnected: '{name} отключился, ждём…',
+                playerReconnected: '{name} снова в игре',
+                roomNotFound: 'Комната не найдена',
+                roomFull: 'Комната переполнена',
+                monoAskHostCode: 'Спросите код у хоста', monoJoinRoom: 'Присоединиться', monoCopyCode: 'Копировать',
+                monoRoomsLoading: 'Загрузка…', monoNoOpenRooms: 'Пока нет открытых комнат',
+                monoCreateOrRefreshRooms: 'Создайте свою или обновите список', monoHost: 'Хост:', monoEnterRoom: 'Вступить',
+                monoCopied: 'Скопировано!', monoHostBadge: 'Хост', monoFreeSeat: 'Свободно',
+                monoNeedTwoPlayers: 'Нужно минимум 2 игрока', monoWaitingForHost: 'Ждём, пока хост начнёт игру…',
+                monoUnfinishedGame: 'У вас есть незавершённая партия',
+                monoRoomAwaitsReturn: 'Комната {code} ждёт вашего возвращения', monoLater: 'Позже',
                 // Game UI
                 menu: 'Меню',
                 back: 'Назад',
@@ -5305,6 +5338,8 @@
                 bbVpnActive: '×1.5 активен',
                 bbVpnCta: 'Купи VPN — получи ×1.5',
                 bbVpnPartnerLabel: 'Партнёр:',
+                shareReferralText: '🎮 Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!',
+                shareMonopolyRoomText: '🎲 Заходи в мою комнату в Монополии Spark! Код комнаты: {code}',
                 back: 'Назад',
                 beta: 'БЕТА'
             },
@@ -5325,6 +5360,8 @@
                 myRecords: 'My Records',
                 overview: 'Overview',
                 statistics: 'Statistics',
+                profileSections: 'Profile sections',
+                copyReferralLink: 'Copy referral link',
                 favoriteGame: 'Favorite game',
                 noPlaytime: 'Start playing to track time here',
                 nearestGoals: 'Nearest goals',
@@ -5352,6 +5389,19 @@
                 wordle: 'Wordle',
                 monopoly: 'Monopoly',
                 referrals: 'Referrers',
+                playerFallback: 'Player',
+                playerLeftRoom: '{name} left the room',
+                playerDisconnected: '{name} disconnected; waiting…',
+                playerReconnected: '{name} is back in the game',
+                roomNotFound: 'Room not found',
+                roomFull: 'Room is full',
+                monoAskHostCode: 'Ask the host for the room code', monoJoinRoom: 'Join', monoCopyCode: 'Copy',
+                monoRoomsLoading: 'Loading…', monoNoOpenRooms: 'No open rooms yet',
+                monoCreateOrRefreshRooms: 'Create one or refresh the list', monoHost: 'Host:', monoEnterRoom: 'Join',
+                monoCopied: 'Copied!', monoHostBadge: 'Host', monoFreeSeat: 'Open',
+                monoNeedTwoPlayers: 'At least 2 players are needed', monoWaitingForHost: 'Waiting for the host to start the game…',
+                monoUnfinishedGame: 'You have an unfinished game',
+                monoRoomAwaitsReturn: 'Room {code} is waiting for you', monoLater: 'Later',
                 // Game UI
                 menu: 'Menu',
                 back: 'Back',
@@ -5556,14 +5606,17 @@
                 bbVpnActive: '×1.5 active',
                 bbVpnCta: 'Get VPN — earn ×1.5',
                 bbVpnPartnerLabel: 'Partner:',
+                shareReferralText: '🎮 Join me on Spark! Play great games and climb the leaderboards!',
+                shareMonopolyRoomText: '🎲 Join my Spark Monopoly room! Room code: {code}',
                 back: 'Back',
+                comingSoon: 'Coming soon: Random opponent search',
                 beta: 'BETA'
             },
             zh: {
                 settings: '设置', language: '语言', appearance: '外观', theme: '主题',
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
-                myRecords: '我的纪录', overview: '概览', statistics: '统计', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
+                myRecords: '我的纪录', overview: '概览', statistics: '统计', profileSections: '个人资料栏目', copyReferralLink: '复制邀请链接', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
                 nearestGoals: '最近目标', goalsLoading: '正在查找最近目标…', noGoals: '完成第一局后，这里会显示目标。', allGoalsComplete: '所有可用榜首都已属于您。',
                 totalTime: '游戏时长', goalPlace: '距离第 {place} 名：{gap}', referralCompactText: '一个链接即可随时查看全部邀请进度。',
                 referralProgram: '邀请计划', inviteFriends: '邀请好友并提升排行榜名次',
@@ -5571,6 +5624,16 @@
                 conditionsText: '使用您的专属链接邀请好友，并参加邀请排行榜。', invite: '邀请', invited: '已邀请',
                 activated: '已计入', rankInTop: '名次', blockBlast: '方块爆破', minesweeper: '扫雷', tower: '叠塔',
                 sudoku: '数独', checkers: '跳棋', wordle: '猜词', monopoly: '大富翁', referrals: '邀请达人',
+                playerFallback: '玩家', playerLeftRoom: '{name} 离开了房间',
+                playerDisconnected: '{name} 已断线，等待重连…', playerReconnected: '{name} 已重新加入游戏',
+                roomNotFound: '找不到房间', roomFull: '房间已满',
+                monoAskHostCode: '向房主索取房间代码', monoJoinRoom: '加入', monoCopyCode: '复制',
+                monoRoomsLoading: '加载中…', monoNoOpenRooms: '暂无开放房间',
+                monoCreateOrRefreshRooms: '创建房间或刷新列表', monoHost: '房主：', monoEnterRoom: '加入',
+                monoCopied: '已复制！', monoHostBadge: '房主', monoFreeSeat: '空位',
+                monoNeedTwoPlayers: '至少需要 2 名玩家', monoWaitingForHost: '等待房主开始游戏…',
+                monoUnfinishedGame: '您有一局未完成的游戏',
+                monoRoomAwaitsReturn: '房间 {code} 正等您返回', monoLater: '稍后',
                 menu: '菜单', back: '返回', newGame: '新游戏', playAgain: '再玩一次', exit: '退出', start: '开始',
                 score: '得分', best: '最佳', wins: '胜场', time: '时间', newRecord: '新纪录！',
                 recordNotBeat: '未打破纪录', recordSaveFailed: '结果等待上传',
@@ -5629,52 +5692,138 @@
                 multPromoDesc: '如果您订阅合作伙伴的 VPN 服务，锦标赛模式的最终得分将乘以 1.5。打开合作伙伴页面并订阅，倍率会自动生效。',
                 multPromoGoBtn: '前往合作伙伴', bbLbGlobal: '全球', bbLbTournament: '锦标赛', bbVpnActive: '×1.5 已启用',
                 bbVpnCta: '获取 VPN，得分 ×1.5', bbVpnPartnerLabel: '合作伙伴：', beta: '测试版',
+                shareReferralText: '🎮 来 Spark 一起玩游戏，在排行榜上比拼吧！',
+                shareMonopolyRoomText: '🎲 加入我的 Spark 大富翁房间！房间代码：{code}',
                 comingSoon: '即将推出', tournamentHistoryNoPlace: '您未参加'
             }
         };
         
+        const localePacks = window.SparkLocalePacks = Object.create(null);
+        const localeRequests = Object.create(null);
+        const sourceKeyByText = new Map(Object.entries(translations.ru).map(([key, value]) => [value, key]));
+        const staticTextNodes = [];
+        let languageChangeRequest = 0;
+        function captureStaticText() {
+            if (staticTextNodes.length) return;
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+                const node = walker.currentNode;
+                const parent = node.parentElement;
+                if (!parent || parent.closest('script, style, template, [data-lang-content], [data-i18n], .lang-btn')) continue;
+                const source = node.nodeValue.trim();
+                if (!source || !/[А-Яа-яЁё]/.test(source)) continue;
+                const start = node.nodeValue.indexOf(source);
+                staticTextNodes.push({ node, source, before: node.nodeValue.slice(0, start), after: node.nodeValue.slice(start + source.length) });
+            }
+        }
+        function translateStaticText() {
+            const pack = localePacks[currentLang];
+            for (const { node, source, before, after } of staticTextNodes) {
+                if (!node.isConnected) continue;
+                const appKey = sourceKeyByText.get(source);
+                const translated = currentLang === 'ru' ? source :
+                    (appKey && translations[currentLang]?.[appKey]) || pack?.monopoly?.[source] || pack?.extras?.[source] || source;
+                node.nodeValue = before + translated + after;
+            }
+        }
+        async function ensureLocale(lang) {
+            if (lang === 'ru' || localePacks[lang]) return;
+            if (!supportedLanguages.includes(lang)) throw new Error('Unsupported language');
+            if (!localeRequests[lang]) {
+                localeRequests[lang] = fetch(`locales/${lang}.json`)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Locale ${lang}: HTTP ${response.status}`);
+                        return response.json();
+                    })
+                    .then(pack => {
+                        if (!pack || !pack.app || !pack.monopoly || !pack.privacyHtml) throw new Error(`Incomplete locale ${lang}`);
+                        localePacks[lang] = pack;
+                        if (!translations[lang]) translations[lang] = pack.app;
+                    }).catch(error => {
+                        delete localeRequests[lang];
+                        throw error;
+                    });
+            }
+            return localeRequests[lang];
+        }
+
         // Helper function to get translation
         function t(key) {
             const trans = translations[currentLang] || translations.ru;
             return trans[key] || translations.ru[key] || key;
         }
 
+        function localizeServerError(message) {
+            if (!message) return t('networkError');
+            if (currentLang === 'ru') return message;
+            if (message === 'Комната не найдена' || message === 'Партия не найдена') return t('roomNotFound');
+            if (message === 'Комната переполнена' || message === 'Комната заполнена (макс 4)') return t('roomFull');
+            const source = {
+                'Нужно минимум 2 игрока': 'Начать можно, когда соберётся хотя бы двое',
+                'Вас нет в этой партии': 'Не удалось войти'
+            }[message] || message;
+            return localePacks[currentLang]?.monopoly?.[source] || t('networkError');
+        }
+
         function currentLocale() {
-            return currentLang === 'zh' ? 'zh-CN' : (currentLang === 'en' ? 'en-US' : 'ru-RU');
+            return { ru: 'ru-RU', en: 'en-US', zh: 'zh-CN', es: 'es-ES', pt: 'pt-BR', id: 'id-ID', fr: 'fr-FR', ja: 'ja-JP', de: 'de-DE', ko: 'ko-KR', tr: 'tr-TR', vi: 'vi-VN' }[currentLang] || 'ru-RU';
         }
         
-        function setLanguage(lang) {
-            if (!['ru', 'en', 'zh'].includes(lang)) return;
+        async function setLanguage(lang) {
+            if (!supportedLanguages.includes(lang)) return;
+            const request = ++languageChangeRequest;
+            try { await ensureLocale(lang); }
+            catch (error) { console.error('Could not load language:', error); showToast(t('networkError'), 'error'); return; }
+            if (request !== languageChangeRequest) return;
             currentLang = lang;
             localStorage.setItem(languageStorageKey, lang);
             localStorage.setItem('language', lang);
             if (languageUserId) localStorage.setItem('language_owner', languageUserId);
             applyLanguage();
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.lang === lang);
-            });
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
         
         function applyLanguage() {
             const tr = translations[currentLang] || translations.ru;
             document.documentElement.lang = currentLang;
+            const privacyBody = document.querySelector('#privacyScreen .privacy-body');
+            const privacyHtml = localePacks[currentLang]?.privacyHtml;
+            if (privacyBody && privacyHtml && !privacyBody.querySelector(`[data-lang-content="${currentLang}"]`)) {
+                const section = document.createElement('div');
+                section.dataset.langContent = currentLang;
+                section.innerHTML = privacyHtml;
+                privacyBody.appendChild(section);
+            }
             BBVisuals.refreshLanguage();
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.dataset.i18n;
                 if(tr[key]) el.textContent = tr[key];
             });
+            translateStaticText();
             // Update placeholders
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.dataset.i18nPlaceholder;
                 if(tr[key]) el.placeholder = tr[key];
             });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                const key = el.dataset.i18nAriaLabel;
+                if (tr[key]) el.setAttribute('aria-label', tr[key]);
+            });
+            document.querySelectorAll('.ui-close, .title-library-close, .title-bottom-close, .privacy-close-btn').forEach(el => el.setAttribute('aria-label', t('close')));
+            document.querySelector('.language-selector')?.setAttribute('aria-label', t('language'));
+            document.getElementById('titleSortFilter')?.setAttribute('aria-label', titleCopy('sortFilter'));
+            document.getElementById('monoRefreshBtn')?.setAttribute('aria-label', t('refresh'));
+            document.getElementById('bbModeDots')?.setAttribute('aria-label', t('bbModeTitle'));
+            document.getElementById('bbMaterialButton')?.setAttribute('aria-label', `${t('settings')} — ${t('blockBlast')}`);
+            document.querySelector('#modalCheckers .segment-control.vertical')?.setAttribute('aria-label', t('botDifficulty'));
             document.querySelectorAll('[data-lang-content]').forEach(el => {
                 el.hidden = el.dataset.langContent !== currentLang;
             });
             // Update lang buttons
             document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.lang === currentLang);
+                const active = btn.dataset.lang === currentLang;
+                btn.classList.toggle('active', active);
+                btn.setAttribute('aria-pressed', String(active));
             });
             // Update profile if visible
             if(document.getElementById('view-profile').classList.contains('active')) {
@@ -5683,9 +5832,17 @@
             if (typeof renderSelectedProfileTitle === 'function') renderSelectedProfileTitle();
             if (typeof renderTitleLibrary === 'function' && document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) renderTitleLibrary();
             if (typeof renderTitleReward === 'function' && titleRewardRunning) renderTitleReward();
+            refreshMonoDynamicLanguage();
         }
 
-        document.addEventListener('DOMContentLoaded', applyLanguage);
+        document.addEventListener('DOMContentLoaded', () => {
+            captureStaticText();
+            ensureLocale(currentLang).then(applyLanguage).catch(error => {
+                console.error('Could not load saved language:', error);
+                currentLang = 'ru';
+                applyLanguage();
+            });
+        });
         
         let bannerWasSwiping = false;
         
@@ -6154,9 +6311,10 @@
             const minutes = Math.floor((Number(milliseconds) || 0) / 60000);
             const hours = Math.floor(minutes / 60);
             const rest = minutes % 60;
-            if (hours > 0) return currentLang === 'zh' ? `${hours}小时 ${rest}分钟` : `${hours} ${currentLang === 'en' ? 'h' : 'ч'} ${rest} ${currentLang === 'en' ? 'min' : 'мин'}`;
-            if (minutes > 0) return currentLang === 'zh' ? `${minutes}分钟` : `${minutes} ${currentLang === 'en' ? 'min' : 'мин'}`;
-            return currentLang === 'zh' ? '< 1分钟' : `< 1 ${currentLang === 'en' ? 'min' : 'мин'}`;
+            const unit = (value, name) => new Intl.NumberFormat(currentLocale(), { style: 'unit', unit: name, unitDisplay: 'short' }).format(value);
+            if (hours > 0) return `${unit(hours, 'hour')} ${unit(rest, 'minute')}`;
+            if (minutes > 0) return unit(minutes, 'minute');
+            return `< ${unit(1, 'minute')}`;
         }
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && document.getElementById('bb-screen').classList.contains('visible')) { bbStopSparks(); bbDisplayedScore = bbScore; updateBBScoreUI(); }
@@ -6824,7 +6982,7 @@
                 const response = await fetch(`${API_BASE_URL}/prepare-share`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData || '' },
-                    body: JSON.stringify({ kind, room_id: roomId || null }),
+                    body: JSON.stringify({ kind, room_id: roomId || null, lang: currentLang }),
                 });
                 const prepared = await response.json();
                 if (!response.ok || !prepared.id) throw new Error(prepared.error || 'prepare failed');
@@ -6841,7 +6999,7 @@
 
         async function shareReferralLink() {
             const link = getReferralLink();
-            const text = '🎮 Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!';
+            const text = t('shareReferralText');
             if (await sharePreparedMessage('referral')) return;
             if (tg.openTelegramLink) {
                 tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
@@ -10722,7 +10880,7 @@
                 sharePreparedMessage('monopoly', data.roomId).then(shared => {
                     if (shared) return;
                     const link = `https://t.me/${BOT_USERNAME}/${APP_NAME}?startapp=mono_${encodeURIComponent(data.roomId)}`;
-                    const text = `🎲 Заходи в мою комнату в Монополии Spark! Код комнаты: ${data.roomId}`;
+                    const text = t('shareMonopolyRoomText').replace('{code}', data.roomId);
                     tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
                 });
             } else if (data.type === 'monopoly_fullscreen') {
@@ -10906,11 +11064,32 @@
             monoRefreshRooms();
         }
 
+        let monoLastRooms = null;
+        let monoLastWaitPlayers = null;
+
+        function refreshMonoDynamicLanguage() {
+            const roomList = document.getElementById('monoRoomList');
+            const loading = roomList?.querySelector('.mono-room-loading');
+            if (loading) loading.textContent = t('monoRoomsLoading');
+            else if (monoLastRooms) monoRenderRoomList(monoLastRooms);
+            if (monoLastWaitPlayers) monoRenderWaitList(monoLastWaitPlayers);
+            const copyLabel = document.getElementById('monoCopyLabel');
+            if (copyLabel) copyLabel.textContent = copyLabel.dataset.copied === 'true' ? t('monoCopied') : t('monoCopyCode');
+            const banner = document.getElementById('monoRejoinBanner');
+            if (banner) {
+                banner.querySelector('.mono-rejoin-title').textContent = t('monoUnfinishedGame');
+                banner.querySelector('.mono-rejoin-sub').textContent = t('monoRoomAwaitsReturn').replace('{code}', monoCodeDigits(pendingRejoinData?.roomCode));
+                banner.querySelector('.mono-rejoin-dismiss').textContent = t('monoLater');
+                banner.querySelector('.mono-rejoin-resume').textContent = t('continue');
+            }
+        }
+
         function monoRefreshRooms() {
             const btn = document.getElementById('monoRefreshBtn');
             if (btn) btn.classList.add('is-spinning');
             const list = document.getElementById('monoRoomList');
-            if (list) list.innerHTML = `<div class="mono-room-loading">Загрузка…</div>`;
+            monoLastRooms = null;
+            if (list) list.innerHTML = `<div class="mono-room-loading">${t('monoRoomsLoading')}</div>`;
             socket.emit('monopoly_list');
         }
 
@@ -10926,6 +11105,7 @@
         }
 
         function monoRenderRoomList(rooms) {
+            monoLastRooms = rooms;
             const btn = document.getElementById('monoRefreshBtn');
             if (btn) btn.classList.remove('is-spinning');
             const list = document.getElementById('monoRoomList');
@@ -10934,8 +11114,8 @@
                 list.innerHTML = `
                     <div class="mono-room-empty">
                         <div class="mono-room-empty-icon">🏚️</div>
-                        <div class="mono-room-empty-title">Пока нет открытых комнат</div>
-                        <div class="mono-room-empty-sub">Создайте свою или обновите список</div>
+                        <div class="mono-room-empty-title">${t('monoNoOpenRooms')}</div>
+                        <div class="mono-room-empty-sub">${t('monoCreateOrRefreshRooms')}</div>
                     </div>`;
                 return;
             }
@@ -10943,9 +11123,9 @@
                 <div class="mono-room-card mono-pop" style="animation-delay:${i*40}ms">
                     <div class="mono-room-info">
                         <div class="mono-room-code">${monoCodeDigits(r.code)}</div>
-                        <div class="mono-room-meta">Хост: ${r.host} · ${r.count}/${r.max}</div>
+                        <div class="mono-room-meta">${t('monoHost')} ${r.host} · ${r.count}/${r.max}</div>
                     </div>
-                    <button class="mono-room-join" onclick="monoJoinRoomByCode('${r.code}')">Вступить</button>
+                    <button class="mono-room-join" onclick="monoJoinRoomByCode('${r.code}')">${t('monoEnterRoom')}</button>
                 </div>
             `).join('');
         }
@@ -10999,7 +11179,11 @@
             if (!monopolyRoomCode) return;
             const done = () => {
                 const lbl = document.getElementById('monoCopyLabel');
-                if (lbl) { lbl.textContent = 'Скопировано!'; setTimeout(() => lbl.textContent = 'Копировать', 1500); }
+                if (lbl) {
+                    lbl.dataset.copied = 'true';
+                    lbl.textContent = t('monoCopied');
+                    setTimeout(() => { lbl.dataset.copied = 'false'; lbl.textContent = t('monoCopyCode'); }, 1500);
+                }
                 try { tg?.HapticFeedback?.impactOccurred('light'); } catch(_) {}
             };
             const text = monoCodeDigits(monopolyRoomCode);
@@ -11010,6 +11194,7 @@
 
         const MONO_COLORS = ['#0a84ff','#ff2a2a','#29c463','#ffd60a'];
         function monoRenderWaitList(players) {
+            monoLastWaitPlayers = players;
             const list = document.getElementById('monoWaitList');
             const count = document.getElementById('monoWaitCount');
             if (count) count.textContent = `${players.length}/4`;
@@ -11022,15 +11207,15 @@
                 html += `
                     <div class="mono-wait-player mono-pop" style="animation-delay:${i*40}ms">
                         <div class="mono-wait-avatar" style="background:${color}">${initial}</div>
-                        <div class="mono-wait-name">${p.username || 'Игрок'}</div>
-                        ${i === 0 ? '<div class="mono-wait-badge">Хост</div>' : '<div class="mono-wait-ready">●</div>'}
+                        <div class="mono-wait-name">${p.username || t('playerFallback')}</div>
+                        ${i === 0 ? `<div class="mono-wait-badge">${t('monoHostBadge')}</div>` : '<div class="mono-wait-ready">●</div>'}
                     </div>`;
             });
             for (let i = players.length; i < 4; i++) {
                 html += `
                     <div class="mono-wait-player is-empty">
                         <div class="mono-wait-avatar is-empty">+</div>
-                        <div class="mono-wait-name">Свободно</div>
+                        <div class="mono-wait-name">${t('monoFreeSeat')}</div>
                     </div>`;
             }
             list.innerHTML = html;
@@ -11041,11 +11226,11 @@
                 const canStart = players.length >= 2;
                 startBtn.style.display = canStart ? '' : 'none';
                 hint.style.display = canStart ? 'none' : '';
-                hint.textContent = 'Нужно минимум 2 игрока';
+                hint.textContent = t('monoNeedTwoPlayers');
             } else {
                 startBtn.style.display = 'none';
                 hint.style.display = '';
-                hint.textContent = 'Ждём, пока хост начнёт игру…';
+                hint.textContent = t('monoWaitingForHost');
             }
         }
 
@@ -11099,11 +11284,11 @@
             });
 
             socket.on('monopoly_error', ({ message }) => {
-                showIngameToast(message || 'Ошибка');
+                showIngameToast(localizeServerError(message));
             });
 
             socket.on('monopoly_player_left', ({ playerIndex, playerName }) => {
-                showIngameToast(`${playerName || 'Игрок'} покинул комнату`);
+                showIngameToast(t('playerLeftRoom').replace('{name}', () => playerName || t('playerFallback')));
             });
 
             // --- Reconnect / resume support ---
@@ -11114,10 +11299,10 @@
             });
 
             socket.on('monopoly_player_disconnected', ({ playerName }) => {
-                showIngameToast(`${playerName || 'Игрок'} отключился, ждём…`);
+                showIngameToast(t('playerDisconnected').replace('{name}', () => playerName || t('playerFallback')));
             });
             socket.on('monopoly_player_reconnected', ({ playerName }) => {
-                showIngameToast(`${playerName || 'Игрок'} снова в игре`);
+                showIngameToast(t('playerReconnected').replace('{name}', () => playerName || t('playerFallback')));
             });
 
             socket.on('monopoly_rejoin_ok', ({ roomCode, players: gamePlayers, yourIndex, lastSnapshot, engineSnapshot, turnEndsAt }) => {
@@ -11184,13 +11369,13 @@
                 <div class="mono-rejoin-banner-top">
                     <div class="mono-rejoin-icon">🎲</div>
                     <div class="mono-rejoin-text">
-                        <div class="mono-rejoin-title">У вас есть незавершённая партия</div>
-                        <div class="mono-rejoin-sub">Комната ${monoCodeDigits(roomCode)} ждёт вашего возвращения</div>
+                        <div class="mono-rejoin-title">${t('monoUnfinishedGame')}</div>
+                        <div class="mono-rejoin-sub">${t('monoRoomAwaitsReturn').replace('{code}', monoCodeDigits(roomCode))}</div>
                     </div>
                 </div>
                 <div class="mono-rejoin-actions">
-                    <button class="mono-rejoin-dismiss" onclick="dismissMonoRejoin()">Позже</button>
-                    <button class="mono-rejoin-resume" onclick="resumeMonopoly()">Продолжить</button>
+                    <button class="mono-rejoin-dismiss" onclick="dismissMonoRejoin()">${t('monoLater')}</button>
+                    <button class="mono-rejoin-resume" onclick="resumeMonopoly()">${t('continue')}</button>
                 </div>
             `;
             document.body.appendChild(banner);
@@ -11668,10 +11853,12 @@
             const content = document.getElementById('wordleGameOverContent');
             const n = wordleGuesses.length;
             let attemptsText;
-            if (currentLang === 'en' || currentLang === 'zh') {
+            if (currentLang === 'en') {
                 attemptsText = n === 1 ? 'attempt' : 'attempts';
-            } else {
+            } else if (currentLang === 'ru') {
                 attemptsText = n === 1 ? t('attempt1') : (n >= 2 && n <= 4 ? t('attempt234') : t('attempts'));
+            } else {
+                attemptsText = n === 1 ? t('attempt1') : t('attempts');
             }
             
             // Clear saved game on game over
@@ -11773,11 +11960,12 @@
 
         function titleCopy(key) {
             const copy = TITLE_UI_COPY[currentLang] || TITLE_UI_COPY.ru;
-            return copy[key] || TITLE_UI_COPY.ru[key] || key;
+            const russian = TITLE_UI_COPY.ru[key];
+            return copy[key] || localePacks[currentLang]?.extras?.[russian] || russian || key;
         }
         function localizedTitleText(value) {
             if (!value || typeof value !== 'object') return String(value || '');
-            return String(value[currentLang] || value.ru || value.en || value.zh || '');
+            return String(value[currentLang] || localePacks[currentLang]?.extras?.[value.ru] || value.ru || value.en || value.zh || '');
         }
         function titleCatalogItem(id) {
             return titleState && Array.isArray(titleState.catalog)

@@ -80,7 +80,7 @@
                 if (handle) header.appendChild(handle);
                 if (title) header.appendChild(title);
                 const button = doc.createElement('button'); button.className = 'ui-close'; button.type = 'button';
-                button.setAttribute('aria-label','Закрыть'); button.innerHTML = cross; button.onclick = close; header.appendChild(button);
+                button.setAttribute('aria-label','Закрыть'); button.dataset.i18nAriaLabel = 'close'; button.innerHTML = cross; button.onclick = close; header.appendChild(button);
             }
             if (panel.matches('.ui-mode-panel')) overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
             if (!fullScreen) bindDrag(panel, close);
@@ -159,7 +159,9 @@
         };
         root.visualViewport?.addEventListener('resize',viewport); root.visualViewport?.addEventListener('scroll',viewport);
         const localizeClose = () => {
-            const label = doc.documentElement.lang === 'en' ? 'Close' : doc.documentElement.lang === 'zh' ? '关闭' : 'Закрыть';
+            const lang = doc.documentElement.lang;
+            const label = root.SparkLocalePacks?.[lang]?.app?.close ||
+                (lang === 'en' ? 'Close' : lang === 'zh' ? '关闭' : 'Закрыть');
             doc.querySelectorAll('.ui-close').forEach(button => button.setAttribute('aria-label',label));
         };
         new MutationObserver(localizeClose).observe(doc.documentElement,{attributes:true,attributeFilter:['lang']});

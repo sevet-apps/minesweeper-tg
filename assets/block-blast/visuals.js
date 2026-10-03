@@ -66,8 +66,8 @@
     let layer, feedback, feedbackTimer, picker;
     const renderer = root.BBMaterialMotion.create({ document: doc, textureBase, lowPower });
     const counter = createCounter(requestAnimationFrame, cancelAnimationFrame, () => performance.now());
-    const lang = () => /^zh/.test(doc.documentElement.lang) ? 'zh' : /^en/.test(doc.documentElement.lang) ? 'en' : 'ru';
-    const text = (ru, en, zh) => ({ ru, en, zh })[lang()];
+    const lang = () => doc.documentElement.lang || 'ru';
+    const text = (ru, en, zh) => ({ ru, en, zh })[lang()] || root.SparkLocalePacks?.[lang()]?.extras?.[ru] || ru;
     api.reduced = () => calm || media.matches || doc.body.classList.contains('lite-mode');
     api.count = (from, to, update) => counter.run(from, to, update, api.reduced() || doc.hidden);
     api.stopCounter = () => counter.stop();

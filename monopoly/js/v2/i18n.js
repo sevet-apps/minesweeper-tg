@@ -2,7 +2,7 @@
     'use strict';
 
     const requested = new URLSearchParams(location.search).get('lang');
-    const lang = ['ru', 'en', 'zh'].includes(requested) ? requested : 'ru';
+    const lang = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'].includes(requested) ? requested : 'ru';
     document.documentElement.lang = lang;
 
     const EN = {
@@ -442,6 +442,11 @@
         'Обменять': ['Exchange', '兑换'], 'Обмениваем…': ['Exchanging…', '正在兑换…'], 'Получено': ['Received', '已获得'], 'монет': ['coins', '枚硬币'],
         'Открываем кейс': ['Opening case', '正在开启宝箱'], 'к аренде': ['rent bonus', '租金加成'],
         'Нет доступных кейсов': ['No cases available', '没有可用宝箱'],
+        'Доступные кейсы': ['Available cases', '可用宝箱'], 'Сортировать': ['Sort', '排序'],
+        'Кейсы начисляются за каждые 50 очков рейтинга Монополии.': [
+            'You earn a case for every 50 Monopoly rating points.',
+            '每获得 50 点大富翁积分即可领取一个宝箱。'
+        ],
         'Можно обменять только лишний экземпляр': ['Only an extra copy can be exchanged', '只能兑换多余副本'],
         'Сначала заберите уже открытую компанию': ['Claim the already opened company first', '请先领取已开启的公司'],
         'Эта компания не подходит полю': ['This company does not fit that property', '该公司不适用于此地产'],
@@ -455,18 +460,67 @@
         'игр': ['games', '游戏'], 'Судоку': ['Sudoku', '数独'], 'побед': ['wins', '胜场'],
         'Вордли': ['Wordle', '猜词'], 'Башня': ['Tower', '高塔'], 'этажей': ['floors', '层'],
         'от скина': ['from skin', '来自外观'], 'кейс': ['case', '宝箱'], 'кейса': ['cases', '个宝箱'],
-        'из': ['of', '共'], 'компаний': ['companies', '家公司'], 'коллекция': ['collection', '收藏']
+        'из': ['of', '共'], 'компаний': ['companies', '家公司'], 'коллекция': ['collection', '收藏'],
+        'Первый экземпляр уже хранится в коллекции. Этот можно обменять на {coins} монет.': [
+            'The first copy stays in your collection. Exchange this duplicate for {coins} coins.',
+            '首份已保存在收藏中。可将这个重复外观兑换为 {coins} 枚硬币。'
+        ],
+        '{group} · +{bonus}% ко всем уровням аренды после сбора монополии.': [
+            '{group} · +{bonus}% rent at every level after completing the color set.',
+            '集齐整组后，{group} 所有租金等级 +{bonus}%。'
+        ],
+        'Один лишний экземпляр «{name}» исчезнет. Вы получите {coins} монет. Первый экземпляр останется навсегда.': [
+            'Your duplicate “{name}” will be removed. You’ll receive {coins} coins; your first copy stays in the collection.',
+            '重复外观“{name}”将被移除。你会获得 {coins} 枚硬币，首份仍保留在收藏中。'
+        ]
     };
     for (const [key, pair] of Object.entries(EXTRA)) {
         EN[key] = pair[0];
         ZH[key] = pair[1];
     }
 
-    const table = lang === 'zh' ? ZH : EN;
-    const keys = Object.keys(table).sort((a, b) => b.length - a.length);
+    let table = lang === 'zh' ? ZH : EN;
+    let keys = Object.keys(table).sort((a, b) => b.length - a.length);
+    let localeLoaded = ['ru', 'en', 'zh'].includes(lang);
+    const ready = ['ru', 'en', 'zh'].includes(lang) ? Promise.resolve() : fetch(`../locales/${lang}.json`)
+        .then(response => {
+            if (!response.ok) throw new Error(`Locale ${lang}: HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(pack => {
+            if (!pack || !pack.monopoly) throw new Error(`Incomplete Monopoly locale ${lang}`);
+            table = pack.monopoly;
+            keys = Object.keys(table).sort((a, b) => b.length - a.length);
+            localeLoaded = true;
+        })
+        .catch(error => { console.error('Could not load Monopoly language:', error); localeLoaded = true; });
     function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    const dynamicPatterns = [
+        {
+            key:'Первый экземпляр уже хранится в коллекции. Этот можно обменять на {coins} монет.',
+            regex:/^Первый экземпляр уже хранится в коллекции\. Этот можно обменять на (\d+) монет\.$/,
+            fields:['coins']
+        },
+        {
+            key:'{group} · +{bonus}% ко всем уровням аренды после сбора монополии.',
+            regex:/^(.+?) · \+(\d+(?:\.\d+)?)% ко всем уровням аренды после сбора монополии\.$/,
+            fields:['group','bonus']
+        },
+        {
+            key:'Один лишний экземпляр «{name}» исчезнет. Вы получите {coins} монет. Первый экземпляр останется навсегда.',
+            regex:/^Один лишний экземпляр «(.+?)» исчезнет\. Вы получите (\d+) монет\. Первый экземпляр останется навсегда\.$/,
+            fields:['name','coins']
+        }
+    ];
     function translate(value) {
-        if (lang === 'ru' || typeof value !== 'string' || !/[А-Яа-яЁё]/.test(value)) return value;
+        if (lang === 'ru' || !localeLoaded || typeof value !== 'string' || !/[А-Яа-яЁё]/.test(value)) return value;
+        for (const { key, regex, fields } of dynamicPatterns) {
+            const match = value.match(regex);
+            if (!match || !table[key]) continue;
+            const values = Object.fromEntries(fields.map((field, index) => [field,
+                field === 'name' || field === 'group' ? translate(match[index + 1]) : match[index + 1]]));
+            return table[key].replace(/\{(name|group|coins|bonus)\}/g, (_, field) => values[field] || '');
+        }
         let result = value;
         for (const key of keys) {
             if (/^[А-Яа-яЁё]+$/.test(key)) {
@@ -500,10 +554,11 @@
         if (root.querySelectorAll) root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(translateElement);
     }
 
-    global.MonopolyI18n = { lang, translate, apply: translateElement };
+    global.MonopolyI18n = { lang, translate, apply: translateElement, ready };
     if (lang !== 'ru') {
-        document.title = translate(document.title);
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await ready;
+            document.title = translate(document.title);
             translateElement(document.body);
             const observer = new MutationObserver(records => {
                 for (const record of records) {

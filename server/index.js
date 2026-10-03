@@ -7,6 +7,7 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const path = require('path');
 const { verifyTelegramInitData } = require('./telegram-init-data');
+const { botLang, botText, botGameName, botAliases } = require('./bot-copy');
 const {
     createRichInlineArticle,
     escapeRichHtml,
@@ -46,6 +47,20 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const GAME_SESSION_SECRET = process.env.GAME_SESSION_SECRET || BOT_TOKEN;
 const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL || '@spark_game_news';
 const OWNER_ID = '1482228376'; // Твой Telegram ID
+const botUserLanguages = new Map();
+
+function rememberBotLanguage(user, chosenLang) {
+    const code = String(user?.language_code || '').toLowerCase().split(/[-_]/)[0];
+    const knownCode = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'in', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'].includes(code);
+    const lang = chosenLang || botUserLanguages.get(String(user?.id)) || (knownCode ? botLang(code) : 'en');
+    if (user?.id) {
+        const id = String(user.id);
+        botUserLanguages.delete(id);
+        botUserLanguages.set(id, lang);
+        if (botUserLanguages.size > 10000) botUserLanguages.delete(botUserLanguages.keys().next().value);
+    }
+    return lang;
+}
 
 // ============================
 // TOURNAMENTS: shared helpers
@@ -128,6 +143,7 @@ function authMiddleware(req, res, next) {
     }
     
     req.telegramUser = user;
+    rememberBotLanguage(user);
     next();
 }
 
@@ -182,11 +198,17 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
     if (!BOT_TOKEN) return res.status(503).json({ error: 'Bot is unavailable' });
     const kind = req.body && req.body.kind;
     const userId = Number(req.telegramUser.id);
+    const requestedLang = String(req.body?.lang || '').toLowerCase();
+    const shareLang = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'].includes(requestedLang) ? requestedLang : 'ru';
+    if (requestedLang === shareLang) rememberBotLanguage(req.telegramUser, shareLang);
+    let shareCopy;
+    try { shareCopy = require(path.join(__dirname, '..', 'locales', `${shareLang}.json`)).app; }
+    catch { shareCopy = require(path.join(__dirname, '..', 'locales', 'source.ru.json')).app; }
     let text, url, title, entities, roomId;
     if (kind === 'referral') {
         url = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
-        text = `✨ Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!\n${url}`;
-        title = 'Приглашение в Spark';
+        text = `✨ ${shareCopy.shareReferralText.replace(/^🎮\s*/u, '')}\n${url}`;
+        title = 'Spark Games';
         entities = [{ type: 'custom_emoji', offset: 0, length: 2,
             custom_emoji_id: '5271604874419647061' }];
     } else if (kind === 'monopoly') {
@@ -194,21 +216,21 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         if (!/^[A-Z0-9]{4,8}$/.test(roomId))
             return res.status(400).json({ error: 'Invalid room' });
         url = `https://t.me/spark_game_bot/sparkapp?startapp=mono_${roomId}`;
-        text = `🎲 Заходи в мою комнату в Монополии Spark! Код комнаты: ${roomId}`;
-        title = 'Приглашение в Монополию';
+        text = shareCopy.shareMonopolyRoomText.replace('{code}', roomId);
+        title = `${shareCopy.monopoly} · Spark`;
         entities = [];
     } else {
         return res.status(400).json({ error: 'Unknown share type' });
     }
 
-    const actionText = kind === 'monopoly' ? '🎲 Войти в комнату' : 'Открыть Spark';
+    const actionText = kind === 'monopoly' ? `🎲 ${shareCopy.join}` : `🎮 ${shareCopy.play}`;
     const richText = kind === 'monopoly'
-        ? `🎲 <b>Монополия Spark</b>\nКомната <code>${roomId}</code> уже ждёт игроков.`
-        : '✨ <b>Spark Games</b>\nИграй, соревнуйся с друзьями и поднимайся в топах.';
+        ? `<b>${escapeRichHtml(shareCopy.monopoly)} · Spark</b>\n${escapeRichHtml(shareCopy.shareMonopolyRoomText.replace('{code}', roomId))}`
+        : `<b>Spark Games</b>\n${escapeRichHtml(shareCopy.shareReferralText)}`;
     const prepared = createRichInlineArticle({
         id: crypto.randomBytes(12).toString('hex'),
         title,
-        description: kind === 'monopoly' ? `Комната ${roomId}` : 'Приглашение в Spark Games',
+        description: kind === 'monopoly' ? `${shareCopy.roomCode} ${roomId}` : 'Spark Games',
         thumbnailUrl: kind === 'monopoly'
             ? 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/monopoly.png'
             : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823',
@@ -1268,9 +1290,11 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
     
     try {
         const alertEmoji = '<tg-emoji emoji-id="5406745015365943482">⚡</tg-emoji>';
-        const message = oldRank === 1
-            ? `${alertEmoji} <b>Кто-то</b> обошёл вас в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!\n\nВы были на 1 месте, теперь вы на 2 месте. Попробуйте вернуть лидерство!`
-            : `${alertEmoji} <b>Кто-то</b> сместил вас с <b>${oldRank}</b> на <b>${newRank}</b> место в топе <b>${gameInfo.ru}</b> (${gameInfo.category})!`;
+        const lang = botUserLanguages.get(String(displacedUserId)) || 'en';
+        const game = botGameName(lang, gameType);
+        const message = `${alertEmoji} ${escapeRichHtml(botText(lang,
+            oldRank === 1 ? 'displacedLeader' : 'displacedRank',
+            { game, oldRank, newRank }))}`;
         
         const APP_SHORT_NAME = process.env.APP_SHORT_NAME || 'sparkapp';
         
@@ -1283,7 +1307,7 @@ async function notifyDisplaced(displacedUserId, displacedUsername, newLeaderUser
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [[
-                        { text: '🏆 Посмотреть топ', url: `https://t.me/spark_game_bot/sparkapp?startapp=top_${gameType}` }
+                        { text: botText(lang, 'viewTop'), url: `https://t.me/spark_game_bot/sparkapp?startapp=top_${gameType}` }
                     ]]
                 }
             })
@@ -3191,9 +3215,9 @@ function cleanName(s) {
 /** Отображаемое имя игрока: имя+фамилия, иначе юзернейм, иначе «Игрок».
     Имя из одних невидимых символов считаем пустым. */
 function tgDisplayName(user) {
-    if (!user) return 'Игрок';
+    if (!user) return botText('en', 'player');
     const full = cleanName([user.first_name, user.last_name].filter(Boolean).join(' '));
-    return full || cleanName(user.username) || 'Игрок';
+    return full || cleanName(user.username) || botText(botLang(user.language_code), 'player');
 }
 // Premium эмодзи ID
 const EMOJI = {
@@ -3531,6 +3555,15 @@ function getUserDisplayName(user) {
     return tgDisplayName(user);
 }
 
+function inlineMatchText(kind, game, statusKey, vars = {}) {
+    const lang = game.lang || 'ru';
+    const title = botText(lang, kind === 'ttt' ? 'tttName' : 'checkersName');
+    const players = kind === 'ttt'
+        ? `${game.playerXName} (❌) vs ${game.playerOName} (⭕)`
+        : `${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)`;
+    return `${EMOJI.joystick} <b>${escapeRichHtml(title)}</b>\n\n${players}\n\n${botText(lang, statusKey, vars)}`;
+}
+
 async function telegramBotApi(method, payload) {
     const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
         method: 'POST',
@@ -3589,12 +3622,12 @@ function editCheckersInlineMessage(inlineMessageId, text, board, gameId, selecte
 }
 
 // Helper function to edit inline leaderboard/help message with an in-message button.
-async function editInlineMessageWithPlayButton(inlineMessageId, text, userId) {
+async function editInlineMessageWithPlayButton(inlineMessageId, text, userId, lang = 'ru') {
     const url = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
-    const replyMarkup = { inline_keyboard: [[{ text: '🎮 Играть', url }]] };
+    const replyMarkup = { inline_keyboard: [[{ text: botText(lang, 'play'), url }]] };
     return editRichInlineMessage(
         inlineMessageId,
-        richActionHtml(text, { text: 'Открыть Spark', url, style: 'success' }),
+        richActionHtml(text, { text: botText(lang, 'openSpark'), url, style: 'success' }),
         text,
         replyMarkup,
     );
@@ -3622,6 +3655,22 @@ const GAME_CONFIG = {
     'рефералы': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
     'referrals': { column: 'referral', name: 'Рефоводы', isHigherBetter: true, isReferral: true },
 };
+const UNIQUE_BOT_GAMES = [...new Map(Object.values(GAME_CONFIG).map(config => [config.column, config])).values()];
+function normalizeBotQuery(value) {
+    return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+function botQueryAliases(lang, kind) {
+    const legacy = kind === 'ttt' ? ['крестики', 'нолики', 'ttt', 'xo']
+        : kind === 'checkers' ? ['шашки', 'checkers']
+            : Object.entries(GAME_CONFIG).filter(([, config]) => config.column === kind).map(([key]) => key);
+    return [...new Set([...legacy, ...botAliases(lang, kind)].map(normalizeBotQuery).filter(Boolean))];
+}
+function findBotGame(query, lang, includePartial = false) {
+    const value = normalizeBotQuery(query);
+    if (!value) return null;
+    return UNIQUE_BOT_GAMES.find(config => botQueryAliases(lang, config.column)
+        .some(alias => value.includes(alias) || (includePartial && alias.includes(value)))) || null;
+}
 const GAME_ICON_BY_COLUMN = {
     bb_best_score: 'block-blast.png', saper_wins: 'minesweeper.png',
     saper_best_6: 'minesweeper.png', tower_best: 'tower.png',
@@ -3634,8 +3683,9 @@ function gameThumbnail(config) {
     return file ? `https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/${file}` : null;
 }
 
-function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true) {
-    const { column, name, isHigherBetter } = gameConfig;
+function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true, lang = 'ru') {
+    const { column, isHigherBetter } = gameConfig;
+    const name = botGameName(lang, column);
     const emojis = usePremiumEmoji ? EMOJI : EMOJI_INLINE;
     const allUsers = (users || [])
         .filter(user => Number(user[column]) > 0)
@@ -3645,7 +3695,7 @@ function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true) {
     const top3 = allUsers.slice(0, 3);
 
     if (top3.length === 0) {
-        return { text: `<b>${name}</b>\n\nПока нет результатов`, userRank: null };
+        return { text: `<b>${escapeRichHtml(name)}</b>\n\n${botText(lang, 'noResults')}`, userRank: null };
     }
 
     let userRank = null;
@@ -3659,11 +3709,11 @@ function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true) {
     }
 
     const medals = [emojis.first, emojis.second, emojis.third];
-    let text = `<b>${name} — Топ игроков</b>\n\n`;
+    let text = `<b>${escapeRichHtml(botText(lang, 'topPlayers', { game: name }))}</b>\n\n`;
     top3.forEach((user, index) => {
         const medal = medals[index];
         const score = user[column];
-        const username = escapeRichHtml(user.username || 'Игрок');
+        const username = escapeRichHtml(user.username || botText(lang, 'player'));
         text += `${medal} ${username} — <b>${score}</b>\n`;
     });
 
@@ -3671,9 +3721,9 @@ function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true) {
         text += `\n━━━━━━━━━━━━━━━\n`;
         const pin = usePremiumEmoji
             ? '<tg-emoji emoji-id="5258509201306557640">📍</tg-emoji>' : '📍';
-        text += `${pin} Вы: #${userRank} — <b>${userData[column]}</b>`;
+        text += `${pin} ${escapeRichHtml(botText(lang, 'rankYou', { rank: userRank, score: userData[column] }))}`;
     } else if (userRank && userRank <= 3) {
-        text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
+        text += `\n${emojis.sparkle} ${escapeRichHtml(botText(lang, 'rankTop', { rank: userRank }))}`;
     }
     return { text, userRank };
 }
@@ -3681,7 +3731,7 @@ function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true) {
 // One query is enough for every top shown by an empty inline request. This
 // keeps the rich result fast enough for Telegram while still including the
 // sender's exact place below the top three.
-async function getTopsForGames(gameConfigs, userId, usePremiumEmoji = true) {
+async function getTopsForGames(gameConfigs, userId, usePremiumEmoji = true, lang = 'ru') {
     const uniqueConfigs = [...new Map(gameConfigs.map(config => [config.column, config])).values()];
     const columns = uniqueConfigs.map(config => config.column);
     const { data, error } = await supabase.from('users')
@@ -3689,20 +3739,20 @@ async function getTopsForGames(gameConfigs, userId, usePremiumEmoji = true) {
     if (error) throw error;
     return new Map(uniqueConfigs.map(config => [
         config.column,
-        formatTopForGame(config, userId, data, usePremiumEmoji),
+        formatTopForGame(config, userId, data, usePremiumEmoji, lang),
     ]));
 }
 
 // Получить топ-3 + пользователя (с Premium эмодзи для бота)
-async function getTopForGame(gameConfig, userId, usePremiumEmoji = true) {
-    const tops = await getTopsForGames([gameConfig], userId, usePremiumEmoji);
+async function getTopForGame(gameConfig, userId, usePremiumEmoji = true, lang = 'ru') {
+    const tops = await getTopsForGames([gameConfig], userId, usePremiumEmoji, lang);
     return tops.get(gameConfig.column);
 }
 
 // Получить топ рефералов (только активные)
-async function getTopForReferrals(userId, usePremiumEmoji = true) {
+async function getTopForReferrals(userId, usePremiumEmoji = true, lang = 'ru') {
     const emojis = usePremiumEmoji ? EMOJI : EMOJI_INLINE;
-    const name = 'Рефералы';
+    const name = botGameName(lang, 'referral');
     
     // Get all activated referrals
     const { data: activatedReferrals } = await supabase
@@ -3711,7 +3761,7 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
         .eq('referral_activated', true);
     
     if (!activatedReferrals || activatedReferrals.length === 0) {
-        return { text: `<b>${name}</b>\n\nПока нет результатов`, userRank: null };
+        return { text: `<b>${escapeRichHtml(name)}</b>\n\n${botText(lang, 'noResults')}`, userRank: null };
     }
     
     // Count per referrer
@@ -3729,7 +3779,7 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
         .in('telegram_id', referrerIds);
     
     if (!referrerUsers) {
-        return { text: `<b>${name}</b>\n\nПока нет результатов`, userRank: null };
+        return { text: `<b>${escapeRichHtml(name)}</b>\n\n${botText(lang, 'noResults')}`, userRank: null };
     }
     
     // Build sorted list
@@ -3754,11 +3804,11 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
     }
     
     const medals = [emojis.first, emojis.second, emojis.third];
-    let text = `<b>${name} — Топ игроков</b>\n\n`;
+    let text = `<b>${escapeRichHtml(botText(lang, 'topPlayers', { game: name }))}</b>\n\n`;
     
     top3.forEach((user, index) => {
         const medal = medals[index];
-        const username = escapeRichHtml(user.username || 'Игрок');
+        const username = escapeRichHtml(user.username || botText(lang, 'player'));
         text += `${medal} ${username} — <b>${user.score}</b>\n`;
     });
     
@@ -3766,9 +3816,9 @@ async function getTopForReferrals(userId, usePremiumEmoji = true) {
         text += `\n━━━━━━━━━━━━━━━\n`;
         const pin = usePremiumEmoji
             ? '<tg-emoji emoji-id="5258509201306557640">📍</tg-emoji>' : '📍';
-        text += `${pin} Вы: #${userRank} — <b>${userData.score}</b>`;
+        text += `${pin} ${escapeRichHtml(botText(lang, 'rankYou', { rank: userRank, score: userData.score }))}`;
     } else if (userRank && userRank <= 3) {
-        text += `\n${emojis.sparkle} Вы в топ-${userRank}!`;
+        text += `\n${emojis.sparkle} ${escapeRichHtml(botText(lang, 'rankTop', { rank: userRank }))}`;
     }
     
     return { text, userRank };
@@ -3786,12 +3836,13 @@ function scheduleInlineGameCleanup(store, inlineMessageId, game) {
     }, 30 * 60 * 1000);
 }
 
-function createTTTInlineGame(inlineMessageId, gameId, creator, creatorName) {
+function createTTTInlineGame(inlineMessageId, gameId, creator, creatorName, lang = 'ru') {
     const game = {
         board: createTTTBoard(),
         playerX: creator,
         playerO: null,
         playerXName: creatorName,
+        lang,
         playerOName: null,
         currentTurn: 'X',
         gameId,
@@ -3802,12 +3853,13 @@ function createTTTInlineGame(inlineMessageId, gameId, creator, creatorName) {
     return game;
 }
 
-function createCheckersInlineGame(inlineMessageId, gameId, creator, creatorName) {
+function createCheckersInlineGame(inlineMessageId, gameId, creator, creatorName, lang = 'ru') {
     const game = {
         board: createCheckersBoard(),
         playerWhite: creator,
         playerBlack: null,
         playerWhiteName: creatorName,
+        lang,
         playerBlackName: null,
         currentTurn: 'white',
         selected: null,
@@ -3822,7 +3874,7 @@ function createCheckersInlineGame(inlineMessageId, gameId, creator, creatorName)
 async function resolveInlineCreator(gameId, type) {
     const cached = inlineCache.get(gameId);
     if (cached?.creator) {
-        return { creator: cached.creator, creatorName: cached.creatorName };
+        return { creator: cached.creator, creatorName: cached.creatorName, lang: cached.lang || 'ru' };
     }
 
     // Rich inline results don't currently provide inline_message_id in
@@ -3832,6 +3884,7 @@ async function resolveInlineCreator(gameId, type) {
     const match = String(gameId).match(new RegExp(`^${prefix}_(\\d+)_`));
     if (!match) return null;
     const creatorId = Number(match[1]);
+    const lang = botLang(String(gameId).match(new RegExp(`^${prefix}_\\d+_([a-z]{2})_`))?.[1]);
     let username = '';
     try {
         const { data } = await supabase.from('users')
@@ -3843,7 +3896,8 @@ async function resolveInlineCreator(gameId, type) {
     const creator = { id: creatorId, ...(username ? { username } : {}) };
     return {
         creator,
-        creatorName: escapeRichHtml(username ? `@${username}` : 'Игрок'),
+        creatorName: escapeRichHtml(username ? `@${username}` : botText(lang, 'player')),
+        lang,
     };
 }
 
@@ -3852,7 +3906,7 @@ async function ensureTTTInlineGame(inlineMessageId, gameId) {
     if (existing) return existing;
     const seed = await resolveInlineCreator(gameId, 'ttt');
     return seed ? createTTTInlineGame(
-        inlineMessageId, gameId, seed.creator, seed.creatorName,
+        inlineMessageId, gameId, seed.creator, seed.creatorName, seed.lang,
     ) : null;
 }
 
@@ -3861,7 +3915,7 @@ async function ensureCheckersInlineGame(inlineMessageId, gameId) {
     if (existing) return existing;
     const seed = await resolveInlineCreator(gameId, 'checkers');
     return seed ? createCheckersInlineGame(
-        inlineMessageId, gameId, seed.creator, seed.creatorName,
+        inlineMessageId, gameId, seed.creator, seed.creatorName, seed.lang,
     ) : null;
 }
 
@@ -3892,11 +3946,29 @@ if (BOT_TOKEN) {
             `<blockquote>${EMOJI.play} <b>打开游戏：</b>点击下方按钮</blockquote>`,
     };
     const START_BUTTON = { ru: '🎮 Играть', en: '🎮 Play', zh: '🎮 开始游戏' };
+    const START_LANGUAGES = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'];
+    for (const lang of START_LANGUAGES.slice(3)) {
+        let copy;
+        try { copy = require(path.join(__dirname, '..', 'locales', `${lang}.json`)).botStart; }
+        catch { continue; }
+        if (!copy || !['welcome', 'pitch', 'leaderboards', 'game', 'chatGames', 'ticTacToe', 'checkers', 'openGames', 'play']
+            .every(key => typeof copy[key] === 'string' && copy[key].trim())) continue;
+        const safe = key => escapeRichHtml(copy[key]);
+        START_COPY[lang] = `${EMOJI.game} <b>${safe('welcome')}</b>\n` +
+            `${safe('pitch')}\n\n` +
+            `${EMOJI.chart} <b>${safe('leaderboards')}:</b> @spark_game_bot [${safe('game')}]\n\n` +
+            `${EMOJI.joystick} <b>${safe('chatGames')}:</b>\n` +
+            `• @spark_game_bot ${safe('ticTacToe')}\n• @spark_game_bot ${safe('checkers')}\n\n` +
+            `<blockquote>${EMOJI.play} <b>${safe('openGames')}</b> ↓</blockquote>`;
+        START_BUTTON[lang] = `🎮 ${copy.play}`;
+    }
     function botLanguage(code) {
         const c = String(code || '').toLowerCase();
         if (c.startsWith('ru')) return 'ru';
         if (c.startsWith('zh')) return 'zh';
         if (c.startsWith('en')) return 'en';
+        const base = c.split(/[-_]/)[0];
+        if (Object.hasOwn(START_COPY, base)) return base;
         return null;
     }
     function startWebAppUrl(param) {
@@ -3928,9 +4000,10 @@ if (BOT_TOKEN) {
     // Обработка inline запросов
     bot.on('inline_query', async (query) => {
         try {
-        const queryText = query.query.toLowerCase().trim();
+        const queryText = normalizeBotQuery(query.query);
         const userId = query.from.id;
         const user = query.from;
+        const lang = rememberBotLanguage(user);
         
         const results = [];
         const fallbackResults = [];
@@ -3945,20 +4018,21 @@ if (BOT_TOKEN) {
             const userName = escapeRichHtml(getUserDisplayName(user));
             
             // 1. Крестики-нолики
-            const tttId = `ttt_${userId}_${Date.now()}`;
+            const tttId = `ttt_${userId}_${lang}_${Date.now()}`;
             inlineCache.set(tttId, {
                 type: 'ttt',
+                lang,
                 creator: user,
                 creatorName: userName
             });
             setTimeout(() => inlineCache.delete(tttId), 10 * 60 * 1000);
             
-            const tttInviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+            const tttInviteText = `${EMOJI.joystick} ${botText(lang, 'inviteTtt', { name: userName })}`;
             const tttInviteKeyboard = getTTTKeyboard(createTTTBoard(), tttId);
             addRichResult({
                 id: tttId,
-                title: 'Крестики-нолики',
-                description: 'Сыграйте с кем-то из чата!',
+                title: botText(lang, 'tttName'),
+                description: botText(lang, 'tttDescription'),
                 thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png?v=20260827-2',
                 richHtml: tttRichHtml(tttInviteText, createTTTBoard(), tttId),
                 fallbackText: tttInviteText,
@@ -3966,20 +4040,21 @@ if (BOT_TOKEN) {
             });
             
             // 2. Шашки
-            const chId = `ch_${userId}_${Date.now() + 1}`;
+            const chId = `ch_${userId}_${lang}_${Date.now() + 1}`;
             inlineCache.set(chId, {
                 type: 'checkers',
+                lang,
                 creator: user,
                 creatorName: userName
             });
             setTimeout(() => inlineCache.delete(chId), 10 * 60 * 1000);
             
-            const checkersInviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
+            const checkersInviteText = `${EMOJI.joystick} ${botText(lang, 'inviteCheckers', { name: userName })}`;
             const checkersInviteKeyboard = getCheckersKeyboard(createCheckersBoard(), chId);
             addRichResult({
                 id: chId,
-                title: 'Шашки',
-                description: 'Сыграйте в шашки с кем-то из чата!',
+                title: botText(lang, 'checkersName'),
+                description: botText(lang, 'checkersDescription'),
                 thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png?v=20260827-2',
                 richHtml: checkersRichHtml(checkersInviteText, createCheckersBoard(), chId),
                 fallbackText: checkersInviteText,
@@ -3988,12 +4063,12 @@ if (BOT_TOKEN) {
             
             // 3. Топы игр
             const topGames = [
-                { key: 'bb_best_score', name: 'Блок Бласт' },
-                { key: 'saper_wins', name: 'Сапёр' },
-                { key: 'tower_best', name: 'Башня' },
-                { key: 'sudoku_wins', name: 'Судоку' },
-                { key: 'checkers_wins_pve', name: 'Шашки' },
-                { key: 'wordle_wins', name: 'Вордли' }
+                { key: 'bb_best_score', name: botGameName(lang, 'bb_best_score') },
+                { key: 'saper_wins', name: botGameName(lang, 'saper_wins') },
+                { key: 'tower_best', name: botGameName(lang, 'tower_best') },
+                { key: 'sudoku_wins', name: botGameName(lang, 'sudoku_wins') },
+                { key: 'checkers_wins_pve', name: botGameName(lang, 'checkers_wins_pve') },
+                { key: 'wordle_wins', name: botGameName(lang, 'wordle_wins') }
             ];
             
             // Rich inline results don't yield inline_message_id in
@@ -4004,7 +4079,7 @@ if (BOT_TOKEN) {
                 Object.values(GAME_CONFIG).find(config => config.column === game.key));
             let topData = new Map();
             try {
-                topData = await getTopsForGames(topConfigs.filter(Boolean), userId, true);
+                topData = await getTopsForGames(topConfigs.filter(Boolean), userId, true, lang);
             } catch (error) {
                 console.error('Inline leaderboards error:', error.message);
             }
@@ -4015,23 +4090,23 @@ if (BOT_TOKEN) {
                 return {
                     game,
                     config,
-                    text: result?.text || `<b>${game.name}</b>\n\nТоп временно недоступен`,
+                    text: result?.text || `<b>${escapeRichHtml(game.name)}</b>\n\n${botText(lang, 'topUnavailable')}`,
                 };
             });
 
             readyTopGames.filter(Boolean).forEach(({ game, config, text }, index) => {
                 const resultId = `top_${game.key}_${Date.now()}_${index}`;
-                inlineCache.set(resultId, { gameConfig: config, userId });
+                inlineCache.set(resultId, { gameConfig: config, userId, lang });
                 setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                 const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
-                const replyMarkup = { inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]] };
+                const replyMarkup = { inline_keyboard: [[{ text: botText(lang, 'play'), url: playUrl }]] };
                 addRichResult({
                     id: resultId,
-                    title: `Топ ${game.name}`,
-                    description: `Показать топ игроков в ${game.name}`,
+                    title: botText(lang, 'topTitle', { game: game.name }),
+                    description: botText(lang, 'topDescription', { game: game.name }),
                     thumbnailUrl: gameThumbnail(config),
                     richHtml: richActionHtml(text, {
-                        text: 'Открыть Spark', url: playUrl, style: 'success',
+                        text: botText(lang, 'openSpark'), url: playUrl, style: 'success',
                     }),
                     fallbackText: text,
                     fallbackReplyMarkup: replyMarkup,
@@ -4039,24 +4114,25 @@ if (BOT_TOKEN) {
             });
         } 
         // Крестики-нолики
-        else if (queryText.includes('крестики') || queryText.includes('нолики') || queryText.includes('ttt') || queryText.includes('xo')) {
-            const gameId = `ttt_${userId}_${Date.now()}`;
+        else if (botQueryAliases(lang, 'ttt').some(alias => queryText.includes(alias))) {
+            const gameId = `ttt_${userId}_${lang}_${Date.now()}`;
             const userName = escapeRichHtml(getUserDisplayName(user));
             
             // Сохраняем данные создателя игры
             inlineCache.set(gameId, {
                 type: 'ttt',
+                lang,
                 creator: user,
                 creatorName: userName
             });
             setTimeout(() => inlineCache.delete(gameId), 10 * 60 * 1000);
             
-            const inviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+            const inviteText = `${EMOJI.joystick} ${botText(lang, 'inviteTtt', { name: userName })}`;
             const inviteKeyboard = getTTTKeyboard(createTTTBoard(), gameId);
             addRichResult({
                 id: gameId,
-                title: '❌⭕ Крестики-нолики',
-                description: 'Сыграйте с кем-то из чата!',
+                title: `❌⭕ ${botText(lang, 'tttName')}`,
+                description: botText(lang, 'tttDescription'),
                 thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png?v=20260827-2',
                 richHtml: tttRichHtml(inviteText, createTTTBoard(), gameId),
                 fallbackText: inviteText,
@@ -4064,23 +4140,24 @@ if (BOT_TOKEN) {
             });
         }
         // Шашки
-        else if (queryText.includes('шашки') || queryText.includes('checkers')) {
-            const gameId = `ch_${userId}_${Date.now()}`;
+        else if (botQueryAliases(lang, 'checkers').some(alias => queryText.includes(alias))) {
+            const gameId = `ch_${userId}_${lang}_${Date.now()}`;
             const userName = escapeRichHtml(getUserDisplayName(user));
             
             inlineCache.set(gameId, {
                 type: 'checkers',
+                lang,
                 creator: user,
                 creatorName: userName
             });
             setTimeout(() => inlineCache.delete(gameId), 10 * 60 * 1000);
             
-            const inviteText = `${EMOJI.joystick} <b>${userName}</b> хочет сыграть в шашки!\n\nНажмите на любую свою шашку, чтобы принять вызов.`;
+            const inviteText = `${EMOJI.joystick} ${botText(lang, 'inviteCheckers', { name: userName })}`;
             const inviteKeyboard = getCheckersKeyboard(createCheckersBoard(), gameId);
             addRichResult({
                 id: gameId,
-                title: '⚪⚫ Шашки',
-                description: 'Сыграйте в шашки с кем-то из чата!',
+                title: `⚪⚫ ${botText(lang, 'checkersName')}`,
+                description: botText(lang, 'checkersDescription'),
                 thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png?v=20260827-2',
                 richHtml: checkersRichHtml(inviteText, createCheckersBoard(), gameId),
                 fallbackText: inviteText,
@@ -4089,43 +4166,37 @@ if (BOT_TOKEN) {
         }
         else {
             // Ищем совпадение с игрой для топов
-            let matchedGame = null;
-            for (const [key, config] of Object.entries(GAME_CONFIG)) {
-                if (queryText.includes(key)) {
-                    matchedGame = config;
-                    break;
-                }
-            }
+            const matchedGame = findBotGame(queryText, lang);
             
             if (matchedGame) {
                 try {
                     // Отправляем временное сообщение с обычными эмодзи
                     let result;
                     if (matchedGame.isReferral) {
-                        result = await getTopForReferrals(userId, true);
+                        result = await getTopForReferrals(userId, true, lang);
                     } else {
-                        result = await getTopForGame(matchedGame, userId, true);
+                        result = await getTopForGame(matchedGame, userId, true, lang);
                     }
                     const { text } = result;
                     
                     const resultId = `top_${matchedGame.column}_${Date.now()}`;
                     
                     // Сохраняем в кэш
-                    inlineCache.set(resultId, { gameConfig: matchedGame, userId });
+                    inlineCache.set(resultId, { gameConfig: matchedGame, userId, lang });
                     setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                     
                     const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
                     addRichResult({
                         id: resultId,
-                        title: `Топ ${matchedGame.name}`,
-                        description: 'Нажмите чтобы отправить топ в чат',
+                        title: botText(lang, 'topTitle', { game: botGameName(lang, matchedGame.column) }),
+                        description: botText(lang, 'topSendDescription'),
                         thumbnailUrl: gameThumbnail(matchedGame),
                         richHtml: richActionHtml(text, {
-                            text: 'Открыть Spark', url: playUrl, style: 'success',
+                            text: botText(lang, 'openSpark'), url: playUrl, style: 'success',
                         }),
                         fallbackText: text,
                         fallbackReplyMarkup: {
-                            inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
+                            inline_keyboard: [[{ text: botText(lang, 'play'), url: playUrl }]],
                         },
                     });
                 } catch (e) {
@@ -4134,35 +4205,35 @@ if (BOT_TOKEN) {
             } else {
                 // Предлагаем варианты
                 const suggested = new Set();
-                for (const [key, config] of Object.entries(GAME_CONFIG)) {
-                    if ((key.includes(queryText) || config.name.toLowerCase().includes(queryText)) && !suggested.has(config.column)) {
+                for (const config of UNIQUE_BOT_GAMES) {
+                    if (botQueryAliases(lang, config.column).some(alias => alias.includes(queryText)) && !suggested.has(config.column)) {
                         suggested.add(config.column);
                         const resultId = `suggest_${config.column}_${Date.now()}`;
-                        inlineCache.set(resultId, { gameConfig: config, userId });
+                        inlineCache.set(resultId, { gameConfig: config, userId, lang });
                         setTimeout(() => inlineCache.delete(resultId), 5 * 60 * 1000);
                         
                         const playUrl = `https://t.me/spark_game_bot/spark?startapp=ref_${userId}`;
                         let topText;
                         try {
                             const top = config.isReferral
-                                ? await getTopForReferrals(userId, true)
-                                : await getTopForGame(config, userId, true);
+                                ? await getTopForReferrals(userId, true, lang)
+                                : await getTopForGame(config, userId, true, lang);
                             topText = top.text;
                         } catch (error) {
                             console.error(`Inline ${config.column} suggestion error:`, error.message);
-                            topText = `<b>${config.name}</b>\n\nТоп временно недоступен`;
+                            topText = `<b>${escapeRichHtml(botGameName(lang, config.column))}</b>\n\n${botText(lang, 'topUnavailable')}`;
                         }
                         addRichResult({
                             id: resultId,
-                            title: `${config.name}`,
-                            description: `Показать топ ${config.name}`,
+                            title: botGameName(lang, config.column),
+                            description: botText(lang, 'topDescription', { game: botGameName(lang, config.column) }),
                             thumbnailUrl: gameThumbnail(config),
                             richHtml: richActionHtml(topText, {
-                                text: 'Открыть Spark', url: playUrl, style: 'success',
+                                text: botText(lang, 'openSpark'), url: playUrl, style: 'success',
                             }),
                             fallbackText: topText,
                             fallbackReplyMarkup: {
-                                inline_keyboard: [[{ text: '🎮 Играть', url: playUrl }]],
+                                inline_keyboard: [[{ text: botText(lang, 'play'), url: playUrl }]],
                             },
                         });
                     }
@@ -4201,6 +4272,7 @@ if (BOT_TOKEN) {
         const resultId = result.result_id;
         const inlineMessageId = result.inline_message_id;
         const userId = result.from.id;
+        const actorLang = rememberBotLanguage(result.from);
         
         console.log('Chosen inline result:', resultId);
         
@@ -4217,6 +4289,7 @@ if (BOT_TOKEN) {
         if (!inlineMessageId) return;
         
         const cached = inlineCache.get(resultId);
+        const lang = cached?.lang || actorLang;
         
         // Если это крестики-нолики - сохраняем игру
         if (cached?.type === 'ttt') {
@@ -4225,6 +4298,7 @@ if (BOT_TOKEN) {
                 playerX: cached.creator,
                 playerO: null,
                 playerXName: cached.creatorName,
+                lang,
                 playerOName: null,
                 currentTurn: 'X',
                 gameId: resultId,
@@ -4234,7 +4308,7 @@ if (BOT_TOKEN) {
             setTimeout(() => tttGames.delete(inlineMessageId), 30 * 60 * 1000);
             
             try {
-                const text = `${EMOJI.joystick} <b>${cached.creatorName}</b> хочет сыграть в крестики-нолики!\n\nНажмите любую клетку, чтобы принять вызов.`;
+                const text = `${EMOJI.joystick} ${botText(lang, 'inviteTtt', { name: cached.creatorName })}`;
                 await editTTTInlineMessage(
                     inlineMessageId, text, createTTTBoard(), resultId,
                 );
@@ -4251,6 +4325,7 @@ if (BOT_TOKEN) {
                 playerWhite: cached.creator,
                 playerBlack: null,
                 playerWhiteName: cached.creatorName,
+                lang,
                 playerBlackName: null,
                 currentTurn: 'white',
                 selected: null,
@@ -4261,7 +4336,7 @@ if (BOT_TOKEN) {
             setTimeout(() => checkersGames.delete(inlineMessageId), 30 * 60 * 1000);
             
             try {
-                const text = `${EMOJI.joystick} <b>${cached.creatorName}</b> хочет сыграть в шашки!\n\nНажмите на любую шашку, чтобы принять вызов.`;
+                const text = `${EMOJI.joystick} ${botText(lang, 'inviteCheckers', { name: cached.creatorName })}`;
                 await editCheckersInlineMessage(
                     inlineMessageId, text, createCheckersBoard(), resultId,
                 );
@@ -4274,8 +4349,10 @@ if (BOT_TOKEN) {
         // Если это help - редактируем с Premium эмодзи
         if (cached?.type === 'help') {
             try {
-                const helpText = `${EMOJI.game} <b>Spark Games</b>\n\n<b>Топы:</b>\n• Блок Бласт\n• Сапёр\n• Башня\n• Судоку\n• Шашки\n• Вордли\n\n<b>Игры:</b>\n• крестики-нолики\n• шашки\n\n${EMOJI.chart} Напишите: @spark_game_bot [команда]`;
-                await editInlineMessageWithPlayButton(inlineMessageId, helpText, userId);
+                const games = ['bb_best_score', 'saper_wins', 'tower_best', 'sudoku_wins', 'checkers_wins_pve', 'wordle_wins']
+                    .map(column => `• ${escapeRichHtml(botGameName(lang, column))}`).join('\n');
+                const helpText = `${EMOJI.game} <b>Spark Games</b>\n\n<b>${escapeRichHtml(botText(lang, 'availableTops'))}</b>\n${games}\n\n${EMOJI.joystick} ${escapeRichHtml(botText(lang, 'tttName'))} · ${escapeRichHtml(botText(lang, 'checkersName'))}`;
+                await editInlineMessageWithPlayButton(inlineMessageId, helpText, userId, lang);
             } catch (e) {
                 console.error('Help edit error:', e.message);
             }
@@ -4299,11 +4376,11 @@ if (BOT_TOKEN) {
             try {
                 let result;
                 if (gameConfig.isReferral) {
-                    result = await getTopForReferrals(userId, true);
+                    result = await getTopForReferrals(userId, true, lang);
                 } else {
-                    result = await getTopForGame(gameConfig, userId, true);
+                    result = await getTopForGame(gameConfig, userId, true, lang);
                 }
-                await editInlineMessageWithPlayButton(inlineMessageId, result.text, userId);
+                await editInlineMessageWithPlayButton(inlineMessageId, result.text, userId, lang);
                 console.log('Message edited with premium emoji!');
             } catch (e) {
                 console.error('Edit message error:', e.message);
@@ -4321,12 +4398,14 @@ if (BOT_TOKEN) {
         try {
         const data = callbackQuery.data;
         const user = callbackQuery.from;
+        const callbackLang = rememberBotLanguage(user);
         const inlineMessageId = callbackQuery.inline_message_id;
 
         if (data && data.startsWith('start_lang_') && callbackQuery.message) {
             const parts = data.split('_');
-            const lang = ['ru', 'en', 'zh'].includes(parts[2]) ? parts[2] : 'en';
+            const lang = Object.hasOwn(START_COPY, parts[2]) ? parts[2] : 'en';
             const param = parts.slice(3).join('_');
+            rememberBotLanguage(user, lang);
             try { await bot.deleteMessage(callbackQuery.message.chat.id, callbackQuery.message.message_id); } catch (_) {}
             await sendStartGreeting(callbackQuery.message.chat.id, lang, param);
             try { await bot.answerCallbackQuery(callbackQuery.id); } catch (_) {}
@@ -4417,11 +4496,11 @@ if (BOT_TOKEN) {
             const game = await ensureTTTInlineGame(inlineMessageId, gameId);
             
             if (!game) {
-                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра не найдена или истекла' }); } catch(e) {}
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'gameExpired') }); } catch(e) {}
                 return;
             }
             if (game.processing) {
-                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ход уже обрабатывается' }); } catch (_) {}
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'moveBusy') }); } catch (_) {}
                 return;
             }
             game.processing = true;
@@ -4432,7 +4511,7 @@ if (BOT_TOKEN) {
             // Если игра ждёт второго игрока
             if (game.status === 'waiting') {
                 if (user.id === game.playerX.id) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ожидайте соперника!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'awaitOpponent') }); } catch(e) {}
                     return;
                 }
                 
@@ -4450,11 +4529,11 @@ if (BOT_TOKEN) {
                 try {
                     await editTTTInlineMessage(
                         inlineMessageId,
-                        `${EMOJI.joystick} <b>Крестики-нолики</b>\n\n${game.playerXName} (❌) vs ${game.playerOName} (⭕)\n\nПервый ход: ${firstPlayerName} (${firstSymbol})`,
+                        inlineMatchText('ttt', game, 'firstTurn', { name: firstPlayerName, symbol: firstSymbol }),
                         game.board,
                         game.gameId,
                     );
-                    await bot.answerCallbackQuery(callbackQuery.id, { text: `Игра началась! Ход ${firstPlayerName}` });
+                    await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'gameStartedTurn', { name: getUserDisplayName(firstIsX ? game.playerX : game.playerO) }) });
                 } catch (e) {
                     console.error('Edit error:', e.message);
                     try { await bot.answerCallbackQuery(callbackQuery.id); } catch(e2) {}
@@ -4468,7 +4547,7 @@ if (BOT_TOKEN) {
                 const isPlayerO = user.id === game.playerO?.id;
                 
                 if (!isPlayerX && !isPlayerO) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Вы не участвуете в этой игре!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'notParticipant') }); } catch(e) {}
                     return;
                 }
                 
@@ -4476,12 +4555,12 @@ if (BOT_TOKEN) {
                 const isCorrectTurn = (expectedSymbol === 'X' && isPlayerX) || (expectedSymbol === 'O' && isPlayerO);
                 
                 if (!isCorrectTurn) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Сейчас не ваш ход!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'notYourTurn') }); } catch(e) {}
                     return;
                 }
                 
                 if (game.board[row][col] !== TTT_EMPTY) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Клетка уже занята!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'cellOccupied') }); } catch(e) {}
                     return;
                 }
                 
@@ -4494,15 +4573,15 @@ if (BOT_TOKEN) {
                     let resultText;
                     
                     if (winner === 'draw') {
-                        resultText = `${EMOJI.joystick} <b>Крестики-нолики</b>\n\n${game.playerXName} (❌) vs ${game.playerOName} (⭕)\n\n${EMOJI.handshake} <b>Ничья!</b>`;
+                        resultText = inlineMatchText('ttt', game, 'draw');
                     } else {
                         const winnerName = winner === TTT_X ? game.playerXName : game.playerOName;
-                        resultText = `${EMOJI.joystick} <b>Крестики-нолики</b>\n\n${game.playerXName} (❌) vs ${game.playerOName} (⭕)\n\n${EMOJI.trophy} <b>${winnerName}</b> победил! ${winner}`;
+                        resultText = inlineMatchText('ttt', game, 'victory', { name: winnerName, symbol: winner });
                     }
                     
                     try {
                         await editTTTInlineMessage(inlineMessageId, resultText, game.board, game.gameId);
-                        await bot.answerCallbackQuery(callbackQuery.id, { text: winner === 'draw' ? 'Ничья!' : 'Победа!' });
+                        await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, winner === 'draw' ? 'draw' : 'victoryToast') });
                     } catch (e) {
                         console.error('Edit error:', e.message);
                     }
@@ -4518,7 +4597,7 @@ if (BOT_TOKEN) {
                 try {
                     await editTTTInlineMessage(
                         inlineMessageId,
-                        `${EMOJI.joystick} <b>Крестики-нолики</b>\n\n${game.playerXName} (❌) vs ${game.playerOName} (⭕)\n\nХод: ${nextPlayerName} (${nextSymbol})`,
+                        inlineMatchText('ttt', game, 'turn', { name: nextPlayerName, symbol: nextSymbol }),
                         game.board,
                         game.gameId,
                     );
@@ -4530,7 +4609,7 @@ if (BOT_TOKEN) {
             }
             
             if (game.status === 'finished') {
-                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра уже завершена!' }); } catch(e) {}
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'gameFinished') }); } catch(e) {}
                 return;
             }
             } finally {
@@ -4548,11 +4627,11 @@ if (BOT_TOKEN) {
             const game = await ensureCheckersInlineGame(inlineMessageId, gameId);
             
             if (!game) {
-                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра не найдена или истекла' }); } catch(e) {}
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'gameExpired') }); } catch(e) {}
                 return;
             }
             if (game.processing) {
-                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ход уже обрабатывается' }); } catch (_) {}
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'moveBusy') }); } catch (_) {}
                 return;
             }
             game.processing = true;
@@ -4563,7 +4642,7 @@ if (BOT_TOKEN) {
             // Ожидание второго игрока
             if (game.status === 'waiting') {
                 if (String(user.id) === String(game.playerWhite.id)) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ожидайте соперника!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'awaitOpponent') }); } catch(e) {}
                     return;
                 }
                 
@@ -4580,11 +4659,11 @@ if (BOT_TOKEN) {
                 try {
                     await editCheckersInlineMessage(
                         inlineMessageId,
-                        `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nПервый ход: ${firstPlayerName} (${firstSymbol})`,
+                        inlineMatchText('checkers', game, 'firstTurn', { name: firstPlayerName, symbol: firstSymbol }),
                         game.board,
                         game.gameId,
                     );
-                    await bot.answerCallbackQuery(callbackQuery.id, { text: `Игра началась! Ход ${firstPlayerName}` });
+                    await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'gameStartedTurn', { name: getUserDisplayName(whiteFirst ? game.playerWhite : game.playerBlack) }) });
                 } catch (e) {
                     console.error('Edit error:', e.message);
                 }
@@ -4597,14 +4676,14 @@ if (BOT_TOKEN) {
                 const isBlack = String(user.id) === String(game.playerBlack?.id);
                 
                 if (!isWhite && !isBlack) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Вы не участвуете в этой игре!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'notParticipant') }); } catch(e) {}
                     return;
                 }
                 
                 const playerColor = isWhite ? 'white' : 'black';
                 
                 if (game.currentTurn !== playerColor) {
-                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Сейчас не ваш ход!' }); } catch(e) {}
+                    try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'notYourTurn') }); } catch(e) {}
                     return;
                 }
                 
@@ -4619,14 +4698,14 @@ if (BOT_TOKEN) {
                     if (cell.type === 'piece' && cell.color === playerColor) {
                         const nextOptions = getValidMoves(game.board, row, col, playerColor);
                         if (mustCapture && nextOptions.captures.length === 0) {
-                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Выберите шашку, которая может бить!' }); } catch (_) {}
+                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'chooseCaptureChecker') }); } catch (_) {}
                             return;
                         }
                         game.selected = { r: row, c: col };
                         try {
                             await editCheckersInlineMessage(
                                 inlineMessageId,
-                                `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nХод: ${userName} — выберите клетку`,
+                                inlineMatchText('checkers', game, 'selectCell', { name: userName }),
                                 game.board,
                                 game.gameId,
                                 game.selected,
@@ -4641,7 +4720,7 @@ if (BOT_TOKEN) {
                     const move = moves.find(m => m.r === row && m.c === col);
                     
                     if (mustCapture && !capture) {
-                        try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Нужно бить!' }); } catch(e) {}
+                        try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'mustCapture') }); } catch(e) {}
                         return;
                     }
                     
@@ -4668,12 +4747,12 @@ if (BOT_TOKEN) {
                             try {
                                 await editCheckersInlineMessage(
                                     inlineMessageId,
-                                    `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\n${userName}: бейте ещё`,
+                                    inlineMatchText('checkers', game, 'captureAgain', { name: userName }),
                                     game.board,
                                     game.gameId,
                                     game.selected,
                                 );
-                                await bot.answerCallbackQuery(callbackQuery.id, { text: 'Бей ещё!' });
+                                await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'captureAgain', { name: getUserDisplayName(user) }) });
                             } catch (e) {}
                             return;
                         }
@@ -4692,7 +4771,7 @@ if (BOT_TOKEN) {
                             game.board[row][col].isKing = true;
                         }
                     } else {
-                        try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Нельзя туда ходить!' }); } catch(e) {}
+                        try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'invalidMove') }); } catch(e) {}
                         return;
                     }
                     
@@ -4735,11 +4814,11 @@ if (BOT_TOKEN) {
                         try {
                             await editCheckersInlineMessage(
                                 inlineMessageId,
-                                `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\n${EMOJI.trophy} <b>${winnerName}</b> победил! ${winnerSymbol}`,
+                                inlineMatchText('checkers', game, 'victory', { name: winnerName, symbol: winnerSymbol }),
                                 game.board,
                                 game.gameId,
                             );
-                            await bot.answerCallbackQuery(callbackQuery.id, { text: 'Победа!' });
+                            await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'victoryToast') });
                         } catch (e) {}
                         
                         checkersGames.delete(inlineMessageId);
@@ -4753,7 +4832,7 @@ if (BOT_TOKEN) {
                     try {
                         await editCheckersInlineMessage(
                             inlineMessageId,
-                            `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nХод: ${nextName} (${nextSymbol})`,
+                            inlineMatchText('checkers', game, 'turn', { name: nextName, symbol: nextSymbol }),
                             game.board,
                             game.gameId,
                         );
@@ -4765,14 +4844,14 @@ if (BOT_TOKEN) {
                     if (cell.type === 'piece' && cell.color === playerColor) {
                         const { moves, captures } = getValidMoves(game.board, row, col, playerColor);
                         if (moves.length === 0 && captures.length === 0) {
-                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Эта шашка не может ходить!' }); } catch(e) {}
+                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'checkerCannotMove') }); } catch(e) {}
                             return;
                         }
                         
                         // Проверяем обязательное взятие
                         const mustCapture = hasAnyCaptures(game.board, playerColor);
                         if (mustCapture && captures.length === 0) {
-                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Выберите шашку которая может бить!' }); } catch(e) {}
+                            try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'chooseCaptureChecker') }); } catch(e) {}
                             return;
                         }
                         
@@ -4780,22 +4859,22 @@ if (BOT_TOKEN) {
                         try {
                             await editCheckersInlineMessage(
                                 inlineMessageId,
-                                `${EMOJI.joystick} <b>Шашки</b>\n\n${game.playerWhiteName} (⚪) vs ${game.playerBlackName} (⚫)\n\nХод: ${userName} — выберите клетку`,
+                                inlineMatchText('checkers', game, 'selectCell', { name: userName }),
                                 game.board,
                                 game.gameId,
                                 game.selected,
                             );
-                            await bot.answerCallbackQuery(callbackQuery.id, { text: 'Выберите куда ходить' });
+                            await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'chooseMove') });
                         } catch (e) {}
                     } else {
-                        try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Выберите свою шашку!' }); } catch(e) {}
+                        try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'chooseOwnChecker') }); } catch(e) {}
                     }
                     return;
                 }
             }
             
             if (game.status === 'finished') {
-                try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'Игра уже завершена!' }); } catch(e) {}
+                try { await bot.answerCallbackQuery(callbackQuery.id, { text: botText(callbackLang, 'gameFinished') }); } catch(e) {}
                 return;
             }
             } finally {
@@ -4966,14 +5045,30 @@ if (BOT_TOKEN) {
     bot.onText(/\/start(.*)/, async (msg, match) => {
         const chatId = msg.chat.id;
         const param = String(match[1] || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32);
-        const lang = botLanguage(msg.from && msg.from.language_code);
-        if (lang) return sendStartGreeting(chatId, lang, param);
+        const lang = botUserLanguages.get(String(msg.from?.id)) || botLanguage(msg.from && msg.from.language_code);
+        if (lang) {
+            rememberBotLanguage(msg.from, lang);
+            return sendStartGreeting(chatId, lang, param);
+        }
         return bot.sendMessage(chatId, 'Choose your language · Выберите язык · 请选择语言', {
             reply_markup: { inline_keyboard: [[
                 { text: '🇷🇺 Русский', callback_data: `start_lang_ru_${param}` },
                 { text: '🇺🇸 English', callback_data: `start_lang_en_${param}` },
                 { text: '🇨🇳 中文', callback_data: `start_lang_zh_${param}` },
-            ]] },
+            ], [
+                { text: '🇪🇸 Español', callback_data: `start_lang_es_${param}` },
+                { text: '🇧🇷 Português', callback_data: `start_lang_pt_${param}` },
+                { text: '🇮🇩 Indonesia', callback_data: `start_lang_id_${param}` },
+            ], [
+                { text: '🇫🇷 Français', callback_data: `start_lang_fr_${param}` },
+                { text: '🇯🇵 日本語', callback_data: `start_lang_ja_${param}` },
+                { text: '🇩🇪 Deutsch', callback_data: `start_lang_de_${param}` },
+            ], [
+                { text: '🇰🇷 한국어', callback_data: `start_lang_ko_${param}` },
+                { text: '🇹🇷 Türkçe', callback_data: `start_lang_tr_${param}` },
+                { text: '🇻🇳 Tiếng Việt', callback_data: `start_lang_vi_${param}` },
+            ]].map(row => row.filter(button => Object.hasOwn(START_COPY, button.callback_data.split('_')[2])))
+                .filter(row => row.length) },
         });
     });
     
@@ -4981,46 +5076,34 @@ if (BOT_TOKEN) {
     bot.onText(/\/top(.*)/, async (msg, match) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
-        const gameName = match[1].trim().toLowerCase();
+        const lang = rememberBotLanguage(msg.from);
+        const gameName = normalizeBotQuery(match[1]);
         
         if (!gameName) {
-            bot.sendMessage(chatId,
-                `${EMOJI.chart} <b>Доступные топы:</b>\n\n` +
-                `• /top блок бласт\n` +
-                `• /top сапёр\n` +
-                `• /top башня\n` +
-                `• /top судоку\n` +
-                `• /top шашки\n` +
-                `• /top вордли\n` +
-                `• /top рефоводы`,
-                { parse_mode: 'HTML' }
-            );
+            const games = ['bb_best_score', 'saper_wins', 'tower_best', 'sudoku_wins', 'checkers_wins_pve', 'wordle_wins', 'referral']
+                .map(column => `• /top ${escapeRichHtml(botGameName(lang, column))}`).join('\n');
+            bot.sendMessage(chatId, `${EMOJI.chart} <b>${escapeRichHtml(botText(lang, 'availableTops'))}</b>\n\n${games}`,
+                { parse_mode: 'HTML' });
             return;
         }
         
-        let matchedGame = null;
-        for (const [key, config] of Object.entries(GAME_CONFIG)) {
-            if (gameName.includes(key) || key.includes(gameName)) {
-                matchedGame = config;
-                break;
-            }
-        }
+        const matchedGame = findBotGame(gameName, lang, true);
         
         if (matchedGame) {
             try {
                 let result;
                 if (matchedGame.isReferral) {
-                    result = await getTopForReferrals(userId, true);
+                    result = await getTopForReferrals(userId, true, lang);
                 } else {
-                    result = await getTopForGame(matchedGame, userId, true);
+                    result = await getTopForGame(matchedGame, userId, true, lang);
                 }
                 bot.sendMessage(chatId, result.text, { parse_mode: 'HTML' });
             } catch (e) {
                 console.error('Top command error:', e);
-                bot.sendMessage(chatId, 'Ошибка загрузки топа');
+                bot.sendMessage(chatId, botText(lang, 'topLoadError'));
             }
         } else {
-            bot.sendMessage(chatId, 'Игра не найдена. Напишите /top для списка.', { parse_mode: 'HTML' });
+            bot.sendMessage(chatId, botText(lang, 'gameNotFound'), { parse_mode: 'HTML' });
         }
     });
     

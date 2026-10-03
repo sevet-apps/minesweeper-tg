@@ -27,13 +27,13 @@ function app(url) {
     const dictionary = s.slice(s.indexOf('const translations ='),s.indexOf('        function t(key)'));
     const drag = s.slice(s.indexOf('(function initProfileSegmentDrag()'),s.indexOf('        function toggleProfileGameStats'));
     return `<!doctype html><html lang="ru" data-theme="${url.searchParams.get('light')?'light':'dark'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styles}<link rel="stylesheet" href="/assets/block-blast/picker.css"><link rel="stylesheet" href="/assets/ui/tokens.css"><link rel="stylesheet" href="/assets/ui/app.css"><script src="/assets/ui/sheets.js" defer></script><style>.qa-tools{position:fixed;top:0;left:0;right:0;z-index:22000;display:flex;gap:6px;justify-content:center;background:var(--ui-bg);padding:4px;font:11px sans-serif}.qa-tools button{border:0;border-radius:8px;padding:6px;background:var(--ui-track);color:var(--ui-text)}.qa-tools a{color:var(--ui-accent);padding:6px}.screen{padding-top:50px}body{--safe-top:0px}.avatar[src=""]{background:var(--ui-accent);border:10px solid var(--ui-track)}</style>${diagnostics}</head><body class="${url.searchParams.get('desktop')?'desktop':''}">${body}
-    <div class="qa-tools"><button onclick="qaScreen('games')">Игры</button><button onclick="qaScreen('profile')">Профиль</button><button onclick="qaScreen('leaderboard')">Топ</button><button onclick="toggleTheme()">Тема</button><a href="/monopoly/qa?theme=${url.searchParams.get('light')?'light':'dark'}">Монополия</a></div>
+    <div class="qa-tools"><button onclick="qaScreen('games')">Игры</button><button onclick="qaScreen('profile')">Профиль</button><button onclick="qaScreen('leaderboard')">Топ</button><button onclick="toggleTheme()">Тема</button><a href="/monopoly/qa?theme=${url.searchParams.get('light')?'light':'dark'}" onclick="this.href+='&lang='+document.documentElement.lang">Монополия</a></div>
     <script>
 let sRows=8,sCols=8,sMines=10,selectedSudoDiff=40,isPvE=false,isOnlineGame=false,currentProfileSection='overview',vibrationEnabled=false,isLiteMode=false,soundsEnabled=true,_bbModeIndex=0,_bbModeSlides=[],_bbSwipeAttached=false; const BB_PARTNER_DEFAULT_CTA=''; async function fetchTournamentState(){return {bb:{multiplier:1.5},vpn_active:false}} function hasBBSave(){return false} function pickBBMode(mode){document.getElementById('view-bb-mode').dataset.selection=mode;closeBBMode()} function closeBBMode(){document.getElementById('view-bb-mode').classList.remove('active')} async function startBlockBlastCheck(){document.getElementById('view-bb-mode').classList.add('active');await renderBBModeCards()}
 const tg={HapticFeedback:{selectionChanged(){},impactOccurred(){}}};
-let currentLang='ru'; ${dictionary}
+const supportedLanguages=['ru','en','zh','es','pt','id','fr','ja','de','ko','tr','vi']; let currentLang='ru'; ${dictionary}
 function t(key){return translations[currentLang]?.[key]||key}
-function setLanguage(lang){currentLang=lang;document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>{if(translations[lang]?.[el.dataset.i18n])el.textContent=t(el.dataset.i18n)});document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang))}
+async function setLanguage(lang){await ensureLocale(lang);currentLang=lang;document.documentElement.lang=lang;const html=localePacks[lang]?.privacyHtml,body=document.querySelector('#privacyScreen .privacy-body');if(html&&body&&!body.querySelector('[data-lang-content="'+lang+'"]')){const section=document.createElement('div');section.dataset.langContent=lang;section.innerHTML=html;body.appendChild(section)}document.querySelectorAll('[data-i18n]').forEach(el=>{if(translations[lang]?.[el.dataset.i18n])el.textContent=t(el.dataset.i18n)});translateStaticText();document.querySelectorAll('[data-i18n-aria-label]').forEach(el=>{const value=translations[lang]?.[el.dataset.i18nAriaLabel];if(value)el.setAttribute('aria-label',value)});document.querySelectorAll('[data-lang-content]').forEach(el=>{el.hidden=el.dataset.langContent!==lang});document.querySelectorAll('.lang-btn').forEach(b=>{const active=b.dataset.lang===lang;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});document.querySelectorAll('.ui-close,.title-library-close,.title-bottom-close,.privacy-close-btn').forEach(el=>el.setAttribute('aria-label',t('close')));const locale={ru:'ru-RU',en:'en-US',zh:'zh-CN',es:'es-ES',pt:'pt-BR',id:'id-ID',fr:'fr-FR',ja:'ja-JP',de:'de-DE',ko:'ko-KR',tr:'tr-TR',vi:'vi-VN'}[lang]||'en-US';const unit=(value,name)=>new Intl.NumberFormat(locale,{style:'unit',unit:name,unitDisplay:'short'}).format(value);document.getElementById('profileFavoriteTime').textContent=unit(12,'hour')+' '+unit(40,'minute')}
 ${functions}
 ${drag}
 function toggleTheme(){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'}
@@ -45,7 +45,7 @@ function startSudokuCheck(){openGame('sudoku')} function openGameModal(id){openG
 function launchSaper(){document.getElementById('modalSaper').dataset.selection=[sRows,sCols,sMines];document.getElementById('modalSaper').classList.remove('visible')}
 function startSudoku(){document.getElementById('modalSudoku').dataset.selection=selectedSudoDiff;document.getElementById('modalSudoku').classList.remove('visible')}
 function launchCheckers(){document.getElementById('modalCheckers').dataset.selection=isPvE;document.getElementById('modalCheckers').classList.remove('visible')}
-function openMonopolyLobby(){location.href='/monopoly/qa?theme='+document.documentElement.dataset.theme}
+function openMonopolyLobby(){location.href='/monopoly/qa?theme='+document.documentElement.dataset.theme+'&lang='+document.documentElement.lang}
 function showResult(title,message,label){document.getElementById('resTitle').textContent=title;document.getElementById('resText').textContent=message;document.getElementById('resBtn').textContent=label;document.getElementById('modalResult').classList.add('visible')}
 function closeResult(){document.getElementById('modalResult').classList.remove('visible')}
 function joinGame(){showResult('Найти соперника','Поиск пока недоступен','Закрыть')}
@@ -54,7 +54,7 @@ function createGame(){document.getElementById('modalWaitOpponent').classList.add
 function cancelOnlineWait(){document.getElementById('modalWaitOpponent').classList.remove('visible')}
 function toggleDropdown(){document.getElementById('lbDropdown').classList.toggle('show')}
 function setBBLbMode(mode){document.getElementById('bbLbSegment').classList.toggle('tournament-mode',mode==='tournament');document.querySelectorAll('.bb-lb-segment-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode))}
-document.getElementById('user-name').textContent='Святослав';document.getElementById('user-id').textContent='@svyatoslav';document.getElementById('profileFavoriteName').textContent='Блок Бласт';document.getElementById('profileFavoriteTime').textContent='12 ч 40 мин';document.getElementById('bbLbSegment').style.display='flex';qaScreen('games');
+document.getElementById('user-name').textContent='Святослав';document.getElementById('user-id').textContent='@svyatoslav';document.getElementById('profileFavoriteName').textContent='Блок Бласт';document.getElementById('profileFavoriteTime').textContent='12 ч 40 мин';document.getElementById('bbLbSegment').style.display='flex';captureStaticText();qaScreen('games');setLanguage(new URLSearchParams(location.search).get('lang')||'ru');
 </script></body></html>`;
 }
 function monopoly(url) {
@@ -73,7 +73,7 @@ const qaData=${JSON.stringify(data)};window.fetch=async(input,options)=>{const t
 </script>`;
     // Capture native fetch before installing mocks.
     const fixedMock = mock.replace('const qaData=', 'const qaOriginalFetch=window.fetch.bind(window); const qaData=').replace(';const qaOriginalFetch=window.fetch.bind(window);',';');
-    return s.replace('</head>',`<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>${diagnostics}${fixedMock}</head>`).replace('</body>',`<script src="js/v2/ui-icons.js"></script><script src="js/v2/collection-ui.js"></script><script src="js/v2/lobby.js"></script><script>Lobby.init()</script></body>`);
+    return s.replace('</head>',`<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>${diagnostics}${fixedMock}</head>`).replace('</body>',`<script src="js/v2/i18n.js"></script><script src="js/v2/ui-icons.js"></script><script src="js/v2/collection-ui.js"></script><script src="js/v2/lobby.js"></script><script>Lobby.init()</script></body>`);
 }
 http.createServer((req,res)=>{
     const url = new URL(req.url,'http://localhost');
