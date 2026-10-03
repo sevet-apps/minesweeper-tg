@@ -1014,7 +1014,10 @@ async function logSuspiciousActivity(userId, username, tgHandle, gameType, score
 }
 
 // --- API РОУТЫ ---
-app.get('/', (req, res) => res.send('Glass API v39.2 (secured)'));
+app.get('/', (req, res) => {
+    if (process.env.RENDER_GIT_COMMIT) res.set('X-Spark-Release', process.env.RENDER_GIT_COMMIT);
+    res.send('Glass API v39.2 (secured)');
+});
 
 const PLAYTIME_FIELDS = Object.freeze({
     bb: 'playtime_bb_ms',
