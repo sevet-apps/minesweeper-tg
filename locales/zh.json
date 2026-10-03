@@ -253,7 +253,15 @@
     "monoWaitingForHost": "等待房主开始游戏…",
     "monoUnfinishedGame": "您有一局未完成的游戏",
     "monoRoomAwaitsReturn": "房间 {code} 正等您返回",
-    "monoLater": "稍后"
+    "monoLater": "稍后",
+    "glassExperimental": "实验功能",
+    "glassWarning": "灵感来自 Liquid Glass 的视觉效果。部分设备可能出现卡顿。简化画面可减轻负载。",
+    "glassMode": "玻璃模式",
+    "glassClear": "透明",
+    "glassTinted": "着色",
+    "glassDensity": "玻璃厚重感",
+    "glassLight": "轻盈",
+    "glassDense": "厚重"
   },
   "monopoly": {
     "Раздел профиля": "Profile section",

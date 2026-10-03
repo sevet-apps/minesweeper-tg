@@ -258,7 +258,15 @@
     "monoWaitingForHost": "Ждём, пока хост начнёт игру…",
     "monoUnfinishedGame": "У вас есть незавершённая партия",
     "monoRoomAwaitsReturn": "Комната {code} ждёт вашего возвращения",
-    "monoLater": "Позже"
+    "monoLater": "Позже",
+    "glassExperimental": "Экспериментально",
+    "glassWarning": "Эффект в стиле Liquid Glass. Возможны лаги на некоторых устройствах. Упрощённая графика снижает нагрузку.",
+    "glassMode": "Режим стекла",
+    "glassClear": "Прозрачный",
+    "glassTinted": "Тонированный",
+    "glassDensity": "Плотность стекла",
+    "glassLight": "Лёгкое",
+    "glassDense": "Плотное"
   },
   "appEnglish": {
     "settings": "Settings",
@@ -514,7 +522,15 @@
     "monoWaitingForHost": "Waiting for the host to start the game…",
     "monoUnfinishedGame": "You have an unfinished game",
     "monoRoomAwaitsReturn": "Room {code} is waiting for you",
-    "monoLater": "Later"
+    "monoLater": "Later",
+    "glassExperimental": "Experimental",
+    "glassWarning": "A Liquid Glass-inspired effect. Some devices may lag. Simplified graphics reduces the load.",
+    "glassMode": "Glass mode",
+    "glassClear": "Clear",
+    "glassTinted": "Tinted",
+    "glassDensity": "Glass density",
+    "glassLight": "Light",
+    "glassDense": "Dense"
   },
   "appChinese": {
     "settings": "设置",
@@ -770,7 +786,15 @@
     "monoWaitingForHost": "等待房主开始游戏…",
     "monoUnfinishedGame": "您有一局未完成的游戏",
     "monoRoomAwaitsReturn": "房间 {code} 正等您返回",
-    "monoLater": "稍后"
+    "monoLater": "稍后",
+    "glassExperimental": "实验功能",
+    "glassWarning": "灵感来自 Liquid Glass 的视觉效果。部分设备可能出现卡顿。简化画面可减轻负载。",
+    "glassMode": "玻璃模式",
+    "glassClear": "透明",
+    "glassTinted": "着色",
+    "glassDensity": "玻璃厚重感",
+    "glassLight": "轻盈",
+    "glassDense": "厚重"
   },
   "monopoly": {
     "Раздел профиля": "Раздел профиля",

@@ -3525,6 +3525,8 @@
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261003">
     <script src="assets/ui/sheets.js?v=20261003" defer></script>
+    <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
+    <script src="assets/ui/liquid-glass.js?v=20261004" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
     <script src="assets/block-blast/motion.js"></script>
     <script src="assets/block-blast/picker.js?v=20261003"></script>
@@ -4541,6 +4543,26 @@
                 </div>
             </div>
             
+            <section class="spark-glass-settings" aria-labelledby="liquidGlassLabel">
+                <div class="spark-glass-heading">
+                    <div><strong id="liquidGlassLabel">Liquid Glass</strong><span class="spark-glass-badge" data-i18n="glassExperimental">Экспериментально</span></div>
+                    <button class="theme-switch" id="liquidGlassToggle" type="button" role="switch" aria-checked="false" aria-labelledby="liquidGlassLabel"><span class="switch-circle"></span></button>
+                </div>
+                <p class="spark-glass-warning" data-i18n="glassWarning">Эффект в стиле Liquid Glass. Возможны лаги на некоторых устройствах. Упрощённая графика снижает нагрузку.</p>
+                <div class="spark-glass-details" id="liquidGlassDetails" aria-hidden="true" inert><div>
+                    <fieldset class="spark-glass-controls" id="liquidGlassControls" disabled>
+                        <div class="spark-glass-preview"><button type="button" aria-label="Spark"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 2.9 6.2 6.8.8-5 4.7 1.4 6.8L12 17l-6.1 3.5 1.4-6.8-5-4.7 6.8-.8z"/></svg>Spark</button></div>
+                        <div class="spark-glass-modes" id="liquidGlassModes" role="group" data-i18n-aria-label="glassMode" aria-label="Режим стекла">
+                            <button type="button" data-glass-mode="clear" aria-pressed="true" data-i18n="glassClear">Прозрачный</button>
+                            <button type="button" data-glass-mode="tinted" aria-pressed="false" data-i18n="glassTinted">Тонированный</button>
+                        </div>
+                        <label class="spark-glass-slider-label" for="liquidGlassIntensity"><span data-i18n="glassDensity">Плотность стекла</span><output id="liquidGlassValue" for="liquidGlassIntensity">55%</output></label>
+                        <input class="spark-glass-range" id="liquidGlassIntensity" type="range" min="0" max="100" step="1" value="55" aria-describedby="liquidGlassRangeEnds">
+                        <div class="spark-glass-slider-ends" id="liquidGlassRangeEnds"><span data-i18n="glassLight">Лёгкое</span><span data-i18n="glassDense">Плотное</span></div>
+                    </fieldset>
+                </div></div>
+            </section>
+
             <!-- Кнопки снизу -->
             <div class="settings-footer-buttons">
                 <button class="settings-footer-btn secondary" onclick="openPrivacyPolicy()" data-i18n="privacy">Политика</button>
@@ -5076,6 +5098,14 @@
         if (!supportedLanguages.includes(currentLang)) currentLang = telegramLanguage;
         const translations = {
             ru: {
+                glassExperimental: "Экспериментально",
+                glassWarning: "Эффект в стиле Liquid Glass. Возможны лаги на некоторых устройствах. Упрощённая графика снижает нагрузку.",
+                glassMode: "Режим стекла",
+                glassClear: "Прозрачный",
+                glassTinted: "Тонированный",
+                glassDensity: "Плотность стекла",
+                glassLight: "Лёгкое",
+                glassDense: "Плотное",
                 settings: 'Настройки',
                 language: 'ЯЗЫК',
                 appearance: 'ВНЕШНИЙ ВИД',
@@ -5344,6 +5374,14 @@
                 beta: 'БЕТА'
             },
             en: {
+                glassExperimental: "Experimental",
+                glassWarning: "A Liquid Glass-inspired effect. Some devices may lag. Simplified graphics reduces the load.",
+                glassMode: "Glass mode",
+                glassClear: "Clear",
+                glassTinted: "Tinted",
+                glassDensity: "Glass density",
+                glassLight: "Light",
+                glassDense: "Dense",
                 settings: 'Settings',
                 language: 'LANGUAGE',
                 appearance: 'APPEARANCE',
@@ -5613,6 +5651,14 @@
                 beta: 'BETA'
             },
             zh: {
+                glassExperimental: "实验功能",
+                glassWarning: "灵感来自 Liquid Glass 的视觉效果。部分设备可能出现卡顿。简化画面可减轻负载。",
+                glassMode: "玻璃模式",
+                glassClear: "透明",
+                glassTinted: "着色",
+                glassDensity: "玻璃厚重感",
+                glassLight: "轻盈",
+                glassDense: "厚重",
                 settings: '设置', language: '语言', appearance: '外观', theme: '主题',
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
