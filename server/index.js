@@ -6,6 +6,8 @@ const { Server } = require("socket.io");
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const path = require('path');
+const { createPublicUrls } = require('./public-urls');
+const { WEBAPP_URL, assetUrl } = createPublicUrls(process.env.WEBAPP_URL);
 const { verifyTelegramInitData } = require('./telegram-init-data');
 const { botLang, botText, botGameName, botAliases } = require('./bot-copy');
 const {
@@ -232,8 +234,8 @@ app.post('/prepare-share', authMiddleware, async (req, res) => {
         title,
         description: kind === 'monopoly' ? `${shareCopy.roomCode} ${roomId}` : 'Spark Games',
         thumbnailUrl: kind === 'monopoly'
-            ? 'https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/monopoly.png'
-            : 'https://sevet-apps.github.io/minesweeper-tg/assets/spark-logo.png?v=20260823',
+            ? assetUrl('assets/game-icons/monopoly.png')
+            : assetUrl('assets/spark-logo.png?v=20260823'),
         richHtml: richActionHtml(richText, {
             text: actionText,
             url,
@@ -3683,7 +3685,7 @@ const GAME_ICON_BY_COLUMN = {
 function gameThumbnail(config) {
     if (!config || config.isReferral) return null;
     const file = GAME_ICON_BY_COLUMN[config.column];
-    return file ? `https://sevet-apps.github.io/minesweeper-tg/assets/game-icons/${file}` : null;
+    return file ? assetUrl(`assets/game-icons/${file}`) : null;
 }
 
 function formatTopForGame(gameConfig, userId, users, usePremiumEmoji = true, lang = 'ru') {
@@ -3826,9 +3828,6 @@ async function getTopForReferrals(userId, usePremiumEmoji = true, lang = 'ru') {
     
     return { text, userRank };
 }
-
-// URL Mini App
-const WEBAPP_URL = 'https://sevet-apps.github.io/minesweeper-tg/';
 
 // Кэш для хранения данных inline запросов
 const inlineCache = new Map();
@@ -4036,7 +4035,7 @@ if (BOT_TOKEN) {
                 id: tttId,
                 title: botText(lang, 'tttName'),
                 description: botText(lang, 'tttDescription'),
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png?v=20260827-2',
+                thumbnailUrl: assetUrl('assets/inline-icons/tic-tac-toe.png?v=20260827-2'),
                 richHtml: tttRichHtml(tttInviteText, createTTTBoard(), tttId),
                 fallbackText: tttInviteText,
                 fallbackReplyMarkup: tttInviteKeyboard,
@@ -4058,7 +4057,7 @@ if (BOT_TOKEN) {
                 id: chId,
                 title: botText(lang, 'checkersName'),
                 description: botText(lang, 'checkersDescription'),
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png?v=20260827-2',
+                thumbnailUrl: assetUrl('assets/inline-icons/checkers-versus.png?v=20260827-2'),
                 richHtml: checkersRichHtml(checkersInviteText, createCheckersBoard(), chId),
                 fallbackText: checkersInviteText,
                 fallbackReplyMarkup: checkersInviteKeyboard,
@@ -4136,7 +4135,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: `❌⭕ ${botText(lang, 'tttName')}`,
                 description: botText(lang, 'tttDescription'),
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/tic-tac-toe.png?v=20260827-2',
+                thumbnailUrl: assetUrl('assets/inline-icons/tic-tac-toe.png?v=20260827-2'),
                 richHtml: tttRichHtml(inviteText, createTTTBoard(), gameId),
                 fallbackText: inviteText,
                 fallbackReplyMarkup: inviteKeyboard,
@@ -4161,7 +4160,7 @@ if (BOT_TOKEN) {
                 id: gameId,
                 title: `⚪⚫ ${botText(lang, 'checkersName')}`,
                 description: botText(lang, 'checkersDescription'),
-                thumbnailUrl: 'https://sevet-apps.github.io/minesweeper-tg/assets/inline-icons/checkers-versus.png?v=20260827-2',
+                thumbnailUrl: assetUrl('assets/inline-icons/checkers-versus.png?v=20260827-2'),
                 richHtml: checkersRichHtml(inviteText, createCheckersBoard(), gameId),
                 fallbackText: inviteText,
                 fallbackReplyMarkup: inviteKeyboard,
