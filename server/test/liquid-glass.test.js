@@ -60,13 +60,14 @@ class Element {
         this.animations.push(animation); return animation;
     }
 }
-function harness({saved, lite=false, reduced=false, individualTransforms=true, blockedStorage=false}={}) {
+function harness({saved, lite=false, reduced=false, individualTransforms=true, blockedStorage=false, available=true}={}) {
     const storage = new Map();
     if (saved !== undefined) storage.set(KEY, typeof saved === 'string' ? saved : JSON.stringify(saved));
     if (lite) storage.set('lite_mode', 'true');
     const writes=[], frames=new Map(), observers=[];
     let frameId=0;
     const html=new Element('html'); html.lang='en';
+    html.dataset.liquidGlassAvailable = String(available);
     const body=html.append(new Element('body'));
     const doc={nodeType:9, documentElement:html, body, readyState:'complete', hidden:false, listeners:{},
         getElementById: id => [html, ...html.querySelectorAll('*')].find(el => el.id === id),
@@ -109,6 +110,21 @@ function harness({saved, lite=false, reduced=false, individualTransforms=true, b
     const addControl=el=>{body.append(el);observers.filter(observer=>observer.connected&&observer.options.childList).forEach(observer=>observer.callback([{addedNodes:[el]}]));};
     return {window,doc,html,body,toggle,details,fieldset,modes,clear,tinted,slider,output,button,track,thumb,segment,dig,cell,miniMapCell,wordleKey,switchRow,switchInput,switchTrack,media,storage,writes,frames,observers,flush,pointer,addControl};
 }
+
+test('paused release ignores saved enabled glass without erasing preferences or starting work',()=>{
+    const saved={enabled:true,mode:'tinted',intensity:85};
+    const h=harness({saved,available:false});
+    assert.equal(h.html.dataset.liquidGlass,'off');
+    assert.equal(h.window.SparkGlass,undefined);
+    assert.deepEqual(JSON.parse(h.storage.get(KEY)),saved);
+    assert.equal(h.writes.length,0);
+    assert.equal(h.observers.length,0);
+    assert.equal(Object.keys(h.doc.listeners).length,0);
+    h.toggle.emit('click');h.pointer('pointerdown');
+    assert.equal(h.html.dataset.liquidGlass,'off');
+    assert.equal(h.button.style.scale,undefined);
+    assert.equal(h.frames.size,0);
+});
 
 test('glass is opt-in, corrupt settings recover safely, and unsafe values are normalized',()=>{
     assert.deepEqual(normalize(null), {...DEFAULTS});

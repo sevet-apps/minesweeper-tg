@@ -20,6 +20,12 @@
     if (typeof module !== 'undefined') module.exports = {normalize,appearance,read,KEY,DEFAULTS};
     if (!root.document) return;
     const doc = root.document;
+    // Release gate: retain the experiment and saved preferences while development is paused.
+    // Exit before storage, listeners and observers, even if glass was previously enabled.
+    if (doc.documentElement.dataset.liquidGlassAvailable === 'false') {
+        doc.documentElement.dataset.liquidGlass = 'off';
+        return;
+    }
     let storage; try { storage = root.localStorage; } catch (_) { storage = null; }
     let settings = read(storage), observer = null, pointer = null, moveFrame = 0, updateFrame = 0;
     const animations = new Map();
