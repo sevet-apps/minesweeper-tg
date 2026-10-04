@@ -1,3 +1,7 @@
 _wordle_cache/
 node_modules/
 .env
+.env.*
+!.env.example
+/public/
+/_migration-backup/

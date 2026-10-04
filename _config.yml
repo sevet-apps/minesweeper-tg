@@ -1,0 +1,17 @@
+# GitHub Pages currently builds the repository root with Jekyll.
+# Keep development/backend files out of the public website during migration.
+exclude:
+  - server
+  - supabase
+  - scripts
+  - docs
+  - examples
+  - motion
+  - node_modules
+  - vendor
+  - public
+  - build_wordle_dicts.py
+  - locales/source.ru.json
+  - locales/README.md
+  - assets/flags/README.md
+  - assets/game-patterns/ATTRIBUTION.md

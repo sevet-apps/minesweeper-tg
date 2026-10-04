@@ -1,0 +1,34 @@
+default:
+  image: node:22-bookworm
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+stages:
+  - test
+  - deploy
+
+verify:
+  stage: test
+  script:
+    - node --test server/test/*.test.js
+    - node scripts/check-locales.cjs
+
+deploy-pages:
+  stage: deploy
+  script:
+    - node scripts/build-static.cjs
+  pages:
+    publish: public
+    expire_in: never
+  artifacts:
+    access: maintainer
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  environment:
+    name: production
+    url: $CI_PAGES_URL
