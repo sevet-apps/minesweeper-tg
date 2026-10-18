@@ -4656,12 +4656,22 @@
         }
  
         
+        // Names, avatars and other server data come from players: never put them
+        // into innerHTML unescaped (a Telegram name like <img onerror=...> runs as code).
+        function escapeHtml(value) {
+            return String(value == null ? '' : value).replace(/[&<>"'`]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch]));
+        }
+        function avatarImgHtml(url, className) {
+            const safe = typeof url === 'string' && /^https:\/\//i.test(url);
+            return safe ? `<img src="${escapeHtml(url)}" class="${className}" alt="" referrerpolicy="no-referrer">` : `<div class="${className}" style="background:#ddd"></div>`;
+        }
         const API_BASE_URL = 'https://spark-game-backend.onrender.com';
         const REQUIRED_CHANNEL = '@spark_game_news'; // Канал для проверки подписки
         const CHANNEL_LINK = 'https://t.me/spark_game_news'; // Ссылка на канал
         
         // --- SOCKET.IO INIT ---
-        const socket = io(API_BASE_URL);
+        // Signed initData lets the server trust our Telegram id; ids in event bodies are ignored.
+        const socket = io(API_BASE_URL, { auth: { initData: tg.initData || '' } });
         
         // Stable Telegram user id, captured at first successful read. Some
         // calls happen before tg.initDataUnsafe.user is populated (cold start
@@ -4683,6 +4693,7 @@
             if (user) {
                 if (user.id) telegramUserId = user.id;
                 socket.emit('register_online', {
+                    initData: tg.initData || '',
                     oderId: user.id,
                     odername: tgName(user)
                 });
@@ -4984,6 +4995,10 @@
             socket.on('opponent_disconnected', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentDisconnected'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
             socket.on('opponent_timeout', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentTimeout'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
             socket.on('timeout_loss', () => { clearInterval(checkersTimerInterval); showResult(t('defeat'), t('yourTimeOut'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
+            // The server checks every move and decides the result (e.g. no moves left).
+            socket.on('game_finished', (data) => {
+                if (isOnlineGame && !checkersGameFinished && (data?.winner === 'white' || data?.winner === 'black')) endGame(data.winner);
+            });
             socket.on('opponent_left', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentLeft'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
             
             // Общие ошибки
@@ -7371,7 +7386,7 @@
                     el.innerHTML = `
                         <div class="th-item-icon ${iconClass}">${iconChar}</div>
                         <div class="th-item-info">
-                            <div class="th-item-name">${item.name || ('#' + item.id)}</div>
+                            <div class="th-item-name">${escapeHtml(item.name || ('#' + item.id))}</div>
                             <div class="th-item-meta">${meta}</div>
                         </div>
                         <div class="th-item-arrow">
@@ -7445,10 +7460,8 @@
                     const item = document.createElement('div');
                     item.className = `lb-item rank-${rank}`;
                     if (isMe) item.style.border = '1px solid var(--accent)';
-                    const avatarHtml = u.photo_url && u.photo_url.startsWith('http')
-                        ? `<img src="${u.photo_url}" class="lb-avatar">`
-                        : `<div class="lb-avatar" style="background:#ddd"></div>`;
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}</div>`;
+                    const avatarHtml = avatarImgHtml(u.photo_url, 'lb-avatar');
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${isMe ? 'color:var(--accent)' : ''}">${escapeHtml(u.username)} ${isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}</div>`;
                     listEl.appendChild(item);
                 });
             } catch (e) {
@@ -7596,13 +7609,11 @@
                         const item = document.createElement('div');
                         item.className = `lb-item rank-${rank}`;
                         if (u.isMe) { item.style.border = '1px solid var(--accent)'; if (lbObserver) lbObserver.observe(item); }
-                        const avatarHtml = u.photo_url && u.photo_url.startsWith('http')
-                            ? `<img src="${u.photo_url}" class="lb-avatar">`
-                            : `<div class="lb-avatar" style="background:#ddd"></div>`;
+                        const avatarHtml = avatarImgHtml(u.photo_url, 'lb-avatar');
                         const multBadge = (u.multiplier && u.multiplier > 1.0)
                             ? `<span style="margin-left:6px; font-size:10px; color:#ffa500; font-weight:700;">×${u.multiplier}</span>`
                             : '';
-                        item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username || ''} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}${multBadge}</div>`;
+                        item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${escapeHtml(u.username)} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}${multBadge}</div>`;
                         listEl.appendChild(item);
                     });
                 } catch (error) {
@@ -7661,8 +7672,9 @@
                     const rank = index + 1; let medal = ''; if(rank <= 3) medal = `<div class="lb-rank-badge">${rank}</div>`;
                     let displayVal = BBVisuals.formatNumber(u.score); if(category.isTime) displayVal = formatSaperSeconds(u.score);
                     const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
-                    let avatarHtml = u.photo_url && u.photo_url.startsWith('http') ? `<img src="${u.photo_url}" class="lb-avatar">` : `<div class="lb-avatar" style="background:#ddd"></div>`;
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}${u.isLive ? `<span class="lb-live-badge" onclick="event.stopPropagation(); openBBSpectator('${u.user_id}', '${u.username.replace(/'/g, "\\'")}')">LIVE</span>` : ''}</div></div><div class="lb-val">${displayVal}</div>`;
+                    let avatarHtml = avatarImgHtml(u.photo_url, 'lb-avatar');
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${escapeHtml(u.username)} ${u.isMe ? t('you') : ''}${u.isLive ? '<span class="lb-live-badge">LIVE</span>' : ''}</div></div><div class="lb-val">${escapeHtml(displayVal)}</div>`;
+                    item.querySelector('.lb-live-badge')?.addEventListener('click', event => { event.stopPropagation(); openBBSpectator(String(u.user_id), String(u.username || '')); });
                     listEl.appendChild(item);
                 });
             } catch (error) { listEl.innerHTML = `<div style="padding:20px; text-align:center; color:var(--danger);">${t('networkError')}</div>`; }
@@ -7747,11 +7759,9 @@
                     item.className = `lb-item rank-${rank}`;
                     if(u.isMe) item.style.border = '1px solid var(--accent)';
                     
-                    let avatarHtml = u.photo_url && u.photo_url.startsWith('http') 
-                        ? `<img src="${u.photo_url}" class="lb-avatar">` 
-                        : `<div class="lb-avatar" style="background:#ddd"></div>`;
+                    let avatarHtml = avatarImgHtml(u.photo_url, 'lb-avatar');
                     
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${u.username} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}</div>`;
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${escapeHtml(u.username)} ${u.isMe ? t('you') : ''}</div></div><div class="lb-val">${BBVisuals.formatNumber(u.score)}</div>`;
                     listEl.appendChild(item);
                 });
                 
