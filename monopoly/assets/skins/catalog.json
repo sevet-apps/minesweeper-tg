@@ -1,0 +1,1585 @@
+{
+  "version": 1,
+  "case": {
+    "id": "universal",
+    "name": "Универсальный кейс",
+    "odds": {
+      "common": 70,
+      "rare": 22,
+      "epic": 7,
+      "mythic": 1
+    }
+  },
+  "rarities": {
+    "common": {
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    "rare": {
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    "epic": {
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    "mythic": {
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    }
+  },
+  "skins": [
+    {
+      "id": "cars_alfa-romeo-4",
+      "name": "Alfa Romeo",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/alfa-romeo-4.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_aston-martin-1",
+      "name": "Aston Martin",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/aston-martin-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_bentley-motors-2",
+      "name": "Bentley",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/bentley-motors-2.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_bmw-2",
+      "name": "BMW",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/bmw-2.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_bugatti-2",
+      "name": "Bugatti",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/bugatti-2.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_citroen-2009",
+      "name": "Citroën",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/citroen-2009.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_ferrari-emblem-1",
+      "name": "Ferrari",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/ferrari-emblem-1.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_honda-auto-logo",
+      "name": "Honda",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/honda-auto-logo.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_hyundai-motor-company-2",
+      "name": "Hyundai",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/hyundai-motor-company-2.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_infiniti-logo-1",
+      "name": "Infiniti",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/infiniti-logo-1.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_jaguar-cars",
+      "name": "Jaguar",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/jaguar-cars.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_jeep-7",
+      "name": "Jeep",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/jeep-7.svg",
+      "layout": "wordmark",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_kamaz-2",
+      "name": "KAMAZ",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/kamaz-2.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_kia",
+      "name": "KIA",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/kia.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_lada-logo",
+      "name": "LADA",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/lada-logo.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_lamborghini",
+      "name": "Lamborghini",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/lamborghini.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_lexus",
+      "name": "Lexus",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/lexus.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_maserati-1",
+      "name": "Maserati",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/maserati-1.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_mazda-2",
+      "name": "Mazda",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/mazda-2.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_mclaren-automotive-logo",
+      "name": "McLaren",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/mclaren-automotive-logo.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_mitsubishi-1",
+      "name": "Mitsubishi",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/mitsubishi-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_nissan-logo",
+      "name": "Nissan",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/nissan-logo.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_peugeot-5",
+      "name": "Peugeot",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/peugeot-5.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_porsche-crest-logo",
+      "name": "Porsche",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/porsche-crest-logo.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_rolls-royce",
+      "name": "Rolls-Royce",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/cars/rolls-royce.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "cars_seat-1",
+      "name": "SEAT",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/seat-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_skoda-6",
+      "name": "Škoda",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/skoda-6.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_suzuki",
+      "name": "Suzuki",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/cars/suzuki.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "cars_tesla-motors",
+      "name": "Tesla",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/tesla-motors.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "cars_toyota-vertical-logo",
+      "name": "Toyota",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/toyota-vertical-logo.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_volkswagen-logo",
+      "name": "Volkswagen",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/cars/volkswagen-logo.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "cars_volvo",
+      "name": "Volvo",
+      "groupId": "cars",
+      "groupName": "Автомобили",
+      "compatibleTiles": [
+        5,
+        15,
+        25,
+        35
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/cars/volvo.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_aliexpress-logo",
+      "name": "AliExpress",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/web/aliexpress-logo.svg",
+      "layout": "wordmark",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "web_discord-6",
+      "name": "Discord",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/web/discord-6.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_dropbox-2",
+      "name": "Dropbox",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/web/dropbox-2.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "web_facebook-3-2",
+      "name": "Facebook",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/web/facebook-3-2.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_google-g-2015",
+      "name": "Google",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/web/google-g-2015.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "web_instagram-2016-5",
+      "name": "Instagram",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/web/instagram-2016-5.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "web_logo-amazon",
+      "name": "Amazon",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/web/logo-amazon.svg",
+      "layout": "wordmark",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_netflix-logo-icon",
+      "name": "Netflix",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/web/netflix-logo-icon.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "web_ozon-logo-clear",
+      "name": "Ozon",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/web/ozon-logo-clear.svg",
+      "layout": "wordmark",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "web_pinterest-2-1",
+      "name": "Pinterest",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/web/pinterest-2-1.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "web_reddit-4",
+      "name": "Reddit",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/web/reddit-4.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "web_signal-logo-1",
+      "name": "Signal",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/web/signal-logo-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "web_slack-new-logo",
+      "name": "Slack",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/web/slack-new-logo.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "web_snapchat-1",
+      "name": "Snapchat",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/web/snapchat-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "web_spotify-logo",
+      "name": "Spotify",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/web/spotify-logo.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "web_telegram-1",
+      "name": "Telegram",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/web/telegram-1.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "web_tiktok-icon-2",
+      "name": "TikTok",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/web/tiktok-icon-2.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_twitch-purple",
+      "name": "Twitch",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/web/twitch-purple.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_twitter-logo-2",
+      "name": "Twitter",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/web/twitter-logo-2.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "web_vk-1",
+      "name": "VK",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/web/vk-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "web_wechat-logo-1",
+      "name": "WeChat",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/web/wechat-logo-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "web_whatsapp-8",
+      "name": "WhatsApp",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/web/whatsapp-8.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "web_youtube-6-1",
+      "name": "YouTube",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/web/youtube-6-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "web_zoom-communications-logo-1",
+      "name": "Zoom",
+      "groupId": "web",
+      "groupName": "Веб-сервисы",
+      "compatibleTiles": [
+        11,
+        13,
+        14
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/web/zoom-communications-logo-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "food_applebee-s-1",
+      "name": "Applebee's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/food/applebee-s-1.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "food_arby-s",
+      "name": "Arby's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/food/arby-s.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "food_baskin-robbins-5",
+      "name": "Baskin-Robbins",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/food/baskin-robbins-5.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "food_carl-s-jr-5",
+      "name": "Carl's Jr.",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/food/carl-s-jr-5.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "food_chipotle-mexican-grill",
+      "name": "Chipotle",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/food/chipotle-mexican-grill.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "food_dairy-queen",
+      "name": "Dairy Queen",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/food/dairy-queen.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "food_denny-s-5",
+      "name": "Denny's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/food/denny-s-5.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "food_dodo-pizza-logo-eng",
+      "name": "Dodo Pizza",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/food/dodo-pizza-logo-eng.svg",
+      "layout": "wordmark",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "food_domino-s-pizza-3",
+      "name": "Domino's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/food/domino-s-pizza-3.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "food_dunkin-donuts-1",
+      "name": "Dunkin'",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/food/dunkin-donuts-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "food_hard-rock-cafe-1",
+      "name": "Hard Rock Cafe",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/food/hard-rock-cafe-1.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "food_ihop",
+      "name": "IHOP",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/food/ihop.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "food_krispy-kreme-doughnuts-1",
+      "name": "Krispy Kreme",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/food/krispy-kreme-doughnuts-1.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "food_mcdonalds-7",
+      "name": "McDonald's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/food/mcdonalds-7.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "food_papa-john-s-pizza-1",
+      "name": "Papa John's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/food/papa-john-s-pizza-1.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "food_pizza-hut",
+      "name": "Pizza Hut",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/food/pizza-hut.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "food_popeyes-louisiana-kitchen",
+      "name": "Popeyes",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/food/popeyes-louisiana-kitchen.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "food_starbucks-coffee",
+      "name": "Starbucks",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/food/starbucks-coffee.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "food_subway-13",
+      "name": "Subway",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/food/subway-13.svg",
+      "layout": "wordmark",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "food_taco-bell-1",
+      "name": "Taco Bell",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/food/taco-bell-1.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "food_tgi-fridays",
+      "name": "TGI Fridays",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/food/tgi-fridays.svg",
+      "layout": "wordmark",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "food_tim-hortons-3",
+      "name": "Tim Hortons",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/food/tim-hortons-3.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "food_wendy-s",
+      "name": "Wendy's",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/food/wendy-s.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "food_white-castle-1",
+      "name": "White Castle",
+      "groupId": "food",
+      "groupName": "Рестораны",
+      "compatibleTiles": [
+        26,
+        27,
+        29
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/food/white-castle-1.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "tech_acer-2",
+      "name": "Acer",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/tech/acer-2.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "tech_asus-4",
+      "name": "ASUS",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/tech/asus-4.svg",
+      "layout": "wordmark",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "tech_bose",
+      "name": "Bose",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/tech/bose.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "tech_canon-wordmark-1",
+      "name": "Canon",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/tech/canon-wordmark-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "tech_dell-2",
+      "name": "Dell",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/tech/dell-2.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "tech_hp-hewlett-packard",
+      "name": "HP",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/tech/hp-hewlett-packard.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "tech_huawei",
+      "name": "Huawei",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/tech/huawei.svg",
+      "layout": "badge",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "tech_jbl-1",
+      "name": "JBL",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/tech/jbl-1.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "tech_lenovo-2",
+      "name": "Lenovo",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/tech/lenovo-2.svg",
+      "layout": "wordmark",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "tech_lg-electronics",
+      "name": "LG",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/tech/lg-electronics.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    },
+    {
+      "id": "tech_panasonic",
+      "name": "Panasonic",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/tech/panasonic.svg",
+      "layout": "badge",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "tech_philips-new",
+      "name": "Philips",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "rare",
+      "asset": "assets/skins/companies/tech/philips-new.svg",
+      "layout": "badge",
+      "bonusBps": 1000,
+      "exchangeValue": 25
+    },
+    {
+      "id": "tech_realme-1",
+      "name": "realme",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "common",
+      "asset": "assets/skins/companies/tech/realme-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 250,
+      "exchangeValue": 10
+    },
+    {
+      "id": "tech_samsung-electronics",
+      "name": "Samsung",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/tech/samsung-electronics.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "tech_sony-logo-1",
+      "name": "Sony",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "mythic",
+      "asset": "assets/skins/companies/tech/sony-logo-1.svg",
+      "layout": "wordmark",
+      "bonusBps": 3300,
+      "exchangeValue": 200
+    },
+    {
+      "id": "tech_xiaomi-logo-2",
+      "name": "Xiaomi",
+      "groupId": "tech",
+      "groupName": "Электроника",
+      "compatibleTiles": [
+        37,
+        39
+      ],
+      "rarity": "epic",
+      "asset": "assets/skins/companies/tech/xiaomi-logo-2.svg",
+      "layout": "badge",
+      "bonusBps": 2000,
+      "exchangeValue": 75
+    }
+  ]
+}

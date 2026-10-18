@@ -1,0 +1,88 @@
+/* Web approximation of glass; never claims to expose Apple's optical material engine. */
+:root { --sg-surface:255,255,255; --sg-ink:22,22,28; --sg-blue:0,95,215; --sg-blur:8px; --sg-opacity:.35; --sg-tint:.8; --sg-rim:.25; --sg-saturation:1.3; }
+[data-theme="dark"] { --sg-surface:44,48,61; --sg-ink:245,245,250; --sg-blue:10,112,235; }
+html[data-liquid-glass="on"] :is(.spark-glass-control,.spark-glass-track,.spark-glass-thumb) {
+    background-color:rgba(var(--sg-surface),var(--sg-opacity))!important;
+    background-image:linear-gradient(155deg,rgba(255,255,255,calc(var(--sg-rim)*.75)),transparent 43%,rgba(255,255,255,.025) 66%,rgba(255,255,255,calc(var(--sg-rim)*.32)))!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,var(--sg-rim)),inset 0 -1px 0 rgba(0,0,0,.12),inset 1px 0 0 rgba(255,255,255,calc(var(--sg-rim)*.25)),0 4px 14px rgba(0,0,0,.09)!important;
+    -webkit-backdrop-filter:blur(var(--sg-blur)) saturate(var(--sg-saturation));
+    backdrop-filter:blur(var(--sg-blur)) saturate(var(--sg-saturation));
+}
+html[data-liquid-glass="on"] .spark-glass-control { border-radius:var(--ui-radius,16px); }
+html[data-liquid-glass="on"] :is(.lang-btn,.settings-footer-btn,.theme-switch,.lb-sw,.switch,.spark-glass-track,.spark-glass-thumb,.title-filter-chip,.mc-chip,.wordle-key) { border-radius:999px; }
+html[data-liquid-glass="on"] .lang-btn { border-radius:22px; }
+html[data-liquid-glass="on"] :is(.spark-glass-accent,.lang-btn.active,.theme-switch.active,.lb-sw.on,.switch.on,.title-filter-chip.active,.mc-chip.on,.num-btn.active-digit,.tab-item.active,.spark-glass-thumb) {
+    background-color:rgba(var(--sg-blue),var(--sg-tint))!important; color:white;
+}
+html[data-liquid-glass="on"] :is(#themeToggleSheet,#themeToggle) { background-color:rgba(var(--sg-surface),var(--sg-opacity))!important; }
+html[data-liquid-glass="on"][data-theme="dark"] :is(#themeToggleSheet,#themeToggle) { background-color:rgba(var(--sg-blue),var(--sg-tint))!important; }
+html[data-liquid-glass="on"] .spark-glass-danger { background-color:rgba(215,42,60,var(--sg-tint))!important; color:#fff; }
+/* One refracting surface per segmented group. Keep the moving indicator's own transform. */
+html[data-liquid-glass="on"] .spark-glass-segment {
+    background:transparent!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important;
+}
+html[data-liquid-glass="on"] .spark-glass-thumb { backdrop-filter:none; -webkit-backdrop-filter:none; }
+html[data-liquid-glass="on"] .theme-switch .switch-circle { background-color:rgba(255,255,255,.93)!important; }
+html[data-liquid-glass="on"] .monopoly-pregame .mc-tabs::before { background-color:rgba(var(--sg-blue),var(--sg-tint)); box-shadow:inset 0 1px 0 #ffffff70,0 2px 8px #0002; }
+/* Preserve hit targets and the small, aligned close circles. */
+html[data-liquid-glass="on"] :is(.ui-close,.privacy-close-btn,.title-bottom-close,.title-library-close,.mc-close,.bb-picker-close) { border-radius:50%; background:transparent!important; box-shadow:none!important; backdrop-filter:none; -webkit-backdrop-filter:none; }
+html[data-liquid-glass="on"] :is(.ui-close,.privacy-close-btn,.title-bottom-close,.title-library-close,.mc-close,.bb-picker-close)::before {
+    background:linear-gradient(150deg,#ffffff30,transparent),rgba(var(--sg-surface),var(--sg-opacity));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,var(--sg-rim)),0 2px 8px #0002;
+    backdrop-filter:blur(var(--sg-blur)); -webkit-backdrop-filter:blur(var(--sg-blur));
+}
+html[data-liquid-glass="on"] :is(.lb-sw,.switch,.bb-picker-motion > i)::after { box-shadow:inset 0 1px 0 #fff,0 2px 5px #0003; background-color:rgba(255,255,255,.94); }
+html[data-liquid-glass="on"] .bb-picker-motion input:checked + i { background-color:rgba(var(--sg-blue),var(--sg-tint))!important; }
+html[data-liquid-glass="on"] .bb-picker-tabs [role="tab"],html[data-liquid-glass="on"] .spark-glass-modes button { border-radius:999px; }
+/* Game colours continue to carry meaning. */
+html[data-liquid-glass="on"] .wordle-key.correct { background-color:rgba(36,125,64,.88)!important; }
+html[data-liquid-glass="on"] .wordle-key.present { background-color:rgba(148,108,12,.88)!important; }
+html[data-liquid-glass="on"] .wordle-key.absent { background-color:rgba(68,68,76,.88)!important; }
+html[data-liquid-glass="on"] .spark-glass-card { --sg-card:36,79,126; border-radius:var(--ui-card-radius,24px); background-color:rgba(var(--sg-card),calc(var(--sg-opacity) + .2))!important; }
+html[data-liquid-glass="on"] .game-card--block-blast,html[data-liquid-glass="on"] .game-card--tower { --sg-card:0,112,124; }
+html[data-liquid-glass="on"] .game-card--sudoku { --sg-card:99,36,157; }
+html[data-liquid-glass="on"] .game-card--wordle { --sg-card:0,130,142; }
+html[data-liquid-glass="on"] .game-card--checkers { --sg-card:72,74,82; }
+html[data-liquid-glass="on"] .game-card--monopoly { --sg-card:145,78,32; }
+html[data-liquid-glass="on"] .spark-glass-control:focus-visible { outline:2px solid var(--ui-accent,#007aff); outline-offset:3px; }
+/* Settings stay opaque; the preview makes density changes immediately legible. */
+.spark-glass-settings { margin:22px 0 0; border-radius:20px; background:var(--ui-surface); overflow:hidden; border:1px solid var(--ui-border); }
+.spark-glass-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px; }
+.spark-glass-heading > div { min-width:0; }
+.spark-glass-heading strong { display:block;font-size:16px;letter-spacing:-.2px; }
+.spark-glass-badge { display:block;color:var(--ui-accent);font-size:11px;font-weight:650;margin-top:3px; }
+.spark-glass-warning { margin:0;padding:0 16px 16px;color:var(--ui-muted);font-size:12px;line-height:1.5; }
+#liquidGlassToggle { border:0; }
+#liquidGlassToggle.active .switch-circle { transform:translateX(18px); }
+.spark-glass-details { display:grid;grid-template-rows:0fr;transition:grid-template-rows .34s var(--ui-ease); }
+.spark-glass-details.is-open { grid-template-rows:1fr; }
+.spark-glass-details > div { min-height:0;overflow:hidden; }
+.spark-glass-controls { border:0;min-width:0;margin:0;padding:0 16px 18px; }
+.spark-glass-preview { height:104px;display:grid;place-items:center;position:relative;overflow:hidden;border-radius:16px;margin:0 0 14px;background:radial-gradient(ellipse at 24% 105%,#2c80ff 0,transparent 63%),radial-gradient(ellipse at 92% 2%,#b572f4 0,transparent 61%),linear-gradient(135deg,#0c2652,#406088); }
+.spark-glass-preview::before { content:'';position:absolute;width:56px;height:56px;border-radius:50%;background:#77dcff;left:calc(50% - 67px);top:42px; }
+.spark-glass-preview button { position:relative;display:flex;align-items:center;gap:8px;border-radius:999px!important;font:650 16px var(--ui-font);padding:13px 24px;border:1px solid #ffffff45;color:#fff; background:rgba(255,255,255,.2); }
+.spark-glass-preview svg { width:19px;height:19px; }
+.spark-glass-modes { position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:4px;border-radius:999px;background:var(--ui-track);isolation:isolate;margin-bottom:18px; }
+.spark-glass-modes::before { content:'';position:absolute;inset:4px auto 4px 4px;width:calc((100% - 8px)/2);border-radius:999px;background:var(--ui-accent);transform:translateX(calc(var(--sg-mode-index,0)*100%));transition:transform .42s var(--ui-spring);box-shadow:inset 0 1px 0 #ffffff60; }
+.spark-glass-modes button { position:relative;border:0;background:transparent;padding:10px 5px;color:var(--ui-muted);font:650 12px var(--ui-font);min-width:0; }
+.spark-glass-modes button[aria-pressed="true"] { color:#fff; }
+.spark-glass-slider-label { display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:650;margin:0 0 8px; }
+.spark-glass-slider-label output { color:var(--ui-accent);font-variant-numeric:tabular-nums; }
+.spark-glass-range { --sg-range:55%;width:100%;height:30px;margin:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:pointer;touch-action:pan-y; }
+.spark-glass-range::-webkit-slider-runnable-track { height:6px;border-radius:999px;background:linear-gradient(to right,var(--ui-accent) var(--sg-range),var(--ui-track) var(--sg-range)); }
+.spark-glass-range::-moz-range-track { height:6px;border-radius:999px;background:var(--ui-track); }
+.spark-glass-range::-moz-range-progress { height:6px;border-radius:999px;background:var(--ui-accent); }
+.spark-glass-range::-webkit-slider-thumb { appearance:none;-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:#fff;border:1px solid #0001;box-shadow:0 2px 6px #0003; }
+.spark-glass-range::-moz-range-thumb { width:24px;height:24px;border-radius:50%;background:#fff;border:1px solid #0001;box-shadow:0 2px 6px #0003; }
+.spark-glass-range:focus-visible { outline:2px solid var(--ui-accent);outline-offset:3px;border-radius:999px; }
+.spark-glass-slider-ends { display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--ui-muted); }
+html[data-liquid-glass="on"][data-glass-lite="true"] :is(.spark-glass-control,.spark-glass-track) { backdrop-filter:none!important;-webkit-backdrop-filter:none!important; }
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+    html[data-liquid-glass="on"] { --sg-opacity:.94!important;--sg-tint:.96!important; }
+}
+@media(prefers-reduced-transparency:reduce) { html[data-liquid-glass="on"] { --sg-opacity:.94!important;--sg-tint:.96!important;--sg-blur:0px!important; } }
+@media(prefers-reduced-motion:reduce) { .spark-glass-details,.spark-glass-modes::before { transition:none; } }
+
+html[data-liquid-glass="on"][data-glass-lite="true"] :is(.ui-close,.privacy-close-btn,.title-bottom-close,.title-library-close,.mc-close,.bb-picker-close)::before { backdrop-filter:none!important;-webkit-backdrop-filter:none!important; }
+
+html[data-liquid-glass="on"] .lb-live-badge { background-color:rgba(197,35,53,.94)!important;color:#fff;border-radius:999px; }

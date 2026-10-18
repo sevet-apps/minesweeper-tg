@@ -1,0 +1,409 @@
+/* ============================================================
+   property-modal.js
+   Detailed property card overlay shown when a tile is tapped.
+   Displays: name, owner (placeholder), price, mortgage,
+   house cost, full rent table for properties.
+   ============================================================ */
+
+(function (global) {
+    'use strict';
+
+    const { TILES, PROPERTY_DATA } = global.MonopolyData;
+
+    const FULL_NAMES = {
+        1: 'Mediterranean Avenue', 3: 'Baltic Avenue',
+        6: 'Oriental Avenue', 8: 'Vermont Avenue', 9: 'Connecticut Avenue',
+        11: 'St. Charles Place', 13: 'States Avenue', 14: 'Virginia Avenue',
+        16: 'St. James Place', 18: 'Tennessee Avenue', 19: 'New York Avenue',
+        21: 'Kentucky Avenue', 23: 'Indiana Avenue', 24: 'Illinois Avenue',
+        26: 'Atlantic Avenue', 27: 'Ventnor Avenue', 29: 'Marvin Gardens',
+        31: 'Pacific Avenue', 32: 'North Carolina Avenue', 34: 'Pennsylvania Avenue',
+        37: 'Park Place', 39: 'Boardwalk',
+        5: 'Reading Railroad', 15: 'Pennsylvania Railroad',
+        25: 'B & O Railroad', 35: 'Short Line Railroad',
+        12: 'Electric Company', 28: 'Water Works',
+    };
+
+    const TYPE_LABELS = {
+        property: 'Улица',
+        railroad: 'Железная дорога',
+        utility:  'Коммунальное предприятие',
+        chance:   'Шанс',
+        chest:    'Общественная казна',
+        tax:      'Налог',
+        corner:   'Угловая клетка',
+    };
+
+    const GROUP_COLORS = {
+        brown: '#8B4513', lightblue: '#84d1f1', pink: '#ff5fa2',
+        orange: '#ff9b1f', red: '#ff2a2a', yellow: '#ffd60a',
+        green: '#29c463', blue: '#1a7df0',
+    };
+
+    /**
+     * Render the "Владелец" row dynamically from GameState.
+     * Shows the owner's avatar+name, or "— Банк —" if unowned.
+     */
+    function ownerHtml(tileIdx) {
+        const ownerId = window.GameState?.getOwner?.(tileIdx);
+        if (!ownerId) {
+            return `
+                <div class="prop-modal-owner">
+                    <span class="prop-modal-owner-label">Владелец</span>
+                    <span class="prop-modal-owner-value">— Банк —</span>
+                </div>
+            `;
+        }
+        const player = window.Players?.PLAYERS?.find(p => p.id === ownerId);
+        if (!player) {
+            return `
+                <div class="prop-modal-owner">
+                    <span class="prop-modal-owner-label">Владелец</span>
+                    <span class="prop-modal-owner-value">—</span>
+                </div>
+            `;
+        }
+        return `
+            <div class="prop-modal-owner">
+                <span class="prop-modal-owner-label">Владелец</span>
+                <span class="prop-modal-owner-pill" style="--owner-color: ${player.color}">
+                    <span class="owner-pill-avatar" style="background: ${player.color}">${player.initial}</span>
+                    ${player.name}
+                </span>
+            </div>
+        `;
+    }
+
+    let backdropEl = null;
+    let modalEl = null;
+    let contentEl = null;
+
+    function init() {
+        backdropEl = document.getElementById('propModalBackdrop');
+        modalEl    = document.getElementById('propModal');
+        contentEl  = document.getElementById('propModalContent');
+
+        backdropEl.addEventListener('click', close);
+    }
+
+    function close() {
+        if (!modalEl) return;
+        modalEl.classList.remove('visible');
+        backdropEl.classList.remove('visible');
+        modalEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function renderProperty(tile, data) {
+        const fullName = FULL_NAMES[tile.i] || tile.name;
+        const bandColor = GROUP_COLORS[tile.group] || '#888';
+
+        // Determine current effective rent row to highlight
+        const houses = window.GameState?.getHouses?.(tile.i) ?? 0;
+        const ownerId = window.GameState?.getOwner?.(tile.i);
+        let activeRentIdx = -1; // -1 if unowned
+        let monopolyBonus = false;
+
+        if (ownerId) {
+            if (houses > 0) {
+                activeRentIdx = houses; // 1=1 house, 2=2 houses, ..., 5=hotel
+            } else {
+                // No houses: base rent (idx 0), doubled if monopoly
+                activeRentIdx = 0;
+                const groupTiles = window.MonopolyData.TILES.filter(t =>
+                    t.type === 'property' && t.group === tile.group);
+                monopolyBonus = groupTiles.every(t => GameState.getOwner(t.i) === ownerId);
+            }
+        }
+
+        const labels = ['Базовая аренда', '1 дом', '2 дома', '3 дома', '4 дома', 'Отель'];
+        const rentRows = data.rent.map((r, idx) => {
+            const isActive = idx === activeRentIdx;
+            const displayRent = (isActive && monopolyBonus && idx === 0) ? r * 2 : r;
+            return `
+                <div class="prop-price-row ${isActive ? 'prop-price-row-active' : ''}">
+                    <span class="prop-price-label">
+                        ${labels[idx]}
+                        ${isActive && monopolyBonus && idx === 0
+                            ? '<span class="prop-rent-bonus">×2 монополия</span>' : ''}
+                    </span>
+                    <span class="prop-price-value">$${displayRent}</span>
+                </div>
+            `;
+        }).join('');
+
+        // Rent banner: what someone landing here would owe
+        let rentBanner = '';
+        if (activeRentIdx >= 0) {
+            const baseRent = data.rent[activeRentIdx];
+            const finalRent = (monopolyBonus && activeRentIdx === 0) ? baseRent * 2 : baseRent;
+            rentBanner = `
+                <div class="prop-rent-banner">
+                    <div class="prop-rent-banner-label">При остановке здесь</div>
+                    <div class="prop-rent-banner-value">$${finalRent}</div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="prop-modal-band" style="--prop-band: ${bandColor};">
+                <div class="prop-modal-num">#${tile.i}</div>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+            </div>
+            <div class="prop-modal-body">
+                <div class="prop-modal-name">${fullName}</div>
+                <div class="prop-modal-type">${TYPE_LABELS[tile.type]}</div>
+
+                ${ownerHtml(tile.i)}
+
+                ${rentBanner}
+
+                <div class="prop-modal-prices">
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Цена</span>
+                        <span class="prop-price-value accent">$${tile.price}</span>
+                    </div>
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Залог</span>
+                        <span class="prop-price-value">$${data.mortgage}</span>
+                    </div>
+                    ${data.houseCost ? `
+                        <div class="prop-price-row">
+                            <span class="prop-price-label">Стоимость дома</span>
+                            <span class="prop-price-value">$${data.houseCost}</span>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="prop-modal-section-title">Аренда</div>
+                <div class="prop-modal-prices">
+                    ${rentRows}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderRailroad(tile, data) {
+        const fullName = FULL_NAMES[tile.i] || tile.name;
+        const labels = ['1 ж/д', '2 ж/д', '3 ж/д', 'Все 4'];
+
+        // Active row = number of railroads owner has (-1 if unowned)
+        const ownerId = window.GameState?.getOwner?.(tile.i);
+        let activeIdx = -1;
+        if (ownerId) {
+            activeIdx = window.MonopolyData.TILES.filter(t =>
+                t.type === 'railroad' && GameState.getOwner(t.i) === ownerId).length - 1;
+        }
+
+        const rentRows = data.rent.map((r, idx) => `
+            <div class="prop-price-row ${idx === activeIdx ? 'prop-price-row-active' : ''}">
+                <span class="prop-price-label">${labels[idx]}</span>
+                <span class="prop-price-value">$${r}</span>
+            </div>
+        `).join('');
+
+        const rentBanner = activeIdx >= 0 ? `
+            <div class="prop-rent-banner">
+                <div class="prop-rent-banner-label">При остановке здесь</div>
+                <div class="prop-rent-banner-value">$${data.rent[activeIdx]}</div>
+            </div>
+        ` : '';
+
+        return `
+            <div class="prop-modal-band" style="--prop-band: #2a2a32;">
+                <div class="prop-modal-num">#${tile.i}</div>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+            </div>
+            <div class="prop-modal-body">
+                <div class="prop-modal-name">${fullName}</div>
+                <div class="prop-modal-type">${TYPE_LABELS.railroad}</div>
+
+                ${ownerHtml(tile.i)}
+
+                ${rentBanner}
+
+                <div class="prop-modal-prices">
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Цена</span>
+                        <span class="prop-price-value accent">$${tile.price}</span>
+                    </div>
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Залог</span>
+                        <span class="prop-price-value">$${data.mortgage}</span>
+                    </div>
+                </div>
+
+                <div class="prop-modal-section-title">Аренда</div>
+                <div class="prop-modal-prices">
+                    ${rentRows}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderUtility(tile, data) {
+        const fullName = FULL_NAMES[tile.i] || tile.name;
+        return `
+            <div class="prop-modal-band" style="--prop-band: #b8b8c4;">
+                <div class="prop-modal-num">#${tile.i}</div>
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+            </div>
+            <div class="prop-modal-body">
+                <div class="prop-modal-name">${fullName}</div>
+                <div class="prop-modal-type">${TYPE_LABELS.utility}</div>
+
+                ${ownerHtml(tile.i)}
+
+                <div class="prop-modal-prices">
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Цена</span>
+                        <span class="prop-price-value accent">$${tile.price}</span>
+                    </div>
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Залог</span>
+                        <span class="prop-price-value">$${data.mortgage}</span>
+                    </div>
+                </div>
+
+                <div class="prop-modal-section-title">Аренда</div>
+                <div class="prop-modal-prices">
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Владеет 1</span>
+                        <span class="prop-price-value">4× выпавшие очки</span>
+                    </div>
+                    <div class="prop-price-row">
+                        <span class="prop-price-label">Владеет 2</span>
+                        <span class="prop-price-value">10× выпавшие очки</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderSpecial(tile) {
+        const messages = {
+            chance: 'Возьмите карту "Шанс". Следуйте инструкциям на карте.',
+            chest:  'Возьмите карту "Общественная казна". Следуйте инструкциям на карте.',
+            tax:    tile.subname || 'Уплатите налог в банк.',
+            corner: tile.name === 'GO' ? 'При прохождении получаете $200.'
+                  : tile.name === 'JAIL' ? 'Тюрьма / просто в гостях.'
+                  : tile.name === 'GO TO' ? 'Переход прямо в тюрьму.'
+                  : 'Свободная стоянка.',
+        };
+
+        // Corners and specials don't display "#index" because they aren't
+        // numbered properties — number badge would be confusing here.
+        const showNum = tile.type !== 'corner';
+
+        return `
+            <div class="prop-modal-band" style="--prop-band: #1a1d28;">
+                ${showNum ? `<div class="prop-modal-num">#${tile.i}</div>` : ''}
+                <button class="prop-modal-close" id="propModalCloseBtn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+            </div>
+            <div class="prop-modal-body">
+                <div class="prop-modal-name">${tile.name}${tile.subname ? ' ' + tile.subname : ''}</div>
+                <div class="prop-modal-type">${TYPE_LABELS[tile.type]}</div>
+                <div style="font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8); margin-top: 8px;">
+                    ${messages[tile.type] || ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function open(tile) {
+        if (!modalEl) init();
+
+        const data = PROPERTY_DATA[tile.i];
+        let html;
+
+        if (tile.type === 'property' && data) {
+            html = renderProperty(tile, data);
+        } else if (tile.type === 'railroad' && data) {
+            html = renderRailroad(tile, data);
+        } else if (tile.type === 'utility' && data) {
+            html = renderUtility(tile, data);
+        } else {
+            html = renderSpecial(tile);
+        }
+
+        contentEl.innerHTML = html;
+
+        const closeBtn = document.getElementById('propModalCloseBtn');
+        if (closeBtn) closeBtn.addEventListener('click', close);
+
+        // If this is a property the current player owns and they own the
+        // full group, offer a "Построить" button that opens BuildModal.
+        maybeShowBuildButton(tile);
+
+        modalEl.classList.add('visible');
+        backdropEl.classList.add('visible');
+        modalEl.setAttribute('aria-hidden', 'false');
+
+        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+    }
+
+    function maybeShowBuildButton(tile) {
+        if (tile.type !== 'property') return;
+        const curPlayer = window.Players?.getCurrentPlayer?.();
+        if (!curPlayer) return;
+        const ownerId = window.GameState?.getOwner?.(tile.i);
+        if (ownerId !== curPlayer.id) return;
+
+        // Check full group ownership
+        const groupTiles = window.MonopolyData.TILES.filter(t =>
+            t.type === 'property' && t.group === tile.group);
+        const ownsAll = groupTiles.every(t => GameState.getOwner(t.i) === curPlayer.id);
+        if (!ownsAll) return;
+
+        const body = contentEl.querySelector('.prop-modal-body');
+        if (!body) return;
+
+        const houses = GameState.getHouses(tile.i);
+        const canBuild = GameState.canBuildHouse(curPlayer.id, tile.i);
+        // Label: building the 5th unit is a hotel, otherwise a house
+        const isNextHotel = houses === 4;
+        const label = isNextHotel ? 'Построить отель' : 'Построить дом';
+        const cost = window.MonopolyData.PROPERTY_DATA[tile.i].houseCost;
+
+        const btn = document.createElement('button');
+        btn.className = 'prop-modal-build-btn';
+        if (!canBuild) btn.classList.add('is-disabled');
+
+        // Determine a hint if can't build
+        let hint = '';
+        if (!canBuild) {
+            if (houses >= 5) {
+                hint = 'Уже построен отель';
+            } else if (!GameState.canAfford(curPlayer.id, cost)) {
+                hint = 'Недостаточно средств';
+            } else {
+                // Parity or per-turn-per-group limit
+                hint = 'Стройте равномерно (по одному на монополию за ход)';
+            }
+        }
+
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"/>
+                <path d="M5 21V10l7-5 7 5v11"/>
+                <path d="M10 21v-5h4v5"/>
+            </svg>
+            <span>${canBuild ? `${label} · $${cost}` : hint}</span>
+        `;
+
+        if (canBuild) {
+            btn.addEventListener('click', () => {
+                const ok = GameState.buildHouse(curPlayer.id, tile.i);
+                if (ok) {
+                    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium'); } catch (_) {}
+                    // Re-render the modal so the rent highlight + button update
+                    open(tile);
+                }
+            });
+        } else {
+            btn.disabled = true;
+        }
+        body.appendChild(btn);
+    }
+
+    global.PropertyModal = { init, open, close };
+})(window);

@@ -1,0 +1,796 @@
+/* ============================================================
+   lobby.js — главное меню монополии.
+   Режимы: игра с ботами, создать комнату (число игроков, таймер,
+   приватность), войти по коду; ниже — список открытых комнат с
+   кнопкой ручного обновления.
+   ============================================================ */
+(function (global) {
+    'use strict';
+
+    const $ = s => document.querySelector(s);
+    const TG = global.Telegram && global.Telegram.WebApp;
+    const QS = new URLSearchParams(location.search);
+
+    /* ---------- профиль игрока ---------- */
+    /** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
+        нулевой ширины, соединители, вариационные селекторы, пустой Брайль.
+        Обычные пробелы сюда не входят — их достаточно схлопнуть и обрезать. */
+    const INVISIBLE_CHARS = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff]/g;
+    function cleanName(s) {
+        return String(s == null ? '' : s).replace(INVISIBLE_CHARS, '').replace(/\s+/g, ' ').trim();
+    }
+
+    /** Инициалы для аватарки-заглушки: по имени, иначе по юзернейму. */
+    function initials(full, uname) {
+        const parts = cleanName(full).split(' ').filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        const u = cleanName(uname);
+        return u ? u.slice(0, 2).toUpperCase() : '??';
+    }
+    function profile() {
+        const u = TG && TG.initDataUnsafe && TG.initDataUnsafe.user;
+        if (u) {
+            /* имя может состоять из невидимых символов — тогда берём юзернейм */
+            const full = cleanName([u.first_name, u.last_name].filter(Boolean).join(' '));
+            const uname = cleanName(u.username);
+            const name = full || uname || 'Игрок';
+            return {
+                uid: 'tg' + u.id,
+                name,
+                username: uname || null,
+                avatar: u.photo_url || null,
+                initials: initials(full, uname),
+            };
+        }
+        let uid = localStorage.getItem('mono_uid');
+        if (!uid) { uid = 'g' + Math.random().toString(36).slice(2, 10); localStorage.setItem('mono_uid', uid); }
+        const name = cleanName(localStorage.getItem('mono_name')) || 'Гость';
+        return { uid, name, username: null, avatar: null, initials: initials(name) };
+    }
+    const ME = profile();
+
+    /* ---------- фон как на главном экране приложения ---------- */
+    function applyTheme() {
+        const theme = (QS.get('theme') || 'dark').toLowerCase();
+        document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+    }
+
+    /* ---------- PNG-иконки интерфейса ---------- */
+    function paintIcons(root) {
+        const src = global.MonopolyUIPNG || {};
+        (root || document).querySelectorAll('img[data-icon]').forEach(img => {
+            const url = src[img.dataset.icon];
+            if (url) img.src = url;
+        });
+    }
+
+    /* ---------- разметка аватарки ---------- */
+    function ava(p, size) {
+        const st = size ? `style="width:${size}px;height:${size}px"` : '';
+        return p.avatar
+            ? `<div class="lb-ava" ${st}><img src="${p.avatar}" alt="" loading="lazy"></div>`
+            : `<div class="lb-ava" ${st}><span>${p.initials || (p.name || '?').slice(0, 1).toUpperCase()}</span></div>`;
+    }
+
+    /* ---------- «незнающая уточка» для пустого списка ---------- */
+    let duckAnim = null;
+    function killDuck() { if (duckAnim) { try { duckAnim.destroy(); } catch (e) {} duckAnim = null; } }
+    function mountDuck(box) {
+        const holder = box.querySelector('.lb-duck');
+        if (!holder || !global.lottie) return;
+        try {
+            killDuck();
+            duckAnim = global.lottie.loadAnimation({
+                container: holder,
+                renderer: 'svg',
+                loop: !global.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+                autoplay: !global.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+                path: 'assets/lottie/duck.json',
+            });
+        } catch (e) { /* без анимации — просто пустое место */ }
+    }
+
+    /* ---------- список комнат ---------- */
+    let rooms = [];
+    function renderRooms() {
+        const box = $('#lbRooms');
+        if (!rooms.length) {
+            if (box.querySelector('.lb-duck')) return;
+            box.innerHTML = `<div class="lb-empty">
+                <div class="lb-duck"></div>
+                <div>Сейчас открытых комнат нет</div>
+                <small>Создайте свою — друзья увидят её здесь</small>
+            </div>`;
+            mountDuck(box);
+            return;
+        }
+        killDuck();
+        box.innerHTML = rooms.map(r => {
+            const max = r.maxPlayers || 5;
+            return `
+            <button class="lb-room" data-room="${r.roomId}">
+                <div class="lb-room-avas">${r.players.slice(0, 6).map(p => ava(p, 34)).join('')}</div>
+                <div class="lb-room-info">
+                    <div class="lb-room-names">${r.players.map(p => p.name).join(', ')}</div>
+                    <div class="lb-room-meta">Код <b>${r.roomId}</b> · ${r.players.length}/${max}</div>
+                </div>
+                <div class="lb-room-go">Войти</div>
+            </button>`;
+        }).join('');
+        box.querySelectorAll('.lb-room').forEach(b =>
+            b.onclick = () => joinRoom(b.dataset.room));
+    }
+
+    /* ---------- переходы ---------- */
+    let activeScreen = 'lbMain';
+    let sheetOpener = null;
+    function show(id) {
+        const previous = document.getElementById(activeScreen);
+        const target = document.getElementById(id);
+        if (!target || id === activeScreen) return;
+        const isSheet = target.classList.contains('lb-sheet');
+        if (isSheet) sheetOpener = document.activeElement;
+        document.querySelectorAll('.lb-sheet').forEach(s => {
+            if (s === target) return;
+            if (s.classList.contains('on')) {
+                s.classList.add('closing');
+                s.inert = true;
+                clearTimeout(s.closeTimer);
+                animateSheet(s, false);
+                s.closeTimer = setTimeout(() => { s.classList.remove('closing'); s.querySelector('.lb-card').style.transform = ''; }, 340);
+            }
+        });
+        clearTimeout(target.closeTimer);
+        target.classList.remove('closing');
+        target.inert = false;
+        document.querySelectorAll('.lb-screen').forEach(s => s.classList.toggle('on', s === target || (isSheet && s.id === 'lbMain')));
+        activeScreen = id;
+        $('#lobby').classList.toggle('has-sheet', isSheet);
+        $('#lbMain').inert = isSheet;
+        $('.lb-top').inert = isSheet;
+        $('.lb-top').hidden = id === 'lbCollection';
+        $('.lb-wrap').classList.toggle('lb-profile-wide', id === 'lbCollection');
+        if (isSheet) target.querySelector('.lb-card').focus({ preventScroll: true });
+        else if (previous?.classList.contains('lb-sheet') && id === 'lbMain') sheetOpener?.focus({ preventScroll: true });
+        syncBackButton();
+        /* размеры кнопок известны только когда экран показан */
+        if (isSheet) { animateSheet(target, true); requestAnimationFrame(() => SEGS.forEach(moveSeg)); }
+    }
+    function currentScreen() {
+        return activeScreen;
+    }
+    function toast(text, bad) {
+        const t = $('#lbToast');
+        t.textContent = text;
+        t.className = 'lb-toast show' + (bad ? ' bad' : '');
+        try { TG?.HapticFeedback?.notificationOccurred(bad ? 'error' : 'success'); } catch (_) {}
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => t.className = 'lb-toast', 2600);
+    }
+
+    /* ---------- служебная кнопка «назад» Telegram ----------
+       Игра открыта внутри приложения (iframe), поэтому настоящей кнопкой
+       управляет приложение: мы сообщаем ему, показывать её или нет,
+       и слушаем нажатие в ответ. */
+    let backShown = null;
+    function setBackButton(on) {
+        if (backShown === on) return;
+        backShown = on;
+        try { parent.postMessage({ type: 'monopoly_back', show: on }, '*'); } catch (e) {}
+        if (TG && TG.BackButton) {                     // если игра открыта напрямую
+            try { on ? TG.BackButton.show() : TG.BackButton.hide(); } catch (e) {}
+        }
+    }
+    function syncBackButton() {
+        const inGame = $('#game').style.display !== 'none';
+        setBackButton(!inGame);          // в лобби — всегда, в матче — нет
+    }
+    function goBack() {
+        const s = currentScreen();
+        if (s === 'lbWait') return leaveRoom();
+        if (s !== 'lbMain') return show('lbMain');
+        exitToApp();                     // с главного экрана — выход из монополии
+    }
+    function exitToApp() {
+        try { net().socket() && net().socket().emit('m2:leave'); } catch (e) {}
+        try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
+    }
+
+    /** Возврат из матча в лобби монополии. Перезагружаем страницу: так
+        гарантированно гасятся таймеры движка, боты и 3D-сцена, а сама
+        страница локальная и поднимается мгновенно. */
+    function exitToLobby() {
+        try { net().socket() && net().socket().emit('m2:leave'); } catch (e) {}
+        location.reload();
+    }
+    addEventListener('message', e => {
+        const d = e.data;
+        if (d && d.type === 'monopoly_back_pressed') goBack();
+    });
+    if (TG && TG.BackButton && TG.BackButton.onClick) {
+        try { TG.BackButton.onClick(goBack); } catch (e) {}
+    }
+
+    /* ---------- сеть ---------- */
+    let connected = false;
+    function net() { return global.NetEngine; }
+
+    /** Адрес бэкенда. Игра открывается внутри приложения (iframe),
+        поэтому берём тот же адрес, что использует основное приложение. */
+    const FALLBACK_SERVER = 'https://spark-game-backend.onrender.com';
+
+    /** Возможные адреса бэкенда по убыванию надёжности.
+        Пробуем по очереди: статика фронта сокеты не обслуживает,
+        поэтому одного «угаданного» адреса мало. */
+    function serverCandidates() {
+        const list = [];
+        if (global.MONO_SERVER) list.push(global.MONO_SERVER);
+        const q = QS.get('server');
+        if (q) list.push(decodeURIComponent(q));
+        try {
+            const up = global.parent && global.parent !== global && global.parent.API_BASE_URL;
+            if (up) list.push(up);
+        } catch (e) { /* другой origin — пропускаем */ }
+        list.push(FALLBACK_SERVER);
+        if (/^https?:$/.test(location.protocol)) list.push(location.origin);
+        return [...new Set(list.filter(Boolean).map(u => String(u).replace(/\/+$/, '')))];
+    }
+    function authHeaders() {
+        return { 'Content-Type': 'application/json', 'x-init-data': (TG && TG.initData) || '' };
+    }
+    let connecting = null;
+    function ensureNet() {
+        if (connected) return Promise.resolve();
+        if (connecting) return connecting;
+        if (!global.io) return Promise.reject(new Error('Библиотека соединения не загрузилась'));
+
+        const urls = serverCandidates();
+        connecting = (async () => {
+            for (const url of urls) {
+                try {
+                    await tryConnect(url);
+                    console.info('[lobby] сервер:', url);
+                    connected = true;
+                    net().on('rooms', list => { rooms = list; renderRooms(); });
+                    return;
+                } catch (e) {
+                    console.warn('[lobby] не отвечает:', url, '-', e.message);
+                }
+            }
+            connecting = null;
+            throw new Error('Сервер недоступен');
+        })();
+        return connecting;
+    }
+    function tryConnect(url) {
+        return new Promise((resolve, reject) => {
+            /* initData отдаём серверу как есть: он проверит подпись Telegram
+               и только по ней решит, показывать ли отладочную панель. */
+            const s = net().connect(url, {
+                uid: ME.uid,
+                initData: (TG && TG.initData) || '',
+            });
+            net().setMe(ME.uid);
+            const done = ok => {
+                clearTimeout(t);
+                s.off('connect', onOk); s.off('connect_error', onErr);
+                ok ? resolve() : (s.close && s.close(), reject(new Error('нет ответа')));
+            };
+            const onOk = () => done(true);
+            const onErr = e => { clearTimeout(t); s.off('connect', onOk); if (s.close) s.close();
+                                 reject(new Error((e && e.message) || 'ошибка соединения')); };
+            const t = setTimeout(() => done(false), 7000);
+            s.on('connect', onOk);
+            s.on('connect_error', onErr);
+        });
+    }
+    function refreshRooms() {
+        if (!connected || document.hidden || $('#lobby').style.display === 'none') return;
+        net().socket().emit('m2:rooms', null, list => { rooms = list || []; renderRooms(); });
+        checkMyGame();
+    }
+
+    /* ---------- незавершённая партия ----------
+       Если игрок закрыл приложение посреди матча, сервер помнит его место.
+       Показываем отдельную плашку с кнопкой «Продолжить»; все проверки
+       (существует ли комната, жив ли игрок, не закончилась ли игра) делает
+       сервер — клиент только рисует то, что ему прислали. */
+    function checkMyGame() {
+        if (!connected) return;
+        net().socket().emit('m2:my-game', null, g => renderResume(g));
+    }
+    function renderResume(g) {
+        const box = $('#lbResume');
+        if (!box) return;
+        if (!g) { box.innerHTML = ''; return; }
+        box.innerHTML = `
+            <div class="lb-resume">
+                <div class="lb-resume-top">
+                    <div class="lb-resume-txt">
+                        <b>Ваша игра продолжается</b>
+                        <span>Комната ${g.roomId} · ${g.round} раунд · ${g.players.length} игроков</span>
+                    </div>
+                </div>
+                <div class="lb-resume-avas">${g.players.map(p => ava(p, 32)).join('')}</div>
+                <button class="lb-btn" id="lbResumeGo">Продолжить</button>
+            </div>`;
+        $('#lbResumeGo').onclick = () => resumeGame(g.roomId);
+    }
+    function resumeGame(rid) {
+        const btn = $('#lbResumeGo');
+        if (btn) { btn.disabled = true; btn.textContent = 'Подключаемся…'; }
+        net().socket().emit('m2:join', { roomId: rid, profile: ME }, res => {
+            if (!res || !res.ok) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Продолжить'; }
+                renderResume(null);
+                return toast('Игра уже недоступна', true);
+            }
+            net().setMe(res.you);
+            net().setRoom(res.roomId);
+            if (res.started) startGame('online');
+            else openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
+        });
+    }
+
+    /** Ручное обновление: иконка крутится, пока идёт запрос
+        (но не меньше одного оборота — иначе моргает). */
+    let spinning = false;
+    function manualRefresh() {
+        if (spinning) return;
+        const btn = $('#lbRefresh');
+        spinning = true;
+        btn.classList.add('spin');
+        const started = Date.now();
+        const stop = () => {
+            const wait = Math.max(0, 600 - (Date.now() - started));
+            setTimeout(() => { btn.classList.remove('spin'); spinning = false; }, wait);
+        };
+        ensureNet()
+            .then(() => new Promise(res => {
+                net().socket().emit('m2:rooms', null, list => { rooms = list || []; renderRooms(); res(); });
+                setTimeout(res, 4000);
+            }))
+            .catch(showServerDown)
+            .finally(stop);
+    }
+
+    function showServerDown() {
+        killDuck();
+        $('#lbRooms').innerHTML = `<div class="lb-empty">
+            <div class="lb-empty-ico">📡</div><div>Сервер недоступен</div>
+            <small>Игра с ботами работает без сети</small></div>`;
+    }
+
+    /* ---------- настройки новой комнаты ---------- */
+    function segValue(id, fallback) {
+        const on = document.querySelector('#' + id + ' button.on');
+        if (!on) return fallback;
+        const raw = on.dataset.v;
+        const n = parseInt(raw, 10);
+        return isNaN(n) ? raw : n;                 // «2×2» приходит словом
+    }
+    /** Shared blue pill: equal-width choices, transform-only animation. */
+    function moveSeg(id) {
+        const box = document.querySelector('#' + id);
+        if (!box) return;
+        const buttons = [...box.querySelectorAll('button')];
+        box.style.setProperty('--lb-options', buttons.length);
+        box.style.setProperty('--lb-selection', Math.max(0,buttons.findIndex(b => b.classList.contains('on'))));
+        buttons.forEach(button => button.setAttribute('aria-pressed',String(button.classList.contains('on'))));
+    }
+    function bindSeg(id) {
+        const box = document.querySelector('#' + id);
+        if (!box) return;
+        if (!box.querySelector('.lb-seg-ind')) {
+            const ind = document.createElement('span');
+            ind.className = 'lb-seg-ind';
+            box.prepend(ind);
+        }
+        box.addEventListener('keydown', event => {
+            if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+            const buttons = [...box.querySelectorAll('button')];
+            const index = buttons.indexOf(event.target);
+            if (index < 0) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+            buttons[next].click(); buttons[next].focus();
+        });
+        box.querySelectorAll('button').forEach(b => {
+            b.onclick = () => {
+                box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+                b.classList.add('on');
+                moveSeg(id);
+            };
+        });
+        requestAnimationFrame(() => moveSeg(id));
+    }
+    const SEGS = ['lbMaxPlayers', 'lbTurnSecs', 'lbBotCount'];
+    function timersOn() { return $('#lbTimers .lb-sw').classList.contains('on'); }
+    function syncTimerField() {
+        $('#lbTurnSecsField').classList.toggle('off', !timersOn());
+        $('#lbTurnSecs').querySelectorAll('button').forEach(button => { button.disabled = !timersOn(); });
+    }
+
+    let roomRequestPending = false;
+    async function roomRequest(event, payload, button) {
+        const label = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Подключаемся…';
+        button.setAttribute('aria-busy', 'true');
+        roomRequestPending = true;
+        try {
+            await ensureNet();
+            return await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Сервер недоступен')), 12000);
+                net().socket().emit(event, payload, result => { clearTimeout(timeout); resolve(result); });
+            });
+        } finally {
+            roomRequestPending = false;
+            button.disabled = false;
+            button.textContent = label;
+            button.removeAttribute('aria-busy');
+        }
+    }
+
+    async function createRoom() {
+        if (roomRequestPending) return;
+        const isPrivate = $('#lbPrivate .lb-sw').classList.contains('on');
+        const orderRoll = $('#lbOrderRoll .lb-sw').classList.contains('on');
+        const botsAllowed = $('#lbBotSeats .lb-sw').classList.contains('on');
+        /* «2×2» — это четыре игрока двумя командами */
+        const pick = segValue('lbMaxPlayers', 5);
+        const teams = pick === 'team';
+        const maxPlayers = teams ? 4 : pick;
+        const turnSecs = timersOn() ? segValue('lbTurnSecs', 70) : 0;
+        try {
+            const res = await roomRequest('m2:create', { profile: ME, isPrivate, maxPlayers, turnSecs, orderRoll, botsAllowed, teams }, $('#lbCreateGo'));
+            if (!res || !res.roomId) return toast('Сервер недоступен', true);
+            net().setMe(res.you);
+            net().setRoom(res.roomId);
+            openWaitRoom(res.roomId, true, isPrivate, maxPlayers, botsAllowed);
+        } catch (e) { toast(e.message, true); }
+    }
+    async function joinRoom(code) {
+        if (roomRequestPending) return;
+        const rid = String(code || $('#lbCode').value || '').trim().toUpperCase();
+        if (rid.length < 4) return toast('Введите код комнаты', true);
+        try {
+            const res = await roomRequest('m2:join', { roomId: rid, profile: ME }, $('#lbJoinGo'));
+            if (!res || !res.ok) {
+                const msg = { 'no-room': 'Комната не найдена', started: 'Игра уже началась', full: 'В комнате нет мест' };
+                return toast(msg[res && res.error] || 'Не удалось войти', true);
+            }
+            net().setMe(res.you);
+            net().setRoom(res.roomId);
+            openWaitRoom(res.roomId, false, false, res.maxPlayers || 5, res.botsAllowed);
+        } catch (e) { toast(e.message, true); }
+    }
+    function leaveRoom() {
+        try { net().socket().emit('m2:leave'); } catch (e) {}
+        show('lbMain');
+        refreshRooms();
+    }
+
+    /* ---------- комната ожидания ---------- */
+    function openWaitRoom(roomId, isHost, isPrivate, maxPlayers, botsAllowed) {
+        show('lbWait');
+        $('#lbWaitCode').textContent = roomId;
+        $('#lbWaitPrivate').style.display = isPrivate ? '' : 'none';
+        $('#lbStart').style.display = isHost ? '' : 'none';
+        $('#lbInvite').style.display = isHost ? '' : 'none';
+        $('#lbWaitHint').textContent = isHost
+            ? `${net().S && net().S.teams ? 'Команда 1 против команды 2 · ' : ''}Начать можно, когда соберётся хотя бы двое · до ${maxPlayers || 5} игроков${
+                botsAllowed ? ' · за матч с ботами очки не начисляются' : ''}`
+            : 'Ждём, пока хост начнёт игру';
+        const paint = () => {
+            const S = net().S;
+            const total = S.maxPlayers || maxPlayers || 5;
+            /* раскладку присылает сервер: где сидят игроки, где пусто */
+            const seatList = S.seats && S.seats.length
+                ? S.seats.slice(0, total)
+                : (S.order || []).concat(new Array(total).fill(null)).slice(0, total);
+
+            const teamMode = !!S.teams;
+            const rows = seatList.map((id, k) => {
+                const p = id && S.players[id];
+                /* в режиме 2×2 первые два места — одна команда, следующие два — другая */
+                const sep = teamMode && k === 2 ? '<div class="lb-team-sep"><span>против</span></div>' : '';
+                if (!p) {
+                    return sep + `<div class="lb-wp empty">
+                        <div class="lb-ava ghost" style="width:42px;height:42px"></div>
+                        <span class="lb-wp-name dim">Свободно</span>
+                        ${isHost && botsAllowed
+                            ? `<button class="lb-seat-btn" data-addbot="${k}">Добавить бота</button>` : ''}
+                    </div>`;
+                }
+                const tag = p.host ? '<i class="lb-host">хост</i>'
+                    : p.bot ? '<i class="lb-bot">бот</i>' : '';
+                const kick = (isHost && p.bot)
+                    ? `<button class="lb-seat-btn danger" data-kick="${id}">Убрать</button>` : '';
+                return sep + `<div class="lb-wp${p.bot ? ' bot' : ''}${
+                    teamMode ? ' team' + (k < 2 ? '1' : '2') : ''}">
+                    ${ava(p, 42)}<span class="lb-wp-name">${p.name}</span>${tag}${kick}</div>`;
+            });
+            const ids = S.order || [];
+
+            $('#lbWaitPlayers').innerHTML = rows.join('');
+            $('#lbWaitPlayers').querySelectorAll('[data-addbot]').forEach(b =>
+                b.onclick = () => net().socket().emit('m2:add-bot', { seat: +b.dataset.addbot }));
+            $('#lbWaitPlayers').querySelectorAll('[data-kick]').forEach(b =>
+                b.onclick = () => net().socket().emit('m2:remove-bot', { id: b.dataset.kick }));
+            $('#lbStart').disabled = ids.length < 2;
+        };
+        net().on('state', paint); paint();
+        net().on('started', () => startGame('online'));
+    }
+
+    /* ---------- запуск игры ---------- */
+    function startGame(mode) {
+        killDuck();
+        document.body.classList.remove('monopoly-pregame');
+        $('#lobby').style.display = 'none';
+        $('#game').style.display = '';
+        setBackButton(false);
+        if (mode === 'bots') {
+            global.MONO_LOCAL = true;             // меню игрока показывает «Выйти»
+            global.GameUI.init(global.Engine);
+            /* Коллекция загружается без блокировки старта. Обычно это успевает
+               задолго до того, как игрок соберёт первую монополию. */
+            global.CollectionUI?.loadSelf?.().then(profile => {
+                global.Engine.setSkinLoadout?.(ME.uid, profile.loadout || []);
+            }).catch(() => {});
+            global.Engine.start([
+                { id: ME.uid, name: ME.name, color: 'var(--p4)', host: true,
+                  avatar: ME.avatar, initials: ME.initials },
+                ...Array.from({ length: Math.max(1, Math.min(5, segValue('lbBotCount', 3))) }, (_, i) => ({
+                    id: 'b' + (i + 1), name: 'Бот ' + (i + 1), color: ['var(--p1)','var(--p2)','var(--p3)','var(--p5)','var(--p6)'][i], bot: true, initials: String(i + 1),
+                })),
+            ]);
+        } else {
+            global.MONO_LOCAL = false;
+            global.GameUI.init(global.NetEngine);
+        }
+    }
+
+    /* ---------- «На весь экран» (только десктоп) ---------- */
+    function setupFullscreen() {
+        const btn = $('#fsBtn');
+        if (!btn) return;
+        /* На телефоне мини-приложение и так во весь экран. Ориентируемся на
+           платформу Telegram, а не на ширину: окно десктопного клиента узкое,
+           и по ширине кнопка ошибочно пропадала. */
+        const phone = TG && TG.platform
+            ? ['ios', 'android', 'android_x'].indexOf(TG.platform) >= 0
+            : innerWidth <= 900;
+        if (phone) { btn.remove(); return; }
+        document.body.classList.add('has-fs');          // резервируем место под доской
+        let on = false;
+        btn.onclick = () => {
+            on = !on;
+            btn.classList.toggle('on', on);
+            btn.querySelector('span').textContent = on ? 'Свернуть' : 'На весь экран';
+            try { parent.postMessage({ type: 'monopoly_fullscreen', on }, '*'); } catch (e) {}
+            try {
+                if (on) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+                else if (document.fullscreenElement) document.exitFullscreen && document.exitFullscreen();
+            } catch (e) {}
+        };
+    }
+
+    /** Внутри приложения WebApp не отдаёт отступы в iframe,
+        поэтому приложение передаёт их параметрами safeTop/safeBottom. */
+    function applySafeInsets() {
+        const q = new URLSearchParams(location.search);
+        const root = document.documentElement;
+        const isPhone = innerWidth <= 900;      // тот же порог, что и в стилях
+
+        let top = parseInt(q.get('safeTop'), 10);
+        let bottom = parseInt(q.get('safeBottom'), 10);
+
+        if (isNaN(top) && global.Telegram && Telegram.WebApp) {
+            const w = Telegram.WebApp;
+            const csa = (w.contentSafeAreaInset || {}).top || 0;
+            const sa = (w.safeAreaInset || {}).top || 0;
+            top = Math.max(csa, sa);
+        }
+        if (isNaN(top)) top = 0;
+        if (isNaN(bottom)) bottom = 0;
+        /* Отступ сверху нужен только на телефоне, где служебные кнопки
+           Telegram лежат поверх страницы. На десктопе окно приложения
+           отдельное, и лишний отступ просто уводит карточки вниз. */
+        if (!isPhone) { top = 0; bottom = 0; }
+
+        /* На телефоне сверху висят кнопки Telegram — держим гарантированный
+           отступ, даже если приложение прислало маленькое значение. */
+        if (isPhone) {
+            top = Math.max(top, 72) + 8;
+            bottom = Math.max(bottom, 8);
+        }
+
+        root.style.setProperty('--safe-top', top + 'px');
+        root.style.setProperty('--safe-bottom', bottom + 'px');
+    }
+
+    function paintVectorIcons() {
+        const paths = { plus: '<path d="M12 5v14M5 12h14"/>', arrow: '<path d="M7 17 17 7M7 7h10v10"/>', close: '<path d="m7 7 10 10M17 7 7 17"/>' };
+        document.querySelectorAll('[data-lb-icon]').forEach(el => { el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[el.dataset.lbIcon] + '</svg>'; });
+    }
+    function animateSheet(sheet, opening) {
+        const card = sheet.querySelector('.lb-card');
+        let backdrop = sheet.querySelector('.lb-sheet-backdrop');
+        if (!backdrop) { backdrop = document.createElement('div'); backdrop.className = 'lb-sheet-backdrop'; sheet.prepend(backdrop); }
+        const from = opening ? 'translateY(100%)' : getComputedStyle(card).transform;
+        card.getAnimations().forEach(animation => animation.cancel());
+        card.style.transform = '';
+        const reduce = global.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const opacity = opening ? 0 : getComputedStyle(backdrop).opacity;
+        backdrop.getAnimations().forEach(animation => animation.cancel());
+        backdrop.style.opacity = opening ? '1' : '0';
+        backdrop.animate([{ opacity }, { opacity:opening ? 1 : 0 }], { duration:reduce ? 0 : opening ? 460 : 320, fill:'both' });
+        const enterMs = parseFloat(getComputedStyle(card).getPropertyValue('--ui-sheet-enter')) || 580;
+        card.animate([{ transform: from === 'none' ? 'translateY(0)' : from }, { transform: opening ? 'translateY(0)' : 'translateY(110%)' }],
+            { duration: reduce ? 0 : opening ? enterMs : 320, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
+    }
+    function bindLobbySheetDrag(sheet) {
+        const card = sheet.querySelector('.lb-card');
+        let drag = null;
+        const begin = (y, target) => {
+            if (target.closest('button,input,a,[role="switch"],.lb-switch-row')) return false;
+            const fromHeader = !!target.closest('.lb-sheet-heading');
+            if (!fromHeader && card.scrollTop > 0) return false;
+            drag = { y, lastY:y, lastAt:performance.now(), velocity:0, active:false, fromHeader }; return true;
+        };
+        const move = (y, event) => {
+            if (!drag) return;
+            const distance = y - drag.y;
+            if (!drag.active && distance < 7) return;
+            if (!drag.active && !drag.fromHeader && card.scrollTop > 0) { drag = null; return; }
+            if (!drag.active) {
+                card.getAnimations().forEach(a => a.cancel());
+                const backdrop = sheet.querySelector('.lb-sheet-backdrop');
+                if (backdrop) { const opacity = getComputedStyle(backdrop).opacity; backdrop.getAnimations().forEach(a => a.cancel()); backdrop.style.opacity = opacity; }
+                drag.active = true;
+            }
+            if (event.cancelable) event.preventDefault();
+            const now = performance.now();
+            drag.velocity = (y - drag.lastY) / Math.max(1, now - drag.lastAt);
+            drag.lastY = y; drag.lastAt = now;
+            card.style.transform = 'translateY(' + Math.max(0, distance) + 'px)';
+            const backdrop = sheet.querySelector('.lb-sheet-backdrop');
+            if (backdrop) backdrop.style.opacity = String(Math.max(0,1-distance/Math.max(280,card.offsetHeight*.85)));
+        };
+        const finish = (cancelled = false) => {
+            if (!drag) return;
+            const distance = Math.max(0, drag.lastY - drag.y);
+            const dismiss = !cancelled && drag.active && (distance > Math.min(130, card.offsetHeight * .24) || (performance.now() - drag.lastAt < 100 && drag.velocity > .7));
+            const wasActive = drag.active; drag = null;
+            if (dismiss) show('lbMain');
+            else if (wasActive) {
+                const from = card.style.transform; card.style.transform = '';
+                card.animate([{transform:from},{transform:'translateY(0)'}], {duration:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 280,easing:'cubic-bezier(.22,1,.36,1)'});
+                const backdrop = sheet.querySelector('.lb-sheet-backdrop');
+                if (backdrop) { const fromOpacity = getComputedStyle(backdrop).opacity; backdrop.style.opacity = '1'; backdrop.animate([{opacity:fromOpacity},{opacity:1}],{duration:280,fill:'both'}); }
+            }
+        };
+        card.addEventListener('touchstart', e => { if (e.touches.length === 1) begin(e.touches[0].clientY,e.target); }, {passive:true});
+        card.addEventListener('touchmove', e => { if (e.touches.length === 1) move(e.touches[0].clientY,e); }, {passive:false});
+        card.addEventListener('touchend', () => finish());
+        card.addEventListener('touchcancel', () => finish(true));
+        card.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button === 0 && begin(e.clientY,e.target)) card.setPointerCapture(e.pointerId); });
+        card.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') move(e.clientY,e); });
+        card.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') finish(); });
+        card.addEventListener('pointercancel', e => { if (e.pointerType === 'mouse') finish(true); });
+    }
+
+    function setupInteractions() {
+        const lobby = $('#lobby');
+        lobby.addEventListener('click', e => {
+            const control = e.target.closest('button, [role="button"], .lb-switch-row');
+            if (!control || control.disabled || control.closest('.collection-screen, .lb-field.off')) return;
+            try { TG?.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+            requestAnimationFrame(() => document.querySelectorAll('.lb-switch-row').forEach(row =>
+                row.setAttribute('aria-checked', String(row.querySelector('.lb-sw').classList.contains('on')))));
+        }, true);
+        document.querySelectorAll('.lb-switch-row').forEach(row => {
+            row.tabIndex = 0;
+            row.setAttribute('role', 'switch');
+            row.setAttribute('aria-label', row.querySelector('b').textContent);
+            row.setAttribute('aria-checked', String(row.querySelector('.lb-sw').classList.contains('on')));
+            row.addEventListener('keydown', e => {
+                if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); row.click(); }
+            });
+        });
+        document.querySelectorAll('.lb-sheet').forEach(sheet => {
+            sheet.addEventListener('click', e => { if (e.target === sheet) show('lbMain'); });
+            bindLobbySheetDrag(sheet);
+        });
+        document.addEventListener('keydown', e => {
+            const sheet = document.querySelector('.lb-sheet.on');
+            if (!sheet) return;
+            if (e.key === 'Escape') { e.preventDefault(); show('lbMain'); }
+            if (e.key !== 'Tab') return;
+            const controls = [...sheet.querySelectorAll('button:not(:disabled), input, [tabindex="0"]')].filter(el => el.getClientRects().length && !el.closest('.off'));
+            const first = controls[0], last = controls[controls.length - 1];
+            if (e.shiftKey && (document.activeElement === first || document.activeElement === sheet.querySelector('.lb-card'))) {
+                e.preventDefault(); last?.focus();
+            } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        });
+        const updateViewport = () => {
+            const viewport = global.visualViewport;
+            lobby.style.setProperty('--lb-viewport-height', (viewport?.height || innerHeight) + 'px');
+            lobby.style.setProperty('--lb-viewport-top', (viewport?.offsetTop || 0) + 'px');
+            SEGS.forEach(moveSeg);
+        };
+        global.visualViewport?.addEventListener('resize', updateViewport);
+        global.visualViewport?.addEventListener('scroll', updateViewport);
+        addEventListener('resize', updateViewport);
+        updateViewport();
+    }
+
+    /* ---------- инициализация ---------- */
+    function init() {
+        document.body.classList.add('monopoly-pregame');
+        applyTheme();
+        applySafeInsets();
+        paintIcons();
+        paintVectorIcons();
+        setupFullscreen();
+        setupInteractions();
+
+        $('#lbMe').innerHTML = ava(ME, 40) + '<div class="lb-me-name"></div>';
+        $('#lbMe .lb-me-name').textContent = ME.name;
+        $('#lbMe').title = ME.name;
+        $('#lbMe').setAttribute('aria-label', 'Открыть профиль и коллекцию');
+        $('#lbMe').role = 'button';
+        $('#lbMe').tabIndex = 0;
+        $('#lbMe').onclick = () => global.CollectionUI && global.CollectionUI.openSelf();
+        $('#lbMe').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#lbMe').click(); } };
+        $('#lbBots').onclick = () => show('lbBotsSetup');
+        $('#lbBotsStart').onclick = () => startGame('bots');
+        $('#lbCreateGo').onclick = createRoom;
+        $('#lbJoinGo').onclick = () => joinRoom();
+        $('#lbRefresh').onclick = manualRefresh;
+
+        bindSeg('lbMaxPlayers');
+        bindSeg('lbTurnSecs');
+        bindSeg('lbBotCount');
+        $('#lbTimers').onclick = () => {
+            $('#lbTimers .lb-sw').classList.toggle('on');
+            syncTimerField();
+        };
+        syncTimerField();
+
+        $('#lbPrivate').onclick = () => $('#lbPrivate .lb-sw').classList.toggle('on');
+        $('#lbOrderRoll').onclick = () => $('#lbOrderRoll .lb-sw').classList.toggle('on');
+        $('#lbBotSeats').onclick = () => $('#lbBotSeats .lb-sw').classList.toggle('on');
+        document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
+        $('#lbCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+        $('#lbCopy').onclick = () => {
+            const code = $('#lbWaitCode').textContent;
+            navigator.clipboard && navigator.clipboard.writeText(code);
+            toast('Код скопирован');
+        };
+        $('#lbInvite').onclick = () => {
+            const roomId = $('#lbWaitCode').textContent;
+            try { parent.postMessage({ type: 'monopoly_invite', roomId }, '*'); }
+            catch (_) { toast('Не удалось открыть отправку', true); }
+        };
+        $('#lbStart').onclick = () => net().socket().emit('m2:start');
+        $('#lbLeave').onclick = leaveRoom;
+
+        addEventListener('resize', applySafeInsets);
+        addEventListener('orientationchange', () => setTimeout(applySafeInsets, 250));
+
+        renderRooms();                       // сразу показываем уточку
+        const invitedRoom = String(QS.get('invite') || '').trim().toUpperCase();
+        ensureNet().then(() => invitedRoom ? joinRoom(invitedRoom) : refreshRooms()).catch(showServerDown);
+        setInterval(refreshRooms, 10000);
+        syncBackButton();
+    }
+
+    global.Lobby = {
+        init, profile: () => ME, exitToLobby, exitToApp, show, toast,
+        serverCandidates, authHeaders,
+    };
+})(window);

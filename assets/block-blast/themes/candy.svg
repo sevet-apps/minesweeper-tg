@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
+  <defs>
+    <clipPath id="candy-clip">
+      <rect x="3" y="3" width="90" height="90" rx="19"/>
+    </clipPath>
+    <linearGradient id="candy-glaze" x1="28" y1="4" x2="67" y2="93" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".22"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".025"/>
+      <stop offset=".72" stop-color="#fff" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#25132e" stop-opacity=".25"/>
+    </linearGradient>
+    <linearGradient id="candy-milk" x1="23" y1="5" x2="73" y2="89" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff8ed" stop-opacity=".69"/>
+      <stop offset=".5" stop-color="#fff8ed" stop-opacity=".43"/>
+      <stop offset="1" stop-color="#fff8ed" stop-opacity=".59"/>
+    </linearGradient>
+    <linearGradient id="candy-rim" x1="25" y1="4" x2="74" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".75"/>
+      <stop offset=".4" stop-color="#fff" stop-opacity=".18"/>
+      <stop offset=".73" stop-color="#392039" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".48"/>
+    </linearGradient>
+    <linearGradient id="candy-shine" x1="19" y1="18" x2="55" y2="25" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".96"/>
+      <stop offset=".52" stop-color="#fff" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#candy-clip)">
+    <path d="M-61 96 35 0h26L-35 96ZM-8 96 88 0h26L18 96ZM45 96 141 0h26L71 96Z" fill="url(#candy-milk)"/>
+    <rect x="3" y="3" width="90" height="90" rx="19" fill="url(#candy-glaze)"/>
+    <rect x="6" y="6" width="84" height="84" rx="17" stroke="url(#candy-rim)" stroke-width="3"/>
+    <path d="M10 63v9c0 10 6 16 16 16h44c9 0 15-5 17-13" stroke="#351b36" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/>
+    <path d="M16 28c1-10 7-15 18-15h21c4 0 7 2 8 5-14-2-28-1-37 4-5 3-8 10-10 6Z" fill="url(#candy-shine)"/>
+  </g>
+</svg>

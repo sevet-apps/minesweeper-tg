@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru" data-liquid-glass-available="false">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Монополия — Spark Games</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<script>
+/* Размер кубиков фиксированный. Раньше он вычислялся из ширины окна в момент
+   загрузки: при входе сразу в полноэкранном режиме окно уже широкое, и кубики
+   получались слишком крупными, а при входе в обычном окне — нормальными. */
+window.DICE_SIZE = 1.0;
+</script>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/masks.css">
+<link rel="stylesheet" href="css/v2.css">
+<link rel="stylesheet" href="../assets/ui/tokens.css">
+<link rel="stylesheet" href="css/lobby.css">
+<link rel="stylesheet" href="css/collection.css?v=20261001">
+<link rel="stylesheet" href="css/collection-pregame.css?v=20261003">
+<link rel="stylesheet" href="../assets/ui/liquid-glass.css?v=20261004">
+<script src="../assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
+</head>
+<body>
+
+<!-- ==================== ЛОББИ ==================== -->
+<div id="lobby">
+  <div class="lb-bg" id="lbBg"></div>
+  <div class="lb-wrap">
+    <div class="lb-top">
+      <div class="lb-title">Монополия<small>2–6 игроков</small></div>
+      <div id="lbMe"></div>
+    </div>
+
+    <!-- Главный экран -->
+    <div class="lb-screen on" id="lbMain">
+      <div id="lbResume"></div>
+      <div class="lb-modes">
+        <button class="lb-primary" data-go="lbCreate"><span class="lb-plus" data-lb-icon="plus"></span> Создать игру <span class="lb-primary-arrow" data-lb-icon="arrow"></span></button>
+        <div class="lb-quick-actions">
+        <button class="lb-mode" id="lbBots">
+          <div class="lb-mode-ico green"><img class="lb-ico-img" data-icon="robot" alt=""></div>
+          <div class="lb-mode-txt"><b>С ботами</b><span>Без ожидания</span></div>
+          <div class="lb-mode-arrow">›</div>
+        </button>
+        <button class="lb-mode" data-go="lbJoin">
+          <div class="lb-mode-ico violet"><img class="lb-ico-img" data-icon="key" alt=""></div>
+          <div class="lb-mode-txt"><b>Ввести код</b><span>К друзьям</span></div>
+          <div class="lb-mode-arrow">›</div>
+        </button>
+        </div>
+      </div>
+
+      <div class="lb-sec-head">
+        <h2>Открытые комнаты</h2>
+        <button class="lb-refresh" id="lbRefresh" title="Обновить список" aria-label="Обновить список">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/>
+            <path d="M20.5 4.2V9h-4.8"/>
+          </svg>
+        </button>
+      </div>
+      <div id="lbRooms"></div>
+    </div>
+
+    <!-- Профиль и коллекция Монополии -->
+    <div class="lb-screen collection-screen" id="lbCollection">
+      <div id="monoCollectionRoot"></div>
+    </div>
+
+    <!-- Создание комнаты -->
+    <div class="lb-screen lb-sheet" id="lbCreate" role="dialog" aria-modal="true" aria-labelledby="lbCreateTitle">
+      <div class="lb-card" tabindex="-1">
+        <div class="lb-sheet-heading">
+        <div class="lb-sheet-handle" aria-hidden="true"></div>
+        <button class="lb-sheet-close ui-close" data-go="lbMain" aria-label="Закрыть создание игры"><span data-lb-icon="close"></span></button>
+        <h3 id="lbCreateTitle">Создать игру</h3>
+        </div>
+        <p>Получите код и отправьте его друзьям</p>
+
+        <div class="lb-field">
+          <div class="lb-field-lbl">Игроков в матче</div>
+          <div class="lb-seg" id="lbMaxPlayers">
+            <button data-v="2">2</button>
+            <button data-v="3">3</button>
+            <button data-v="4">4</button>
+            <button class="on" data-v="5">5</button>
+            <button data-v="6">6</button>
+            <button data-v="team">2×2</button>
+          </div>
+        </div>
+
+        <div class="lb-switch-row" id="lbTimers">
+          <div class="t"><b>Таймер хода</b><span>Ограничивать время на каждое действие</span></div>
+          <div class="lb-sw on"></div>
+        </div>
+
+        <div class="lb-field" id="lbTurnSecsField">
+          <div class="lb-field-lbl">Время на действие</div>
+          <div class="lb-seg" id="lbTurnSecs">
+            <button data-v="30">30 с</button>
+            <button data-v="45">45 с</button>
+            <button class="on" data-v="70">70 с</button>
+            <button data-v="120">2 мин</button>
+          </div>
+        </div>
+
+        <div class="lb-switch-row" id="lbOrderRoll">
+          <div class="t"><b>Жеребьёвка очерёдности</b><span>Перед игрой все бросают кубики за право первого хода</span></div>
+          <div class="lb-sw on"></div>
+        </div>
+
+        <div class="lb-switch-row" id="lbBotSeats">
+          <div class="t"><b>Добавление ботов</b><span>Свободные места можно занять ботами. Очки за такой матч не начисляются</span></div>
+          <div class="lb-sw"></div>
+        </div>
+
+        <div class="lb-switch-row" id="lbPrivate">
+          <div class="t"><b>Приватная комната</b><span>Не показывать в списке открытых</span></div>
+          <div class="lb-sw"></div>
+        </div>
+
+        <button class="lb-btn" id="lbCreateGo">Создать</button>
+      </div>
+    </div>
+
+    <!-- Вход по коду -->
+    <div class="lb-screen lb-sheet" id="lbJoin" role="dialog" aria-modal="true" aria-labelledby="lbJoinTitle">
+      <div class="lb-card" tabindex="-1">
+        <div class="lb-sheet-heading">
+        <div class="lb-sheet-handle" aria-hidden="true"></div>
+        <button class="lb-sheet-close ui-close" data-go="lbMain" aria-label="Закрыть ввод кода"><span data-lb-icon="close"></span></button>
+        <h3 id="lbJoinTitle">Друзья уже ждут</h3>
+        </div>
+        <p>Введите код комнаты из шести символов</p>
+        <input class="lb-input" id="lbCode" maxlength="6" placeholder="······" aria-label="Код комнаты" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go">
+        <button class="lb-btn" id="lbJoinGo">Войти</button>
+      </div>
+    </div>
+
+    <div class="lb-screen lb-sheet" id="lbBotsSetup" role="dialog" aria-modal="true" aria-labelledby="lbBotsTitle">
+      <div class="lb-card" tabindex="-1">
+        <div class="lb-sheet-heading">
+        <div class="lb-sheet-handle" aria-hidden="true"></div>
+        <button class="lb-sheet-close ui-close" data-go="lbMain" aria-label="Закрыть"><span data-lb-icon="close"></span></button>
+        <h3 id="lbBotsTitle">Игра с ботами</h3>
+        </div>
+        <p>Выберите количество соперников</p>
+        <div class="lb-field-lbl">Ботов в игре</div>
+        <div class="lb-seg" id="lbBotCount">
+          <button data-v="1">1</button><button data-v="2">2</button><button class="on" data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button>
+        </div>
+        <button class="lb-btn" id="lbBotsStart">Начать игру</button>
+      </div>
+    </div>
+
+    <!-- Комната ожидания -->
+    <div class="lb-screen" id="lbWait">
+      <div class="lb-card">
+        <div class="lb-code-box">
+          <small>Код комнаты</small>
+          <div id="lbWaitCode">——</div>
+          <div id="lbWaitPrivate">приватная</div>
+        </div>
+        <div class="lb-wait-actions">
+          <button class="lb-btn ghost" id="lbCopy">Скопировать код</button>
+          <button class="lb-btn ghost lb-invite" id="lbInvite">Пригласить</button>
+        </div>
+        <div id="lbWaitPlayers"></div>
+        <button class="lb-btn" id="lbStart" disabled>Начать игру</button>
+        <div id="lbWaitHint"></div>
+        <button class="lb-leave" id="lbLeave">Выйти из комнаты</button>
+      </div>
+    </div>
+  </div>
+  <div class="lb-toast" id="lbToast"></div>
+</div>
+
+<!-- ==================== ИГРА ==================== -->
+<div id="game" style="display:none">
+  <div class="app">
+    <div class="players-col" id="playersCol"></div>
+    <div class="board-zone">
+      <div class="board" id="board">
+        <div class="board-center">
+          <div class="center-panel">
+            <div class="service-bar compact" id="serviceBar"></div>
+            <div id="diceDock"></div>
+            <div class="chat-log" id="chatLog"></div>
+            <div class="chat-input-row">
+              <input class="chat-input" id="chatInput" placeholder="Сообщение в чат" maxlength="200">
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="fs-btn" id="fsBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+        </svg>
+        <span>На весь экран</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="js/v2/i18n.js?v=20261003"></script>
+<script src="libs/three.min.js"></script>
+<script src="libs/cannon.min.js"></script>
+<script src="libs/socket.io.min.js"></script>
+<script src="js/board-data-v2.js"></script>
+<script src="js/v2/brand-assets.js"></script>
+<script src="js/v2/icon-assets.js"></script>
+<script src="js/v2/ui-icons.js"></script>
+<script src="js/v2/logos.js"></script>
+<script src="js/v2/sound.js"></script>
+<script src="js/v2/board-ui.js"></script>
+<script src="js/scene/SceneManager.js"></script>
+<script src="js/scene/Dice.js"></script>
+<script src="js/v2/engine.js"></script>
+<script src="js/v2/net.js"></script>
+<script src="js/v2/dice-dock.js"></script>
+<script src="js/v2/modals.js"></script>
+<script src="js/v2/trades.js"></script>
+<script src="js/v2/emoji.js"></script>
+<script src="js/v2/rating-ui.js"></script>
+<script src="js/v2/collection-ui.js?v=20261003"></script>
+<script src="js/v2/game-ui.js"></script>
+<script src="js/v2/lobby.js"></script>
+<script>
+    if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+    const reportPlaytimeAction = () => {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'spark-playtime-action' }, window.location.origin);
+      }
+    };
+    document.addEventListener('pointerdown', reportPlaytimeAction, true);
+    document.addEventListener('keydown', reportPlaytimeAction, true);
+    Lobby.init();
+</script>
+</body>
+</html>
