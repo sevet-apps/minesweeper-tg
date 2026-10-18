@@ -206,27 +206,81 @@
         root.querySelector('[data-mc-coins]').textContent = compact(account.coins);
         root.querySelector('[data-mc-profile]').innerHTML = `<div class="mc-person">${avatar(current.user, global.Lobby?.profile?.())}<div><b>${esc(ownerName(current))}</b><small>${current.user?.username ? '@' + esc(current.user.username) : 'Профиль игрока'}</small></div></div>`;
     }
-    function rankPolygon(sides, radius) {
-        return Array.from({ length:sides }, (_, point) => {
-            const angle = -Math.PI / 2 + 2 * Math.PI * point / sides;
-            return `${(50 + Math.cos(angle) * radius).toFixed(1)},${(50 + Math.sin(angle) * radius).toFixed(1)}`;
+    /* Звания: металл значка растёт с уровнем (бронза → серебро → золото →
+       аметист → обсидиан), у каждого звания своя пиктограмма. Всё рисуется
+       векторно, поэтому значки чёткие на любом экране и в любом размере. */
+    const RANK_METALS = {
+        bronze:   { rim:['#ffe0bf','#c98448','#6b3815'], face:['#3f1f0c','#74401f'], ink:['#ffe6cc','#e0a066'], glow:'rgba(224,150,90,.45)' },
+        silver:   { rim:['#ffffff','#bcc7d6','#5d697b'], face:['#1b2533','#394860'], ink:['#ffffff','#bccadb'], glow:'rgba(188,202,219,.45)' },
+        gold:     { rim:['#fff5c7','#f1c04a','#8a580b'], face:['#382203','#6b4407'], ink:['#fff3bf','#f3c54f'], glow:'rgba(243,197,79,.5)' },
+        amethyst: { rim:['#fff5c7','#f1c04a','#8a580b'], face:['#22104a','#5631a8'], ink:['#f7ebff','#caa9ff'], glow:'rgba(160,110,255,.55)' },
+        obsidian: { rim:['#fff8d6','#f6c552','#985d09'], face:['#0b0a12','#2a2142'], ink:['#fff4c6','#f6c552'], glow:'rgba(246,197,82,.6)' },
+    };
+    const RANK_TIERS = ['bronze', 'bronze', 'bronze', 'silver', 'silver', 'silver', 'gold', 'gold', 'amethyst', 'obsidian'];
+    /* Пиктограммы в поле 100×100 с центром (50, 50); «f» — залитые детали. */
+    const RANK_GLYPHS = [
+        // Новичок — росток
+        '<path d="M50 67V49"/><path d="M50 55c-8 0-14-5-15-13 8 0 14 4 15 13Z"/><path d="M50 50c1-9 7-15 16-15 0 9-7 15-16 15Z"/><path d="M39 67h22"/>',
+        // Арендатор — ключ
+        '<circle cx="41" cy="43" r="8.5"/><circle class="f" cx="41" cy="43" r="2.4"/><path d="M47 49l18 18"/><path d="M58 60l-4 4M63 65l-4 4"/>',
+        // Риелтор — табличка «продаётся»
+        '<path d="M37 68V33"/><path d="M37 37h27"/><path d="M45 37v5M58 37v5"/><rect x="41" y="42" width="21" height="16" rx="2.5"/><path d="M46.5 52.5l5-4.5 5 4.5"/><path d="M31 68h12"/>',
+        // Домовладелец — дом
+        '<path d="M33 50l17-15 17 15"/><path d="M38 46v21h24V46"/><path d="M46 67V57h8v10"/><path d="M60 43v-7"/>',
+        // Инвестор — растущий график
+        '<path d="M34 33v34h33"/><path d="M40 59l8-9 6 5 11-13"/><path d="M58 42h7v7"/>',
+        // Застройщик — башенный кран
+        '<path d="M42 67V31"/><path d="M33 38h34"/><path d="M33 38l9-7 25 7"/><path d="M42 45l-4 4M42 53l-4 4"/><path d="M61 38v9"/><rect x="56" y="47" width="10" height="8" rx="1.5"/><path d="M34 67h16"/>',
+        // Банкир — здание банка
+        '<path d="M33 44l17-10 17 10Z"/><path d="M38 48v13M46 48v13M54 48v13M62 48v13"/><path d="M34 65h32"/>',
+        // Магнат — цилиндр
+        '<path d="M40 56V36c0-1.7 1.3-3 3-3h14c1.7 0 3 1.3 3 3v20"/><path d="M40 49h20"/><path d="M32 58c6 5 30 5 36 0"/>',
+        // Монополист — небоскрёбы
+        '<path d="M34 67V48h9v19"/><path d="M45 67V35h10v32"/><path d="M57 67V43h9v24"/><path d="M50 35v-6"/><path d="M49 42h2M49 49h2M49 56h2"/><path d="M31 67h38"/>',
+        // Легенда — корона
+        '<path d="M35 61l-3-20 11 8 7-13 7 13 11-8-3 20Z"/><path d="M36 67h28"/><circle class="f" cx="32" cy="41" r="2.6"/><circle class="f" cx="50" cy="36" r="2.6"/><circle class="f" cx="68" cy="41" r="2.6"/>',
+    ];
+    let rankUid = 0;
+    function rankStar(cx, cy, outer, inner) {
+        return Array.from({ length:10 }, (_, i) => {
+            const r = i % 2 ? inner : outer, a = -Math.PI / 2 + i * Math.PI / 5;
+            return `${(cx + Math.cos(a) * r).toFixed(1)},${(cy + Math.sin(a) * r).toFixed(1)}`;
         }).join(' ');
     }
+    function rankLaurel(fill) {
+        let leaves = '';
+        for (let k = 0; k < 7; k++) {
+            const deg = 112 + k * 17, a = deg * Math.PI / 180;
+            const x = (50 + Math.cos(a) * 39).toFixed(1), y = (55 + Math.sin(a) * 39).toFixed(1);
+            leaves += `<ellipse cx="${x}" cy="${y}" rx="6.2" ry="2.6" transform="rotate(${deg + 115} ${x} ${y})"/>`;
+        }
+        return `<g fill="${fill}">${leaves}<g transform="matrix(-1 0 0 1 100 0)">${leaves}</g></g>`;
+    }
     function rankEmblem(index) {
-        // Every title keeps the same faceted crest; its outline gains a corner at each level.
-        const sides = Math.min(14, 5 + index);
-        const pips = Math.min(3, 1 + Math.floor(index / 3));
-        const dots = Array.from({ length:pips }, (_, dot) => {
-            const x = 50 + (dot - (pips - 1) / 2) * 9;
-            return `<path class="mc-rank-pip" d="M${x} 25l2.5 2.5-2.5 2.5-2.5-2.5Z"/>`;
-        }).join('');
-        return `<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-            <polygon class="mc-rank-shell" points="${rankPolygon(sides, 43)}"/>
-            <polygon class="mc-rank-face" points="${rankPolygon(sides, 35)}"/>
-            <path class="mc-rank-facet" d="M50 7v8"/>
-            ${dots}
-            <text class="mc-rank-number" x="50" y="63" text-anchor="middle">${String(index + 1).padStart(2, '0')}</text>
-            <path class="mc-rank-rule" d="M40 72h20"/>
+        const tier = RANK_TIERS[Math.max(0, Math.min(RANK_TIERS.length - 1, index))];
+        const metal = RANK_METALS[tier];
+        const id = `mcr${++rankUid}`;
+        const medal = tier === 'bronze';
+        const outer = medal ? '<circle cx="50" cy="52" r="34"/>' : '<path d="M50 15l31 10v25c0 19.5-13 32-31 40-18-8-31-20.5-31-40V25Z"/>';
+        const inner = medal ? '<circle cx="50" cy="52" r="27"/>' : '<path d="M50 22.5l24 8V50c0 15-10 25-24 32-14-7-24-17-24-32V30.5Z"/>';
+        const sheen = medal
+            ? '<path d="M24 47a27 27 0 0 1 52 0c-15-6-37-6-52 0Z"/>'
+            : '<path d="M26 30.5l24-8 24 8V40c-15-5-33-5-48 0Z"/>';
+        // userSpaceOnUse: a straight stroke has a zero-size box, where a bounding-box gradient paints nothing.
+        const grad = (name, stops, x2 = 1, y2 = 1) => `<linearGradient id="${id}${name}" gradientUnits="userSpaceOnUse" x1="15" y1="15" x2="${15 + x2 * 70}" y2="${15 + y2 * 75}">${
+            stops.map((color, i) => `<stop offset="${(i / (stops.length - 1)).toFixed(2)}" stop-color="${color}"/>`).join('')}</linearGradient>`;
+        const crowned = tier === 'amethyst' || tier === 'obsidian';
+        return `<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" class="mc-rank-svg ${tier}" style="--rank-glow:${metal.glow}">
+            <defs>${grad('r', metal.rim)}${grad('f', metal.face, 0, 1)}${grad('i', metal.ink, 0, 1)}
+                <radialGradient id="${id}g"><stop offset="0" stop-color="${metal.rim[1]}" stop-opacity=".55"/><stop offset="1" stop-color="${metal.rim[1]}" stop-opacity="0"/></radialGradient></defs>
+            ${tier === 'obsidian' ? `<circle cx="50" cy="52" r="48" fill="url(#${id}g)"/>` : ''}
+            ${tier === 'gold' || crowned ? rankLaurel(`url(#${id}r)`) : ''}
+            <g fill="url(#${id}r)">${outer}</g>
+            <g fill="url(#${id}f)" stroke="rgba(0,0,0,.35)" stroke-width="1">${inner}</g>
+            <g fill="#fff" opacity=".09">${sheen}</g>
+            ${crowned ? `<polygon points="${rankStar(50, 9, 7, 3)}" fill="url(#${id}r)" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>` : ''}
+            <g class="mc-rank-glyph" fill="none" stroke="url(#${id}i)" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"
+               transform="translate(50 52) scale(.78) translate(-50 -50)" style="--ink:url(#${id}i)">${RANK_GLYPHS[index] || RANK_GLYPHS[0]}</g>
         </svg>`;
     }
     function renderProgressPanel(root) {
@@ -239,9 +293,8 @@
         const progress = title ? (next ? Math.min(1, (points - title.from) / (next.from - title.from)) : 1) : 0;
         const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>';
         const lock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
-        const rankPalette = ['#91a9c3','#90b3d7','#7eb5ea','#62a7f1','#5198f5','#688ef3','#797fe9','#8f83e9','#a8b9f1','#e7bf70'];
         panel.innerHTML = `<section class="mc-experience">
-            <div class="mc-xp-heading"><div><small>Ваше звание</small><h3>${esc(title?.name || 'Рейтинг')}</h3></div><b>${compact(points)} <small>очков</small></b></div>
+            <div class="mc-xp-heading"><div class="mc-xp-title">${title ? `<span class="mc-xp-emblem">${rankEmblem(index)}</span>` : ''}<div><small>Ваше звание</small><h3>${esc(title?.name || 'Рейтинг')}</h3></div></div><b>${compact(points)} <small>очков</small></b></div>
             <div class="mc-xp-bar" role="progressbar" aria-label="Прогресс звания" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><span style="--xp:${progress}"></span></div>
             <p>${next ? `${esc(next.name)} · ${compact(points)} / ${compact(next.from)}` : title ? 'Максимальный титул' : 'Рейтинг'}</p>
             <div class="mc-stats"><div class="mc-stat"><span>Победы</span><b>${compact(rating.wins)}</b></div><div class="mc-stat"><span>Игры</span><b>${compact(rating.games)}</b></div></div>
@@ -249,7 +302,7 @@
         <div class="mc-ranks-heading"><h3>Все звания</h3><div><button class="mc-rank-prev" aria-label="Предыдущее звание">${arrow}</button><button class="mc-rank-next" aria-label="Следующее звание">${arrow}</button></div></div>
         <div class="mc-ranks" tabindex="0" aria-label="Все звания">${titles.map((rank, i) => `<article class="mc-rank ${i === index ? 'current' : ''} ${points < rank.from ? 'locked' : ''}" data-rank="${i}">
             <div class="mc-rank-status">${points < rank.from ? lock + '<span>Закрыто</span>' : i === index ? '<span>Текущее звание</span>' : '<span>Получено</span>'}</div>
-            <div class="mc-rank-emblem" style="--rank-accent:${rankPalette[i] || '#0a84ff'}">${rankEmblem(i)}</div>
+            <div class="mc-rank-emblem">${rankEmblem(i)}</div>
             <h4>${esc(rank.name)}</h4><p>${compact(rank.from)} <span>очков</span></p>
             <small>${points < rank.from ? `${compact(rank.from - points)} · <span>до открытия</span>` : '<span>Звание открыто</span>'}</small>
         </article>`).join('')}</div>`;
