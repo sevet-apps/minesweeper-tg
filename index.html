@@ -1919,9 +1919,11 @@
         .ck-code-row button { min-width: 96px; border: 0; border-radius: 14px; background: var(--ui-accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
         .ck-rooms-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 2px 10px; }
         .ck-rooms-head h3 { margin: 0; font-size: 16px; }
-        .ck-refresh { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--ui-border); background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; }
-        .ck-refresh svg { width: 17px; height: 17px; transform-origin: 50% 50%; }
-        .ck-refresh.spin svg { animation: ckSpin .6s cubic-bezier(.4,0,.2,1); }
+        .ck-refresh { width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--ui-border); background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; }
+        /* Крутится HTML-обёртка, а не сам SVG: так значок вращается строго вокруг центра и на iPhone. */
+        .refresh-glyph { display: block; width: 18px; height: 18px; transform-origin: 50% 50%; will-change: transform; }
+        .refresh-glyph svg { display: block; width: 100%; height: 100%; }
+        .ck-refresh.spin .refresh-glyph { animation: ckSpin .6s cubic-bezier(.4,0,.2,1); }
         .ck-rooms { display: flex; flex-direction: column; gap: 8px; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; }
         .ck-room { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 16px; border: 1px solid var(--ui-border); background: var(--ui-track); animation: ckRoomIn .3s ease both; }
         .ck-room-ava { width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--ui-accent-soft); color: var(--ui-accent); font-weight: 800; }
@@ -4357,7 +4359,7 @@
                     <input type="text" id="joinCodeInput" inputmode="numeric" autocomplete="off" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5" onkeydown="if(event.key==='Enter')joinGameByCode()">
                     <button type="button" onclick="joinGameByCode()" data-i18n="join">Войти</button>
                 </div>
-                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" onclick="refreshCheckersRooms(true)" data-i18n-aria-label="refresh" aria-label="Обновить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.95 10.14A7.2 7.2 0 1 1 13.25 4.91"/><path d="M10.84 2.23L13.25 4.91L10.07 6.60"/></svg></button></div>
+                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" onclick="refreshCheckersRooms(true)" data-i18n-aria-label="refresh" aria-label="Обновить"><span class="refresh-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg></span></button></div>
                 <div class="ck-rooms" id="ckRoomList"></div>
             </div>
 
@@ -4369,7 +4371,7 @@
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
     <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" onclick="refreshBBFromServer()" data-i18n="refresh">Обновить</button></div></div>
-    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden onclick="requestRematch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.95 10.14A7.2 7.2 0 1 1 13.25 4.91"/><path d="M10.84 2.23L13.25 4.91L10.07 6.60"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden onclick="requestRematch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
     <!-- Multiplier promo modal: explains the x1.5 partner offer -->

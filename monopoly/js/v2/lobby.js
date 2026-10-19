@@ -355,7 +355,15 @@
         const started = Date.now();
         const stop = () => {
             const wait = Math.max(0, 600 - (Date.now() - started));
-            setTimeout(() => { btn.classList.remove('spin'); spinning = false; }, wait);
+            setTimeout(() => {
+                /* Докручиваем текущий оборот до конца: иначе значок
+                   прыгает в начальное положение посреди вращения. */
+                const glyph = btn.querySelector('.refresh-glyph');
+                let done = false;
+                const finish = () => { if (done) return; done = true; btn.classList.remove('spin'); spinning = false; };
+                if (glyph) glyph.addEventListener('animationiteration', finish, { once: true });
+                setTimeout(finish, 800);
+            }, wait);
         };
         ensureNet()
             .then(() => new Promise(res => {

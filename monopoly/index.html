@@ -16,7 +16,7 @@ window.DICE_SIZE = 1.0;
 <link rel="stylesheet" href="css/masks.css">
 <link rel="stylesheet" href="css/v2.css">
 <link rel="stylesheet" href="../assets/ui/tokens.css">
-<link rel="stylesheet" href="css/lobby.css?v=20261020">
+<link rel="stylesheet" href="css/lobby.css?v=20261021">
 <link rel="stylesheet" href="css/collection.css?v=20261018">
 <link rel="stylesheet" href="css/collection-pregame.css?v=20261020">
 <link rel="stylesheet" href="../assets/ui/liquid-glass.css?v=20261004">
@@ -55,11 +55,11 @@ window.DICE_SIZE = 1.0;
       <div class="lb-sec-head">
         <h2>Открытые комнаты</h2>
         <button class="lb-refresh" id="lbRefresh" title="Обновить список" aria-label="Обновить список">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+          <span class="refresh-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
                stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18.95 10.14A7.2 7.2 0 1 1 13.25 4.91"/>
-            <path d="M10.84 2.23L13.25 4.91L10.07 6.60"/>
-          </svg>
+            <path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/>
+            <path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/>
+          </svg></span>
         </button>
       </div>
       <div id="lbRooms"></div>
@@ -228,7 +228,7 @@ window.DICE_SIZE = 1.0;
 <script src="js/v2/rating-ui.js"></script>
 <script src="js/v2/collection-ui.js?v=20261018"></script>
 <script src="js/v2/game-ui.js"></script>
-<script src="js/v2/lobby.js?v=20261020"></script>
+<script src="js/v2/lobby.js?v=20261021"></script>
 <script>
     if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
     const reportPlaytimeAction = () => {

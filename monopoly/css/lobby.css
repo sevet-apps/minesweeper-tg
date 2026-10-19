@@ -95,7 +95,7 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 .lb-sec-head { align-items: center; }
 .lb-sec-head h2 { font-size: 15px; font-weight: 650; }
 .lb-refresh {
-    margin-left: auto; width: 32px; height: 32px; flex: 0 0 auto;
+    margin-left: auto; width: 32px; height: 32px; flex: 0 0 auto; padding: 0;
     display: grid; place-items: center;
     border: none; border-radius: 50%;
     background: var(--panel); color: var(--text-dim);
@@ -104,9 +104,10 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 .lb-refresh:hover { background: var(--panel-2); color: var(--text); }
 .lb-refresh:active { transform: scale(.94); }
 .lb-refresh svg { width: 17px; height: 17px; }
-/* Дуга значка отцентрована по (12,12), поэтому он крутится ровно, а не «гуляет». */
-.lb-refresh svg { transform-origin: 50% 50%; }
-.lb-refresh.spin svg { animation: lbSpin .6s linear infinite; }
+/* Значок симметричен относительно центра, а крутится HTML-обёртка — вращение ровное и на iPhone. */
+.lb-refresh .refresh-glyph { display: block; width: 17px; height: 17px; transform-origin: 50% 50%; will-change: transform; }
+.lb-refresh .refresh-glyph svg { display: block; width: 100%; height: 100%; }
+.lb-refresh.spin .refresh-glyph { animation: lbSpin .7s cubic-bezier(.45,.05,.55,.95) infinite; }
 @keyframes lbSpin { to { transform: rotate(360deg); } }
 
 #lbRooms { display: flex; flex-direction: column; gap: 8px; }
