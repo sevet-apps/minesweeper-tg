@@ -60,7 +60,7 @@
         const definitions = [
             ['modalSaper',null], ['modalSudoku',null], ['modalCheckers',null],
             ['modalResult','closeResult',true], ['modalLoading',null,true], ['modalWaitOpponent','cancelOnlineWait',true],
-            ['settingsSheet','closeSettingsSheet'], ['referralConditionsSheet','hideReferralConditions'],
+            ['settingsSheet','closeSettingsSheet'], ['languageSheet','closeLanguageSheet'],  ['referralConditionsSheet','hideReferralConditions'],
             ['titleDetailOverlay','closeTitleDetail'], ['titleChoiceOverlay','closeTitleChoiceMenu'],
             ['privacyScreen','closePrivacyPolicy',true], ['titleLibraryOverlay','closeTitleLibrary',true]
         ];

@@ -89,8 +89,7 @@
 .ui-mode-panel > p, .ui-mode-panel .panel-visible > p { color:var(--ui-muted); font-size:14px; line-height:1.45; margin:0 0 16px; }
 .ui-mode-panel .btn-main { margin-top:20px; }
 #ch-offline-panel, #ch-online-panel { min-height:218px; }
-#ch-online-panel { position:relative; padding-bottom:50px; }
-#ch-online-panel > .btn-secondary { position:absolute; bottom:0; left:0; }
+#ch-online-panel { position:relative; }
 .checkers-difficulty-wrap { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows var(--ui-slide) var(--ui-ease),opacity .24s; }
 .checkers-difficulty-wrap.is-open { grid-template-rows:1fr; opacity:1; }
 .checkers-difficulty-inner { min-height:0; overflow:hidden; }
@@ -109,6 +108,8 @@
 .bottom-sheet-title { font-size:24px; letter-spacing:-.5px; margin:0 0 20px; min-height:44px; display:flex; align-items:center; padding-right:42px; }
 .ui-sheet-topbar { position:sticky; top:0; z-index:3; background:var(--ui-sheet); margin-inline:-20px; padding:0 20px 1px; }
 .ui-sheet-topbar > .ui-close { position:absolute; right:14px; top:30px; }
+/* Контент уходит под закреплённый заголовок плавно, а не обрезается резкой линией. */
+.ui-sheet-topbar::after { content:''; position:absolute; left:0; right:0; top:100%; height:14px; background:linear-gradient(var(--ui-sheet), transparent); pointer-events:none; }
 .ui-sheet-topbar .bottom-sheet-title { margin-bottom:8px; }
 .ui-sheet-heading { position:sticky; top:0; z-index:3; background:var(--ui-sheet); }
 .title-bottom-sheet { transition:transform var(--ui-sheet-exit) var(--ui-ease); }
@@ -140,8 +141,7 @@
 .bb-mode-icon.original { background:var(--ui-accent); }
 .bb-mode-track { transition:transform var(--ui-slide) var(--ui-ease); }
 #saperGlider, #sudokuGlider, #saperDifficultyGlider { transition:transform .46s cubic-bezier(.34,1.56,.64,1); }
-#ch-online-panel .checkers-join-btn { min-width:86px; background:var(--ui-accent); color:#fff; font-weight:700; }
-#ch-online-panel .checkers-create-btn { border:1px solid var(--ui-accent); background:var(--ui-accent-soft); color:var(--ui-accent); font-weight:700; }
+
 .game-overlay { position:fixed; height:100dvh; visibility:hidden; pointer-events:none; transition:transform .35s cubic-bezier(.16,1,.3,1),visibility 0s .35s; }
 .game-overlay.visible { visibility:visible; pointer-events:auto; transition-delay:0s; }
 @media(max-width:350px) { .modal.ui-mode-panel, .bottom-sheet { padding-inline:16px; } .ui-sheet-topbar { margin-inline:-16px; padding-inline:16px; } .segment-item { font-size:13px; } }

@@ -503,6 +503,7 @@ html[data-theme="light"] #lobby .lb-bg { filter:invert(1); opacity:.035; }
 @media(prefers-reduced-motion:reduce) { #lobby *, #lobby *::before, #lobby *::after { animation-duration:.01ms!important; animation-delay:0ms!important; transition-duration:.01ms!important; } }
 
 .lb-sheet-heading { position:sticky; top:0; z-index:3; display:flex; align-items:center; gap:12px; margin:0 -20px; padding:32px 14px 8px 20px; background:var(--ui-sheet); }
+.lb-sheet-heading::after { content:''; position:absolute; left:0; right:0; top:100%; height:14px; background:linear-gradient(var(--ui-sheet), transparent); pointer-events:none; }
 #lobby .lb-sheet-heading h3 { flex:1; padding-right:0; margin:0; }
 .lb-sheet-heading .lb-sheet-close { position:relative; top:auto; right:auto; order:1; }
 #lobby .lb-input:focus-visible { outline:none; }

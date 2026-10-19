@@ -63,6 +63,7 @@ html[data-theme="light"] .monopoly-pregame .mc-tabs:before { background:var(--ui
 .monopoly-pregame .mc-map button { border-color:var(--ui-border); }
 .monopoly-pregame .mc-map button.on .mc-map-action { color:var(--ui-accent); }
 .monopoly-pregame .mc-sheet-head { position:sticky;top:-13px;z-index:3;margin-inline:-20px;padding:8px 20px;background:var(--ui-sheet); }
+.monopoly-pregame .mc-sheet-head::after { content:'';position:absolute;left:0;right:0;top:100%;height:14px;background:linear-gradient(var(--ui-sheet),transparent);pointer-events:none; }
 @media(prefers-reduced-motion:reduce) { .monopoly-pregame .mc-tab-panel { transition:none;transform:none; } }
 @media (max-width:380px) {
     html[lang="ja"] .monopoly-pregame .mc-head { flex-wrap:wrap; row-gap:8px; }

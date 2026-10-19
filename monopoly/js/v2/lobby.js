@@ -583,7 +583,11 @@
     function applySafeInsets() {
         const q = new URLSearchParams(location.search);
         const root = document.documentElement;
-        const isPhone = innerWidth <= 900;      // тот же порог, что и в стилях
+        /* Telegram Desktop открывает мини-приложение в узком окне, поэтому по
+           ширине его не отличить от телефона — приложение передаёт desktop=1. */
+        const platform = global.Telegram && Telegram.WebApp && Telegram.WebApp.platform;
+        const isDesktop = q.get('desktop') === '1' || ['tdesktop', 'macos', 'web', 'weba', 'webk'].includes(platform);
+        const isPhone = !isDesktop && innerWidth <= 900;      // тот же порог, что и в стилях
 
         let top = parseInt(q.get('safeTop'), 10);
         let bottom = parseInt(q.get('safeBottom'), 10);

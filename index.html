@@ -13,6 +13,7 @@
     <meta property="og:type" content="website">
     <title>Spark Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="assets/ui/cloud-save.js?v=20261019"></script>
     <script>
         /* Paint Telegram's own safe-area chrome before the first video frame.
            Otherwise a white 9:16 animation is framed by black host bars until
@@ -1175,8 +1176,13 @@
         .lb-medal { width: 24px; height: 24px; margin-left: -5px; margin-right: 10px; }
         .rank-1 .lb-rank, .rank-2 .lb-rank, .rank-3 .lb-rank { display: none; }
 
-        .lb-sticky-user { position: absolute; bottom: calc(30px + var(--safe-bottom)); left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
-        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; }
+        .lb-sticky-user { position: absolute; bottom: calc(30px + var(--safe-bottom)); left: 20px; right: 20px; background: var(--accent); color: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 40px rgba(0,122,255,0.4); z-index: 22000; transform: translateY(200%); transition: transform 0.26s cubic-bezier(0.4, 0, 1, 1); pointer-events: none; }
+        .lb-sticky-user.visible { transform: translateY(0); pointer-events: auto; transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+        /* Мягкая пружина: лёгкий перелёт на 2% и плавное затухание вместо резкого отскока. */
+        @supports (transition-timing-function: linear(0, 1)) {
+            .lb-sticky-user.visible { transition: transform 0.65s linear(0, 0.0317, 0.1097, 0.2137, 0.3284, 0.4434, 0.5518, 0.6495, 0.7343, 0.8057, 0.864, 0.9103, 0.946, 0.9726, 0.9917, 1.0047, 1.013, 1.0176, 1.0197, 1.0198, 1.0187, 1.0169, 1.0147, 1.0124, 1.0102, 1.0081, 1.0063, 1.0047, 1.0034, 1.0023, 1.0015, 1.0008, 1.0004, 1); }
+        }
+        @media (prefers-reduced-motion: reduce) { .lb-sticky-user, .lb-sticky-user.visible { transition-duration: 0.01s; } }
         .lb-sticky-user .lb-rank { color: rgba(255,255,255,0.8); }
         .lb-sticky-user .lb-val { color: rgba(255,255,255,0.9); }
         .lb-sticky-user .lb-name { color: white; }
@@ -1286,6 +1292,31 @@
             border-bottom: 0.5px solid rgba(128,128,128,0.2);
         }
         .settings-row-sheet:last-child { border-bottom: none; }
+        /* Выбор языка: строка в настройках и отдельная шторка со списком */
+        .language-row { width: 100%; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+        .language-row:active { background: rgba(128,128,128,.08); }
+        .language-row-value { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--ui-muted, #8e8e93); font-size: 15px; min-width: 0; }
+        .language-row-value > span:not(.lang-flag) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+        .language-row-value .lang-flag { width: 22px; height: 22px; border-width: 1px; box-shadow: none; }
+        .language-chevron { width: 16px; height: 16px; opacity: .55; flex-shrink: 0; }
+        .language-sheet-hint { margin: -6px 0 14px; color: var(--ui-muted, #8e8e93); font-size: 14px; }
+        .language-search { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; margin-bottom: 14px; border-radius: 16px; background: var(--ui-track, rgba(128,128,128,.12)); border: 1px solid var(--ui-border, transparent); color: var(--ui-muted, #8e8e93); }
+        .language-search svg { width: 19px; height: 19px; flex-shrink: 0; }
+        .language-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ui-text, inherit); font: inherit; font-size: 16px; -webkit-appearance: none; }
+        .language-search input::-webkit-search-cancel-button { display: none; }
+        .language-list { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 18px; overflow: hidden; }
+        .language-option { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 16px; background: none; border: 0; border-bottom: 0.5px solid rgba(128,128,128,.2); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .15s; }
+        .language-option:last-child { border-bottom: 0; }
+        .language-option:active { background: var(--ui-accent-soft, rgba(0,122,255,.1)); }
+        .language-option .lang-flag { width: 30px; height: 30px; border-width: 1px; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+        .language-option .language-auto-icon { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: var(--ui-accent-soft, rgba(0,122,255,.12)); color: var(--ui-accent, #007aff); }
+        .language-option .language-auto-icon svg { width: 17px; height: 17px; }
+        .language-option .language-text { min-width: 0; }
+        .language-option b { display: block; font-size: 16px; font-weight: 600; }
+        .language-option small { display: block; margin-top: 2px; color: var(--ui-muted, #8e8e93); font-size: 12.5px; }
+        .language-option .language-check { margin-left: auto; width: 20px; height: 20px; flex-shrink: 0; color: var(--ui-accent, #007aff); opacity: 0; transform: scale(.6); transition: opacity .2s, transform .28s cubic-bezier(.2,1.4,.4,1); }
+        .language-option.selected .language-check { opacity: 1; transform: none; }
+        .language-empty { padding: 22px 16px; text-align: center; color: var(--ui-muted, #8e8e93); font-size: 14px; }
         
         .settings-label-sheet {
             display: flex;
@@ -1866,6 +1897,60 @@
         @keyframes fadeInSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
         .input-group { display: flex; gap: 8px; margin-top: 8px; width: 100%; box-sizing: border-box; }
+        /* ---------- Онлайн-шашки: подбор, комнаты, ожидание, реванш ---------- */
+        .ck-hero { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 0; border-radius: 22px; background: linear-gradient(135deg, #0a84ff, #3a62ff); color: #fff; text-align: left; font: inherit; cursor: pointer; box-shadow: 0 10px 26px rgba(10,132,255,.30); transition: transform .15s; }
+        .ck-hero:active { transform: scale(.98); }
+        .ck-hero-icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.18); }
+        .ck-hero-icon svg { width: 24px; height: 24px; }
+        .ck-hero b { display: block; font-size: 18px; }
+        .ck-hero small { display: block; margin-top: 2px; font-size: 13px; opacity: .82; }
+        .ck-hero-arrow { margin-left: auto; width: 22px; height: 22px; opacity: .9; flex-shrink: 0; }
+        .ck-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .ck-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: 18px; border: 1px solid var(--ui-border); background: var(--ui-track); color: var(--ui-text); font: inherit; text-align: left; cursor: pointer; transition: transform .15s; }
+        .ck-tile:active { transform: scale(.97); }
+        .ck-tile-icon { width: 34px; height: 34px; margin-bottom: 4px; border-radius: 11px; display: grid; place-items: center; background: var(--ui-accent-soft); color: var(--ui-accent); }
+        .ck-tile-icon svg { width: 19px; height: 19px; }
+        .ck-tile b { font-size: 15px; }
+        .ck-tile small { font-size: 12px; color: var(--ui-muted); }
+        .ck-code-row { display: flex; gap: 8px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height .3s var(--ui-ease, ease), opacity .2s, margin .3s; }
+        .ck-code-row.open { max-height: 60px; opacity: 1; margin-top: 10px; }
+        .ck-code-row input { flex: 1; min-width: 0; height: 48px; border-radius: 14px; border: 1px solid var(--ui-border); background: var(--ui-track); color: var(--ui-text); font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 6px; text-align: center; outline: none; }
+        .ck-code-row input:focus { border-color: var(--ui-accent); }
+        .ck-code-row button { min-width: 96px; border: 0; border-radius: 14px; background: var(--ui-accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+        .ck-rooms-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 2px 10px; }
+        .ck-rooms-head h3 { margin: 0; font-size: 16px; }
+        .ck-refresh { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--ui-border); background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; }
+        .ck-refresh svg { width: 17px; height: 17px; }
+        .ck-refresh.spin svg { animation: ckSpin .7s cubic-bezier(.3,.7,.3,1); }
+        .ck-rooms { display: flex; flex-direction: column; gap: 8px; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; }
+        .ck-room { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 16px; border: 1px solid var(--ui-border); background: var(--ui-track); animation: ckRoomIn .3s ease both; }
+        .ck-room-ava { width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--ui-accent-soft); color: var(--ui-accent); font-weight: 800; }
+        .ck-room-text { min-width: 0; }
+        .ck-room-text b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ck-room-text small { display: block; font-size: 12px; color: var(--ui-muted); }
+        .ck-room-join { margin-left: auto; flex-shrink: 0; padding: 9px 16px; border: 0; border-radius: 999px; background: var(--ui-accent); color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .ck-empty { padding: 20px 12px; border-radius: 18px; border: 1px dashed var(--ui-border); text-align: center; color: var(--ui-muted); font-size: 13px; }
+        .ck-empty b { display: block; margin-bottom: 4px; color: var(--ui-text); font-size: 15px; }
+        .ck-wait { text-align: center; }
+        .ck-radar { position: relative; width: 104px; height: 104px; margin: 2px auto 12px; display: grid; place-items: center; }
+        .ck-radar img { position: relative; z-index: 1; width: 60px; height: 60px; border-radius: 17px; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
+        .ck-radar span { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--ui-accent, #0a84ff); opacity: 0; animation: ckPulse 2.4s cubic-bezier(.2,.6,.3,1) infinite; }
+        .ck-radar span:nth-child(2) { animation-delay: .8s; }
+        .ck-radar span:nth-child(3) { animation-delay: 1.6s; }
+        .ck-wait-sub, .ck-wait-hint { margin: 0; color: #8e8e93; }
+        .ck-wait-hint { margin-bottom: 14px; font-size: 14px; }
+        .ck-wait-code { margin: 6px 0; font-size: 34px; font-weight: 800; letter-spacing: 6px; color: var(--ui-accent, var(--accent)); }
+        .ck-invite, .ck-rematch { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+        .ck-invite svg, .ck-rematch svg { width: 19px; height: 19px; }
+        .ck-rematch { margin-bottom: 8px; border: 1px solid var(--ui-accent, var(--accent)); background: var(--ui-accent-soft, rgba(10,132,255,.12)); color: var(--ui-accent, var(--accent)); font-weight: 700; }
+        .ck-rematch[hidden] { display: none; }
+        .ck-rematch.offered { background: var(--ui-accent, var(--accent)); color: #fff; animation: ckNudge 1.6s ease-in-out infinite; }
+        .ck-rematch:disabled { opacity: .6; }
+        @keyframes ckPulse { 0% { transform: scale(.55); opacity: .7; } 100% { transform: scale(1.35); opacity: 0; } }
+        @keyframes ckSpin { to { transform: rotate(360deg); } }
+        @keyframes ckRoomIn { from { opacity: 0; transform: translateY(6px); } }
+        @keyframes ckNudge { 0%, 100% { transform: none; } 50% { transform: scale(1.03); } }
+        @media (prefers-reduced-motion: reduce) { .ck-radar span { animation: none; opacity: .3; } .ck-rematch.offered { animation: none; } }
         .input-glass { flex: 1; background: var(--toggle-bg); border: none; padding: 12px; border-radius: 12px; font-size: 16px; color: var(--text-color); outline: none; text-align: center; font-weight: 600; min-width: 0; }
         .btn-secondary { background: var(--toggle-bg); color: var(--text-color); font-weight: 600; padding: 12px; border-radius: 12px; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .btn-secondary:active { opacity: 0.7; }
@@ -1896,6 +1981,11 @@
         [data-theme="dark"] #saperGrid .cell { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.06); }
         .cell.revealed { background: rgba(220,220,220,0.5); }
         [data-theme="dark"] #saperGrid .cell.revealed { background: rgba(0,0,0,0.3); }
+        /* Светлая тема: поле — белая карточка с тенью, закрытые клетки заметно
+           темнее открытых, чтобы доска не сливалась с фоном. */
+        [data-theme="light"] #saperGrid { background: #fff; border: 1px solid rgba(15,30,60,.08); box-shadow: 0 12px 32px rgba(15,30,60,.14), 0 2px 6px rgba(15,30,60,.06); }
+        [data-theme="light"] #saperGrid .cell { background: #e6ebf3; border-color: rgba(15,30,60,.07); box-shadow: inset 0 -2px 0 rgba(15,30,60,.08); }
+        [data-theme="light"] #saperGrid .cell.revealed { background: #f7f8fa; border-color: rgba(15,30,60,.04); box-shadow: none; }
         .c-1 { color: #007aff; } .c-2 { color: #34c759; } .c-3 { color: #ff3b30; }
         
         .checkers-board { display: flex; flex-wrap: wrap; width: 90vw; height: 90vw; max-width: 350px; max-height: 350px; background: #fff; border: 4px solid #000; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding:0; margin:0; } .ch-cell { width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center; position: relative; } .ch-cell.light { background: #fff !important; } .ch-cell.dark { background: #222 !important; } .ch-cell.highlight::after { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,122,255,0.5); pointer-events:none; } .checker { width: 80%; height: 80%; border-radius: 50%; position: relative; transition: transform 0.2s; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,0.5); } .checker.white { background: #f0f0f0; border: 3px solid #ccc; } .checker.black { background: #444; border: 3px solid #777; } .checker.king::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40%; height:40%; border-radius:50%; border:3px solid #ff3b30; } .checker.selected { transform: scale(1.15); border-color: var(--accent); z-index: 10; box-shadow: 0 0 15px rgba(0,122,255,0.8); }
@@ -3523,8 +3613,8 @@
     <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261001">
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
-    <link rel="stylesheet" href="assets/ui/app.css?v=20261003">
-    <script src="assets/ui/sheets.js?v=20261003" defer></script>
+    <link rel="stylesheet" href="assets/ui/app.css?v=20261019">
+    <script src="assets/ui/sheets.js?v=20261019" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
@@ -4253,23 +4343,32 @@
             </div>
 
             <div id="ch-online-panel" class="panel-hidden">
-                <button class="btn-main" style="margin-top:0; margin-bottom:8px; padding: 12px;" onclick="joinGame()" data-i18n="findOpponent">Найти соперника</button>
-                <div class="input-group">
-                    <input type="text" id="joinCodeInput" class="input-glass" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5">
-                    <button class="btn-secondary checkers-join-btn" onclick="joinGameByCode()" data-i18n="join">Войти</button>
+                <button class="ck-hero" type="button" onclick="checkersQuickMatch()">
+                    <span class="ck-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+                    <span class="ck-hero-text"><b data-i18n="findOpponent">Найти соперника</b><small data-i18n="findOpponentHint">Случайный игрок онлайн</small></span>
+                    <svg class="ck-hero-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                </button>
+                <div class="ck-tiles">
+                    <button class="ck-tile" type="button" onclick="createGame()"><span class="ck-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><b data-i18n="createRoom">Создать комнату</b><small data-i18n="inviteFriend">Позвать друга</small></button>
+                    <button class="ck-tile" type="button" onclick="toggleCheckersCode()"><span class="ck-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 7l3 3M14 9l2 2"/></svg></span><b data-i18n="enterCode">Ввести код</b><small data-i18n="joinFriend">Комната друга</small></button>
                 </div>
-                <button class="btn-secondary checkers-create-btn" style="width:100%; margin-top:8px; padding:10px;" onclick="createGame()" data-i18n="createRoom">Создать комнату</button>
+                <div class="ck-code-row" id="ckCodeRow">
+                    <input type="text" id="joinCodeInput" inputmode="numeric" autocomplete="off" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5" onkeydown="if(event.key==='Enter')joinGameByCode()">
+                    <button type="button" onclick="joinGameByCode()" data-i18n="join">Войти</button>
+                </div>
+                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" onclick="refreshCheckersRooms(true)" data-i18n-aria-label="refresh" aria-label="Обновить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg></button></div>
+                <div class="ck-rooms" id="ckRoomList"></div>
             </div>
 
 
         </div>
     </div>
     
-    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal"><h2 data-i18n="waitingOpponent">Ожидание...</h2><p style="color:#8e8e93;" data-i18n="roomCode">Код комнаты:</p><div style="font-size:32px; font-weight:800; letter-spacing:5px; margin:10px 0; color:var(--accent);" id="displayRoomCode">-----</div><p style="font-size:14px; color:#8e8e93;" data-i18n="shareCode">Передай этот код другу</p><button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal ck-wait"><div class="ck-radar" aria-hidden="true"><span></span><span></span><span></span><img src="assets/game-icons/checkers.png" alt=""></div><h2 id="ckWaitTitle">Ожидание...</h2><p class="ck-wait-sub" data-i18n="roomCode">Код комнаты:</p><div class="ck-wait-code" id="displayRoomCode">-----</div><p class="ck-wait-hint" data-i18n="shareCode">Передай этот код другу</p><button class="btn-main ck-invite" type="button" onclick="inviteCheckersFriend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg><span data-i18n="inviteFriend">Позвать друга</span></button><button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
     <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" onclick="refreshBBFromServer()" data-i18n="refresh">Обновить</button></div></div>
-    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden onclick="requestRematch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
     <!-- Multiplier promo modal: explains the x1.5 partner offer -->
@@ -4465,23 +4564,18 @@
             <div class="bottom-sheet-handle"></div>
             <div class="bottom-sheet-title" data-i18n="settings">Настройки</div>
             
-            <!-- Язык -->
+            <!-- Язык: отдельная шторка со списком, в настройках только текущий выбор -->
             <div class="settings-section-label" data-i18n="language">ЯЗЫК</div>
-            <div class="language-selector" role="group" aria-label="Language">
-                <button class="lang-btn active" type="button" data-lang="ru" onclick="setLanguage('ru')" aria-label="Русский" aria-pressed="true"><span class="lang-flag"><img src="assets/flags/ru.svg" alt="" loading="lazy"></span><span>Русский</span></button>
-                <button class="lang-btn" type="button" data-lang="en" onclick="setLanguage('en')" aria-label="English" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/en.svg" alt="" loading="lazy"></span><span>English</span></button>
-                <button class="lang-btn" type="button" data-lang="zh" onclick="setLanguage('zh')" aria-label="中文" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/zh.svg" alt="" loading="lazy"></span><span>中文</span></button>
-                <button class="lang-btn" type="button" data-lang="es" onclick="setLanguage('es')" aria-label="Español" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/es.svg" alt="" loading="lazy"></span><span>Español</span></button>
-                <button class="lang-btn" type="button" data-lang="pt" onclick="setLanguage('pt')" aria-label="Português (Brasil)" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/pt.svg" alt="" loading="lazy"></span><span>Português</span></button>
-                <button class="lang-btn" type="button" data-lang="id" onclick="setLanguage('id')" aria-label="Bahasa Indonesia" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/id.svg" alt="" loading="lazy"></span><span>Indonesia</span></button>
-                <button class="lang-btn" type="button" data-lang="fr" onclick="setLanguage('fr')" aria-label="Français" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/fr.svg" alt="" loading="lazy"></span><span>Français</span></button>
-                <button class="lang-btn" type="button" data-lang="ja" onclick="setLanguage('ja')" aria-label="日本語" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/ja.svg" alt="" loading="lazy"></span><span>日本語</span></button>
-                <button class="lang-btn" type="button" data-lang="de" onclick="setLanguage('de')" aria-label="Deutsch" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/de.svg" alt="" loading="lazy"></span><span>Deutsch</span></button>
-                <button class="lang-btn" type="button" data-lang="ko" onclick="setLanguage('ko')" aria-label="한국어" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/ko.svg" alt="" loading="lazy"></span><span>한국어</span></button>
-                <button class="lang-btn" type="button" data-lang="tr" onclick="setLanguage('tr')" aria-label="Türkçe" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/tr.svg" alt="" loading="lazy"></span><span>Türkçe</span></button>
-                <button class="lang-btn" type="button" data-lang="vi" onclick="setLanguage('vi')" aria-label="Tiếng Việt" aria-pressed="false"><span class="lang-flag"><img src="assets/flags/vi.svg" alt="" loading="lazy"></span><span>Tiếng Việt</span></button>
+            <div class="settings-group-sheet">
+                <button class="settings-row-sheet language-row" type="button" onclick="openLanguageSheet()" aria-haspopup="dialog">
+                    <span class="settings-label-sheet">
+                        <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+                        <span data-i18n="languageInterface">Язык интерфейса</span>
+                    </span>
+                    <span class="language-row-value"><span class="lang-flag"><img id="languageRowFlag" src="assets/flags/ru.svg?v=20261019" alt=""></span><span id="languageRowName">Русский</span><svg class="language-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+                </button>
             </div>
-            
+
             <!-- Тема -->
             <div class="settings-section-label" data-i18n="appearance">ВНЕШНИЙ ВИД</div>
             <div class="settings-group-sheet">
@@ -4568,6 +4662,19 @@
                 <button class="settings-footer-btn secondary" onclick="openPrivacyPolicy()" data-i18n="privacy">Политика</button>
                 <button class="settings-footer-btn primary" onclick="openSupport()" data-i18n="support">Поддержка</button>
             </div>
+        </div>
+    </div>
+
+    <div class="bottom-sheet-overlay" id="languageSheet" onclick="closeLanguageSheet()">
+        <div class="bottom-sheet language-sheet" onclick="event.stopPropagation()">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-title" data-i18n="languageTitle">Язык</div>
+            <p class="language-sheet-hint" data-i18n="languageInterface">Язык интерфейса</p>
+            <label class="language-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input id="languageSearch" type="search" autocomplete="off" enterkeyhint="search" oninput="renderLanguageList()" placeholder="Найти язык">
+            </label>
+            <div class="language-list" id="languageList" role="listbox"></div>
         </div>
     </div>
     
@@ -4665,6 +4772,8 @@
             const safe = typeof url === 'string' && /^https:\/\//i.test(url);
             return safe ? `<img src="${escapeHtml(url)}" class="${className}" alt="" referrerpolicy="no-referrer">` : `<div class="${className}" style="background:#ddd"></div>`;
         }
+        // TODO(bb-live): трансляции Block Blast в топах скрыты до переработки.
+        const BB_LIVE_IN_LEADERBOARD = false;
         const API_BASE_URL = 'https://spark-game-backend.onrender.com';
         const REQUIRED_CHANNEL = '@spark_game_news'; // Канал для проверки подписки
         const CHANNEL_LINK = 'https://t.me/spark_game_news'; // Ссылка на канал
@@ -4923,6 +5032,7 @@
                 document.getElementById('modalLoading').classList.remove('visible');
                 onlineRoomCode = data.roomCode;
                 onlineMyColor = data.color;
+                document.getElementById('ckWaitTitle').textContent = data.quick ? t('searchingOpponent') : t('waitingOpponent');
                 document.getElementById('displayRoomCode').innerText = onlineRoomCode;
                 document.getElementById('modalWaitOpponent').classList.add('visible');
             });
@@ -4930,6 +5040,11 @@
             socket.on('start_game', (data) => {
                 document.getElementById('modalWaitOpponent').classList.remove('visible');
                 document.getElementById('modalCheckers').classList.remove('visible');
+                document.getElementById('modalLoading').classList.remove('visible');
+                stopCheckersRoomPolling();
+                if (data.roomCode) onlineRoomCode = String(data.roomCode);
+                lastCheckersRoom = onlineRoomCode;
+                checkersGameFinished = false;
                 if (data.color) onlineMyColor = data.color;
                 isOnlineGame = true;
                 isPvE = false;
@@ -4993,8 +5108,31 @@
                 console.log('State synced from server, turn:', turn);
             });
             socket.on('opponent_disconnected', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentDisconnected'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
-            socket.on('opponent_timeout', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentTimeout'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
-            socket.on('timeout_loss', () => { clearInterval(checkersTimerInterval); showResult(t('defeat'), t('yourTimeOut'), t('menu'), () => { closeResult(); closeGame('checkers'); }); });
+            socket.on('opponent_timeout', () => { clearInterval(checkersTimerInterval); showResult(t('victory'), t('opponentTimeout'), t('menu'), () => { closeResult(); closeGame('checkers'); }); showRematchButton(); });
+            socket.on('timeout_loss', () => { clearInterval(checkersTimerInterval); showResult(t('defeat'), t('yourTimeOut'), t('menu'), () => { closeResult(); closeGame('checkers'); }); showRematchButton(); });
+            socket.on('checkers_rooms', (data) => renderCheckersRooms(Array.isArray(data?.rooms) ? data.rooms : []));
+            socket.on('rematch_waiting', () => {
+                const button = document.getElementById('resRematchBtn');
+                if (!button) return;
+                button.disabled = true;
+                button.querySelector('span').textContent = t('rematchWaiting');
+            });
+            socket.on('rematch_offer', (data) => {
+                const button = document.getElementById('resRematchBtn');
+                if (button && document.getElementById('modalResult').classList.contains('visible')) {
+                    button.hidden = false;
+                    button.disabled = false;
+                    button.classList.add('offered');
+                    button.querySelector('span').textContent = t('acceptRematch');
+                }
+                showToast(t('rematchOffered').replace('{name}', data?.name || t('opponent')), 'success');
+                if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+            });
+            socket.on('rematch_declined', () => {
+                const button = document.getElementById('resRematchBtn');
+                if (button) button.hidden = true;
+                if (document.getElementById('modalResult').classList.contains('visible')) showToast(t('rematchDeclined'), 'error');
+            });
             // The server checks every move and decides the result (e.g. no moves left).
             socket.on('game_finished', (data) => {
                 if (isOnlineGame && !checkersGameFinished && (data?.winner === 'white' || data?.winner === 'black')) endGame(data.winner);
@@ -5081,6 +5219,81 @@
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
         }
         
+        /* ---------- Шторка выбора языка ---------- */
+        const LANGUAGE_OPTIONS = [
+            ['ru', 'Русский', 'Russian'], ['en', 'English', 'English'], ['zh', '中文', 'Chinese'],
+            ['es', 'Español', 'Spanish'], ['pt', 'Português', 'Portuguese Brazil'], ['id', 'Bahasa Indonesia', 'Indonesian'],
+            ['fr', 'Français', 'French'], ['ja', '日本語', 'Japanese'], ['de', 'Deutsch', 'German'],
+            ['ko', '한국어', 'Korean'], ['tr', 'Türkçe', 'Turkish'], ['vi', 'Tiếng Việt', 'Vietnamese'],
+        ];
+        const FLAG_VERSION = '20261019';
+        const languageIsAuto = () => !supportedLanguages.includes(localStorage.getItem(languageStorageKey));
+        function languageFlagHtml(code) {
+            return `<span class="lang-flag"><img src="assets/flags/${code}.svg?v=${FLAG_VERSION}" alt="" loading="lazy"></span>`;
+        }
+        function renderLanguageList() {
+            const list = document.getElementById('languageList');
+            if (!list) return;
+            const query = (document.getElementById('languageSearch')?.value || '').trim().toLowerCase();
+            const check = '<svg class="language-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>';
+            const auto = languageIsAuto();
+            const autoLabel = t('languageAuto');
+            const rows = [];
+            if (!query || autoLabel.toLowerCase().includes(query) || 'telegram'.includes(query)) {
+                rows.push(`<button class="language-option${auto ? ' selected' : ''}" type="button" role="option" aria-selected="${auto}" data-language="auto"><span class="language-auto-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span class="language-text"><b>${escapeHtml(autoLabel)}</b><small>${escapeHtml(t('languageAutoHint'))}</small></span>${check}</button>`);
+            }
+            for (const [code, native, english] of LANGUAGE_OPTIONS) {
+                if (query && !`${native} ${english} ${code}`.toLowerCase().includes(query)) continue;
+                const selected = !auto && code === currentLang;
+                rows.push(`<button class="language-option${selected ? ' selected' : ''}" type="button" role="option" aria-selected="${selected}" data-language="${code}" lang="${code}">${languageFlagHtml(code)}<span class="language-text"><b>${escapeHtml(native)}</b></span>${check}</button>`);
+            }
+            list.innerHTML = rows.join('') || `<div class="language-empty">${escapeHtml(t('languageNotFound'))}</div>`;
+            list.querySelectorAll('.language-option').forEach(btn => { btn.onclick = () => chooseLanguage(btn.dataset.language); });
+        }
+        function updateLanguageRow() {
+            const option = LANGUAGE_OPTIONS.find(([code]) => code === currentLang) || LANGUAGE_OPTIONS[0];
+            const flag = document.getElementById('languageRowFlag');
+            if (flag) flag.src = `assets/flags/${option[0]}.svg?v=${FLAG_VERSION}`;
+            const name = document.getElementById('languageRowName');
+            if (name) name.textContent = languageIsAuto() ? t('languageAuto') : option[1];
+            const search = document.getElementById('languageSearch');
+            if (search) search.placeholder = t('languageSearch');
+            if (document.getElementById('languageSheet')?.classList.contains('visible')) renderLanguageList();
+        }
+        async function chooseLanguage(code) {
+            if (code === 'auto') {
+                if (telegramLanguage !== currentLang) await setLanguage(telegramLanguage);
+                // setLanguage stores an explicit choice; "auto" keeps following Telegram.
+                localStorage.setItem(languageStorageKey, 'auto');
+                updateLanguageRow();
+            } else {
+                await setLanguage(code);
+            }
+            renderLanguageList();
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+            setTimeout(closeLanguageSheet, 260);
+        }
+        function openLanguageSheet() {
+            const overlay = document.getElementById('languageSheet');
+            const sheet = overlay.querySelector('.bottom-sheet');
+            const search = document.getElementById('languageSearch');
+            if (search) search.value = '';
+            renderLanguageList();
+            sheet.classList.remove('dragging');
+            sheet.style.transform = '';
+            sheet.scrollTop = 0;
+            overlay.classList.add('visible');
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+        }
+        function closeLanguageSheet() {
+            const overlay = document.getElementById('languageSheet');
+            const sheet = overlay.querySelector('.bottom-sheet');
+            sheet.classList.remove('dragging');
+            sheet.style.transform = '';
+            overlay.classList.remove('visible');
+            document.getElementById('languageSearch')?.blur();
+        }
+
         function closeSettingsSheet() {
             const overlay = document.getElementById('settingsSheet');
             const sheet = overlay.querySelector('.bottom-sheet');
@@ -5123,6 +5336,29 @@
                 glassDense: "Плотное",
                 settings: 'Настройки',
                 language: 'ЯЗЫК',
+                languageTitle: "Язык",
+                languageInterface: "Язык интерфейса",
+                languageSearch: "Найти язык",
+                languageAuto: "Как в Telegram",
+                languageAutoHint: "Определяется языком Telegram",
+                languageNotFound: "Ничего не найдено",
+                findOpponentHint: "Случайный игрок онлайн",
+                inviteFriend: "Позвать друга",
+                enterCode: "Ввести код",
+                joinFriend: "Комната друга",
+                openRooms: "Открытые комнаты",
+                noOpenRooms: "Открытых комнат пока нет",
+                noOpenRoomsHint: "Создайте свою — её увидят другие игроки",
+                waitingForPlayer: "Ждёт соперника",
+                searchingOpponent: "Ищем соперника…",
+                rematch: "Реванш",
+                acceptRematch: "Принять реванш",
+                rematchWaiting: "Ждём ответа соперника…",
+                rematchOffered: "{name} предлагает реванш",
+                rematchDeclined: "Соперник не захотел реванш",
+                shareCheckersInviteText: "{name} вызывает вас на партию в шашки",
+                checkersInviteRoom: "Комната {code} · 1 на 1",
+                acceptChallenge: "Принять вызов",
                 appearance: 'ВНЕШНИЙ ВИД',
                 theme: 'Тема',
                 simplifiedGraphics: 'Упрощённая графика',
@@ -5399,6 +5635,29 @@
                 glassDense: "Dense",
                 settings: 'Settings',
                 language: 'LANGUAGE',
+                languageTitle: "Language",
+                languageInterface: "Interface language",
+                languageSearch: "Search language",
+                languageAuto: "Same as Telegram",
+                languageAutoHint: "Follows your Telegram language",
+                languageNotFound: "Nothing found",
+                findOpponentHint: "A random player online",
+                inviteFriend: "Invite a friend",
+                enterCode: "Enter code",
+                joinFriend: "Friend's room",
+                openRooms: "Open rooms",
+                noOpenRooms: "No open rooms yet",
+                noOpenRoomsHint: "Create one — other players will see it",
+                waitingForPlayer: "Waiting for an opponent",
+                searchingOpponent: "Looking for an opponent…",
+                rematch: "Rematch",
+                acceptRematch: "Accept rematch",
+                rematchWaiting: "Waiting for your opponent…",
+                rematchOffered: "{name} wants a rematch",
+                rematchDeclined: "Your opponent declined the rematch",
+                shareCheckersInviteText: "{name} challenges you to a game of checkers",
+                checkersInviteRoom: "Room {code} · 1 vs 1",
+                acceptChallenge: "Accept challenge",
                 appearance: 'APPEARANCE',
                 theme: 'Theme',
                 simplifiedGraphics: 'Simplified graphics',
@@ -5674,7 +5933,7 @@
                 glassDensity: "玻璃厚重感",
                 glassLight: "轻盈",
                 glassDense: "厚重",
-                settings: '设置', language: '语言', appearance: '外观', theme: '主题',
+                settings: '设置', language: '语言', languageTitle: "语言", languageInterface: "界面语言", languageSearch: "搜索语言", languageAuto: "跟随 Telegram", languageAutoHint: "使用 Telegram 的语言", languageNotFound: "未找到", findOpponentHint: "随机在线玩家", inviteFriend: "邀请好友", enterCode: "输入代码", joinFriend: "好友房间", openRooms: "公开房间", noOpenRooms: "暂无公开房间", noOpenRoomsHint: "创建一个，其他玩家就能看到", waitingForPlayer: "等待对手", searchingOpponent: "正在寻找对手…", rematch: "再来一局", acceptRematch: "接受再战", rematchWaiting: "等待对手回应…", rematchOffered: "{name} 想再来一局", rematchDeclined: "对手拒绝了再战", shareCheckersInviteText: "{name} 邀请你下一局跳棋", checkersInviteRoom: "房间 {code} · 1 对 1", acceptChallenge: "接受挑战", appearance: '外观', theme: '主题',
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
                 myRecords: '我的纪录', overview: '概览', statistics: '统计', profileSections: '个人资料栏目', copyReferralLink: '复制邀请链接', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
@@ -5880,6 +6139,7 @@
             document.querySelectorAll('[data-lang-content]').forEach(el => {
                 el.hidden = el.dataset.langContent !== currentLang;
             });
+            updateLanguageRow();
             // Update lang buttons
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 const active = btn.dataset.lang === currentLang;
@@ -7218,6 +7478,10 @@
             
             console.log('Final start_param:', startParam);
 
+            if (startParam && /^ck_\d{5}$/.test(startParam)) {
+                const inviteCode = startParam.slice(3);
+                setTimeout(() => joinCheckersRoom(inviteCode), 400);
+            }
             if (startParam && /^mono_[A-Za-z0-9]{4,8}$/.test(startParam)) {
                 window.__monoInviteRoom = startParam.slice(5).toUpperCase();
                 setTimeout(openMonopolyGame, 0);
@@ -7632,7 +7896,9 @@
                 const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, isMe: item.user_id.toString() === user.id.toString(), isLive: false }));
                 
                 // Check for live BB streamers
-                if (currentLbGame === 'bb') {
+                // TODO(bb-live): LIVE в топах временно скрыт — трансляции Block Blast
+                // будут переработаны. Чтобы вернуть, включите BB_LIVE_IN_LEADERBOARD.
+                if (currentLbGame === 'bb' && BB_LIVE_IN_LEADERBOARD) {
                     try {
                         const liveList = await new Promise(resolve => {
                             socket.emit('bb_live_list', (list) => resolve(list || []));
@@ -7808,7 +8074,7 @@
             const glider = document.getElementById('checkersMainGlider'); glider.style.transform = `translateX(${index * 100}%)`;
             const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active');
             const offline = document.getElementById('ch-offline-panel'); const online = document.getElementById('ch-online-panel');
-            if(mode === 'online') { offline.classList.replace('panel-visible', 'panel-hidden'); online.classList.replace('panel-hidden', 'panel-visible'); } else { online.classList.replace('panel-visible', 'panel-hidden'); offline.classList.replace('panel-hidden', 'panel-visible'); } if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
+            if(mode === 'online') { offline.classList.replace('panel-visible', 'panel-hidden'); online.classList.replace('panel-hidden', 'panel-visible'); startCheckersRoomPolling(); } else { online.classList.replace('panel-visible', 'panel-hidden'); offline.classList.replace('panel-hidden', 'panel-visible'); stopCheckersRoomPolling(); } if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
 
         function createGame() {
@@ -7819,9 +8085,84 @@
             socket.emit('create_game', { username: displayName, photo_url: user.photo_url || '', gameType: 'checkers' });
         }
 
-        function joinGame() {
-            if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('warning');
-            showResult(t('findOpponent'), t('comingSoon'), t('close'), closeResult);
+        function joinGame() { checkersQuickMatch(); }
+
+        /* ---------- Онлайн-шашки: подбор соперника, комнаты, приглашения, реванш ---------- */
+        let lastCheckersRoom = null, checkersRoomsTimer = null;
+        function checkersProfile() {
+            const user = tg.initDataUnsafe.user || { first_name: 'Player' };
+            return { username: tgName(user), photo_url: user.photo_url || '' };
+        }
+        function checkersQuickMatch() {
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');
+            document.getElementById('modalLoading').classList.add('visible');
+            socket.emit('checkers_quick', checkersProfile());
+        }
+        function toggleCheckersCode() {
+            const row = document.getElementById('ckCodeRow');
+            const open = row.classList.toggle('open');
+            if (open) setTimeout(() => document.getElementById('joinCodeInput')?.focus(), 120);
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+        function joinCheckersRoom(code) {
+            onlineRoomCode = String(code);
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+            socket.emit('join_game', { roomCode: onlineRoomCode, userData: checkersProfile() });
+        }
+        function refreshCheckersRooms(manual) {
+            socket.emit('checkers_list');
+            if (!manual) return;
+            const button = document.querySelector('.ck-refresh');
+            button?.classList.remove('spin'); void button?.offsetWidth; button?.classList.add('spin');
+            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+        }
+        function stopCheckersRoomPolling() { clearInterval(checkersRoomsTimer); checkersRoomsTimer = null; }
+        function startCheckersRoomPolling() {
+            stopCheckersRoomPolling();
+            refreshCheckersRooms();
+            checkersRoomsTimer = setInterval(() => {
+                const shown = document.getElementById('modalCheckers').classList.contains('visible')
+                    && document.getElementById('ch-online-panel').classList.contains('panel-visible');
+                if (shown && !document.hidden) refreshCheckersRooms(); else if (!shown) stopCheckersRoomPolling();
+            }, 4000);
+        }
+        function renderCheckersRooms(list) {
+            const box = document.getElementById('ckRoomList');
+            if (!box) return;
+            if (!list.length) {
+                box.innerHTML = `<div class="ck-empty"><b>${escapeHtml(t('noOpenRooms'))}</b>${escapeHtml(t('noOpenRoomsHint'))}</div>`;
+                return;
+            }
+            box.innerHTML = list.map(room => {
+                const initial = escapeHtml(String(room.name || '?').trim().charAt(0).toUpperCase() || '?');
+                const avatar = /^https:\/\//i.test(room.avatar || '')
+                    ? `<img class="ck-room-ava" src="${escapeHtml(room.avatar)}" alt="" referrerpolicy="no-referrer">`
+                    : `<span class="ck-room-ava">${initial}</span>`;
+                return `<div class="ck-room">${avatar}<span class="ck-room-text"><b>${escapeHtml(room.name)}</b><small>${escapeHtml(room.quick ? t('searchingOpponent') : t('waitingForPlayer'))}</small></span><button class="ck-room-join" type="button" data-code="${escapeHtml(room.code)}">${escapeHtml(t('play'))}</button></div>`;
+            }).join('');
+            box.querySelectorAll('.ck-room-join').forEach(button => { button.onclick = () => joinCheckersRoom(button.dataset.code); });
+        }
+        async function inviteCheckersFriend() {
+            if (!onlineRoomCode) return;
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+            if (await sharePreparedMessage('checkers', onlineRoomCode)) return;
+            const link = `https://t.me/${BOT_USERNAME}/sparkapp?startapp=ck_${onlineRoomCode}`;
+            const text = `♟️ ${t('roomCode')} ${onlineRoomCode}`;
+            const share = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+            if (tg.openTelegramLink) tg.openTelegramLink(share); else window.open(share, '_blank');
+        }
+        function showRematchButton() {
+            const button = document.getElementById('resRematchBtn');
+            if (!button || !lastCheckersRoom) return;
+            button.hidden = false;
+            button.disabled = false;
+            button.classList.remove('offered');
+            button.querySelector('span').textContent = t('rematch');
+        }
+        function requestRematch() {
+            if (!lastCheckersRoom) return;
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');
+            socket.emit('rematch_request', { roomCode: lastCheckersRoom });
         }
         function joinGameByCode() { const code = document.getElementById('joinCodeInput').value; if (code.length < 5) { if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); return; } onlineRoomCode = code; const user = tg.initDataUnsafe.user || { first_name: "Player" }; const displayName = tgName(user); socket.emit('join_game', { roomCode: code, userData: { username: displayName, photo_url: user.photo_url || '' } }); }
         function cancelOnlineWait() { if(onlineRoomCode) socket.emit('player_left',{roomCode:onlineRoomCode}); document.getElementById('modalWaitOpponent').classList.remove('visible'); onlineRoomCode = null; }
@@ -8033,7 +8374,7 @@
             if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText'),btn=document.getElementById('resBtn');
             if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText=t('victory');txt.innerText=t('youWon');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText=t('defeat');txt.innerText=t('noMovesOrPieces'); } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText=t('victory');txt.innerText=`${t('robotDefeated')} · +${{easy:1,medium:2,hard:3}[checkersDifficulty]||2}`;confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText=t('defeat');txt.innerText=t('robotWon'); } } else{ tit.innerText=w==='white'?t('whiteWon'):t('blackWon');txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
             btn.innerText=t('close'); btn.onclick=()=>{ closeResult(); closeGame('checkers'); };
-            setTimeout(()=>document.getElementById('modalResult').classList.add('visible'),500);
+            setTimeout(()=>{ document.getElementById('modalResult').classList.add('visible'); if (isOnlineGame) showRematchButton(); },500);
         }
         function aiMove(){
             if(!isPvE || isOnlineGame || turn!=='black' || checkersGameFinished || checkersAiPending || !document.getElementById('checkers-screen').classList.contains('visible')) return;
@@ -9696,7 +10037,7 @@
                 closeBBSpectator();
             }
         });
-        function showResult(title, text, btnText="Закрыть", action=null) { document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
+        function showResult(title, text, btnText="Закрыть", action=null) { const rematchButton = document.getElementById('resRematchBtn'); if (rematchButton) rematchButton.hidden = true; document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
 
         /* --- SUDOKU LOGIC --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1; let sudoSessionReady = null; let sudokuResultSaving = false;
@@ -10864,7 +11205,7 @@
             const bottom = 20;
             const invite = window.__monoInviteRoom
                 ? `&invite=${encodeURIComponent(window.__monoInviteRoom)}` : '';
-            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${invite}${window.__monoDebug ? '&debug=1' : ''}`;
+            frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&desktop=${document.body.classList.contains('desktop') ? 1 : 0}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${invite}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
             beginGamePlaytime('monopoly');
         }
