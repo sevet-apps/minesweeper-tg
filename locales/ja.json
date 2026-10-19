@@ -284,7 +284,9 @@
     "rematchDeclined": "相手が再戦を断りました",
     "shareCheckersInviteText": "{name}さんがチェッカーの対局を申し込んでいます",
     "checkersInviteRoom": "ルーム {code} · 1対1",
-    "acceptChallenge": "挑戦を受ける"
+    "acceptChallenge": "挑戦を受ける",
+    "inlineMatchNotStarted": "先にチャットで挑戦を受けてください",
+    "inlineMatchFinished": "対局は終了しました"
   },
   "monopoly": {
     "Раздел профиля": "プロフィール",

@@ -284,7 +284,9 @@
     "rematchDeclined": "Dein Gegner hat die Revanche abgelehnt",
     "shareCheckersInviteText": "{name} fordert dich zu einer Partie Dame heraus",
     "checkersInviteRoom": "Raum {code} · 1 gegen 1",
-    "acceptChallenge": "Herausforderung annehmen"
+    "acceptChallenge": "Herausforderung annehmen",
+    "inlineMatchNotStarted": "Nimm die Herausforderung zuerst im Chat an",
+    "inlineMatchFinished": "Die Partie ist beendet"
   },
   "monopoly": {
     "Раздел профиля": "Profilbereich",

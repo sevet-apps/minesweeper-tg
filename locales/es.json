@@ -284,7 +284,9 @@
     "rematchDeclined": "Tu rival rechazó la revancha",
     "shareCheckersInviteText": "{name} te reta a una partida de damas",
     "checkersInviteRoom": "Sala {code} · 1 contra 1",
-    "acceptChallenge": "Aceptar reto"
+    "acceptChallenge": "Aceptar reto",
+    "inlineMatchNotStarted": "Primero acepta el reto en el chat",
+    "inlineMatchFinished": "La partida terminó"
   },
   "monopoly": {
     "Раздел профиля": "Sección del perfil",

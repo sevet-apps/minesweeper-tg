@@ -104,6 +104,8 @@ html[data-theme="light"] .lb-bg { filter: invert(1); opacity: .06; }
 .lb-refresh:hover { background: var(--panel-2); color: var(--text); }
 .lb-refresh:active { transform: scale(.94); }
 .lb-refresh svg { width: 17px; height: 17px; }
+/* Дуга значка отцентрована по (12,12), поэтому он крутится ровно, а не «гуляет». */
+.lb-refresh svg { transform-origin: 50% 50%; }
 .lb-refresh.spin svg { animation: lbSpin .6s linear infinite; }
 @keyframes lbSpin { to { transform: rotate(360deg); } }
 
@@ -502,8 +504,7 @@ html[data-theme="light"] #lobby .lb-bg { filter:invert(1); opacity:.035; }
 @media(min-width:1100px) { #lobby .lb-wrap.lb-profile-wide { max-width:940px; } }
 @media(prefers-reduced-motion:reduce) { #lobby *, #lobby *::before, #lobby *::after { animation-duration:.01ms!important; animation-delay:0ms!important; transition-duration:.01ms!important; } }
 
-.lb-sheet-heading { position:sticky; top:0; z-index:3; display:flex; align-items:center; gap:12px; margin:0 -20px; padding:32px 14px 8px 20px; background:var(--ui-sheet); }
-.lb-sheet-heading::after { content:''; position:absolute; left:0; right:0; top:100%; height:14px; background:linear-gradient(var(--ui-sheet), transparent); pointer-events:none; }
+.lb-sheet-heading { position:sticky; top:0; z-index:3; display:flex; align-items:center; gap:12px; margin:0 -20px; padding:32px 14px 8px 20px; background:var(--ui-sheet); box-shadow:0 1px 0 0 var(--ui-sheet); }
 #lobby .lb-sheet-heading h3 { flex:1; padding-right:0; margin:0; }
 .lb-sheet-heading .lb-sheet-close { position:relative; top:auto; right:auto; order:1; }
 #lobby .lb-input:focus-visible { outline:none; }

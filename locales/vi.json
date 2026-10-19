@@ -284,7 +284,9 @@
     "rematchDeclined": "Đối thủ đã từ chối tái đấu",
     "shareCheckersInviteText": "{name} thách bạn một ván cờ đam",
     "checkersInviteRoom": "Phòng {code} · 1 đấu 1",
-    "acceptChallenge": "Nhận lời thách đấu"
+    "acceptChallenge": "Nhận lời thách đấu",
+    "inlineMatchNotStarted": "Hãy nhận lời thách đấu trong chat trước",
+    "inlineMatchFinished": "Ván đấu đã kết thúc"
   },
   "monopoly": {
     "Раздел профиля": "Mục hồ sơ",

@@ -284,7 +284,9 @@
     "rematchDeclined": "Lawan menolak tanding ulang",
     "shareCheckersInviteText": "{name} menantangmu bermain dam",
     "checkersInviteRoom": "Ruang {code} · 1 lawan 1",
-    "acceptChallenge": "Terima tantangan"
+    "acceptChallenge": "Terima tantangan",
+    "inlineMatchNotStarted": "Terima tantangan di chat terlebih dulu",
+    "inlineMatchFinished": "Permainan selesai"
   },
   "monopoly": {
     "Раздел профиля": "Bagian profil",

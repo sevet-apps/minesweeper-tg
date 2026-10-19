@@ -284,7 +284,9 @@
     "rematchDeclined": "상대가 재대결을 거절했습니다",
     "shareCheckersInviteText": "{name}님이 체커 대결을 신청했습니다",
     "checkersInviteRoom": "방 {code} · 1대1",
-    "acceptChallenge": "도전 수락"
+    "acceptChallenge": "도전 수락",
+    "inlineMatchNotStarted": "먼저 채팅에서 도전을 수락하세요",
+    "inlineMatchFinished": "게임이 끝났습니다"
   },
   "monopoly": {
     "Раздел профиля": "프로필",

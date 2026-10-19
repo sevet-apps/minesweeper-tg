@@ -1920,8 +1920,8 @@
         .ck-rooms-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 2px 10px; }
         .ck-rooms-head h3 { margin: 0; font-size: 16px; }
         .ck-refresh { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--ui-border); background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; }
-        .ck-refresh svg { width: 17px; height: 17px; }
-        .ck-refresh.spin svg { animation: ckSpin .7s cubic-bezier(.3,.7,.3,1); }
+        .ck-refresh svg { width: 17px; height: 17px; transform-origin: 50% 50%; }
+        .ck-refresh.spin svg { animation: ckSpin .6s cubic-bezier(.4,0,.2,1); }
         .ck-rooms { display: flex; flex-direction: column; gap: 8px; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; }
         .ck-room { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 16px; border: 1px solid var(--ui-border); background: var(--ui-track); animation: ckRoomIn .3s ease both; }
         .ck-room-ava { width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--ui-accent-soft); color: var(--ui-accent); font-weight: 800; }
@@ -1932,11 +1932,12 @@
         .ck-empty { padding: 20px 12px; border-radius: 18px; border: 1px dashed var(--ui-border); text-align: center; color: var(--ui-muted); font-size: 13px; }
         .ck-empty b { display: block; margin-bottom: 4px; color: var(--ui-text); font-size: 15px; }
         .ck-wait { text-align: center; }
-        .ck-radar { position: relative; width: 104px; height: 104px; margin: 2px auto 12px; display: grid; place-items: center; }
+        .ck-radar { position: relative; width: 104px; height: 104px; margin: 2px auto 12px; display: grid; place-items: center; contain: layout paint; isolation: isolate; }
         .ck-radar img { position: relative; z-index: 1; width: 60px; height: 60px; border-radius: 17px; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
-        .ck-radar span { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--ui-accent, #0a84ff); opacity: 0; animation: ckPulse 2.4s cubic-bezier(.2,.6,.3,1) infinite; }
-        .ck-radar span:nth-child(2) { animation-delay: .8s; }
-        .ck-radar span:nth-child(3) { animation-delay: 1.6s; }
+        /* Волны — только transform и opacity на отдельных слоях: без перерисовки и без пересчёта размытия фона. */
+        .ck-radar span { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--ui-accent, #0a84ff); opacity: 0; transform: scale(.55) translateZ(0); will-change: transform, opacity; backface-visibility: hidden; animation: ckPulse 2.6s cubic-bezier(.2,.6,.3,1) infinite; }
+        .ck-radar span:nth-child(2) { animation-delay: 1.3s; }
+        .ck-radar span:nth-child(3) { display: none; }
         .ck-wait-sub, .ck-wait-hint { margin: 0; color: #8e8e93; }
         .ck-wait-hint { margin-bottom: 14px; font-size: 14px; }
         .ck-wait-code { margin: 6px 0; font-size: 34px; font-weight: 800; letter-spacing: 6px; color: var(--ui-accent, var(--accent)); }
@@ -1946,7 +1947,7 @@
         .ck-rematch[hidden] { display: none; }
         .ck-rematch.offered { background: var(--ui-accent, var(--accent)); color: #fff; animation: ckNudge 1.6s ease-in-out infinite; }
         .ck-rematch:disabled { opacity: .6; }
-        @keyframes ckPulse { 0% { transform: scale(.55); opacity: .7; } 100% { transform: scale(1.35); opacity: 0; } }
+        @keyframes ckPulse { 0% { transform: scale(.55) translateZ(0); opacity: .7; } 100% { transform: scale(1.35) translateZ(0); opacity: 0; } }
         @keyframes ckSpin { to { transform: rotate(360deg); } }
         @keyframes ckRoomIn { from { opacity: 0; transform: translateY(6px); } }
         @keyframes ckNudge { 0%, 100% { transform: none; } 50% { transform: scale(1.03); } }
@@ -3613,7 +3614,7 @@
     <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261001">
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
-    <link rel="stylesheet" href="assets/ui/app.css?v=20261019">
+    <link rel="stylesheet" href="assets/ui/app.css?v=20261020">
     <script src="assets/ui/sheets.js?v=20261019" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
@@ -4356,7 +4357,7 @@
                     <input type="text" id="joinCodeInput" inputmode="numeric" autocomplete="off" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5" onkeydown="if(event.key==='Enter')joinGameByCode()">
                     <button type="button" onclick="joinGameByCode()" data-i18n="join">Войти</button>
                 </div>
-                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" onclick="refreshCheckersRooms(true)" data-i18n-aria-label="refresh" aria-label="Обновить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg></button></div>
+                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" onclick="refreshCheckersRooms(true)" data-i18n-aria-label="refresh" aria-label="Обновить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.95 10.14A7.2 7.2 0 1 1 13.25 4.91"/><path d="M10.84 2.23L13.25 4.91L10.07 6.60"/></svg></button></div>
                 <div class="ck-rooms" id="ckRoomList"></div>
             </div>
 
@@ -4368,7 +4369,7 @@
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
     <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" onclick="refreshBBFromServer()" data-i18n="refresh">Обновить</button></div></div>
-    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden onclick="requestRematch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden onclick="requestRematch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.95 10.14A7.2 7.2 0 1 1 13.25 4.91"/><path d="M10.84 2.23L13.25 4.91L10.07 6.60"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
     <!-- Multiplier promo modal: explains the x1.5 partner offer -->
@@ -5336,6 +5337,8 @@
                 glassDense: "Плотное",
                 settings: 'Настройки',
                 language: 'ЯЗЫК',
+                inlineMatchNotStarted: "Сначала примите вызов в чате",
+                inlineMatchFinished: "Партия завершена",
                 languageTitle: "Язык",
                 languageInterface: "Язык интерфейса",
                 languageSearch: "Найти язык",
@@ -5635,6 +5638,8 @@
                 glassDense: "Dense",
                 settings: 'Settings',
                 language: 'LANGUAGE',
+                inlineMatchNotStarted: "Accept the challenge in the chat first",
+                inlineMatchFinished: "The match is over",
                 languageTitle: "Language",
                 languageInterface: "Interface language",
                 languageSearch: "Search language",
@@ -5933,7 +5938,7 @@
                 glassDensity: "玻璃厚重感",
                 glassLight: "轻盈",
                 glassDense: "厚重",
-                settings: '设置', language: '语言', languageTitle: "语言", languageInterface: "界面语言", languageSearch: "搜索语言", languageAuto: "跟随 Telegram", languageAutoHint: "使用 Telegram 的语言", languageNotFound: "未找到", findOpponentHint: "随机在线玩家", inviteFriend: "邀请好友", enterCode: "输入代码", joinFriend: "好友房间", openRooms: "公开房间", noOpenRooms: "暂无公开房间", noOpenRoomsHint: "创建一个，其他玩家就能看到", waitingForPlayer: "等待对手", searchingOpponent: "正在寻找对手…", rematch: "再来一局", acceptRematch: "接受再战", rematchWaiting: "等待对手回应…", rematchOffered: "{name} 想再来一局", rematchDeclined: "对手拒绝了再战", shareCheckersInviteText: "{name} 邀请你下一局跳棋", checkersInviteRoom: "房间 {code} · 1 对 1", acceptChallenge: "接受挑战", appearance: '外观', theme: '主题',
+                settings: '设置', language: '语言', inlineMatchNotStarted: "请先在聊天中接受挑战", inlineMatchFinished: "对局已结束", languageTitle: "语言", languageInterface: "界面语言", languageSearch: "搜索语言", languageAuto: "跟随 Telegram", languageAutoHint: "使用 Telegram 的语言", languageNotFound: "未找到", findOpponentHint: "随机在线玩家", inviteFriend: "邀请好友", enterCode: "输入代码", joinFriend: "好友房间", openRooms: "公开房间", noOpenRooms: "暂无公开房间", noOpenRoomsHint: "创建一个，其他玩家就能看到", waitingForPlayer: "等待对手", searchingOpponent: "正在寻找对手…", rematch: "再来一局", acceptRematch: "接受再战", rematchWaiting: "等待对手回应…", rematchOffered: "{name} 想再来一局", rematchDeclined: "对手拒绝了再战", shareCheckersInviteText: "{name} 邀请你下一局跳棋", checkersInviteRoom: "房间 {code} · 1 对 1", acceptChallenge: "接受挑战", appearance: '外观', theme: '主题',
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
                 myRecords: '我的纪录', overview: '概览', statistics: '统计', profileSections: '个人资料栏目', copyReferralLink: '复制邀请链接', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
@@ -6424,6 +6429,7 @@
             if(vibrationEnabled) tg.HapticFeedback.impactOccurred('light'); 
         }
         function closeGame(game) { 
+            if (game === 'checkers') closeInlineCheckers();
             stopGamePlaytime(game);
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
@@ -7478,6 +7484,10 @@
             
             console.log('Final start_param:', startParam);
 
+            if (startParam && /^ich_ch_\d+_[a-z]{2}_\d+$/.test(startParam)) {
+                const inlineGameId = startParam.slice(4);
+                setTimeout(() => openInlineCheckers(inlineGameId), 400);
+            }
             if (startParam && /^ck_\d{5}$/.test(startParam)) {
                 const inviteCode = startParam.slice(3);
                 setTimeout(() => joinCheckersRoom(inviteCode), 400);
@@ -8306,7 +8316,136 @@
             el.innerText=`${mins}:${secs.toString().padStart(2,'0')}`;
             el.style.color=checkersTimeLeft<=10?'var(--danger)':'var(--text-color)';
         }
+        /* ---------- Инлайн-шашки из чата, открытые в приложении («Доиграть в Spark») ----------
+           Партия живёт на сервере бота: приложение только показывает доску, отправляет
+           ходы и раз в полторы секунды подтягивает ходы соперника. */
+        let inlineMatch = null;
+        async function inlineCheckersRequest(gameId, body) {
+            const response = await fetch(`${API_BASE_URL}/api/inline-checkers/${encodeURIComponent(gameId)}${body ? '/move' : ''}`, {
+                method: body ? 'POST' : 'GET',
+                headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData || '' },
+                body: body ? JSON.stringify(body) : undefined,
+            });
+            if (response.status === 404) return { missing: true };
+            if (!response.ok) throw new Error(`inline checkers ${response.status}`);
+            return response.json();
+        }
+        function openInlineCheckers(gameId) {
+            closeInlineCheckers();
+            inlineMatch = { gameId, state: null, selected: null, signature: '', busy: false, timer: null };
+            isOnlineGame = false; isPvE = false;
+            document.querySelectorAll('.modal-overlay.visible').forEach(modal => modal.classList.remove('visible'));
+            document.getElementById('checkers-screen').classList.add('visible');
+            document.getElementById('checkersHistoryControls').style.display = 'none';
+            document.getElementById('checkersTimer').style.display = 'none';
+            document.getElementById('checkersStatus').textContent = '…';
+            beginGamePlaytime('checkers');
+            refreshInlineCheckers();
+            inlineMatch.timer = setInterval(() => { if (!document.hidden) refreshInlineCheckers(); }, 1500);
+        }
+        function closeInlineCheckers() {
+            if (!inlineMatch) return;
+            clearInterval(inlineMatch.timer);
+            inlineMatch = null;
+            document.getElementById('checkersHistoryControls').style.display = 'flex';
+            document.getElementById('checkersBoard').classList.remove('rotated');
+        }
+        function applyInlineCheckersState(match, state) {
+            match.state = state;
+            match.signature = JSON.stringify([state.board, state.turn, state.status, state.selected]);
+            match.selected = state.status === 'playing' && state.turn === state.myColor ? state.selected : null;
+            if (state.status === 'finished' || !state.myColor && state.status === 'playing') clearInterval(match.timer);
+            renderInlineCheckers();
+        }
+        async function refreshInlineCheckers() {
+            const match = inlineMatch;
+            if (!match || match.busy) return;
+            try {
+                const state = await inlineCheckersRequest(match.gameId);
+                if (match !== inlineMatch || match.busy) return;
+                if (state.missing) {
+                    clearInterval(match.timer);
+                    document.getElementById('checkersStatus').textContent = match.state ? t('inlineMatchFinished') : t('inlineMatchNotStarted');
+                    if (!match.state) showToast(t('inlineMatchNotStarted'), 'error');
+                    return;
+                }
+                const signature = JSON.stringify([state.board, state.turn, state.status, state.selected]);
+                if (signature !== match.signature) {
+                    const opponentMoved = match.state && state.turn === state.myColor && match.state.turn !== state.myColor;
+                    applyInlineCheckersState(match, state);
+                    if (opponentMoved && vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+                }
+            } catch (error) { console.warn('[inline checkers]', error.message); }
+        }
+        function renderInlineCheckers() {
+            const match = inlineMatch;
+            if (!match?.state) return;
+            const { state, selected } = match;
+            const boardEl = document.getElementById('checkersBoard');
+            boardEl.classList.toggle('rotated', state.myColor === 'black');
+            boardEl.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('div');
+                    const dark = (r + c) % 2 !== 0;
+                    cell.className = `ch-cell ${dark ? 'dark' : 'light'}`;
+                    const piece = state.board[r][c];
+                    if (piece) {
+                        const el = document.createElement('div');
+                        el.className = `checker ${piece.color}${piece.king ? ' king' : ''}${selected && selected.r === r && selected.c === c ? ' selected' : ''}`;
+                        cell.appendChild(el);
+                    }
+                    if (dark) cell.onclick = () => onInlineCheckersClick(r, c);
+                    boardEl.appendChild(cell);
+                }
+            }
+            const status = document.getElementById('checkersStatus');
+            if (state.status === 'waiting') status.textContent = state.canJoin ? t('acceptChallenge') : t('waitingOpponent');
+            else if (state.status === 'finished') status.textContent = state.myColor ? (state.turn === state.myColor ? t('victory') : t('defeat')) : t('inlineMatchFinished');
+            else if (!state.myColor) status.textContent = state.turn === 'white' ? t('whiteTurn') : t('blackTurn');
+            else status.textContent = state.turn === state.myColor ? t('yourTurn') : t('opponentTurn');
+        }
+        async function sendInlineCheckers(body) {
+            const match = inlineMatch;
+            if (!match || match.busy) return;
+            match.busy = true;
+            try {
+                const result = await inlineCheckersRequest(match.gameId, body);
+                if (match !== inlineMatch) return;
+                if (result.missing) { document.getElementById('checkersStatus').textContent = t('inlineMatchFinished'); return; }
+                applyInlineCheckersState(match, result);
+                if (result.toast) showToast(result.toast, 'error');
+                else if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+                if (result.status === 'finished' && result.turn === result.myColor) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 2147483647 });
+            } catch (error) {
+                showToast(t('networkError'), 'error');
+            } finally {
+                match.busy = false;
+            }
+        }
+        function onInlineCheckersClick(r, c) {
+            const match = inlineMatch;
+            const state = match?.state;
+            if (!state || match.busy) return;
+            if (state.status === 'waiting') {
+                if (state.canJoin) sendInlineCheckers({ from: { r, c } });
+                else showToast(t('waitingOpponent'), 'error');
+                return;
+            }
+            if (state.status !== 'playing' || !state.myColor) return;
+            if (state.turn !== state.myColor) { showToast(t('opponentTurn'), 'error'); return; }
+            const piece = state.board[r][c];
+            if (piece && piece.color === state.myColor) {
+                match.selected = { r, c };
+                renderInlineCheckers();
+                if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
+                return;
+            }
+            if (match.selected) sendInlineCheckers({ from: match.selected, to: { r, c } });
+        }
+
         function tryCloseCheckers(){
+            if (inlineMatch) { closeInlineCheckers(); closeGame('checkers'); return; }
             if(isOnlineGame){pendingExitGame='checkers';document.getElementById('modalConfirmExit').classList.add('visible');}
             else{closeGame('checkers');}
         }

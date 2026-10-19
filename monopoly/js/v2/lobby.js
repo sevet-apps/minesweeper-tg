@@ -10,6 +10,17 @@
     const $ = s => document.querySelector(s);
     const TG = global.Telegram && global.Telegram.WebApp;
     const QS = new URLSearchParams(location.search);
+    /* Монополия открыта во вложенном окне. Её собственный telegram-web-app.js
+       берёт initData из sessionStorage, а в Telegram Desktop там может лежать
+       подпись от прошлого запуска — сервер её отвергает. Свежие данные всегда
+       есть у основного приложения (тот же origin), поэтому берём их оттуда. */
+    function initData() {
+        try {
+            const parentTg = global.parent !== global && global.parent.Telegram && global.parent.Telegram.WebApp;
+            if (parentTg && parentTg.initData) return parentTg.initData;
+        } catch (_) { /* другой origin — используем свои данные */ }
+        return (TG && TG.initData) || '';
+    }
 
     /* ---------- профиль игрока ---------- */
     /** Символы, которые Telegram рисует как пустоту: заполнители хангыля,
@@ -237,7 +248,7 @@
         return [...new Set(list.filter(Boolean).map(u => String(u).replace(/\/+$/, '')))];
     }
     function authHeaders() {
-        return { 'Content-Type': 'application/json', 'x-init-data': (TG && TG.initData) || '' };
+        return { 'Content-Type': 'application/json', 'x-init-data': initData() };
     }
     let connecting = null;
     function ensureNet() {
@@ -269,7 +280,7 @@
                и только по ней решит, показывать ли отладочную панель. */
             const s = net().connect(url, {
                 uid: ME.uid,
-                initData: (TG && TG.initData) || '',
+                initData: initData(),
             });
             net().setMe(ME.uid);
             const done = ok => {

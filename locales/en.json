@@ -10,6 +10,8 @@
     "glassDense": "Dense",
     "settings": "Settings",
     "language": "LANGUAGE",
+    "inlineMatchNotStarted": "Accept the challenge in the chat first",
+    "inlineMatchFinished": "The match is over",
     "languageTitle": "Language",
     "languageInterface": "Interface language",
     "languageSearch": "Search language",

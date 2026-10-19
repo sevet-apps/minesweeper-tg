@@ -106,10 +106,10 @@
 .bottom-sheet-handle { position:relative; width:72px; height:24px; margin:0 auto 8px; background:transparent; flex-shrink:0; }
 .bottom-sheet-handle::after { content:''; position:absolute; width:36px; height:4px; top:10px; left:18px; background:var(--ui-muted); opacity:.35; border-radius:9px; }
 .bottom-sheet-title { font-size:24px; letter-spacing:-.5px; margin:0 0 20px; min-height:44px; display:flex; align-items:center; padding-right:42px; }
-.ui-sheet-topbar { position:sticky; top:0; z-index:3; background:var(--ui-sheet); margin-inline:-20px; padding:0 20px 1px; }
+/* Резкая граница без просвета: при дробном масштабе экрана сплошная полоска
+   цвета шторки закрывает щель в долю пикселя, через которую просвечивал контент. */
+.ui-sheet-topbar { position:sticky; top:0; z-index:3; background:var(--ui-sheet); margin-inline:-20px; padding:0 20px 1px; box-shadow:0 1px 0 0 var(--ui-sheet); }
 .ui-sheet-topbar > .ui-close { position:absolute; right:14px; top:30px; }
-/* Контент уходит под закреплённый заголовок плавно, а не обрезается резкой линией. */
-.ui-sheet-topbar::after { content:''; position:absolute; left:0; right:0; top:100%; height:14px; background:linear-gradient(var(--ui-sheet), transparent); pointer-events:none; }
 .ui-sheet-topbar .bottom-sheet-title { margin-bottom:8px; }
 .ui-sheet-heading { position:sticky; top:0; z-index:3; background:var(--ui-sheet); }
 .title-bottom-sheet { transition:transform var(--ui-sheet-exit) var(--ui-ease); }

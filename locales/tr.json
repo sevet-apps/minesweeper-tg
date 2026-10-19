@@ -284,7 +284,9 @@
     "rematchDeclined": "Rakibin rövanşı reddetti",
     "shareCheckersInviteText": "{name} seni bir dama oyununa davet ediyor",
     "checkersInviteRoom": "Oda {code} · 1'e 1",
-    "acceptChallenge": "Meydan okumayı kabul et"
+    "acceptChallenge": "Meydan okumayı kabul et",
+    "inlineMatchNotStarted": "Önce sohbette meydan okumayı kabul et",
+    "inlineMatchFinished": "Oyun bitti"
   },
   "monopoly": {
     "Раздел профиля": "Profil bölümü",

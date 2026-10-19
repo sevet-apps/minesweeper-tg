@@ -10,6 +10,8 @@
     "glassDense": "厚重",
     "settings": "设置",
     "language": "语言",
+    "inlineMatchNotStarted": "请先在聊天中接受挑战",
+    "inlineMatchFinished": "对局已结束",
     "languageTitle": "语言",
     "languageInterface": "界面语言",
     "languageSearch": "搜索语言",

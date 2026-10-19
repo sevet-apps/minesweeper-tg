@@ -284,7 +284,9 @@
     "rematchDeclined": "Votre adversaire a refusé la revanche",
     "shareCheckersInviteText": "{name} vous défie aux dames",
     "checkersInviteRoom": "Salle {code} · 1 contre 1",
-    "acceptChallenge": "Relever le défi"
+    "acceptChallenge": "Relever le défi",
+    "inlineMatchNotStarted": "Acceptez d'abord le défi dans la discussion",
+    "inlineMatchFinished": "La partie est terminée"
   },
   "monopoly": {
     "Раздел профиля": "Section du profil",
