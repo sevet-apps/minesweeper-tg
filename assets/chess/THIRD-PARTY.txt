@@ -1,0 +1,20 @@
+Spark Chess — third-party components
+
+chess.js 1.4.0 (assets/chess/vendor/chess.js, server/vendor/chess.js)
+  Copyright (c) Jeff Hlywa. BSD 2-Clause License, see vendor/LICENSE-chessjs.txt.
+  https://github.com/jhlywa/chess.js
+
+Stockfish 19 lite, single-threaded WebAssembly build (assets/chess/engine/stockfish.js, stockfish.wasm)
+  The Stockfish developers; WebAssembly port by Nathan Rugg (stockfish.js npm package 19.0.1).
+  GNU General Public License v3, see engine/COPYING-stockfish.txt.
+  The engine runs unmodified as a separate Web Worker. Source code:
+  https://github.com/official-stockfish/Stockfish and https://github.com/nmrugg/stockfish.js
+
+Piece silhouettes (assets/chess/pieces/*.svg)
+  Font Awesome Free 6.5.2 by @fontawesome (Fonticons, Inc.), icons licensed CC BY 4.0,
+  https://fontawesome.com/license/free — see pieces/LICENSE-fontawesome.txt.
+  Recoloured for Spark by scripts/build-chess-pieces.py.
+
+Move and notification sounds (assets/chess/sounds/*.mp3)
+  Kenney "Impact Sounds" and "Interface Sounds" (www.kenney.nl), CC0 1.0 — see sounds/LICENSE-kenney.txt.
+  Trimmed and converted to MP3.

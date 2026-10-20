@@ -5,7 +5,7 @@
    режутся на части. Побеждает более свежая запись (метка времени). */
 (function (root) {
     'use strict';
-    const KEYS = ['wordle_saved_game', 'sudo_state', 'bb_state_original', 'bb_state_tournament'];
+    const KEYS = ['wordle_saved_game', 'sudo_state', 'bb_state_original', 'bb_state_tournament', 'chess_saved_game'];
     const CHUNK = 3800;
     const PREFIX = 'sv_';
     const stampKey = key => `cloud_t_${key}`;

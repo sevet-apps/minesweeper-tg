@@ -13,7 +13,7 @@
     <meta property="og:type" content="website">
     <title>Spark Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="assets/ui/cloud-save.js?v=20261019"></script>
+    <script src="assets/ui/cloud-save.js?v=20261020"></script>
     <script>
         /* Paint Telegram's own safe-area chrome before the first video frame.
            Otherwise a white 9:16 animation is framed by black host bars until
@@ -395,6 +395,9 @@
         }
         #view-games .game-card--checkers {
             background: linear-gradient(112deg, rgba(92, 96, 102, .9), rgba(30, 31, 34, .92));
+        }
+        #view-games .game-card--chess {
+            background: linear-gradient(112deg, rgba(126, 134, 146, .9), rgba(36, 40, 48, .94));
         }
         #view-games .game-card--block-blast {
             background: linear-gradient(112deg, rgba(18, 100, 83, .9), rgba(12, 48, 83, .92));
@@ -3617,7 +3620,7 @@
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261020">
-    <script src="assets/ui/sheets.js?v=20261019" defer></script>
+    <script src="assets/ui/sheets.js?v=20261020" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
@@ -3717,6 +3720,12 @@
         <div class="card" onclick="openLeaderboardDetail('checkers')">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/checkers.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsCheckers">Топ Шашки</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+
+        <div class="card" onclick="openLeaderboardDetail('chess')">
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/chess.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsChess">Топ Шахматы</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
@@ -3890,6 +3899,11 @@
         <div class="card game-card game-card--checkers" onclick="openGameModal('checkers')">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/checkers.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="checkers">Шашки</h3></div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
+        </div>
+        <div class="card game-card game-card--chess" onclick="openChess()">
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/chess.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="chess">Шахматы</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--block-blast" id="bbHomeCard" onclick="startBlockBlastCheck()">
@@ -4202,6 +4216,15 @@
                         </button>
                         <div class="record-details"><div class="record-details-inner" id="details-checkers"></div></div>
                     </div>
+                    <div class="record-row" data-profile-game="chess">
+                        <button class="record-summary" onclick="toggleProfileGameStats('chess')">
+                            <img class="record-icon" src="assets/game-icons/chess.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="chess">Шахматы</span><span class="record-time" id="time-chess">—</span></span>
+                            <span class="record-score" id="rec-chess">--</span><span class="record-rank" id="rank-chess"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details"><div class="record-details-inner" id="details-chess"></div></div>
+                    </div>
                     <div class="record-row" data-profile-game="wordle">
                         <button class="record-summary" onclick="toggleProfileGameStats('wordle')">
                             <img class="record-icon" src="assets/game-icons/wordle.png" alt="">
@@ -4276,6 +4299,7 @@
             </div>
         </div> 
     </div>
+    <div id="chess-screen" class="game-overlay" data-i18n-skip></div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span><span id="bbBestScore">0</span></div><button id="bbMaterialButton" class="bb-style-button" aria-label="Настройки Блок Бласта" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.25v1.4m0 14.7v1.4M20.75 12h-1.4M4.65 12h-1.4m15.1-6.35-.99.99M6.64 17.36l-.99.99m12.7 0-.99-.99M6.64 6.64l-.99-.99"/><circle cx="12" cy="12" r="7.1"/><circle cx="12" cy="12" r="2.65"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
@@ -4367,6 +4391,8 @@
         </div>
     </div>
     
+    <div class="modal-overlay ui-mode-sheet" id="modalChess"><div class="modal ui-mode-panel" data-i18n-skip></div></div>
+    <div class="modal-overlay" id="modalChessWait"><div class="modal ck-wait" data-i18n-skip></div></div>
     <div class="modal-overlay" id="modalWaitOpponent"><div class="modal ck-wait"><div class="ck-radar" aria-hidden="true"><span></span><span></span><span></span><img src="assets/game-icons/checkers.png" alt=""></div><h2 id="ckWaitTitle">Ожидание...</h2><p class="ck-wait-sub" data-i18n="roomCode">Код комнаты:</p><div class="ck-wait-code" id="displayRoomCode">-----</div><p class="ck-wait-hint" data-i18n="shareCode">Передай этот код другу</p><button class="btn-main ck-invite" type="button" onclick="inviteCheckersFriend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg><span data-i18n="inviteFriend">Позвать друга</span></button><button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
@@ -5404,6 +5430,7 @@
                 tower: 'Башня',
                 sudoku: 'Судоку',
                 checkers: 'Шашки',
+                chess: 'Шахматы', topsChess: 'Топ Шахматы', chessRating: 'Рейтинг', chessPeak: 'Лучший рейтинг', chessBestLevel: 'Уровень бота',
                 wordle: 'Вордли',
                 monopoly: 'Монополия',
                 referrals: 'Рефоводы',
@@ -5705,6 +5732,7 @@
                 tower: 'Tower',
                 sudoku: 'Sudoku',
                 checkers: 'Checkers',
+                chess: 'Chess', topsChess: 'Top Chess', chessRating: 'Rating', chessPeak: 'Best rating', chessBestLevel: 'Bot level beaten',
                 wordle: 'Wordle',
                 monopoly: 'Monopoly',
                 referrals: 'Referrers',
@@ -5951,6 +5979,7 @@
                 conditionsText: '使用您的专属链接邀请好友，并参加邀请排行榜。', invite: '邀请', invited: '已邀请',
                 activated: '已计入', rankInTop: '名次', blockBlast: '方块爆破', minesweeper: '扫雷', tower: '叠塔',
                 sudoku: '数独', checkers: '跳棋', wordle: '猜词', monopoly: '大富翁', referrals: '邀请达人',
+                chess: '国际象棋', topsChess: '国际象棋排行', chessRating: '等级分', chessPeak: '最高等级分', chessBestLevel: '击败的机器人等级',
                 playerFallback: '玩家', playerLeftRoom: '{name} 离开了房间',
                 playerDisconnected: '{name} 已断线，等待重连…', playerReconnected: '{name} 已重新加入游戏',
                 roomNotFound: '找不到房间', roomFull: '房间已满',
@@ -6036,7 +6065,7 @@
             while (walker.nextNode()) {
                 const node = walker.currentNode;
                 const parent = node.parentElement;
-                if (!parent || parent.closest('script, style, template, [data-lang-content], [data-i18n], .lang-btn')) continue;
+                if (!parent || parent.closest('script, style, template, [data-lang-content], [data-i18n], [data-i18n-skip], .lang-btn')) continue;
                 const source = node.nodeValue.trim();
                 if (!source || !/[А-Яа-яЁё]/.test(source)) continue;
                 const start = node.nodeValue.indexOf(source);
@@ -6147,6 +6176,7 @@
                 el.hidden = el.dataset.langContent !== currentLang;
             });
             updateLanguageRow();
+            window.SparkChess?.refreshLanguage?.();
             // Update lang buttons
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 const active = btn.dataset.lang === currentLang;
@@ -6424,6 +6454,53 @@
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
 
+        // --- Шахматы: модуль грузится при первом открытии ---
+        const CHESS_VERSION = '20261020';
+        let chessLoading = null;
+        function loadChessApp() {
+            if (window.SparkChess?.init) return window.SparkChess.init();
+            if (chessLoading) return chessLoading;
+            const base = 'assets/chess/';
+            const css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = `${base}chess.css?v=${CHESS_VERSION}`;
+            document.head.appendChild(css);
+            const script = file => new Promise((resolve, reject) => {
+                const el = document.createElement('script');
+                el.src = `${base}${file}?v=${CHESS_VERSION}`;
+                el.onload = resolve;
+                el.onerror = () => reject(new Error(`Chess: ${file}`));
+                document.head.appendChild(el);
+            });
+            chessLoading = script('chess-core.js')
+                .then(() => script('chess-i18n.js'))
+                .then(() => script('chess-app.js'))
+                .then(() => window.SparkChess.init())
+                .catch(error => { chessLoading = null; throw error; });
+            return chessLoading;
+        }
+        function openChess(tab) {
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+            loadChessApp().then(chess => chess.openSheet(tab)).catch(() => showToast(t('networkError'), 'error'));
+        }
+        function closeChessSheet() {
+            if (window.SparkChess) window.SparkChess.closeSheet();
+            else document.getElementById('modalChess').classList.remove('visible');
+        }
+        function cancelChessWait() {
+            if (window.SparkChess) window.SparkChess.cancelWait();
+            document.getElementById('modalChessWait').classList.remove('visible');
+        }
+        function joinChessInvite(code) {
+            loadChessApp().then(chess => chess.joinInvite(code)).catch(() => showToast(t('networkError'), 'error'));
+        }
+        // Сервер возвращает в незаконченную онлайн-партию (тот же Telegram ID).
+        socket.on('connect', () => socket.emit('chess_rejoin'));
+        socket.on('chess_start', data => {
+            if (window.SparkChess?.ready) return;
+            if (data?.resumed) loadChessApp().then(chess => chess.handleStart(data)).catch(() => {});
+        });
+
         function openGameModal(game) { 
             if(game==='saper') document.getElementById('modalSaper').classList.add('visible'); 
             if(game==='checkers') document.getElementById('modalCheckers').classList.add('visible'); 
@@ -6475,6 +6552,7 @@
             tower:    { nameKey: 'tower', icon: 'assets/game-icons/tower.png' },
             sudoku:   { nameKey: 'sudoku', icon: 'assets/game-icons/sudoku.png' },
             checkers: { nameKey: 'checkers', icon: 'assets/game-icons/checkers.png' },
+            chess:    { nameKey: 'chess', icon: 'assets/game-icons/chess.png' },
             wordle:   { nameKey: 'wordle', icon: 'assets/game-icons/wordle.png' },
             monopoly: { nameKey: 'monopoly', icon: 'assets/game-icons/monopoly.png' }
         };
@@ -6486,6 +6564,7 @@
             tower: 'playtime_tower_ms',
             sudoku: 'playtime_sudoku_ms',
             checkers: 'playtime_checkers_ms',
+            chess: 'playtime_chess_ms',
             wordle: 'playtime_wordle_ms',
             monopoly: 'playtime_monopoly_ms'
         });
@@ -6495,7 +6574,7 @@
         const PLAYTIME_IDLE_WINDOW_MS = 3 * 60 * 1000;
         const PLAYTIME_GAME_SURFACES = Object.freeze({
             bb: ['bb-screen'], saper: ['saper-screen'], tower: ['tower-screen'],
-            sudoku: ['sudoku-screen'], checkers: ['checkers-screen'],
+            sudoku: ['sudoku-screen'], checkers: ['checkers-screen'], chess: ['chess-screen'],
             wordle: ['wordle-screen'], monopoly: ['monopoly-lobby', 'monopoly-game']
         });
         function readPlaytime() {
@@ -6776,12 +6855,54 @@
                 tower: [detailCard(t('towerHeight'), valueOrDash('tower_best')), detailCard(t('cleanSeries'), valueOrDash('tower_combo')), detailCard(t('top'), rankText(profileRankData.tower_best)), detailCard(t('totalTime'), (times.tower || 0) > 0 ? formatPlaytime(times.tower) : '—')],
                 sudoku: [detailCard(t('numWins'), valueOrDash('sudoku_wins')), detailCard(t('top'), rankText(profileRankData.sudoku_wins)), detailCard(t('totalTime'), (times.sudoku || 0) > 0 ? formatPlaytime(times.sudoku) : '—')],
                 checkers: [detailCard(t('totalGames'), valueOrDash('checkers_total')), detailCard(t('winsVsBot'), valueOrDash('checkers_wins_pve')), detailCard(t('checkersPoints'), valueOrDash('checkers_points')), detailCard(t('top'), rankText(profileRankData.checkers_wins_pve)), detailCard(t('totalTime'), (times.checkers || 0) > 0 ? formatPlaytime(times.checkers) : '—')],
+                chess: chessProfileCards(detailCard, times),
                 wordle: [detailCard(t('numWins'), valueOrDash('wordle_wins')), detailCard(t('top'), rankText(profileRankData.wordle_wins)), detailCard(t('totalTime'), (times.wordle || 0) > 0 ? formatPlaytime(times.wordle) : '—')]
             };
             Object.entries(blocks).forEach(([game, cards]) => {
                 const el = document.getElementById(`details-${game}`);
                 if (el) el.innerHTML = cards.join('');
             });
+        }
+        // Шахматы: рейтинг онлайн с сервера, победы над ботом — локально.
+        let chessProfileData = null;
+        let chessProfileAt = 0;
+        function chessLocalStats() {
+            try { return JSON.parse(localStorage.getItem('chess_stats') || '{}') || {}; } catch (_) { return {}; }
+        }
+        function chessProfileCards(detailCard, times) {
+            const local = chessLocalStats();
+            const online = chessProfileData || {};
+            const value = number => (Number(number) > 0 ? String(number) : '—');
+            return [
+                detailCard(t('chessRating'), online.games ? String(online.rating) : '—'),
+                detailCard(t('chessPeak'), online.games ? String(online.peak || online.rating) : '—'),
+                detailCard(t('totalGames'), value(online.games)),
+                detailCard(t('numWins'), value(online.wins)),
+                detailCard(t('top'), online.rank ? `#${online.rank}` : '—'),
+                detailCard(t('winsVsBot'), value(local.botWins)),
+                detailCard(t('chessBestLevel'), value(local.bestLevel)),
+                detailCard(t('totalTime'), (times.chess || 0) > 0 ? formatPlaytime(times.chess) : '—'),
+            ];
+        }
+        function renderChessProfile() {
+            const rec = document.getElementById('rec-chess');
+            const rank = document.getElementById('rank-chess');
+            if (!rec) return;
+            const online = chessProfileData;
+            const wins = Number(chessLocalStats().botWins) || 0;
+            rec.innerText = online?.games ? `${online.rating}` : wins > 0 ? `${wins} ${t('winsShort')}` : '--';
+            if (rank) rank.innerText = online?.rank ? `#${online.rank}` : '';
+        }
+        async function loadChessProfile(force = false) {
+            if (!tg.initData || (!force && Date.now() - chessProfileAt < 60000)) return;
+            chessProfileAt = Date.now();
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chess/profile`, { headers: { 'X-Init-Data': tg.initData } });
+                if (!response.ok) return;
+                chessProfileData = await response.json();
+                renderChessProfile();
+                renderProfileStatsDetails();
+            } catch (_) {}
         }
         function updateFavoriteGame() {
             const times = playtimeSnapshot();
@@ -6797,6 +6918,7 @@
             switchTab('games', tab);
             if (game === 'bb') startBlockBlastCheck();
             else if (game === 'saper' || game === 'checkers' || game === 'tower') openGameModal(game);
+            else if (game === 'chess') openChess();
             else if (game === 'sudoku') startSudokuCheck();
             else if (game === 'wordle') startWordle();
         }
@@ -6860,6 +6982,8 @@
             document.getElementById('rec-sudoku').innerText = sudokuScore > 0 ? sudokuScore + ' ' + t('winsShort') : '--';
             document.getElementById('rec-checkers').innerText = checkersScore > 0 ? checkersScore + ' ' + t('winsShort') : '--';
             document.getElementById('rec-wordle').innerText = wordleScore > 0 ? wordleScore + ' ' + t('winsShort') : '--';
+            renderChessProfile();
+            loadChessProfile();
             
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = BBVisuals.formatNumber(bbScore);
             updateFavoriteGame();
@@ -7490,6 +7614,10 @@
                 const inlineGameId = startParam.slice(4);
                 setTimeout(() => openInlineCheckers(inlineGameId), 400);
             }
+            if (startParam && /^cs_\d{5}$/.test(startParam)) {
+                const chessCode = startParam.slice(3);
+                setTimeout(() => joinChessInvite(chessCode), 400);
+            }
             if (startParam && /^ck_\d{5}$/.test(startParam)) {
                 const inviteCode = startParam.slice(3);
                 setTimeout(() => joinCheckersRoom(inviteCode), 400);
@@ -7591,6 +7719,7 @@
         const SUDOKU_CATS = [{ id: 'sudoku_wins', nameKey: 'numWins' }];
         const TOWER_CATS = [{ id: 'tower_best', nameKey: 'towerHeight' },{ id: 'tower_combo', nameKey: 'cleanSeries' }];
         const WORDLE_CATS = [{ id: 'wordle_wins', nameKey: 'numWins' }];
+        const CHESS_CATS = [{ id: 'chess_rating', nameKey: 'chessRating', serverAuthoritative: true }, { id: 'chess_wins', nameKey: 'numWins', serverAuthoritative: true }];
         const MONOPOLY_CATS = [{ id: 'monopoly_points', nameKey: 'ratingPoints', serverAuthoritative: true }, { id: 'monopoly_wins', nameKey: 'numWins', serverAuthoritative: true }];
 
         function openLeaderboardDetail(game) {
@@ -7609,6 +7738,7 @@
             else if (game === 'tower') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.tower}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(TOWER_CATS[0]); }
             else if (game === 'wordle') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.wordle}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(WORDLE_CATS[0]); }
             else if (game === 'monopoly') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.monopoly}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(MONOPOLY_CATS[0]); }
+            else if (game === 'chess') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.chess}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(CHESS_CATS[0]); }
             else if (game === 'referral') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.referrals}`; if(selectorWrapper) selectorWrapper.style.display = 'none'; loadReferralLeaderboard(); }
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
@@ -7753,7 +7883,7 @@
             const menu = document.getElementById('dropdownMenu'); const catcher = document.getElementById('dropdownCatcher'); const selector = document.getElementById('lbSelector');
             if(!menu.classList.contains('active')) {
                 menu.innerHTML = ''; let cats = [];
-                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS; else if(currentLbGame === 'wordle') cats = WORDLE_CATS; else if(currentLbGame === 'monopoly') cats = MONOPOLY_CATS;
+                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS; else if(currentLbGame === 'wordle') cats = WORDLE_CATS; else if(currentLbGame === 'monopoly') cats = MONOPOLY_CATS; else if(currentLbGame === 'chess') cats = CHESS_CATS;
                 cats.forEach(cat => { const el = document.createElement('div'); el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`; el.innerText = t(cat.nameKey); el.onclick = () => { loadLeaderboardData(cat); toggleDropdown(); }; menu.appendChild(el); });
                 menu.classList.add('active'); catcher.classList.add('active'); selector.classList.add('open'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
             } else { menu.classList.remove('active'); catcher.classList.remove('active'); selector.classList.remove('open'); }
@@ -12472,6 +12602,7 @@
             referral: 'assets/referral-icon.svg',
             saper: 'assets/game-icons/minesweeper.png',
             checkers: 'assets/game-icons/checkers.png',
+            chess: 'assets/game-icons/chess.png',
             bb: 'assets/game-icons/block-blast.png',
             sudoku: 'assets/game-icons/sudoku.png',
             tower: 'assets/game-icons/tower.png',
@@ -12875,7 +13006,7 @@
                 return;
             }
             const cardByGame = {
-                saper: '.game-card--minesweeper', checkers: '.game-card--checkers',
+                saper: '.game-card--minesweeper', checkers: '.game-card--checkers', chess: '.game-card--chess',
                 bb: '.game-card--block-blast', sudoku: '.game-card--sudoku',
                 tower: '.game-card--tower', wordle: '.game-card--wordle',
                 monopoly: '.game-card--monopoly'
