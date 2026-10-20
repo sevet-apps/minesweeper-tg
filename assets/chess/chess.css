@@ -34,14 +34,19 @@
 
 /* ---------- экран партии ---------- */
 #chess-screen { color: var(--ui-text); font-family: var(--ui-font); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-#chess-screen .game-top-bar { position: relative; z-index: 3; gap: 10px; padding-bottom: 6px; }
+#chess-screen .game-top-bar { position: relative; z-index: 3; display: grid; grid-template-columns: 1fr minmax(0, auto) 1fr; align-items: center; gap: 10px; padding-bottom: 6px; }
+/* Три колонки: боковые одинаковой ширины, поэтому заголовок всегда ровно по центру экрана. */
+#chess-screen .game-top-bar .back-btn { justify-self: start; }
+#chess-screen .game-top-bar .cs-top-actions { justify-self: end; }
 .cs-title { flex: 1; min-width: 0; text-align: center; line-height: 1.15; }
 .cs-title b { display: block; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-title small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .2s; }
 .cs-title small.is-alert { color: #ff3b30; }
-.cs-top-actions { display: flex; gap: 6px; min-width: 76px; justify-content: flex-end; }
-.cs-icon-btn { position: relative; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .2s, color .2s; -webkit-tap-highlight-color: transparent; }
-.cs-icon-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cs-top-actions { position: relative; display: flex; align-items: center; gap: 8px; min-width: 84px; justify-content: flex-end; }
+.cs-icon-btn { position: relative; flex-shrink: 0; width: 38px; height: 38px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: var(--ui-track); color: var(--ui-text); font-size: 0; line-height: 0; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .2s, color .2s; -webkit-tap-highlight-color: transparent; }
+/* Иконка позиционируется от центра кнопки: так её не сдвигают ни отступы кнопки в WebKit, ни базовая линия. */
+.cs-icon-btn svg, .cs-nav svg { position: absolute; left: 50%; top: 50%; display: block; transform: translate(-50%, -50%); fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.cs-icon-btn svg { width: 20px; height: 20px; stroke-width: 2; }
 .cs-icon-btn:active { transform: scale(.9); }
 .cs-icon-btn.is-on { background: var(--cs-hint); color: #fff; box-shadow: 0 6px 16px rgba(48, 195, 90, .35); }
 .cs-icon-btn[hidden] { display: none; }
@@ -126,20 +131,20 @@ body.android-opt .cs-pc > i, body.lite-mode .cs-pc > i { filter: none; }
 .cs-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; overflow: visible; }
 .cs-arrow { opacity: 0; transition: opacity .25s; }
 .cs-arrow.show { opacity: .82; }
-.cs-eval { align-self: center; max-width: 0; padding: 4px 0; border-radius: 999px; background: rgba(48, 195, 90, .14); color: #1f9d48; font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; opacity: 0; transition: opacity .2s, max-width .3s var(--ui-ease), padding .3s var(--ui-ease); }
-.cs-eval.show { max-width: 80px; padding: 4px 9px; opacity: 1; }
-[data-theme="dark"] .cs-eval { color: #4cd964; }
+/* Оценка позиции — бейдж под лампочкой подсказки: в шапке он места не занимает. */
+.cs-eval { position: absolute; top: calc(100% + 6px); right: 65px; z-index: 4; padding: 3px 8px; border-radius: 999px; background: var(--cs-hint); color: #fff; font-size: 12px; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 4px 12px rgba(48, 195, 90, .35); pointer-events: none; opacity: 0; transform: translate(50%, -4px) scale(.9); transition: opacity .2s, transform .25s var(--ui-spring); }
+.cs-eval.show { opacity: 1; transform: translate(50%, 0) scale(1); }
 
 .cs-board.is-review .cs-squares { filter: saturate(.85); }
 .cs-board.is-over .cs-pieces { transition: filter .4s; }
 
 /* ---------- ходы и кнопки ---------- */
 .cs-moves { width: var(--cs-outer, 92vw); display: flex; align-items: center; gap: 6px; }
-.cs-nav { flex-shrink: 0; width: 34px; height: 34px; border: 0; border-radius: 10px; background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), opacity .2s; }
-.cs-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.cs-nav { position: relative; flex-shrink: 0; width: 38px; height: 38px; margin: 0; padding: 0; border: 0; border-radius: 12px; background: var(--ui-track); color: var(--ui-text); font-size: 0; line-height: 0; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), opacity .2s; -webkit-tap-highlight-color: transparent; }
+.cs-nav svg { width: 20px; height: 20px; stroke-width: 2.4; }
 .cs-nav:active { transform: scale(.9); }
 .cs-nav:disabled { opacity: .35; }
-.cs-movelist { flex: 1; min-width: 0; height: 34px; display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); padding: 0 8px; }
+.cs-movelist { flex: 1; min-width: 0; height: 38px; display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); padding: 0 8px; }
 .cs-movelist::-webkit-scrollbar { display: none; }
 .cs-movelist:empty::before { content: '—'; color: var(--ui-muted); font-size: 13px; margin: auto; }
 .cs-mn { flex-shrink: 0; margin: 0 2px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--ui-muted); }
@@ -148,8 +153,8 @@ body.android-opt .cs-pc > i, body.lite-mode .cs-pc > i { filter: none; }
 .cs-mv.is-current { background: var(--ui-accent-soft); color: var(--ui-accent); }
 
 .cs-actions { width: var(--cs-outer, 92vw); display: flex; justify-content: center; gap: 8px; }
-.cs-act { flex: 1; max-width: 92px; min-height: 54px; padding: 7px 4px 6px; border: 0; border-radius: 16px; background: var(--ui-track); color: var(--ui-text); font: inherit; font-size: 11.5px; font-weight: 650; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), opacity .2s; -webkit-tap-highlight-color: transparent; }
-.cs-act svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cs-act { flex: 1; max-width: 92px; min-height: 56px; margin: 0; padding: 7px 4px 6px; -webkit-appearance: none; appearance: none; border: 0; border-radius: 16px; background: var(--ui-track); color: var(--ui-text); font: inherit; font-size: 11.5px; font-weight: 650; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), opacity .2s; -webkit-tap-highlight-color: transparent; }
+.cs-act svg { display: block; flex-shrink: 0; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cs-act:active { transform: scale(.94); }
 .cs-act:disabled { opacity: .35; }
 .cs-act[hidden] { display: none; }
@@ -177,9 +182,14 @@ body.android-opt .cs-pc > i, body.lite-mode .cs-pc > i { filter: none; }
 .cs-sheet.show { transform: translate(-50%, 0); transition-duration: var(--ui-sheet-enter); }
 .cs-sheet h2 { margin: 0; font-size: 26px; letter-spacing: -.5px; }
 .cs-sheet p { margin: 8px 0 0; color: var(--ui-muted); font-size: 15px; line-height: 1.4; }
-.cs-sheet-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
-.cs-sheet-actions .btn-main, .cs-sheet-actions .btn-secondary { width: 100%; margin: 0; }
-.cs-sheet-actions .is-danger { background: #ff3b30; }
+.cs-sheet-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+/* Кнопки шторок: всегда с фоном и рамкой — в тёмной теме фон обычной кнопки совпадал с фоном шторки. */
+.cs-btn { width: 100%; min-height: 54px; margin: 0; padding: 0 18px; border: 1px solid var(--ui-border); border-radius: 16px; background: var(--ui-surface); color: var(--ui-text); font: inherit; font-size: 17px; font-weight: 650; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .2s, opacity .2s; -webkit-tap-highlight-color: transparent; }
+.cs-btn:active { transform: scale(.975); }
+.cs-btn.is-primary { border-color: transparent; background: var(--ui-accent); color: #fff; box-shadow: 0 8px 20px rgba(0, 122, 255, .25); }
+.cs-btn.is-danger { border-color: transparent; background: #ff3b30; color: #fff; box-shadow: 0 8px 20px rgba(255, 59, 48, .25); }
+[data-theme="dark"] .cs-btn:not(.is-primary):not(.is-danger) { background: #3a3a3c; border-color: rgba(255, 255, 255, .08); }
+#modalChessWait .cs-btn { margin-top: 10px; }
 .cs-result-icon { width: 76px; height: 76px; margin: 0 auto 14px; border-radius: 24px; display: grid; place-items: center; background: var(--ui-accent-soft); color: var(--ui-accent); animation: csResultIn .55s var(--ui-spring) both; }
 .cs-result-icon svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cs-result-icon.win { background: linear-gradient(135deg, #ffcc4d, #ff9f0a); color: #fff; box-shadow: 0 12px 28px rgba(255, 159, 10, .35); }
@@ -241,6 +251,8 @@ body.android-opt .cs-pc > i, body.lite-mode .cs-pc > i { filter: none; }
 .cs-rating-card b { display: block; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .cs-rating-card span { font-size: 12.5px; font-weight: 650; color: var(--ui-muted); white-space: nowrap; }
 #modalChess .ck-hero { margin-top: 14px; }
+#modalChess .ck-refresh { position: relative; width: 38px; height: 38px; margin: 0; padding: 0; font-size: 0; line-height: 0; -webkit-appearance: none; appearance: none; }
+#modalChess .ck-refresh .refresh-glyph { position: absolute; left: 50%; top: 50%; margin: -9px 0 0 -9px; }
 .cs-room-tc { flex-shrink: 0; padding: 4px 8px; border-radius: 8px; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
 #modalChessWait .ck-radar img { background: #fff; }
 

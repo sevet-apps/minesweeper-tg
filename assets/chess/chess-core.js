@@ -30,6 +30,14 @@
         return TIME_CONTROLS.find(tc => tc.id === id) || null;
     }
 
+    /** Отдельный рейтинг для пули, блица и рапида; классика (30+0) идёт в рапид. */
+    const RATING_CATEGORIES = Object.freeze(['bullet', 'blitz', 'rapid']);
+    function ratingCategory(tcOrId) {
+        const tc = typeof tcOrId === 'string' ? timeControl(tcOrId) : tcOrId;
+        if (!tc) return null;
+        return tc.cat === 'classical' ? 'rapid' : tc.cat;
+    }
+
     /* ---------- Шахматные часы ----------
        Часы — простой объект, время передаётся явно: так их одинаково
        считают сервер (авторитетно) и клиент (для отображения). Часы белых
@@ -219,7 +227,7 @@
     }
 
     return Object.freeze({
-        TIME_CONTROLS, TIME_CATEGORIES, DEFAULT_ONLINE_TC, timeControl,
+        TIME_CONTROLS, TIME_CATEGORIES, DEFAULT_ONLINE_TC, timeControl, RATING_CATEGORIES, ratingCategory,
         createClock, clockLeft, clockPress, clockStop, clockFlagged, clockSnapshot,
         other, colorName,
         boardOutcome, hasMatingMaterial, timeoutOutcome, material, PIECE_VALUE,

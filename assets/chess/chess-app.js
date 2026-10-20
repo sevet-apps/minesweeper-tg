@@ -6,6 +6,8 @@
     if (window.SparkChess) return;
 
     const BASE = new URL('.', document.currentScript?.src || location.href).href;
+    // Версия из адреса скрипта: новые звуки не застревают в кэше Telegram.
+    const VERSION = new URL(document.currentScript?.src || location.href).searchParams.get('v') || '';
     const core = window.SparkChessCore;
     const I18N = window.SparkChessI18n;
     const OWNER_ID = '1482228376';
@@ -100,7 +102,7 @@
         },
         load() {
             if (this.loading || !this.ctx) return this.loading;
-            this.loading = Promise.all(this.names.map(name => fetch(`${BASE}sounds/${name}.mp3`)
+            this.loading = Promise.all(this.names.map(name => fetch(`${BASE}sounds/${name}.mp3${VERSION ? `?v=${VERSION}` : ''}`)
                 .then(r => r.arrayBuffer())
                 .then(data => new Promise((resolve, reject) => this.ctx.decodeAudioData(data, resolve, reject)))
                 .then(buffer => { this.buffers[name] = buffer; })
@@ -1156,7 +1158,7 @@
         recordStats(outcome);
         const result = myResult(outcome);
         setTimeout(() => {
-            if (result === 'win') { Sound.play('win'); haptic('success'); celebrate(); }
+            if (result === 'win' || result === 'white' || result === 'black') { Sound.play('win'); haptic('success'); celebrate(); }
             else if (result === 'loss') { Sound.play('lose'); haptic('error'); }
             else { Sound.play('draw'); haptic('warning'); }
         }, 180);
@@ -1443,8 +1445,8 @@
         openDialog('confirm', `
             <h2>${esc(title)}</h2><p>${esc(text)}</p>
             <div class="cs-sheet-actions">
-                <button type="button" class="btn-main${okDanger ? ' is-danger' : ''}" data-dlg="ok">${esc(okLabel)}</button>
-                <button type="button" class="btn-secondary" data-dlg="cancel">${esc(tr('stay'))}</button>
+                <button type="button" class="cs-btn is-primary${okDanger ? ' is-danger' : ''}" data-dlg="ok">${esc(okLabel)}</button>
+                <button type="button" class="cs-btn" data-dlg="cancel">${esc(tr('stay'))}</button>
             </div>`);
         refs.sheet.querySelector('[data-dlg="ok"]').onclick = () => { closeDialog(); onOk(); };
         refs.sheet.querySelector('[data-dlg="cancel"]').onclick = () => closeDialog();
@@ -1457,8 +1459,8 @@
         const icon = r === 'win' ? ICON.trophy : r === 'loss' ? ICON.broken : r === 'aborted' ? ICON.abort : r === 'draw' ? ICON.handshake : ICON.trophy;
         const iconClass = r === 'win' || r === 'white' || r === 'black' ? 'win' : r === 'loss' ? 'loss' : 'draw';
         const primary = game.mode === 'online'
-            ? `<button type="button" class="btn-main" data-dlg="rematch">${esc(tr('rematch'))}</button>`
-            : `<button type="button" class="btn-main" data-dlg="again">${esc(tr(game.mode === 'bot' ? 'playAgain' : 'newGame'))}</button>`;
+            ? `<button type="button" class="cs-btn is-primary" data-dlg="rematch">${esc(tr('rematch'))}</button>`
+            : `<button type="button" class="cs-btn is-primary" data-dlg="again">${esc(tr(game.mode === 'bot' ? 'playAgain' : 'newGame'))}</button>`;
         openDialog('result', `
             <div class="cs-result-icon ${iconClass}">${icon}</div>
             <h2>${esc(resultTitle(outcome))}</h2>
@@ -1467,8 +1469,8 @@
             <p data-ref="resultNote" hidden></p>
             <div class="cs-sheet-actions">
                 ${primary}
-                <button type="button" class="btn-secondary" data-dlg="review">${esc(tr('review'))}</button>
-                <button type="button" class="btn-secondary" data-dlg="menu">${esc(tr('menu'))}</button>
+                <button type="button" class="cs-btn" data-dlg="review">${esc(tr('review'))}</button>
+                <button type="button" class="cs-btn" data-dlg="menu">${esc(tr('menu'))}</button>
             </div>`);
         const sheet = refs.sheet;
         sheet.querySelector('[data-dlg="review"]').onclick = () => closeDialog();
@@ -1491,7 +1493,8 @@
         if (!change) return;
         const delta = change.delta > 0 ? `+${change.delta}` : String(change.delta);
         chip.hidden = false;
-        chip.innerHTML = `${esc(tr('rating'))} <b>${change.rating}</b> <b class="${change.delta >= 0 ? 'up' : 'down'}">${delta}</b>`;
+        const cat = core.ratingCategory(game.tc) || 'blitz';
+        chip.innerHTML = `${esc(tr('rating'))} · ${esc(tr(cat))} <b>${change.rating}</b> <b class="${change.delta >= 0 ? 'up' : 'down'}">${delta}</b>`;
     }
     function setResultNote(text, withAccept = false) {
         if (ui.dialog?.kind !== 'result') { if (text) toast(text); return; }
@@ -1512,8 +1515,8 @@
                 ${rows.map(([key, label]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button></div>`).join('')}
             </div>
             <div class="cs-sheet-actions">
-                ${game?.moves.length ? `<button type="button" class="btn-secondary" data-dlg="pgn">${esc(tr('copyPgn'))}</button>` : ''}
-                <button type="button" class="btn-secondary" data-dlg="close">${esc(tr('backToGame'))}</button>
+                ${game?.moves.length ? `<button type="button" class="cs-btn" data-dlg="pgn">${esc(tr('copyPgn'))}</button>` : ''}
+                <button type="button" class="cs-btn" data-dlg="close">${esc(tr('backToGame'))}</button>
             </div>`);
         refs.sheet.querySelector('[data-dlg="pgn"]')?.addEventListener('click', copyPgn);
         refs.sheet.querySelectorAll('[data-setting]').forEach(btn => {
@@ -1694,7 +1697,7 @@
                 <button type="button" class="btn-main" data-sheet="playBot" data-t="play"></button>
             </div>
             <div class="cs-panel" data-panel="online">
-                <div class="cs-rating-card"><i style="background-image:url('${pieceUrl('wQ')}')"></i><div><small data-t="yourRating"></small><b data-ref="myRating">—</b></div><span data-ref="myGames"></span></div>
+                <div class="cs-rating-card"><i style="background-image:url('${pieceUrl('wQ')}')"></i><div><small data-ref="myRatingLabel"></small><b data-ref="myRating">—</b></div><span data-ref="myGames"></span></div>
                 <p class="cs-label" data-t="timeControl"></p>
                 <div class="cs-tcs" data-tcs="onlineTc">${tcButtons(core.TIME_CONTROLS, false)}</div>
                 <button class="ck-hero" type="button" data-sheet="quick">
@@ -1732,7 +1735,7 @@
             <p class="ck-wait-hint" data-ref="waitTc"></p>
             <div data-ref="waitCodeBox"><p class="ck-wait-sub" data-t="roomCode"></p><div class="ck-wait-code" data-ref="waitCode">-----</div><p class="ck-wait-hint" data-t="shareCode"></p>
             <button class="btn-main ck-invite" type="button" data-wait="invite">${ICON.send}<span data-t="inviteFriend"></span></button></div>
-            <button class="btn-secondary" style="width:100%; margin-top:8px;" type="button" data-wait="cancel" data-t="cancel"></button>`;
+            <button class="cs-btn" type="button" data-wait="cancel" data-t="cancel"></button>`;
         waitEl.querySelectorAll('[data-ref]').forEach(el => { refs['w_' + el.dataset.ref] = el; });
         waitEl.addEventListener('click', event => {
             const button = event.target.closest('[data-wait]');
@@ -1752,6 +1755,7 @@
         refs.s_levelElo.textContent = `~${level.elo}`;
         const tc = core.timeControl(prefs.onlineTc) || core.timeControl(core.DEFAULT_ONLINE_TC);
         refs.s_quickHint.textContent = tr('findHint', { tc: `${tr(tc.cat)} ${tc.id}` });
+        if (refs.s_myRatingLabel) showRating(ratingCache?.data || null);
         panel.querySelectorAll('[data-level]').forEach(b => b.classList.toggle('active', Number(b.dataset.level) === prefs.level));
         panel.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('active', b.dataset.color === prefs.color));
         panel.querySelectorAll('[data-tcs]').forEach(group => {
@@ -1889,9 +1893,13 @@
             showRating(data);
         } catch (_) { showRating(null); }
     }
+    /** Рейтинг в той категории (пуля, блиц, рапид), что выбрана для онлайна. */
     function showRating(data) {
-        refs.s_myRating.textContent = data?.rating ? String(data.rating) : String(core.START_RATING);
-        refs.s_myGames.textContent = data?.games ? tr('gamesShort', { n: data.games }) : '';
+        const cat = core.ratingCategory(prefs.onlineTc) || 'blitz';
+        const row = data?.categories?.[cat] || null;
+        refs.s_myRatingLabel.textContent = `${tr('yourRating')} · ${tr(cat)}`;
+        refs.s_myRating.textContent = String(row?.rating || core.START_RATING);
+        refs.s_myGames.textContent = row?.games ? tr('gamesShort', { n: row.games }) : '';
     }
 
     let waitInfo = null;

@@ -15,6 +15,10 @@ Piece silhouettes (assets/chess/pieces/*.svg)
   https://fontawesome.com/license/free — see pieces/LICENSE-fontawesome.txt.
   Recoloured for Spark by scripts/build-chess-pieces.py.
 
-Move and notification sounds (assets/chess/sounds/*.mp3)
-  Kenney "Impact Sounds" and "Interface Sounds" (www.kenney.nl), CC0 1.0 — see sounds/LICENSE-kenney.txt.
+Move sounds (assets/chess/sounds/move, move2, capture, castle .mp3)
+  Kenney "Impact Sounds" (www.kenney.nl), CC0 1.0 — see sounds/LICENSE-kenney.txt.
   Trimmed and converted to MP3.
+
+Game sounds (assets/chess/sounds/check, promote, notify, start, win, lose, draw, lowtime .mp3)
+  Supplied by the Spark owner (UI sound packs from the Telegram channel @LaniVfx).
+  Trimmed, levelled and converted to MP3.

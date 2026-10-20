@@ -5430,7 +5430,7 @@
                 tower: 'Башня',
                 sudoku: 'Судоку',
                 checkers: 'Шашки',
-                chess: 'Шахматы', topsChess: 'Топ Шахматы', chessRating: 'Рейтинг', chessPeak: 'Лучший рейтинг', chessBestLevel: 'Уровень бота',
+                chess: 'Шахматы', topsChess: 'Топ Шахматы', chessRating: 'Рейтинг', chessPeak: 'Лучший рейтинг', chessBestLevel: 'Уровень бота', chessBullet: 'Пуля', chessBlitz: 'Блиц', chessRapid: 'Рапид',
                 wordle: 'Вордли',
                 monopoly: 'Монополия',
                 referrals: 'Рефоводы',
@@ -5732,7 +5732,7 @@
                 tower: 'Tower',
                 sudoku: 'Sudoku',
                 checkers: 'Checkers',
-                chess: 'Chess', topsChess: 'Top Chess', chessRating: 'Rating', chessPeak: 'Best rating', chessBestLevel: 'Bot level beaten',
+                chess: 'Chess', topsChess: 'Top Chess', chessRating: 'Rating', chessPeak: 'Best rating', chessBestLevel: 'Bot level beaten', chessBullet: 'Bullet', chessBlitz: 'Blitz', chessRapid: 'Rapid',
                 wordle: 'Wordle',
                 monopoly: 'Monopoly',
                 referrals: 'Referrers',
@@ -5979,7 +5979,7 @@
                 conditionsText: '使用您的专属链接邀请好友，并参加邀请排行榜。', invite: '邀请', invited: '已邀请',
                 activated: '已计入', rankInTop: '名次', blockBlast: '方块爆破', minesweeper: '扫雷', tower: '叠塔',
                 sudoku: '数独', checkers: '跳棋', wordle: '猜词', monopoly: '大富翁', referrals: '邀请达人',
-                chess: '国际象棋', topsChess: '国际象棋排行', chessRating: '等级分', chessPeak: '最高等级分', chessBestLevel: '击败的机器人等级',
+                chess: '国际象棋', topsChess: '国际象棋排行', chessRating: '等级分', chessPeak: '最高等级分', chessBestLevel: '击败的机器人等级', chessBullet: '子弹', chessBlitz: '闪电', chessRapid: '快棋',
                 playerFallback: '玩家', playerLeftRoom: '{name} 离开了房间',
                 playerDisconnected: '{name} 已断线，等待重连…', playerReconnected: '{name} 已重新加入游戏',
                 roomNotFound: '找不到房间', roomFull: '房间已满',
@@ -6455,7 +6455,7 @@
         }
 
         // --- Шахматы: модуль грузится при первом открытии ---
-        const CHESS_VERSION = '20261020-2';
+        const CHESS_VERSION = '20261021';
         let chessLoading = null;
         function loadChessApp() {
             if (window.SparkChess?.init) return window.SparkChess.init();
@@ -6873,12 +6873,17 @@
             const local = chessLocalStats();
             const online = chessProfileData || {};
             const value = number => (Number(number) > 0 ? String(number) : '—');
+            const byCat = cat => {
+                const row = online.categories?.[cat];
+                return row?.games ? `${row.rating}${row.rank ? ` · #${row.rank}` : ''}` : '—';
+            };
             return [
-                detailCard(t('chessRating'), online.games ? String(online.rating) : '—'),
+                detailCard(t('chessBlitz'), byCat('blitz')),
+                detailCard(t('chessBullet'), byCat('bullet')),
+                detailCard(t('chessRapid'), byCat('rapid')),
                 detailCard(t('chessPeak'), online.games ? String(online.peak || online.rating) : '—'),
                 detailCard(t('totalGames'), value(online.games)),
                 detailCard(t('numWins'), value(online.wins)),
-                detailCard(t('top'), online.rank ? `#${online.rank}` : '—'),
                 detailCard(t('winsVsBot'), value(local.botWins)),
                 detailCard(t('chessBestLevel'), value(local.bestLevel)),
                 detailCard(t('totalTime'), (times.chess || 0) > 0 ? formatPlaytime(times.chess) : '—'),
@@ -7719,7 +7724,7 @@
         const SUDOKU_CATS = [{ id: 'sudoku_wins', nameKey: 'numWins' }];
         const TOWER_CATS = [{ id: 'tower_best', nameKey: 'towerHeight' },{ id: 'tower_combo', nameKey: 'cleanSeries' }];
         const WORDLE_CATS = [{ id: 'wordle_wins', nameKey: 'numWins' }];
-        const CHESS_CATS = [{ id: 'chess_rating', nameKey: 'chessRating', serverAuthoritative: true }, { id: 'chess_wins', nameKey: 'numWins', serverAuthoritative: true }];
+        const CHESS_CATS = [{ id: 'chess_blitz', nameKey: 'chessBlitz', serverAuthoritative: true }, { id: 'chess_bullet', nameKey: 'chessBullet', serverAuthoritative: true }, { id: 'chess_rapid', nameKey: 'chessRapid', serverAuthoritative: true }];
         const MONOPOLY_CATS = [{ id: 'monopoly_points', nameKey: 'ratingPoints', serverAuthoritative: true }, { id: 'monopoly_wins', nameKey: 'numWins', serverAuthoritative: true }];
 
         function openLeaderboardDetail(game) {
