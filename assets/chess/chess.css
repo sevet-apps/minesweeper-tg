@@ -2,8 +2,9 @@
 :root {
     --cs-light: #ffffff;
     --cs-dark: #e1e5ea;
-    --cs-coord-on-light: #a3abb6;
-    --cs-coord-on-dark: #ffffff;
+    --cs-frame: #ffffff;
+    --cs-line: #c9ced6;
+    --cs-coord: #9aa2ad;
     --cs-last: rgba(0, 122, 255, .13);
     --cs-selected: rgba(0, 122, 255, .24);
     --cs-dot: rgba(28, 34, 44, .2);
@@ -18,8 +19,9 @@
 [data-theme="dark"] {
     --cs-light: #e9ecf0;
     --cs-dark: #bfc6cf;
-    --cs-coord-on-light: #8b939e;
-    --cs-coord-on-dark: #f4f6f8;
+    --cs-frame: #1c1c1e;
+    --cs-line: rgba(235, 238, 245, .3);
+    --cs-coord: #8e8e93;
     --cs-last: rgba(10, 132, 255, .2);
     --cs-selected: rgba(10, 132, 255, .32);
     --cs-dot: rgba(20, 24, 30, .26);
@@ -45,7 +47,7 @@
 .cs-icon-btn[hidden] { display: none; }
 
 .cs-main { position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 12px calc(12px + var(--safe-bottom, 0px)); }
-.cs-player { width: var(--cs-size, 92vw); display: flex; align-items: center; gap: 10px; min-height: 46px; }
+.cs-player { width: var(--cs-outer, 92vw); display: flex; align-items: center; gap: 10px; min-height: 46px; }
 .cs-ava { position: relative; width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: var(--ui-track); display: grid; place-items: center; overflow: hidden; }
 .cs-ava img { width: 100%; height: 100%; object-fit: cover; }
 .cs-ava .cs-ava-piece { width: 78%; height: 78%; background: center / contain no-repeat; }
@@ -66,17 +68,23 @@
 @keyframes csLowPulse { 50% { transform: scale(1.05); } }
 
 /* ---------- доска ---------- */
-.cs-board-wrap { position: relative; width: var(--cs-size, 92vw); height: var(--cs-size, 92vw); flex-shrink: 0; }
-.cs-board { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; box-shadow: var(--cs-board-shadow); touch-action: none; contain: layout paint; isolation: isolate; }
+.cs-board-wrap { --m: var(--cs-margin, 16px); position: relative; width: var(--cs-outer, 92vw); height: var(--cs-outer, 92vw); flex-shrink: 0; border-radius: calc(var(--m) + 4px); background: var(--cs-frame); box-shadow: var(--cs-board-shadow); }
+/* Тонкая серая линия по периметру игрового поля. */
+.cs-board-wrap::after { content: ''; position: absolute; inset: calc(var(--m) - 1.5px); border: 1.5px solid var(--cs-line); border-radius: 4px; pointer-events: none; }
+.cs-board { position: absolute; inset: var(--m); border-radius: 3px; overflow: hidden; touch-action: none; contain: layout paint; isolation: isolate; }
 .cs-squares { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
 .cs-sq { position: relative; background: var(--cs-light); }
 .cs-sq.d { background: var(--cs-dark); }
-.cs-coord { position: absolute; font-size: calc(var(--cs-size, 92vw) * .026); font-weight: 700; line-height: 1; color: var(--cs-coord-on-light); pointer-events: none; }
-.cs-sq:not(.d) .cs-coord { color: var(--cs-coord-on-light); }
-.cs-sq.d .cs-coord { color: var(--cs-coord-on-dark); }
-.cs-coord.f { right: 4%; bottom: 4%; }
-.cs-coord.r { left: 5%; top: 5%; }
-.cs-board.no-coords .cs-coord { display: none; }
+/* Буквы и цифры на полях рамки — по центру своей вертикали и горизонтали. */
+.cs-coords { position: absolute; display: flex; pointer-events: none; color: var(--cs-coord); font-size: calc(var(--m) * .64); font-weight: 650; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.cs-coords span { flex: 1; display: grid; place-items: center; }
+.cs-files { left: var(--m); width: var(--cs-size, 80vw); height: var(--m); }
+.cs-files.top { top: 0; }
+.cs-files.bottom { bottom: 0; }
+.cs-ranks { top: var(--m); height: var(--cs-size, 80vw); width: var(--m); flex-direction: column; }
+.cs-ranks.left { left: 0; }
+.cs-ranks.right { right: 0; }
+.cs-board-wrap.no-coords .cs-coords { display: none; }
 
 .cs-layer { position: absolute; inset: 0; pointer-events: none; }
 .cs-mark { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; }
@@ -126,7 +134,7 @@ body.android-opt .cs-pc > i, body.lite-mode .cs-pc > i { filter: none; }
 .cs-board.is-over .cs-pieces { transition: filter .4s; }
 
 /* ---------- ходы и кнопки ---------- */
-.cs-moves { width: var(--cs-size, 92vw); display: flex; align-items: center; gap: 6px; }
+.cs-moves { width: var(--cs-outer, 92vw); display: flex; align-items: center; gap: 6px; }
 .cs-nav { flex-shrink: 0; width: 34px; height: 34px; border: 0; border-radius: 10px; background: var(--ui-track); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), opacity .2s; }
 .cs-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .cs-nav:active { transform: scale(.9); }
@@ -139,7 +147,7 @@ body.android-opt .cs-pc > i, body.lite-mode .cs-pc > i { filter: none; }
 .cs-mv i { width: 15px; height: 15px; background: center / contain no-repeat; display: inline-block; }
 .cs-mv.is-current { background: var(--ui-accent-soft); color: var(--ui-accent); }
 
-.cs-actions { width: var(--cs-size, 92vw); display: flex; justify-content: center; gap: 8px; }
+.cs-actions { width: var(--cs-outer, 92vw); display: flex; justify-content: center; gap: 8px; }
 .cs-act { flex: 1; max-width: 92px; min-height: 54px; padding: 7px 4px 6px; border: 0; border-radius: 16px; background: var(--ui-track); color: var(--ui-text); font: inherit; font-size: 11.5px; font-weight: 650; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), opacity .2s; -webkit-tap-highlight-color: transparent; }
 .cs-act svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cs-act:active { transform: scale(.94); }

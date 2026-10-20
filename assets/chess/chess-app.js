@@ -226,7 +226,11 @@
             </div>
             <div class="cs-main" data-ref="main">
                 <div class="cs-player" data-ref="topPlayer"></div>
-                <div class="cs-board-wrap">
+                <div class="cs-board-wrap" data-ref="frame">
+                    <div class="cs-coords cs-files top" data-ref="filesTop" aria-hidden="true"></div>
+                    <div class="cs-coords cs-files bottom" data-ref="filesBottom" aria-hidden="true"></div>
+                    <div class="cs-coords cs-ranks left" data-ref="ranksLeft" aria-hidden="true"></div>
+                    <div class="cs-coords cs-ranks right" data-ref="ranksRight" aria-hidden="true"></div>
                     <div class="cs-board" data-ref="board">
                         <div class="cs-squares" data-ref="squares"></div>
                         <div class="cs-layer" data-ref="marks"></div>
@@ -267,11 +271,16 @@
         const gap = parseFloat(style.rowGap) || 10;
         let others = 0;
         for (const child of main.children) if (!child.classList.contains('cs-board-wrap')) others += child.offsetHeight;
-        const width = Math.min(main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), 560);
+        const width = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
         const height = main.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - others - gap * (main.children.length - 1);
-        const size = Math.max(220, Math.floor(Math.min(width, height) / 8) * 8);
+        // Рамка вокруг доски: поля с буквами и цифрами одинаковые со всех сторон.
+        const avail = Math.min(width, height, 600);
+        const margin = settings.coords ? Math.max(15, Math.min(22, Math.round(avail * 0.046))) : 9;
+        const size = Math.max(200, Math.floor((avail - 2 * margin) / 8) * 8);
         view.size = size;
         screen.style.setProperty('--cs-size', `${size}px`);
+        screen.style.setProperty('--cs-margin', `${margin}px`);
+        screen.style.setProperty('--cs-outer', `${size + 2 * margin}px`);
         const moves = screen.querySelector('.cs-moves').getBoundingClientRect().top;
         screen.style.setProperty('--cs-banner-top', `${Math.max(8, moves - screen.getBoundingClientRect().top - 4)}px`);
     }
@@ -295,14 +304,16 @@
             for (let x = 0; x < 8; x++) {
                 const sq = xySq(x, y);
                 const dark = (sq.charCodeAt(0) - 97 + Number(sq[1]) - 1) % 2 === 0;
-                let coords = '';
-                if (y === 7) coords += `<span class="cs-coord f">${sq[0]}</span>`;
-                if (x === 0) coords += `<span class="cs-coord r">${sq[1]}</span>`;
-                html += `<div class="cs-sq${dark ? ' d' : ''}">${coords}</div>`;
+                html += `<div class="cs-sq${dark ? ' d' : ''}"></div>`;
             }
         }
         refs.squares.innerHTML = html;
-        refs.board.classList.toggle('no-coords', !settings.coords);
+        // Подписи на полях рамки: слева направо и сверху вниз — как видит игрок.
+        const files = [0, 1, 2, 3, 4, 5, 6, 7].map(x => `<span>${xySq(x, 7)[0]}</span>`).join('');
+        const ranks = [0, 1, 2, 3, 4, 5, 6, 7].map(y => `<span>${xySq(0, y)[1]}</span>`).join('');
+        refs.filesTop.innerHTML = refs.filesBottom.innerHTML = files;
+        refs.ranksLeft.innerHTML = refs.ranksRight.innerHTML = ranks;
+        refs.frame.classList.toggle('no-coords', !settings.coords);
     }
 
     /* ---------- фигуры ---------- */
@@ -991,7 +1002,7 @@
     }
 
     function gameTitle() {
-        const tc = game.tc ? `${tr(game.tc.cat)} · ${game.tc.id}` : '';
+        const tc = game.tc ? `${tr(game.tc.cat)} ${game.tc.id}` : '';
         if (game.mode === 'bot') return [tr('modeBot'), tc].filter(Boolean).join(' · ');
         if (game.mode === 'local') return [tr('modeLocal'), tc].filter(Boolean).join(' · ');
         return tc || tr('modeOnline');
@@ -1513,7 +1524,7 @@
                 btn.classList.toggle('on', settings[key]);
                 btn.setAttribute('aria-checked', String(settings[key]));
                 haptic('select');
-                if (key === 'coords') refs.board.classList.toggle('no-coords', !settings.coords);
+                if (key === 'coords') { refs.frame.classList.toggle('no-coords', !settings.coords); layout(); }
                 if (key === 'showMoves') renderMarks();
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
