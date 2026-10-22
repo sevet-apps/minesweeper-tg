@@ -81,8 +81,10 @@
 .cs-board-wrap::after { content: ''; position: absolute; inset: calc(var(--m) - 1.5px); border: 1.5px solid var(--cs-line); border-radius: 4px; pointer-events: none; }
 .cs-board { position: absolute; inset: var(--m); border-radius: 3px; overflow: hidden; touch-action: none; contain: layout paint; isolation: isolate; }
 .cs-squares { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
-.cs-sq { position: relative; background: var(--cs-light-bg, var(--cs-light)); }
-.cs-sq.d { background: var(--cs-dark-bg, var(--cs-dark)); }
+.cs-sq { position: relative; background: var(--cs-light-tex, none), var(--cs-light-bg, var(--cs-light)); }
+.cs-sq.d { background: var(--cs-dark-tex, none), var(--cs-dark-bg, var(--cs-dark)); }
+/* Каждая клетка показывает свой кусок плиты 8×8: все клетки разные, как плитки из смолы. */
+.cs-sq, .cs-skin-cells > span { background-size: var(--cs-tex-size, auto), auto; background-position: calc(var(--x, 0) * 100% / 7) calc(var(--y, 0) * 100% / 7), 0 0; background-repeat: no-repeat; box-shadow: var(--cs-bevel, none); }
 /* Фактура доски (блик, звёзды, прожилки) — поверх клеток, под фигурами. */
 .cs-squares::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: var(--cs-tex, none); }
 /* Буквы и цифры на полях рамки — по центру своей вертикали и горизонтали. */
@@ -186,8 +188,8 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-promo { position: absolute; inset: 0; z-index: 12; background: rgba(20, 24, 32, .38); opacity: 0; transition: opacity .18s; touch-action: none; }
 .cs-promo.show { opacity: 1; }
 .cs-promo-col { position: absolute; width: 12.5%; display: flex; flex-direction: column; border-radius: 999px; background: var(--ui-surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .3); overflow: hidden; animation: csPromoIn .3s var(--ui-spring) both; }
-.cs-promo-col button { aspect-ratio: 1; border: 0; padding: 8%; background: transparent; cursor: pointer; }
-.cs-promo-col button i { display: block; width: 100%; height: 100%; background: center / contain no-repeat; transition: transform .15s; }
+.cs-promo-col button { position: relative; display: block; width: 100%; height: 0; padding: 100% 0 0; margin: 0; border: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.cs-promo-col button i { position: absolute; inset: 8%; display: block; background: center / contain no-repeat; transition: transform .15s; }
 .cs-promo-col button:active i { transform: scale(.88); }
 @keyframes csPromoIn { from { transform: scaleY(.4); opacity: 0; } }
 
@@ -233,7 +235,7 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-label { margin: 16px 2px 8px; font-size: 13px; font-weight: 700; color: var(--ui-muted); text-transform: none; }
 .cs-label:first-child { margin-top: 0; }
 .cs-levels { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-.cs-level { position: relative; aspect-ratio: 1; border: 0; border-radius: 16px; background: var(--ui-track); color: var(--ui-text); font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .25s, color .25s, box-shadow .25s; }
+.cs-level { position: relative; height: 52px; margin: 0; padding: 0; -webkit-appearance: none; appearance: none; border: 0; border-radius: 16px; background: var(--ui-track); color: var(--ui-text); font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .25s, color .25s, box-shadow .25s; }
 .cs-level:active { transform: scale(.92); }
 .cs-level.active { background: var(--ui-accent); color: #fff; box-shadow: 0 8px 18px rgba(0, 122, 255, .3); }
 .cs-level-info { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 4px 0; font-size: 15px; font-weight: 700; }
@@ -289,7 +291,7 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 /* Сброс: каждый скин начинается с классической доски, а не наследует
    переменные доски вокруг (иначе превью в настройках перенимало чужую фактуру). */
 [data-skin] {
-    --cs-light-bg: initial; --cs-dark-bg: initial; --cs-tex: initial; --cs-rim-b: initial; --cs-rim-w: initial; --cs-rim-size: initial;
+    --cs-light-bg: initial; --cs-dark-bg: initial; --cs-tex: initial; --cs-rim-b: initial; --cs-rim-w: initial; --cs-rim-size: initial; --cs-bevel: initial; --cs-light-tex: initial; --cs-dark-tex: initial; --cs-tex-size: initial;
     --cs-light: #ffffff; --cs-dark: #e1e5ea; --cs-frame: #ffffff; --cs-line: #c9ced6; --cs-coord: #9aa2ad;
     --cs-last: rgba(0, 122, 255, .13); --cs-selected: rgba(0, 122, 255, .24); --cs-dot: rgba(28, 34, 44, .2);
 }
@@ -300,12 +302,12 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 [data-skin="slate"] { --cs-light: #dde1e6; --cs-dark: #9aa3ae; --cs-frame: var(--ui-surface); --cs-line: #b3bac4; --cs-coord: #8a929d; }
 [data-skin="sage"] { --cs-light: #eef0e3; --cs-dark: #9fb187; --cs-frame: var(--ui-surface); --cs-line: #b7c3a2; --cs-coord: #8d9b78; --cs-last: rgba(255, 214, 10, .26); --cs-selected: rgba(255, 214, 10, .42); }
 [data-skin="wood"] {
-    --cs-light: #f1e3c9; --cs-dark: #c39a6b;
-    --cs-light-bg: linear-gradient(135deg, #f4e7cf, #eedcbd);
-    --cs-dark-bg: linear-gradient(135deg, #c9a172, #b98f60);
-    --cs-tex: repeating-linear-gradient(97deg, rgba(110, 70, 30, .07) 0 2px, transparent 2px 23px), repeating-linear-gradient(94deg, rgba(110, 70, 30, .05) 0 3px, transparent 3px 53px);
-    --cs-frame: var(--ui-surface); --cs-line: #d2b88f; --cs-coord: #a88459;
-    --cs-last: rgba(255, 196, 0, .3); --cs-selected: rgba(255, 196, 0, .45);
+    --cs-light: #ecd6b0; --cs-dark: #82552f;
+    --cs-tex: radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .08), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -1px 0 rgba(0, 0, 0, .22);
+    --cs-frame: var(--ui-surface); --cs-line: #c9ab7e; --cs-coord: #a88459;
+    --cs-last: rgba(255, 196, 0, .32); --cs-selected: rgba(255, 196, 0, .48);
+    --cs-rim-b: rgba(255, 240, 220, .45); --cs-rim-size: 1px;
 }
 [data-skin="ice"] {
     --cs-light: #f2f8fc; --cs-dark: #a3c7dd;
@@ -315,48 +317,43 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
     --cs-frame: linear-gradient(160deg, #ffffff, #d7e9f5); --cs-line: #93bad3; --cs-coord: #6d94ae;
 }
 [data-skin="rosewood"] {
-    --cs-light: #f1d8c3; --cs-dark: #ad6c53;
-    --cs-light-bg: linear-gradient(135deg, #f4ddca, #ecd0b8);
-    --cs-dark-bg: linear-gradient(135deg, #b2715a, #a3624a);
-    --cs-tex: repeating-linear-gradient(100deg, rgba(70, 25, 10, .07) 0 2px, transparent 2px 23px), repeating-linear-gradient(97deg, rgba(70, 25, 10, .05) 0 3px, transparent 3px 53px);
+    --cs-light: #f0dcc6; --cs-dark: #6a2715;
+    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, 0) 60%), radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .08), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -1px 0 rgba(0, 0, 0, .3);
     --cs-frame: linear-gradient(160deg, #3b2219, #1f110c); --cs-line: #c59266; --cs-coord: #d8b089;
-    --cs-last: rgba(255, 214, 120, .32); --cs-selected: rgba(255, 214, 120, .5);
-    --cs-rim-b: rgba(255, 236, 214, .75); --cs-rim-size: 1.1px;
+    --cs-last: rgba(255, 214, 120, .34); --cs-selected: rgba(255, 214, 120, .52);
+    --cs-rim-b: rgba(255, 236, 214, .8); --cs-rim-size: 1.2px;
 }
 [data-skin="emerald"] {
-    --cs-light: #e6f1e9; --cs-dark: #3d8d69;
-    --cs-light-bg: linear-gradient(135deg, #eef7f1, #dbeae0);
-    --cs-dark-bg: linear-gradient(135deg, #469a73, #35805e);
-    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, .12) 50%, rgba(255, 255, 255, 0) 62%);
+    --cs-light: #ece9e1; --cs-dark: #17694a;
+    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, 0) 60%), radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .08), transparent 60%);
+    --cs-bevel: inset 0 0 0 1px rgba(214, 178, 94, .45), inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 -1px 0 rgba(0, 0, 0, .3), inset 0 0 7px rgba(0, 0, 0, .2);
     --cs-frame: linear-gradient(160deg, #10392a, #08221a); --cs-line: #c9a54a; --cs-coord: #d3bd7d;
-    --cs-last: rgba(255, 214, 90, .32); --cs-selected: rgba(255, 214, 90, .5); --cs-dot: rgba(10, 30, 20, .3);
-    --cs-rim-b: rgba(235, 255, 242, .6); --cs-rim-size: 1.1px;
+    --cs-last: rgba(255, 214, 90, .34); --cs-selected: rgba(255, 214, 90, .52); --cs-dot: rgba(10, 30, 20, .32);
+    --cs-rim-b: rgba(235, 255, 242, .75); --cs-rim-size: 1.2px;
 }
 [data-skin="marble"] {
-    --cs-light: #f5f4f1; --cs-dark: #b7b2aa;
-    --cs-light-bg: linear-gradient(135deg, #f8f7f4, #ecebe7);
-    --cs-dark-bg: linear-gradient(135deg, #bfbab2, #a9a49b);
-    /* Прожилки идут через всю доску, как по цельной плите. */
-    --cs-tex: linear-gradient(118deg, transparent 18%, rgba(120, 112, 102, .16) 19%, transparent 20.5%), linear-gradient(112deg, transparent 47%, rgba(120, 112, 102, .12) 48%, transparent 50.5%), linear-gradient(141deg, transparent 77%, rgba(120, 112, 102, .14) 78%, transparent 79%), radial-gradient(ellipse at 30% 40%, rgba(255, 255, 255, .12), transparent 60%);
+    --cs-light: #f1efea; --cs-dark: #9c968d;
+    --cs-tex: radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .12), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -1px 0 rgba(0, 0, 0, .14);
     --cs-frame: linear-gradient(160deg, #f3f0eb, #ddd8cf); --cs-line: #a49e94; --cs-coord: #8c8579;
+    --cs-rim-b: rgba(255, 255, 255, .35); --cs-rim-size: 1px;
 }
 [data-skin="sapphire"] {
-    --cs-light: #e1e8f6; --cs-dark: #5577bb;
-    --cs-light-bg: linear-gradient(135deg, #e9eefa, #d6dff1);
-    --cs-dark-bg: linear-gradient(135deg, #5f82c6, #4a6aac);
-    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 36%, rgba(255, 255, 255, .14) 50%, rgba(255, 255, 255, 0) 64%);
+    --cs-light: #e7eefa; --cs-dark: #1f4ca3;
+    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, 0) 60%), radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .08), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 -1px 0 rgba(0, 0, 0, .3), inset 0 0 7px rgba(0, 0, 0, .2);
     --cs-frame: linear-gradient(160deg, #17264c, #0b142e); --cs-line: #9fb3dd; --cs-coord: #a8badf;
-    --cs-last: rgba(90, 200, 255, .34); --cs-selected: rgba(90, 200, 255, .5); --cs-dot: rgba(10, 22, 60, .34);
-    --cs-rim-b: rgba(225, 235, 255, .8); --cs-rim-size: 1.3px;
+    --cs-last: rgba(90, 200, 255, .36); --cs-selected: rgba(90, 200, 255, .52); --cs-dot: rgba(10, 22, 60, .34);
+    --cs-rim-b: rgba(225, 235, 255, .85); --cs-rim-size: 1.3px;
 }
 [data-skin="obsidian"] {
-    --cs-light: #3b3250; --cs-dark: #160f20;
-    --cs-light-bg: linear-gradient(135deg, #41375a, #2f2841);
-    --cs-dark-bg: linear-gradient(135deg, #1e1529, #110b18);
-    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 34%, rgba(196, 168, 255, .09) 48%, rgba(255, 255, 255, 0) 62%), radial-gradient(circle at 18% 12%, rgba(150, 100, 255, .1), transparent 48%);
+    --cs-light: #3a2e52; --cs-dark: #0b0613;
+    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, 0) 60%), radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .08), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(200, 170, 255, .12), inset 0 -1px 0 rgba(0, 0, 0, .45), inset 0 0 8px rgba(0, 0, 0, .3);
     --cs-frame: linear-gradient(160deg, #150e1e, #08050c); --cs-line: #5d4b94; --cs-coord: #8f83b0;
-    --cs-last: rgba(175, 135, 255, .34); --cs-selected: rgba(170, 130, 255, .44); --cs-dot: rgba(235, 225, 255, .3);
-    --cs-rim-b: rgba(214, 192, 255, .8); --cs-rim-size: 1.3px;
+    --cs-last: rgba(175, 135, 255, .36); --cs-selected: rgba(170, 130, 255, .46); --cs-dot: rgba(235, 225, 255, .32);
+    --cs-rim-b: rgba(214, 192, 255, .85); --cs-rim-size: 1.3px;
 }
 [data-skin="gold"] {
     --cs-light: #f8f0dc; --cs-dark: #b8924c;
@@ -367,21 +364,20 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
     --cs-last: rgba(255, 160, 0, .3); --cs-selected: rgba(255, 150, 0, .46);
 }
 [data-skin="cosmos"] {
-    --cs-light: #232f60; --cs-dark: #0d1430;
-    --cs-light-bg: linear-gradient(135deg, #27356b, #1d2853);
-    --cs-dark-bg: linear-gradient(135deg, #142047, #0a1028);
-    --cs-tex: radial-gradient(1.2px 1.2px at 12% 18%, rgba(255, 255, 255, .9), transparent), radial-gradient(1px 1px at 37% 64%, rgba(255, 255, 255, .7), transparent), radial-gradient(1.4px 1.4px at 71% 27%, rgba(255, 255, 255, .85), transparent), radial-gradient(1px 1px at 86% 78%, rgba(255, 255, 255, .7), transparent), radial-gradient(1px 1px at 55% 9%, rgba(255, 255, 255, .6), transparent), radial-gradient(1.2px 1.2px at 23% 88%, rgba(255, 255, 255, .75), transparent), radial-gradient(circle at 76% 30%, rgba(168, 98, 255, .26), transparent 44%), radial-gradient(circle at 22% 78%, rgba(40, 170, 255, .2), transparent 48%);
+    --cs-light: #1d2a5c; --cs-dark: #070c26;
+    --cs-tex: radial-gradient(120% 80% at 18% 0%, rgba(160, 180, 255, .07), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(160, 180, 255, .12), inset 0 -1px 0 rgba(0, 0, 0, .4);
     --cs-frame: linear-gradient(160deg, #0c1230, #03050e); --cs-line: #6b7ff0; --cs-coord: #94a2f3;
-    --cs-last: rgba(120, 165, 255, .32); --cs-selected: rgba(120, 165, 255, .5); --cs-dot: rgba(230, 236, 255, .3);
-    --cs-rim-b: rgba(196, 210, 255, .85); --cs-rim-size: 1.4px;
+    --cs-last: rgba(120, 165, 255, .34); --cs-selected: rgba(120, 165, 255, .52); --cs-dot: rgba(230, 236, 255, .32);
+    --cs-rim-b: rgba(196, 210, 255, .9); --cs-rim-size: 1.4px;
 }
 [data-skin="platinum"] {
-    --cs-light: #eef0f3; --cs-dark: #7c8491;
-    --cs-light-bg: linear-gradient(135deg, #f8f9fb, #e3e7ec);
-    --cs-dark-bg: linear-gradient(135deg, #8d95a2, #6c7480);
-    --cs-tex: repeating-linear-gradient(90deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 3px), linear-gradient(125deg, rgba(255, 255, 255, 0) 36%, rgba(255, 255, 255, .22) 50%, rgba(255, 255, 255, 0) 64%);
-    --cs-frame: linear-gradient(160deg, #3b4048, #1b1e23); --cs-line: #c8cdd5; --cs-coord: #c4c9d1;
-    --cs-rim-b: rgba(255, 255, 255, .5); --cs-rim-size: 1.1px;
+    --cs-light: #dfe3e8; --cs-dark: #59606a;
+    --cs-tex: linear-gradient(125deg, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, .14) 46%, rgba(255, 255, 255, 0) 60%);
+    --cs-bevel: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -1px 0 rgba(0, 0, 0, .3);
+    --cs-frame: linear-gradient(160deg, #4a5059, #1c1f24); --cs-line: #d6dbe2; --cs-coord: #c4c9d1;
+    --cs-last: rgba(120, 190, 255, .3); --cs-selected: rgba(120, 190, 255, .46);
+    --cs-rim-b: rgba(255, 255, 255, .6); --cs-rim-size: 1.1px;
 }
 
 :where([data-theme="dark"]) [data-skin="ice"] { --cs-frame: linear-gradient(160deg, #22313d, #141d25); }
@@ -393,15 +389,27 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-skin:active { transform: scale(.96); }
 .cs-skin.is-active { border-color: var(--ui-accent); box-shadow: 0 0 0 2px var(--ui-accent); }
 .cs-skin-board { position: relative; display: block; padding: 4px; border-radius: 10px; background: var(--cs-frame); box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
-.cs-skin-grid { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px var(--cs-line); }
-.cs-skin-grid > span { aspect-ratio: 1; background: var(--cs-light-bg, var(--cs-light)); }
-.cs-skin-grid > span.d { background: var(--cs-dark-bg, var(--cs-dark)); }
+.cs-skin-grid { position: relative; display: block; height: 0; padding-top: 50%; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px var(--cs-line); }
+/* Высоту превью задаёт padding-top (4×2 клетки), клетки — сетка поверх на всю
+   площадь: свойство соотношения сторон в WebKit внутри кнопки сжимало их до нуля. */
+.cs-skin-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+.cs-skin-cells > span { display: block; background: var(--cs-light-tex, none), var(--cs-light-bg, var(--cs-light)); }
+.cs-skin-cells > span.d { background: var(--cs-dark-tex, none), var(--cs-dark-bg, var(--cs-dark)); }
 .cs-skin-grid::after { content: ''; position: absolute; inset: 0; background: var(--cs-tex, none); pointer-events: none; }
-.cs-skin-piece { position: absolute; width: 25%; aspect-ratio: 1; background: center / contain no-repeat; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+.cs-skin-piece { position: absolute; width: 25%; height: 50%; background: center / contain no-repeat; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
 .cs-skin-piece.w { left: 0; top: 50%; }
 .cs-skin-piece.b { left: 75%; top: 0; }
 .cs-skin b { display: -webkit-box; margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.18; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .cs-skin small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-skin.is-locked .cs-skin-board { filter: saturate(.55) brightness(.92); }
 .cs-skin.is-locked::after { content: ''; position: absolute; top: 12px; left: 14px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0, 0, 0, .55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / 12px no-repeat; }
+/* Выбор формы пешки. */
+.cs-pawns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cs-pawn { min-width: 0; padding: 8px 8px 9px; border: 1px solid var(--ui-border); border-radius: 14px; background: var(--ui-surface); color: var(--ui-text); font: inherit; text-align: center; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), box-shadow .2s, border-color .2s; }
+.cs-pawn:active { transform: scale(.95); }
+.cs-pawn.is-active { border-color: var(--ui-accent); box-shadow: 0 0 0 2px var(--ui-accent); }
+.cs-pawn-pair { display: flex; justify-content: center; border-radius: 8px; overflow: hidden; background: var(--cs-light, #fff); }
+.cs-pawn-pair i { display: block; width: 50%; height: 0; padding-top: 50%; background: center / 100% 100% no-repeat; }
+.cs-pawn-pair i.d { background-color: var(--cs-dark, #e1e5ea); filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim-b, transparent)); }
+.cs-pawn b { display: block; margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-settings-label { margin: 20px 4px 10px; font-size: 13px; font-weight: 700; color: var(--ui-muted); text-align: left; }
