@@ -168,7 +168,7 @@
 
     /* ---------- Stockfish в Web Worker ---------- */
     class Engine {
-        constructor() {
+        constructor({ hash = 16 } = {}) {
             this.listeners = new Set();
             this.queue = Promise.resolve();
             this.skill = null;
@@ -181,7 +181,7 @@
                 const timer = setTimeout(() => reject(new Error('engine timeout')), 20000);
                 this.worker.onerror = error => { clearTimeout(timer); reject(error instanceof Error ? error : new Error('engine failed')); };
                 this.wait('uci', line => line === 'uciok')
-                    .then(() => { this.send('setoption name Hash value 16'); return this.wait('isready', line => line === 'readyok'); })
+                    .then(() => { this.send(`setoption name Hash value ${hash}`); return this.wait('isready', line => line === 'readyok'); })
                     .then(() => { clearTimeout(timer); resolve(); }, reject);
             });
         }
@@ -204,7 +204,7 @@
                         const s = line.match(/ score (cp|mate) (-?\d+)/);
                         const pv = line.match(/ pv (.+)$/);
                         const d = line.match(/ depth (\d+)/);
-                        if (s) {
+                        if (s && !/ (?:lower|upper)bound/.test(line)) {
                             const sign = turn === 'w' ? 1 : -1;
                             score = { type: s[1], value: Number(s[2]) * sign, depth: d ? Number(d[1]) : 0 };
                             if (onInfo && pv) onInfo({ score, move: pv[1].split(' ')[0] });
@@ -231,7 +231,7 @@
     const engines = { bot: null, hint: null };
     function engine(kind) {
         if (!engines[kind]) {
-            engines[kind] = new Engine();
+            engines[kind] = new Engine({ hash: kind === 'hint' ? 32 : 16 });
             engines[kind].ready.catch(() => { engines[kind]?.terminate(); engines[kind] = null; });
         }
         return engines[kind];
@@ -293,6 +293,10 @@
         refs.scrim.addEventListener('click', () => { if (ui.dialog?.dismissable !== false) closeDialog(); });
         bindBoard();
         window.addEventListener('resize', () => { if (screen.classList.contains('visible')) layout(); });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) { hintToken++; engines.hint?.stop(); }
+            else if (screen.classList.contains('visible')) scheduleHint();
+        });
         if (typeof updateBackgroundPatterns === 'function') updateBackgroundPatterns();
         applyTexts(screen);
     }
@@ -519,7 +523,10 @@
 
     function renderArrow(hint) {
         if (!refs.arrows) return;
-        if (!hint) { refs.arrows.innerHTML = ''; return; }
+        if (!hint) { refs.arrows.innerHTML = ''; delete refs.arrows.dataset.key; return; }
+        const key = `${view.orientation}${hint.from}${hint.to}`;
+        if (refs.arrows.dataset.key === key && refs.arrows.firstChild) return;
+        refs.arrows.dataset.key = key;
         refs.arrows.innerHTML = arrowSvg(hint.from, hint.to, 'var(--cs-hint)', 'cs-arrow');
         requestAnimationFrame(() => refs.arrows.querySelector('.cs-arrow')?.classList.add('show'));
     }
@@ -948,26 +955,42 @@
         if (!hintOn || !isOwner() || !game || game.over) { renderEval(null); return; }
         hintTimer = setTimeout(runHint, 120);
     }
+    /* Анализ идёт непрерывно, пока ход ваш: глубина растёт (20, 25, 30…),
+       стрелка уточняется. Её показываем только с глубины 14 — раньше расчёт
+       ещё поверхностный и стрелка дёргалась бы. Предел — глубина 30 или
+       30 секунд, чтобы не сажать батарею; в ход соперника хватает короткой оценки. */
+    const HINT_MIN_DEPTH = 14;
+    const HINT_MAX_DEPTH = 30;
+    const HINT_MAX_MS = 30000;
     async function runHint() {
-        if (!hintOn || !game || game.over) return;
+        if (!hintOn || !isOwner() || !game || game.over || document.hidden) return;
         const fen = game.chess.fen();
         const token = ++hintToken;
+        const mine = controls(game.chess.turn());
+        const show = (move, score) => {
+            if (!move || !score) return;
+            const prev = game.hint;
+            const sameMove = prev && prev.fen === fen && prev.move && prev.move.from === move.from && prev.move.to === move.to && prev.move.promotion === move.promotion;
+            game.hint = { fen, move, score };
+            if (!sameMove) renderMarks();
+            renderEval(score);
+        };
         try {
             const eng = engine('hint');
             eng.stop();
             const result = await eng.search({
-                fen, skill: 20, depth: 18, movetime: 1200,
+                fen, skill: 20,
+                depth: mine ? HINT_MAX_DEPTH : 16,
+                movetime: mine ? HINT_MAX_MS : 2500,
                 onInfo: info => {
                     if (token !== hintToken || !game || game.chess.fen() !== fen) return;
-                    const move = core.normalizeMove(info.move);
-                    if (info.score.depth >= 8 && move) { game.hint = { fen, move, score: info.score }; renderMarks(); renderEval(info.score); }
+                    if (info.score.depth < HINT_MIN_DEPTH && info.score.type !== 'mate') return;
+                    show(core.normalizeMove(info.move), info.score);
                 },
             });
             if (token !== hintToken || !game || game.chess.fen() !== fen) return;
-            const move = result.bestmove && core.normalizeMove(result.bestmove);
-            game.hint = { fen, move, score: result.score };
-            renderMarks();
-            renderEval(result.score);
+            const score = result.score;
+            if (score && (score.depth >= HINT_MIN_DEPTH || score.type === 'mate')) show(result.bestmove && core.normalizeMove(result.bestmove), score);
         } catch (_) {
             if (token === hintToken) toast(tr('e_engine'), 'error');
         }
@@ -980,6 +1003,11 @@
             ? `${score.value > 0 ? '+' : '−'}M${Math.abs(score.value)}`
             : `${score.value >= 0 ? '+' : '−'}${(Math.abs(score.value) / 100).toFixed(1)}`;
         pill.textContent = text;
+        if (score.depth) {
+            const depth = document.createElement('small');
+            depth.textContent = String(score.depth);
+            pill.appendChild(depth);
+        }
         pill.classList.add('show');
     }
     function setHint(on) {

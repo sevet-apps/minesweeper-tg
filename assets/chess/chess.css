@@ -144,6 +144,8 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 /* Оценка позиции — бейдж под лампочкой подсказки: в шапке он места не занимает. */
 .cs-eval { position: absolute; top: calc(100% + 6px); right: 65px; z-index: 4; padding: 3px 8px; border-radius: 999px; background: var(--cs-hint); color: #fff; font-size: 12px; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 4px 12px rgba(48, 195, 90, .35); pointer-events: none; opacity: 0; transform: translate(50%, -4px) scale(.9); transition: opacity .2s, transform .25s var(--ui-spring); }
 .cs-eval.show { opacity: 1; transform: translate(50%, 0) scale(1); }
+/* Глубина расчёта рядом с оценкой: «+1.1 · 26». */
+.cs-eval small { margin-left: 5px; padding-left: 5px; border-left: 1px solid rgba(255, 255, 255, .45); font-size: 11px; font-weight: 700; opacity: .85; }
 
 .cs-board.is-review .cs-squares { filter: saturate(.85); }
 .cs-board.is-over .cs-pieces { transition: filter .4s; }
