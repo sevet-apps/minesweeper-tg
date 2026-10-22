@@ -364,12 +364,12 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
     --cs-last: rgba(255, 160, 0, .3); --cs-selected: rgba(255, 150, 0, .46);
 }
 [data-skin="cosmos"] {
-    --cs-light: #1d2a5c; --cs-dark: #070c26;
-    --cs-tex: radial-gradient(120% 80% at 18% 0%, rgba(160, 180, 255, .07), transparent 60%);
-    --cs-bevel: inset 0 1px 0 rgba(160, 180, 255, .12), inset 0 -1px 0 rgba(0, 0, 0, .4);
-    --cs-frame: linear-gradient(160deg, #0c1230, #03050e); --cs-line: #6b7ff0; --cs-coord: #94a2f3;
-    --cs-last: rgba(120, 165, 255, .34); --cs-selected: rgba(120, 165, 255, .52); --cs-dot: rgba(230, 236, 255, .32);
-    --cs-rim-b: rgba(196, 210, 255, .9); --cs-rim-size: 1.4px;
+    --cs-light: #24232d; --cs-dark: #06060a;
+    --cs-tex: radial-gradient(120% 80% at 18% 0%, rgba(255, 255, 255, .04), transparent 60%);
+    --cs-bevel: inset 0 1px 0 rgba(255, 255, 255, .07), inset 0 -1px 0 rgba(0, 0, 0, .5);
+    --cs-frame: linear-gradient(160deg, #111016, #020203); --cs-line: #4a4858; --cs-coord: #9c99ad;
+    --cs-last: rgba(190, 170, 255, .26); --cs-selected: rgba(190, 170, 255, .4); --cs-dot: rgba(235, 232, 255, .3);
+    --cs-rim-b: rgba(225, 222, 240, .8); --cs-rim-size: 1.3px;
 }
 [data-skin="platinum"] {
     --cs-light: #dfe3e8; --cs-dark: #59606a;
@@ -403,13 +403,4 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-skin small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-skin.is-locked .cs-skin-board { filter: saturate(.55) brightness(.92); }
 .cs-skin.is-locked::after { content: ''; position: absolute; top: 12px; left: 14px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0, 0, 0, .55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / 12px no-repeat; }
-/* Выбор формы пешки. */
-.cs-pawns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.cs-pawn { min-width: 0; padding: 8px 8px 9px; border: 1px solid var(--ui-border); border-radius: 14px; background: var(--ui-surface); color: var(--ui-text); font: inherit; text-align: center; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), box-shadow .2s, border-color .2s; }
-.cs-pawn:active { transform: scale(.95); }
-.cs-pawn.is-active { border-color: var(--ui-accent); box-shadow: 0 0 0 2px var(--ui-accent); }
-.cs-pawn-pair { display: flex; justify-content: center; border-radius: 8px; overflow: hidden; background: var(--cs-light, #fff); }
-.cs-pawn-pair i { display: block; width: 50%; height: 0; padding-top: 50%; background: center / 100% 100% no-repeat; }
-.cs-pawn-pair i.d { background-color: var(--cs-dark, #e1e5ea); filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim-b, transparent)); }
-.cs-pawn b { display: block; margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-settings-label { margin: 20px 4px 10px; font-size: 13px; font-weight: 700; color: var(--ui-muted); text-align: left; }

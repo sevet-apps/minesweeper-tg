@@ -30,12 +30,7 @@
     const me = () => tg?.initDataUnsafe?.user || null;
     const isOwner = () => String(me()?.id || '') === OWNER_ID;
     const myName = () => (typeof tgName === 'function' ? tgName(me()) : (me()?.first_name || tr('you')));
-    /** Форма пешки выбирается в настройках; остальные фигуры одни. */
-    const PAWN_STYLES = ['compact', 'classic', 'round', 'minimal', 'staunton'];
-    const pieceUrl = code => {
-        const style = code[1] === 'P' && typeof settings !== 'undefined' && PAWN_STYLES.includes(settings.pawn) && settings.pawn !== 'compact' ? `-${settings.pawn}` : '';
-        return `${BASE}pieces/${code}${style}.svg`;
-    };
+    const pieceUrl = code => `${BASE}pieces/${code}.svg`;
     const FLAG_LANGS = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'];
     /** Круглый флаг языка игрока, как в настройках языка приложения. */
     const flagHtml = code => (FLAG_LANGS.includes(code) ? `<i class="cs-flag" style="background-image:url('${BASE}../flags/${code}.svg?v=20261022')"></i>` : '');
@@ -91,7 +86,7 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, skin: 'classic', pawn: 'compact' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
@@ -1707,15 +1702,12 @@
             </div>
             <p class="cs-settings-label">${esc(tr('board'))}</p>
             <div class="cs-skins" data-ref="skins">${skinTiles()}</div>
-            <p class="cs-settings-label">${esc(tr('pawns'))}</p>
-            <div class="cs-pawns">${pawnTiles()}</div>
             <div class="cs-sheet-actions">
                 ${game?.moves.length ? `<button type="button" class="cs-btn" data-dlg="pgn">${esc(tr('copyPgn'))}</button>` : ''}
                 <button type="button" class="cs-btn" data-dlg="close">${esc(tr('backToGame'))}</button>
             </div>`);
         refs.sheet.querySelector('[data-dlg="pgn"]')?.addEventListener('click', copyPgn);
         refs.sheet.querySelector('.cs-skins').addEventListener('click', onSkinClick);
-        refs.sheet.querySelector('.cs-pawns').addEventListener('click', onPawnClick);
         fetchProfile().then(() => {
             const grid = refs.sheet.querySelector('.cs-skins');
             if (grid && ui.dialog?.kind === 'settings') grid.innerHTML = skinTiles();
@@ -1751,35 +1743,6 @@
                 <span class="cs-skin-board"><span class="cs-skin-grid"><span class="cs-skin-cells">${squares}</span><i class="cs-skin-piece w" style="background-image:url('${pieceUrl('wQ')}')"></i><i class="cs-skin-piece b" style="background-image:url('${pieceUrl('bN')}')"></i></span></span>
                 <b>${esc(tr(`skin_${skin.id}`))}</b>${note ? `<small>${esc(note)}</small>` : ''}</button>`;
         }).join('');
-    }
-    function pawnTiles() {
-        return PAWN_STYLES.map(style => {
-            const suffix = style === 'compact' ? '' : `-${style}`;
-            const active = (settings.pawn || 'compact') === style;
-            return `<button type="button" class="cs-pawn${active ? ' is-active' : ''}" data-pawn="${style}" aria-pressed="${active}">
-                <span class="cs-pawn-pair"><i style="background-image:url('${BASE}pieces/wP${suffix}.svg')"></i><i class="d" style="background-image:url('${BASE}pieces/bP${suffix}.svg')"></i></span>
-                <b>${esc(tr(`pawn_${style}`))}</b></button>`;
-        }).join('');
-    }
-    function onPawnClick(event) {
-        const tile = event.target.closest('[data-pawn]');
-        if (!tile || !PAWN_STYLES.includes(tile.dataset.pawn)) return;
-        settings.pawn = tile.dataset.pawn;
-        saveSettings();
-        haptic('select');
-        tile.parentElement.querySelectorAll('.cs-pawn').forEach(el => {
-            const on = el === tile;
-            el.classList.toggle('is-active', on);
-            el.setAttribute('aria-pressed', String(on));
-        });
-        // Пешки на доске, в списке взятых и в списке ходов — новой формы.
-        if (game) {
-            const selected = ui.selected;
-            rebuildPieces(viewChess());
-            if (selected) view.els.get(selected)?.classList.add('selected');
-            renderPlayers();
-            renderMoveList();
-        }
     }
     async function onSkinClick(event) {
         const tile = event.target.closest('[data-skin-pick]');
