@@ -3619,7 +3619,7 @@
     <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261001">
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
-    <link rel="stylesheet" href="assets/ui/app.css?v=20261020">
+    <link rel="stylesheet" href="assets/ui/app.css?v=20261022">
     <script src="assets/ui/sheets.js?v=20261020" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
@@ -4601,7 +4601,7 @@
                         <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"/></svg>
                         <span data-i18n="languageInterface">Язык интерфейса</span>
                     </span>
-                    <span class="language-row-value"><span class="lang-flag"><img id="languageRowFlag" src="assets/flags/ru.svg?v=20261019" alt=""></span><span id="languageRowName">Русский</span><svg class="language-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+                    <span class="language-row-value"><span class="lang-flag"><img id="languageRowFlag" src="assets/flags/ru.svg?v=20261022" alt=""></span><span id="languageRowName">Русский</span><svg class="language-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
                 </button>
             </div>
 
@@ -5255,7 +5255,7 @@
             ['fr', 'Français', 'French'], ['ja', '日本語', 'Japanese'], ['de', 'Deutsch', 'German'],
             ['ko', '한국어', 'Korean'], ['tr', 'Türkçe', 'Turkish'], ['vi', 'Tiếng Việt', 'Vietnamese'],
         ];
-        const FLAG_VERSION = '20261019';
+        const FLAG_VERSION = '20261022';
         const languageIsAuto = () => !supportedLanguages.includes(localStorage.getItem(languageStorageKey));
         function languageFlagHtml(code) {
             return `<span class="lang-flag"><img src="assets/flags/${code}.svg?v=${FLAG_VERSION}" alt="" loading="lazy"></span>`;
@@ -6455,7 +6455,7 @@
         }
 
         // --- Шахматы: модуль грузится при первом открытии ---
-        const CHESS_VERSION = '20261021';
+        const CHESS_VERSION = '20261022';
         let chessLoading = null;
         function loadChessApp() {
             if (window.SparkChess?.init) return window.SparkChess.init();

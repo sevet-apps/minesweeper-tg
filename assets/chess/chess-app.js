@@ -31,6 +31,9 @@
     const isOwner = () => String(me()?.id || '') === OWNER_ID;
     const myName = () => (typeof tgName === 'function' ? tgName(me()) : (me()?.first_name || tr('you')));
     const pieceUrl = code => `${BASE}pieces/${code}.svg`;
+    const FLAG_LANGS = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'];
+    /** Круглый флаг языка игрока, как в настройках языка приложения. */
+    const flagHtml = code => (FLAG_LANGS.includes(code) ? `<i class="cs-flag" style="background-image:url('${BASE}../flags/${code}.svg?v=20261022')"></i>` : '');
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const readJson = (key, fallback) => { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ?? fallback; } catch (_) { return fallback; } };
     const writeJson = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} };
@@ -79,13 +82,44 @@
         refresh: '<span class="refresh-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg></span>',
         send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg>',
         chevron: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+        pen: '<svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z"/><path d="M14 7l3 3"/></svg>',
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, autoFlip: false }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
+
+    /* ---------- скины доски ----------
+       Базовые доступны всем; премиальные открываются лучшим рейтингом (peak)
+       в своём режиме — после проигрышей доска не пропадает. Скин видит только
+       тот, кто его выбрал: у соперника на экране своя доска. */
+    const SKINS = Object.freeze([
+        { id: 'classic' }, { id: 'slate' }, { id: 'sage' }, { id: 'wood' },
+        { id: 'ice', unlock: { cat: 'bullet', elo: 1300 } },
+        { id: 'rosewood', unlock: { cat: 'rapid', elo: 1400 } },
+        { id: 'emerald', unlock: { cat: 'blitz', elo: 1500 } },
+        { id: 'marble', unlock: { cat: 'rapid', elo: 1700 } },
+        { id: 'sapphire', unlock: { cat: 'bullet', elo: 1800 } },
+        { id: 'obsidian', unlock: { cat: 'blitz', elo: 2000 } },
+        { id: 'gold', unlock: { cat: 'rapid', elo: 2100 } },
+        { id: 'cosmos', unlock: { cat: 'blitz', elo: 2300 } },
+        { id: 'platinum', unlock: { cat: 'bullet', elo: 2500 } },
+    ].map(Object.freeze));
+    function skinUnlocked(skin, profile) {
+        if (!skin.unlock || isOwner()) return true;
+        const row = profile?.categories?.[skin.unlock.cat];
+        return Math.max(Number(row?.peak) || 0, Number(row?.rating) || 0) >= skin.unlock.elo;
+    }
+    function applySkin() {
+        if (!screen) return;
+        const skin = SKINS.find(item => item.id === settings.skin) || SKINS[0];
+        const ok = skinUnlocked(skin, ratingCache?.data);
+        // Пока профиль не загружен, премиальную доску не снимаем — проверим, когда придут данные.
+        const id = ok || !ratingCache ? skin.id : 'classic';
+        if (id === 'classic') delete screen.dataset.skin; else screen.dataset.skin = id;
+    }
 
     /* ---------- звук (Web Audio: без задержек и с наложением) ---------- */
     const Sound = {
@@ -237,6 +271,7 @@
                         <div class="cs-squares" data-ref="squares"></div>
                         <div class="cs-layer" data-ref="marks"></div>
                         <div class="cs-pieces" data-ref="pieces"></div>
+                        <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                         <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                     </div>
                 </div>
@@ -253,6 +288,7 @@
             <div class="cs-sheet" data-ref="sheet" role="dialog" aria-modal="true"></div>`;
         refs = {};
         screen.querySelectorAll('[data-ref]').forEach(el => { refs[el.dataset.ref] = el; });
+        screen.classList.toggle('no-wiggle', !settings.wiggle);
         screen.addEventListener('click', onScreenClick);
         refs.scrim.addEventListener('click', () => { if (ui.dialog?.dismissable !== false) closeDialog(); });
         bindBoard();
@@ -484,7 +520,13 @@
     function renderArrow(hint) {
         if (!refs.arrows) return;
         if (!hint) { refs.arrows.innerHTML = ''; return; }
-        const [x0, y0] = sqXY(hint.from), [x1, y1] = sqXY(hint.to);
+        refs.arrows.innerHTML = arrowSvg(hint.from, hint.to, 'var(--cs-hint)', 'cs-arrow');
+        requestAnimationFrame(() => refs.arrows.querySelector('.cs-arrow')?.classList.add('show'));
+    }
+
+    /** Стрелка от клетки к клетке; у коня — уголком, как ходит фигура. */
+    function arrowSvg(from, to, color, cls = '') {
+        const [x0, y0] = sqXY(from), [x1, y1] = sqXY(to);
         const a = [x0 + 0.5, y0 + 0.5], b = [x1 + 0.5, y1 + 0.5];
         const knight = Math.abs(x1 - x0) * Math.abs(y1 - y0) === 2;
         const points = knight
@@ -501,9 +543,58 @@
             [q[0] - Math.cos(ang) * 0.42 + Math.cos(ang + Math.PI / 2) * 0.24, q[1] - Math.sin(ang) * 0.42 + Math.sin(ang + Math.PI / 2) * 0.24],
             [q[0] - Math.cos(ang) * 0.42 - Math.cos(ang + Math.PI / 2) * 0.24, q[1] - Math.sin(ang) * 0.42 - Math.sin(ang + Math.PI / 2) * 0.24],
         ].map(pt => pt.map(v => v.toFixed(3)).join(',')).join(' ');
-        refs.arrows.innerHTML = `<g class="cs-arrow" fill="none" stroke="var(--cs-hint)" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="${line}" stroke-width="0.17"/><polygon points="${head}" fill="var(--cs-hint)" stroke-width="0.04"/></g>`;
-        requestAnimationFrame(() => refs.arrows.querySelector('.cs-arrow')?.classList.add('show'));
+        return `<g class="${cls}" fill="none" stroke="${color}" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="${line}" stroke-width="0.17"/><polygon points="${head}" fill="${color}" stroke-width="0.04"/></g>`;
+    }
+
+    /* ---------- разметка: стрелки и кружки ---------- */
+    const NOTE_COLORS = { orange: '#ff9f0a', green: '#30c35a', blue: '#0a84ff', red: '#ff453a' };
+    ui.notes = { arrows: [], circles: [] };
+    ui.drawMode = false;
+    ui.noteDrag = null;
+    function noteColor(event) {
+        if (event.shiftKey) return 'green';
+        if (event.altKey) return 'blue';
+        if (event.ctrlKey || event.metaKey) return 'red';
+        return 'orange';
+    }
+    function renderNotes() {
+        if (!refs.notes) return;
+        const parts = [];
+        for (const c of ui.notes.circles) {
+            const [x, y] = sqXY(c.sq);
+            parts.push(`<circle cx="${x + 0.5}" cy="${y + 0.5}" r="0.44" fill="none" stroke="${NOTE_COLORS[c.color]}" stroke-width="0.08"/>`);
+        }
+        for (const a of ui.notes.arrows) parts.push(arrowSvg(a.from, a.to, NOTE_COLORS[a.color]));
+        const d = ui.noteDrag;
+        if (d && d.to && d.to !== d.from) parts.push(arrowSvg(d.from, d.to, NOTE_COLORS[d.color], 'is-preview'));
+        refs.notes.innerHTML = parts.join('');
+    }
+    function toggleNote(from, to, color) {
+        const notes = ui.notes;
+        const list = from === to ? notes.circles : notes.arrows;
+        const i = from === to ? list.findIndex(c => c.sq === from) : list.findIndex(a => a.from === from && a.to === to);
+        const same = i >= 0 && list[i].color === color;
+        if (i >= 0) list.splice(i, 1);
+        if (!same) list.push(from === to ? { sq: from, color } : { from, to, color });
+        haptic('select');
+        renderNotes();
+    }
+    function clearAnnotations(render = true) {
+        if (!ui.notes.arrows.length && !ui.notes.circles.length) return;
+        ui.notes = { arrows: [], circles: [] };
+        if (render) renderNotes(); else if (refs.notes) refs.notes.innerHTML = '';
+    }
+    function setDrawMode(on) {
+        ui.drawMode = !!on;
+        renderActions();
+        haptic('light');
+        if (ui.drawMode) {
+            clearSelection();
+            let seen = false;
+            try { seen = !!localStorage.getItem('chess_arrows_hint'); localStorage.setItem('chess_arrows_hint', '1'); } catch (_) {}
+            if (!seen) toast(tr('arrowsHint'));
+        }
     }
 
     /* ---------- ввод: нажатие и перетаскивание ---------- */
@@ -520,15 +611,25 @@
         board.addEventListener('pointerdown', onPointerDown);
         board.addEventListener('pointermove', onPointerMove);
         board.addEventListener('pointerup', onPointerUp);
-        board.addEventListener('pointercancel', () => cancelDrag(true));
-        board.addEventListener('contextmenu', event => { event.preventDefault(); clearPremove(); clearSelection(); });
+        board.addEventListener('pointercancel', () => { ui.noteDrag = null; renderNotes(); cancelDrag(true); });
+        board.addEventListener('contextmenu', event => event.preventDefault());
     }
 
     function onPointerDown(event) {
-        if (!game || event.button > 0) return;
+        if (!game) return;
         Sound.unlock();
         const sq = pointSq(event);
         if (!sq) return;
+        // Правая кнопка мыши или режим «Стрелки» — рисуем, а не ходим.
+        if (event.button === 2 || (ui.drawMode && event.button === 0)) {
+            if (event.button === 2 && game.premove) clearPremove();
+            ui.noteDrag = { from: sq, to: sq, color: noteColor(event), pointerId: event.pointerId };
+            try { refs.board.setPointerCapture(event.pointerId); } catch (_) {}
+            event.preventDefault();
+            return;
+        }
+        if (event.button > 0) return;
+        clearAnnotations();
         if (game.view != null) { goLive(); return; }
         if (ui.promo) return;
         const chess = game.chess;
@@ -555,6 +656,12 @@
     }
 
     function onPointerMove(event) {
+        const note = ui.noteDrag;
+        if (note && event.pointerId === note.pointerId) {
+            const over = pointSq(event);
+            if (over && over !== note.to) { note.to = over; renderNotes(); }
+            return;
+        }
         const drag = ui.drag;
         if (!drag || event.pointerId !== drag.pointerId) return;
         if (!drag.active) {
@@ -575,6 +682,13 @@
     }
 
     function onPointerUp(event) {
+        const note = ui.noteDrag;
+        if (note && event.pointerId === note.pointerId) {
+            ui.noteDrag = null;
+            try { refs.board.releasePointerCapture(event.pointerId); } catch (_) {}
+            toggleNote(note.from, pointSq(event) || note.to, note.color);
+            return;
+        }
         const drag = ui.drag;
         if (!drag || event.pointerId !== drag.pointerId) return;
         ui.drag = null;
@@ -629,6 +743,20 @@
         if (el) { el.classList.remove('selected'); void el.offsetWidth; el.classList.add('selected'); }
         haptic('select');
         renderMarks();
+    }
+
+    /** После хода соперника выбранная фигура остаётся выбранной: пересчитываем,
+        куда она теперь может пойти (предход превращается в обычный ход). */
+    function refreshSelection() {
+        const sq = ui.selected;
+        if (!sq) return;
+        const piece = game.chess.get(sq);
+        if (!piece || !canSelect(piece.color)) { clearSelection(false); return; }
+        ui.preMode = !(canMoveNow() && piece.color === game.chess.turn());
+        ui.targets = ui.preMode ? premoveTargets(sq) : game.chess.moves({ square: sq, verbose: true });
+        if (ui.hover && !ui.targets.some(m => m.to === ui.hover)) ui.hover = null;
+        const el = view.els.get(sq);
+        if (el && !el.classList.contains('dragging')) el.classList.add('selected');
     }
 
     function clearSelection(render = true) {
@@ -710,9 +838,16 @@
         const move = core.tryMove(game.chess, raw);
         if (!move) return null;
         game.moves.push(move);
-        clearSelection(false);
+        // Ход соперника не сбрасывает выбранную (или перетаскиваемую) фигуру —
+        // если только её не взяли этим ходом.
+        const capturedSq = move.flags.includes('e') ? move.to[0] + move.from[1] : move.to;
+        const keepSelection = !byUser && ui.selected && ui.selected !== capturedSq && ui.selected !== move.from;
+        if (!keepSelection) clearSelection(false);
+        if (!byUser && ui.drag && (ui.drag.sq === capturedSq || ui.drag.sq === move.from)) ui.drag = null;
+        clearAnnotations(false);
         if (game.view != null) { game.view = null; syncPieces(positionMap(game.chess), { animate: true }); }
         else animateMove(move, { dropped });
+        if (keepSelection) refreshSelection();
         if (game.clock) pressOfflineClock(move.color);
         const check = game.chess.inCheck();
         if (!quiet) {
@@ -921,14 +1056,14 @@
         if (game.mode === 'local') return { name: tr(color === 'w' ? 'white' : 'black'), sub: '', avatar: null };
         if (color === game.myColor) {
             const sub = game.mode === 'online' && game.online.myRating ? String(game.online.myRating) : '';
-            return { name: myName(), sub, avatar: me()?.photo_url || null };
+            return { name: myName(), sub, avatar: me()?.photo_url || null, lang: lang() };
         }
         if (game.mode === 'bot') {
             const level = core.botLevel(game.level);
             return { name: tr('botName', { level: tr(`level${level.level}`) }), sub: `~${level.elo}`, avatar: null, bot: true };
         }
         const opp = game.online.opponent || {};
-        return { name: opp.name || tr('opponent'), sub: opp.rating ? String(opp.rating) : '', avatar: opp.avatar || null, away: !!game.online.away };
+        return { name: opp.name || tr('opponent'), sub: opp.rating ? String(opp.rating) : '', avatar: opp.avatar || null, lang: opp.lang || null, away: !!game.online.away };
     }
 
     function renderPlayers() {
@@ -955,7 +1090,7 @@
             el.innerHTML = `
                 <div class="cs-ava${turn ? ' is-turn' : ''}${info.away ? ' is-away' : ''}">${avatar}</div>
                 <div class="cs-pinfo">
-                    <div class="cs-pname"><span>${esc(info.name)}</span>${info.sub ? `<small>${esc(info.sub)}</small>` : ''}</div>
+                    <div class="cs-pname">${flagHtml(info.lang)}<span>${esc(info.name)}</span>${info.sub ? `<small>${esc(info.sub)}</small>` : ''}</div>
                     <div class="cs-captured">${capHtml}</div>
                 </div>
                 <div class="cs-clock" hidden></div>`;
@@ -1013,20 +1148,23 @@
     function renderActions() {
         if (!game) return;
         const buttons = [];
-        const add = (act, icon, label, opts = {}) => buttons.push(`<button type="button" class="cs-act${opts.danger ? ' is-danger' : ''}" data-act="${act}"${opts.disabled ? ' disabled' : ''}>${icon}<span>${esc(label)}</span></button>`);
+        const add = (act, icon, label, opts = {}) => buttons.push(`<button type="button" class="cs-act${opts.danger ? ' is-danger' : ''}${opts.active ? ' is-active' : ''}" data-act="${act}"${opts.disabled ? ' disabled' : ''}${opts.active != null ? ` aria-pressed="${opts.active ? 'true' : 'false'}"` : ''}>${icon}<span>${esc(label)}</span></button>`);
         if (game.over) {
             if (game.mode === 'online') add('rematch', ICON.rematch, tr('rematch'));
             else add('again', ICON.plus, tr('newGame'));
             add('flip', ICON.flip, tr('flip'));
+            add('pen', ICON.pen, tr('arrows'), { active: ui.drawMode });
             add('result', ICON.trophy, tr('resultBtn'));
         } else if (game.mode === 'online') {
             add('flip', ICON.flip, tr('flip'));
+            add('pen', ICON.pen, tr('arrows'), { active: ui.drawMode });
             add('draw', ICON.draw, tr('offerDraw'), { disabled: game.moves.length < 2 || game.online.drawSent });
             if (game.moves.length < 2) add('resign', ICON.abort, tr('abort'), { danger: true });
             else add('resign', ICON.flag, tr('resign'), { danger: true });
         } else {
             add('undo', ICON.undo, tr('takeback'), { disabled: !game.moves.length });
             add('flip', ICON.flip, tr('flip'));
+            add('pen', ICON.pen, tr('arrows'), { active: ui.drawMode });
             if (game.mode === 'local') add('draw', ICON.draw, tr('offerDraw'), { disabled: game.moves.length < 2 });
             add('resign', ICON.flag, tr('resign'), { danger: true, disabled: !game.moves.length });
         }
@@ -1042,6 +1180,7 @@
         if (target === prev) return;
         clearSelection(false);
         game.view = target === max ? null : target;
+        clearAnnotations();
         const chess = viewChess();
         if (Math.abs(target - prev) === 1 && target > prev) {
             const m = game.moves[target - 1];
@@ -1067,6 +1206,7 @@
         buildSquares();
         for (const [sq, el] of view.els) slide(el, sq);
         renderMarks();
+        renderNotes();
         renderPlayers();
     }
 
@@ -1098,6 +1238,9 @@
         }
         lowTimeWarned = false;
         view.orientation = orientation || (mode === 'local' ? 'w' : myColor);
+        ui.notes = { arrows: [], circles: [] };
+        ui.drawMode = false;
+        if (refs.notes) refs.notes.innerHTML = '';
         buildSquares();
         rebuildPieces(chess);
         refs.board.classList.remove('is-review', 'is-over');
@@ -1114,6 +1257,8 @@
             screen.classList.add('visible');
             playtime('begin');
         }
+        applySkin();
+        if (SKINS.find(item => item.id === settings.skin)?.unlock) fetchProfile();
         requestAnimationFrame(() => { layout(); renderMarks(); });
         setTimeout(layout, 380);
         refs.hintBtn.hidden = !isOwner();
@@ -1507,18 +1652,25 @@
     }
 
     function showSettings() {
-        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves']];
+        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
         openDialog('settings', `
             <h2>${esc(tr('settings'))}</h2>
             <div class="cs-settings" style="margin-top:12px">
                 ${rows.map(([key, label]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button></div>`).join('')}
             </div>
+            <p class="cs-settings-label">${esc(tr('board'))}</p>
+            <div class="cs-skins" data-ref="skins">${skinTiles()}</div>
             <div class="cs-sheet-actions">
                 ${game?.moves.length ? `<button type="button" class="cs-btn" data-dlg="pgn">${esc(tr('copyPgn'))}</button>` : ''}
                 <button type="button" class="cs-btn" data-dlg="close">${esc(tr('backToGame'))}</button>
             </div>`);
         refs.sheet.querySelector('[data-dlg="pgn"]')?.addEventListener('click', copyPgn);
+        refs.sheet.querySelector('.cs-skins').addEventListener('click', onSkinClick);
+        fetchProfile().then(() => {
+            const grid = refs.sheet.querySelector('.cs-skins');
+            if (grid && ui.dialog?.kind === 'settings') grid.innerHTML = skinTiles();
+        });
         refs.sheet.querySelectorAll('[data-setting]').forEach(btn => {
             btn.onclick = () => {
                 const key = btn.dataset.setting;
@@ -1529,11 +1681,48 @@
                 haptic('select');
                 if (key === 'coords') { refs.frame.classList.toggle('no-coords', !settings.coords); layout(); }
                 if (key === 'showMoves') renderMarks();
+                if (key === 'wiggle') screen.classList.toggle('no-wiggle', !settings.wiggle);
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
             };
         });
         refs.sheet.querySelector('[data-dlg="close"]').onclick = () => closeDialog();
+    }
+
+    function skinTiles() {
+        const profile = ratingCache?.data || null;
+        return SKINS.map(skin => {
+            const open = skinUnlocked(skin, profile);
+            const current = screen?.dataset.skin || 'classic';
+            const active = current === skin.id;
+            // Требование видно всегда; у открытой доски — с галочкой.
+            const note = skin.unlock ? `${tr(skin.unlock.cat)} ${skin.unlock.elo}${open ? ' ✓' : ''}` : '';
+            const squares = Array.from({ length: 8 }, (_, i) => `<span class="${(i + Math.floor(i / 4)) % 2 ? 'd' : ''}"></span>`).join('');
+            return `<button type="button" class="cs-skin${active ? ' is-active' : ''}${open ? '' : ' is-locked'}" data-skin="${skin.id}" data-skin-pick="${skin.id}" aria-pressed="${active}">
+                <span class="cs-skin-board"><span class="cs-skin-grid">${squares}<i class="cs-skin-piece w" style="background-image:url('${pieceUrl('wQ')}')"></i><i class="cs-skin-piece b" style="background-image:url('${pieceUrl('bN')}')"></i></span></span>
+                <b>${esc(tr(`skin_${skin.id}`))}</b>${note ? `<small>${esc(note)}</small>` : ''}</button>`;
+        }).join('');
+    }
+    async function onSkinClick(event) {
+        const tile = event.target.closest('[data-skin-pick]');
+        if (!tile) return;
+        const skin = SKINS.find(item => item.id === tile.dataset.skinPick);
+        if (!skin) return;
+        if (skin.unlock && !ratingCache) await fetchProfile();
+        if (!skinUnlocked(skin, ratingCache?.data)) {
+            haptic('error');
+            toast(tr('locked', { cat: tr(skin.unlock.cat), elo: skin.unlock.elo }), 'error');
+            return;
+        }
+        settings.skin = skin.id;
+        saveSettings();
+        applySkin();
+        haptic('select');
+        tile.parentElement.querySelectorAll('.cs-skin').forEach(el => {
+            const on = el === tile;
+            el.classList.toggle('is-active', on);
+            el.setAttribute('aria-pressed', String(on));
+        });
     }
 
     /** Партия в PGN: заголовки, ходы и результат — для разбора в любой программе. */
@@ -1587,6 +1776,7 @@
             case 'prev': return setView((game.view == null ? game.moves.length : game.view) - 1);
             case 'next': return setView((game.view == null ? game.moves.length : game.view) + 1);
             case 'flip': haptic('light'); return setOrientation(other(view.orientation));
+            case 'pen': return setDrawMode(!ui.drawMode);
             case 'undo': return takeback();
             case 'draw': return offerDraw();
             case 'resign': return resign();
@@ -1624,6 +1814,7 @@
         game.premove = null;
         clearSelection(false);
         syncPieces(positionMap(game.chess), { animate: true });
+        clearAnnotations();
         Sound.play('move', 0.7);
         haptic('light');
         afterChange();
@@ -1841,7 +2032,7 @@
 
     function profilePayload() {
         const user = me();
-        return { username: myName(), photo_url: user?.photo_url || '' };
+        return { username: myName(), photo_url: user?.photo_url || '', lang: lang() };
     }
 
     function quickMatch() {
@@ -1877,21 +2068,25 @@
                 ? `<img class="ck-room-ava" src="${esc(room.avatar)}" alt="" referrerpolicy="no-referrer">`
                 : `<span class="ck-room-ava">${esc((room.name || '?').slice(0, 1).toUpperCase())}</span>`;
             const tc = core.timeControl(room.tc);
-            return `<div class="ck-room">${avatar}<div class="ck-room-text"><b>${esc(room.name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
+            return `<div class="ck-room">${avatar}<div class="ck-room-text"><b>${flagHtml(room.lang)}${esc(room.name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
                 <span class="cs-room-tc">${esc(tc ? tc.id : room.tc)}</span>
                 <button class="ck-room-join" type="button" data-join="${esc(room.code)}">${esc(tr('join'))}</button></div>`;
         }).join('');
     }
 
-    async function loadRating() {
-        if (ratingCache && Date.now() - ratingCache.at < 30000) { showRating(ratingCache.data); return; }
+    async function fetchProfile() {
+        if (ratingCache && Date.now() - ratingCache.at < 30000) return ratingCache.data;
         try {
             const response = await fetch(`${typeof API_BASE_URL === 'string' ? API_BASE_URL : ''}/api/chess/profile`, { headers: { 'X-Init-Data': tg?.initData || '' } });
             if (!response.ok) throw new Error(String(response.status));
             const data = await response.json();
             ratingCache = { at: Date.now(), data };
-            showRating(data);
-        } catch (_) { showRating(null); }
+            applySkin();
+            return data;
+        } catch (_) { return ratingCache?.data || null; }
+    }
+    async function loadRating() {
+        showRating(await fetchProfile());
     }
     /** Рейтинг в той категории (пуля, блиц, рапид), что выбрана для онлайна. */
     function showRating(data) {
