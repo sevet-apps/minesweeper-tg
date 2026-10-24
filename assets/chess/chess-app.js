@@ -2363,8 +2363,6 @@
         panel.style.setProperty('--cs-bk', `url('${pieceUrl('bK')}')`);
         panel.querySelectorAll('[data-ref]').forEach(el => { refs['s_' + el.dataset.ref] = el; });
         panel.addEventListener('click', onSheetClick);
-        const heading = panel.querySelector('.ui-sheet-heading');
-        panel.addEventListener('scroll', () => heading.classList.toggle('is-scrolled', panel.scrollTop > 2), { passive: true });
         refs.s_codeInput.addEventListener('keydown', event => { if (event.key === 'Enter') joinByCode(); });
         refs.s_codeInput.addEventListener('input', () => { refs.s_codeInput.value = refs.s_codeInput.value.replace(/\D/g, '').slice(0, 5); });
 

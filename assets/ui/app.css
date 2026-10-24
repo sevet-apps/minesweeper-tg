@@ -79,7 +79,7 @@
     box-shadow:0 -12px 48px #0002;
 }
 .modal.ui-mode-panel {
-    position:relative; max-width:480px; max-height:100%; padding:32px 20px max(24px,env(safe-area-inset-bottom));
+    position:relative; max-width:480px; max-height:75%; padding:32px 20px max(24px,env(safe-area-inset-bottom));
     text-align:left; overflow:auto; overscroll-behavior:contain; touch-action:pan-y;
     transform:translate3d(0,100%,0); transition:transform var(--ui-sheet-exit) var(--ui-ease);
 }
@@ -101,20 +101,25 @@
 .ui-mode-panel p { color:var(--ui-muted); }
 .ui-sheet-grab { position:absolute; top:0; left:calc(50% - 36px); width:72px; height:24px; touch-action:none; cursor:grab; }
 .ui-sheet-grab::after { content:''; position:absolute; width:36px; height:4px; top:10px; left:18px; background:var(--ui-muted); opacity:.35; border-radius:9px; }
-.bottom-sheet { left:0; right:0; margin:auto; max-height:min(90dvh,850px); transition:transform var(--ui-sheet-exit) var(--ui-ease); padding:0 20px max(24px,env(safe-area-inset-bottom)); }
+.bottom-sheet, .bottom-sheet.settings-sheet { left:0; right:0; margin:auto; max-height:min(75vh,850px); max-height:min(75dvh,850px); transition:transform var(--ui-sheet-exit) var(--ui-ease); padding:0 20px max(24px,env(safe-area-inset-bottom)); }
 .bottom-sheet-overlay.visible .bottom-sheet { transition-duration:var(--ui-sheet-enter); }
 .bottom-sheet-handle { position:relative; width:72px; height:24px; margin:0 auto 8px; background:transparent; flex-shrink:0; }
 .bottom-sheet-handle::after { content:''; position:absolute; width:36px; height:4px; top:10px; left:18px; background:var(--ui-muted); opacity:.35; border-radius:9px; }
 .bottom-sheet-title { font-size:24px; letter-spacing:-.5px; margin:0 0 20px; min-height:44px; display:flex; align-items:center; padding-right:42px; }
 /* Резкая граница без просвета: при дробном масштабе экрана сплошная полоска
    цвета шторки закрывает щель в долю пикселя, через которую просвечивал контент. */
-.ui-sheet-topbar { position:sticky; top:0; z-index:3; background:var(--ui-sheet); margin-inline:-20px; padding:0 20px 1px; box-shadow:0 1px 0 0 var(--ui-sheet); }
-.ui-sheet-topbar > .ui-close { position:absolute; right:14px; top:30px; }
-.ui-sheet-topbar .bottom-sheet-title { margin-bottom:8px; }
+/* Шапки шторок (не выше 3/4 экрана): заголовок и крестик ровно посередине —
+   одинаковые 16px сверху и снизу; ручка-полоска лежит поверх верхнего отступа.
+   Тонкая линия под шапкой появляется, только когда содержимое прокручено. */
+.ui-sheet-topbar { position:sticky; top:0; z-index:3; background:var(--ui-sheet); margin:0 -20px 8px; padding:16px 20px; box-shadow:0 1px 0 0 var(--ui-sheet); transition:box-shadow .2s; }
+.ui-sheet-topbar > .bottom-sheet-handle { position:absolute; top:0; left:calc(50% - 36px); margin:0; }
+.ui-sheet-topbar > .ui-close { position:absolute; right:14px; top:16px; }
+.ui-sheet-topbar .bottom-sheet-title { margin:0; min-height:44px; }
 .ui-sheet-heading { position:sticky; top:0; z-index:3; background:var(--ui-sheet); }
 /* В шторке режима заголовок прилипает к самому верху панели: без этого он
    вставал ниже на величину верхнего отступа (32px), и над ним проезжал контент. */
-.modal.ui-mode-panel > .ui-sheet-heading { top:-32px; margin:-32px -20px 8px; padding:32px 14px 0 20px; box-shadow:0 1px 0 0 var(--ui-sheet); }
+.modal.ui-mode-panel > .ui-sheet-heading { top:-32px; margin:-32px -20px 4px; padding:16px 14px 16px 20px; box-shadow:0 1px 0 0 var(--ui-sheet); transition:box-shadow .2s; }
+.ui-sheet-topbar.is-scrolled, .modal.ui-mode-panel > .ui-sheet-heading.is-scrolled { box-shadow:0 1px 0 0 var(--ui-border); }
 .modal.ui-mode-panel > .ui-sheet-grab { z-index:4; }
 @media(max-width:350px) { .modal.ui-mode-panel > .ui-sheet-heading { margin-inline:-16px; padding-inline:16px 10px; } }
 .title-bottom-sheet { transition:transform var(--ui-sheet-exit) var(--ui-ease); }

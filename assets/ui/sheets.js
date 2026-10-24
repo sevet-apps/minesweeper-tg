@@ -83,6 +83,8 @@
                 button.setAttribute('aria-label','Закрыть'); button.dataset.i18nAriaLabel = 'close'; button.innerHTML = cross; button.onclick = close; header.appendChild(button);
             }
             if (panel.matches('.ui-mode-panel')) overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+            // Линия под шапкой — только когда содержимое уехало под неё (шапку ищем каждый раз: её могут перерисовать).
+            panel.addEventListener('scroll', () => panel.querySelector(':scope > .ui-sheet-topbar, :scope > .ui-sheet-heading')?.classList.toggle('is-scrolled', panel.scrollTop > 2), {passive:true});
             if (!fullScreen) bindDrag(panel, close);
             return {overlay,panel,close,open:false,opener:null};
         }).filter(Boolean);

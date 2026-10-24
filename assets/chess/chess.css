@@ -498,12 +498,6 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .ck-code-row button.ck-scan[hidden] { display: none; }
 .ck-code-row button.ck-scan svg { width: 24px; height: 24px; }
 
-/* Главное меню шахмат: шторка не выше 3/4 экрана, крестик в закреплённой шапке. */
-#modalChess .modal.ui-mode-panel { max-height: 75%; }
-/* Заголовок и крестик посередине шапки: одинаковые отступы сверху и снизу (16px),
-   под шапкой при прокрутке — тонкая линия, содержимое не подъезжает вплотную. */
-#modalChess .modal.ui-mode-panel > .ui-sheet-heading { padding: 16px 14px 16px 20px; margin-bottom: 4px; transition: box-shadow .2s; }
-#modalChess .modal.ui-mode-panel > .ui-sheet-heading.is-scrolled { box-shadow: 0 1px 0 0 var(--ui-border); }
 
 /* Партия идёт на другом устройстве. */
 .cs-continue.is-elsewhere { background: rgba(52, 199, 89, .14); }
