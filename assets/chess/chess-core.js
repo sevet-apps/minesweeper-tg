@@ -30,12 +30,11 @@
         return TIME_CONTROLS.find(tc => tc.id === id) || null;
     }
 
-    /** Отдельный рейтинг для пули, блица и рапида; классика (30+0) идёт в рапид. */
-    const RATING_CATEGORIES = Object.freeze(['bullet', 'blitz', 'rapid']);
+    /** Отдельный рейтинг у каждого режима: пуля, блиц, рапид и классика. */
+    const RATING_CATEGORIES = Object.freeze(['bullet', 'blitz', 'rapid', 'classical']);
     function ratingCategory(tcOrId) {
         const tc = typeof tcOrId === 'string' ? timeControl(tcOrId) : tcOrId;
-        if (!tc) return null;
-        return tc.cat === 'classical' ? 'rapid' : tc.cat;
+        return tc ? tc.cat : null;
     }
 
     /* ---------- Шахматные часы ----------
@@ -226,6 +225,89 @@
         }
     }
 
+    /* ---------- Оценка ходов (игра с ботом) ----------
+       Как в разборе партии chess.com: оценка движка переводится в шансы на
+       победу (формула lichess), а ход классифицируется по тому, сколько
+       «ожидаемых очков» он потерял относительно лучшего хода:
+       лучший 0, отличный ≤ 0,02, хороший ≤ 0,05, неточность ≤ 0,10,
+       ошибка ≤ 0,20, зевок — больше. Плюс особые: блестящий (удачная жертва
+       фигуры), отличная находка (единственный сильный ход), теория (позиция
+       из дебютной книги) и упущенная возможность (не наказал ошибку). */
+    const MOVE_CLASSES = Object.freeze(['brilliant', 'great', 'best', 'excellent', 'good', 'book', 'inaccuracy', 'mistake', 'miss', 'blunder']);
+
+    /** Оценка { type: 'cp' | 'mate', value } (за белых) → сантипешки за белых. */
+    function scoreToCp(score) {
+        if (!score) return 0;
+        if (score.type === 'mate') return score.value === 0 ? 0 : Math.sign(score.value) * (10000 - Math.min(Math.abs(score.value), 99) * 10);
+        return Number(score.value) || 0;
+    }
+    /** Шансы на победу 0…100 по оценке в сантипешках (lichess, оценка ограничена ±1000). */
+    function winPercent(cp) {
+        const c = Math.max(-1000, Math.min(1000, Number(cp) || 0));
+        return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1);
+    }
+    /** Точность хода 0…100 по падению шансов (формула lichess). */
+    function moveAccuracy(before, after, isBest = false) {
+        if (isBest) return 100;
+        const drop = Math.max(0, before - after);
+        return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669));
+    }
+    /** Точность за партию: среднее обычного и гармонического средних (как у lichess, без весов). */
+    function gameAccuracy(list) {
+        const values = list.filter(v => Number.isFinite(v));
+        if (!values.length) return null;
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const harmonic = values.length / values.reduce((a, b) => a + 1 / Math.max(b, 1), 0);
+        return (mean + harmonic) / 2;
+    }
+    /**
+     * Ход отдаёт фигуру (не пешку): после него соперник может взять фигуру,
+     * которую нельзя выгодно отыграть, и это не простой размен.
+     * chess — позиция ПОСЛЕ хода (chess.js), move — сделанный ход.
+     */
+    function sacrifice(chess, move) {
+        const gained = move.captured ? PIECE_VALUE[move.captured] : 0;
+        let offered = 0;
+        for (const reply of chess.moves({ verbose: true })) {
+            if (!reply.captured || reply.captured === 'p' || reply.captured === 'k') continue;
+            let net = PIECE_VALUE[reply.captured];
+            if (net - gained < 2) continue;
+            chess.move(reply);
+            const defended = chess.moves({ verbose: true }).some(m => m.to === reply.to);
+            chess.undo();
+            if (defended) net -= PIECE_VALUE[reply.piece];
+            offered = Math.max(offered, net - gained);
+        }
+        return offered >= 2;
+    }
+    /**
+     * Класс хода. Все шансы — со стороны сходившего, 0…100.
+     *   best      — шансы при лучшем ходе движка (до хода);
+     *   after     — шансы после сделанного хода;
+     *   second    — шансы при втором по силе ходе (null, если ход единственный);
+     *   isBest    — ход совпал с первой линией движка;
+     *   book      — позиция после хода есть в дебютной книге;
+     *   sacrifice — ход отдаёт фигуру;
+     *   recapture — ход отыгрывает только что взятую фигуру;
+     *   capture   — ход что-то берёт (взять подставленную фигуру — просто «лучший»);
+     *   prevLoss  — сколько ожидаемых очков соперник потерял предыдущим ходом;
+     *   prevBest  — шансы сходившего до той ошибки соперника.
+     */
+    function classifyMove({ best, after, second = null, isBest = false, book = false, sacrifice = false, recapture = false, capture = false, prevLoss = 0, prevBest = null }) {
+        const loss = isBest ? 0 : Math.max(0, best - after) / 100;
+        if (book && loss <= 0.05) return { cls: 'book', loss };
+        if (sacrifice && loss <= 0.02 && best < 97 && after >= 45) return { cls: 'brilliant', loss };
+        if (isBest && second != null && !recapture && !(capture && prevLoss >= 0.1) && best - second >= 20 && second <= 80) return { cls: 'great', loss };
+        if (prevLoss >= 0.1 && loss >= 0.1 && prevBest != null && after >= prevBest - 5) return { cls: 'miss', loss };
+        let cls = 'blunder';
+        if (isBest) cls = 'best';
+        else if (loss <= 0.02) cls = 'excellent';
+        else if (loss <= 0.05) cls = 'good';
+        else if (loss <= 0.1) cls = 'inaccuracy';
+        else if (loss <= 0.2) cls = 'mistake';
+        return { cls, loss };
+    }
+
     return Object.freeze({
         TIME_CONTROLS, TIME_CATEGORIES, DEFAULT_ONLINE_TC, timeControl, RATING_CATEGORIES, ratingCategory,
         createClock, clockLeft, clockPress, clockStop, clockFlagged, clockSnapshot,
@@ -234,5 +316,6 @@
         START_RATING, eloDelta, eloK,
         BOT_LEVELS, botLevel, botThinkTime,
         normalizeMove, moveToUci, tryMove,
+        MOVE_CLASSES, scoreToCp, winPercent, moveAccuracy, gameAccuracy, sacrifice, classifyMove,
     });
 });

@@ -29,6 +29,8 @@
     const esc = value => String(value == null ? '' : value).replace(/[&<>"'`]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch]));
     const me = () => tg?.initDataUnsafe?.user || null;
     const isOwner = () => String(me()?.id || '') === OWNER_ID;
+    /** Экшен-режим пока в тесте: только у владельца. */
+    const actionOn = () => !!settings.action && isOwner();
     const myName = () => (typeof tgName === 'function' ? tgName(me()) : (me()?.first_name || tr('you')));
     const pieceUrl = code => `${BASE}pieces/${code}.svg`;
     const FLAG_LANGS = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'];
@@ -83,10 +85,11 @@
         send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg>',
         chevron: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
         pen: '<svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z"/><path d="M14 7l3 3"/></svg>',
+        qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM19 14h1M14 19v1M18 18h2v2h-2z"/></svg>',
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, action: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, action: true, review: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
@@ -100,7 +103,7 @@
         { id: 'ice', unlock: { cat: 'bullet', elo: 1300 } },
         { id: 'rosewood', unlock: { cat: 'rapid', elo: 1400 }, tex: true },
         { id: 'emerald', unlock: { cat: 'blitz', elo: 1500 }, tex: true },
-        { id: 'marble', unlock: { cat: 'rapid', elo: 1700 }, tex: true },
+        { id: 'marble', unlock: { cat: 'classical', elo: 1700 }, tex: true },
         { id: 'sapphire', unlock: { cat: 'bullet', elo: 1800 }, tex: true },
         { id: 'obsidian', unlock: { cat: 'blitz', elo: 2000 }, tex: true },
         { id: 'gold', unlock: { cat: 'rapid', elo: 2100 } },
@@ -249,7 +252,7 @@
         stop() { try { this.send('stop'); } catch (_) {} }
         terminate() { try { this.worker.terminate(); } catch (_) {} }
     }
-    const engines = { bot: null, hint: null, action: null };
+    const engines = { bot: null, hint: null, action: null, review: null };
     function engine(kind) {
         if (!engines[kind]) {
             engines[kind] = new Engine({ hash: kind === 'hint' ? 32 : 16 });
@@ -292,6 +295,7 @@
                         <div class="cs-squares" data-ref="squares"></div>
                         <div class="cs-layer" data-ref="marks"></div>
                         <div class="cs-pieces" data-ref="pieces"></div>
+                        <div class="cs-badges" data-ref="badges"></div>
                         <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                         <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                     </div>
@@ -315,8 +319,8 @@
         bindBoard();
         window.addEventListener('resize', () => { if (screen.classList.contains('visible')) layout(); });
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) { hintToken++; engines.hint?.stop(); }
-            else if (screen.classList.contains('visible')) scheduleHint();
+            if (document.hidden) { hintToken++; engines.hint?.stop(); engines.review?.stop(); }
+            else if (screen.classList.contains('visible')) { scheduleHint(); scheduleReview(); }
         });
         if (typeof updateBackgroundPatterns === 'function') updateBackgroundPatterns();
         applyTexts(screen);
@@ -535,6 +539,7 @@
         if (ui.hover) list.push([ui.hover, 'hover']);
         refs.marks.innerHTML = list.map(([sq, cls]) => `<div class="cs-mark ${cls}" style="transform:${sqTf(sq)}"></div>`).join('');
         renderArrow(hint);
+        renderBadge();
     }
 
     function findKing(chess, color) {
@@ -864,7 +869,7 @@
     function playMove(raw, { byUser = false, dropped = false, quiet = false } = {}) {
         if (!game || game.over) return null;
         if (!byUser) cancelCinema();   // ход соперника прерывает кат-сцену
-        const before = byUser && settings.action && game.view == null ? { fen: game.chess.fen(), board: positionMap(game.chess) } : null;
+        const before = byUser && actionOn() && game.view == null ? { fen: game.chess.fen(), board: positionMap(game.chess) } : null;
         const move = core.tryMove(game.chess, raw);
         if (!move) return null;
         game.moves.push(move);
@@ -925,6 +930,7 @@
         renderActions();
         scheduleHint();
         scheduleAnalysis();
+        scheduleReview();
     }
 
     /* ---------- бот ---------- */
@@ -1046,6 +1052,195 @@
         else scheduleHint();
     }
 
+    /* ---------- оценка ходов: только игра с ботом ----------
+       Отдельный Stockfish разбирает каждую позицию партии (две лучшие линии),
+       и ход получает класс, как в разборе chess.com (core.classifyMove).
+       На доске — значок у фигуры для ходов игрока, в списке ходов и в отчёте
+       после партии — классы обеих сторон и точность. */
+    const REVIEW_DEPTH = 12;
+    const REVIEW_MS = 900;
+    const BOOK_PLIES = 30;
+    /* Знаки в кружках — SVG-фигуры в квадрате 24×24 с центром в (12, 12),
+       а не текст: у шрифтов «!» и «?» сидят по-разному и съезжают из центра. */
+    const qExcl = x => `<rect x="${x - 1.6}" y="4" width="3.2" height="10.2" rx="1.6"/><circle cx="${x}" cy="18" r="1.95"/>`;
+    const qQuest = x => `<path d="M${x - 3.3} 8.6a3.3 3.3 0 1 1 5 2.8c-1.1.7-1.7 1.4-1.7 2.7v.1" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${x}" cy="18.2" r="1.9"/>`;
+    const qSvg = (body, scale = 1) => `<svg viewBox="0 0 24 24" aria-hidden="true">${scale === 1 ? body : `<g transform="translate(12 12) scale(${scale}) translate(-12 -12)">${body}</g>`}</svg>`;
+    const Q_GLYPH = {
+        brilliant: qSvg(qExcl(9) + qExcl(15)),
+        great: qSvg(qExcl(12)),
+        best: qSvg('<path transform="translate(0 .8)" d="M12 2.6l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 16.9l-5.6 2.9 1.1-6.2L3 9.2l6.2-.9z"/>'),
+        excellent: qSvg('<path transform="translate(.5 .55)" d="M2.6 10.2h3.6v9.9H2.6zM8 20.1h8.7a2.2 2.2 0 0 0 2.2-1.8l1.5-6.9a2.2 2.2 0 0 0-2.2-2.6H14V5.2a2.4 2.4 0 0 0-2.4-2.4L8 10.2z"/>'),
+        good: qSvg('<path d="M4.6 12.6l4.9 4.9 9.9-10.8" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'),
+        book: qSvg('<path d="M2.8 5.6c3-1.5 6.2-1.3 8.4.6v13.3c-2.2-1.7-5.4-1.9-8.4-.5zM21.2 5.6c-3-1.5-6.2-1.3-8.4.6v13.3c2.2-1.7 5.4-1.9 8.4-.5z"/>'),
+        inaccuracy: qSvg(qQuest(9.9) + qExcl(17.3), 0.92),
+        mistake: qSvg(qQuest(12)),
+        miss: qSvg('<path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>'),
+        blunder: qSvg(qQuest(7) + qQuest(17), 0.78),
+    };
+    const qBadge = cls => `<span class="cs-q q-${cls}">${Q_GLYPH[cls]}</span>`;
+    const reviewOn = () => !!game && game.mode === 'bot' && settings.review !== false;
+    const bookKey = fen => fen.split(' ').slice(0, 3).join(' ');
+    let openingBook = null;
+    /** Дебютная книга: позиции из линий lichess chess-openings (CC0). */
+    function loadBook() {
+        if (!openingBook) {
+            openingBook = fetch(`${BASE}openings.json${VERSION ? `?v=${VERSION}` : ''}`)
+                .then(r => (r.ok ? r.json() : []))
+                .then(list => new Set(Array.isArray(list) ? list : []))
+                .catch(() => new Set());
+        }
+        return openingBook;
+    }
+
+    function scheduleReview() {
+        if (!reviewOn() || document.hidden || !screen?.classList.contains('visible')) return;
+        const review = game.review || (game.review = { evals: [], marks: [], busy: false });
+        if (!review.busy) pumpReview(game);
+    }
+    async function pumpReview(g) {
+        const review = g.review;
+        review.busy = true;
+        try {
+            const book = await loadBook();
+            while (game === g && reviewOn() && !document.hidden && screen.classList.contains('visible')) {
+                const fens = [g.startFen, ...g.moves.map(m => m.after)];
+                if (classifyReady(g, fens, book)) renderReview();
+                // сначала две последние позиции (значок свежего хода), потом остальные по порядку
+                const order = [fens.length - 2, fens.length - 1, ...fens.keys()];
+                const i = order.find(k => k >= 0 && review.evals[k]?.fen !== fens[k]);
+                if (i == null) break;
+                review.evals[i] = await evalPosition(fens[i]);
+            }
+        } catch (_) {
+            // движок недоступен — партия идёт без оценок
+        } finally {
+            review.busy = false;
+        }
+    }
+    async function evalPosition(fen) {
+        const chess = new Chess(fen);
+        const legal = chess.moves().length;
+        // мат и пат оцениваем без движка: 1 — выиграли белые, −1 — чёрные, 0 — ничья
+        if (!legal) return { fen, legal, terminal: chess.isCheckmate() ? (chess.turn() === 'w' ? -1 : 1) : 0, lines: {} };
+        const result = await engine('review').search({ fen, skill: 20, depth: REVIEW_DEPTH, movetime: REVIEW_MS, multipv: Math.min(2, legal) });
+        const lines = {};
+        for (const [k, line] of Object.entries(result.lines || {})) {
+            const move = core.normalizeMove(line.move);
+            if (move && line.score) lines[k] = { move, score: line.score };
+        }
+        if (!lines[1] && result.bestmove && result.score) lines[1] = { move: core.normalizeMove(result.bestmove), score: result.score };
+        if (!lines[1]) throw new Error('no eval');
+        return { fen, legal, lines };
+    }
+    /** Шансы стороны color (0…100) в разобранной позиции по линии line. */
+    function winFor(ev, color, line = 1) {
+        if (!ev) return null;
+        if (ev.terminal != null) return ev.terminal === 0 ? 50 : (ev.terminal === 1) === (color === 'w') ? 100 : 0;
+        const l = ev.lines[line];
+        if (!l) return null;
+        const cp = core.scoreToCp(l.score);
+        return core.winPercent(color === 'w' ? cp : -cp);
+    }
+    /** Ставит классы ходам, для которых готовы обе позиции. true — что-то изменилось. */
+    function classifyReady(g, fens, book) {
+        const review = g.review;
+        let changed = review.marks.length > g.moves.length;
+        review.marks.length = Math.min(review.marks.length, g.moves.length);
+        g.moves.forEach((m, i) => {
+            const a = review.evals[i], b = review.evals[i + 1];
+            const prevMark = i > 0 ? review.marks[i - 1] : null;
+            const key = `${fens[i]}|${fens[i + 1]}|${prevMark ? prevMark.cls : '-'}`;
+            if (review.marks[i]?.key === key) return;
+            if (a?.fen !== fens[i] || b?.fen !== fens[i + 1]) {
+                if (review.marks[i]) { review.marks[i] = null; changed = true; }
+                return;
+            }
+            const best = winFor(a, m.color), after = winFor(b, m.color);
+            if (best == null || after == null) return;
+            const top = a.lines[1]?.move;
+            const isBest = !!top && top.from === m.from && top.to === m.to && (top.promotion || null) === (m.promotion || null);
+            const prev = i > 0 ? g.moves[i - 1] : null;
+            const prevEval = i > 0 ? review.evals[i - 1] : null;
+            let sac = false;
+            try { sac = core.sacrifice(new Chess(fens[i + 1]), m); } catch (_) {}
+            const result = core.classifyMove({
+                best, after, isBest,
+                second: a.legal > 1 ? winFor(a, m.color, 2) : null,
+                book: i < BOOK_PLIES && book.has(bookKey(fens[i + 1])),
+                sacrifice: sac,
+                recapture: !!(prev?.captured && m.captured && prev.to === m.to),
+                capture: !!m.captured,
+                prevLoss: prevMark?.loss || 0,
+                prevBest: prevEval?.fen === fens[i - 1] ? winFor(prevEval, m.color) : null,
+            });
+            review.marks[i] = { key, ...result, acc: result.cls === 'book' ? 100 : core.moveAccuracy(best, after, isBest) };
+            changed = true;
+        });
+        return changed;
+    }
+    function renderReview() {
+        renderBadge();
+        renderMoveList();
+        if (ui.dialog?.kind === 'result') {
+            const box = refs.sheet.querySelector('[data-ref="report"]');
+            if (box) box.innerHTML = reportHtml();
+        }
+    }
+    /** Значки классов у фигур: в партии — у двух последних ходов (свой и бота),
+        при просмотре — у показанного хода. Значки не пересоздаются, чтобы не мигать. */
+    function renderBadge() {
+        const layer = refs.badges;
+        if (!layer) return;
+        const plies = [];
+        if (game && reviewOn()) {
+            if (game.view != null) { if (game.view > 0) plies.push(game.view); }
+            else { if (game.moves.length > 1) plies.push(game.moves.length - 1); if (game.moves.length) plies.push(game.moves.length); }
+        }
+        // ход на клетку предыдущего (взятие) закрывает его значок
+        const bySquare = new Map();
+        for (const ply of plies) {
+            const move = game.moves[ply - 1], mark = game.review?.marks[ply - 1];
+            if (mark) bySquare.set(move.to, { key: `${ply}|${mark.cls}`, sq: move.to, cls: mark.cls });
+            else bySquare.delete(move.to);
+        }
+        const want = new Map([...bySquare.values()].map(item => [item.key, item]));
+        for (const el of [...layer.children]) if (!want.has(el.dataset.k)) el.remove();
+        for (const [key, item] of want) {
+            let el = [...layer.children].find(child => child.dataset.k === key);
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'cs-badge-sq';
+                el.dataset.k = key;
+                el.innerHTML = qBadge(item.cls);
+                layer.appendChild(el);
+            }
+            el.style.transform = sqTf(item.sq);
+            el.title = tr(`q_${item.cls}`);
+        }
+    }
+    /** Отчёт после партии: точность и сколько ходов каждого класса у обеих сторон. */
+    function reportHtml() {
+        const review = game?.review;
+        if (!reviewOn() || !review || !game.moves.length) return '';
+        const mine = game.myColor, bot = other(mine);
+        const done = review.marks.filter(Boolean).length;
+        const accuracy = color => core.gameAccuracy(game.moves.map((m, i) => (m.color === color ? review.marks[i]?.acc : null)).filter(v => v != null));
+        const count = (color, cls) => game.moves.filter((m, i) => m.color === color && review.marks[i]?.cls === cls).length;
+        const fmt = value => (value == null ? '—' : value.toFixed(1));
+        const rows = core.MOVE_CLASSES.map(cls => {
+            const a = count(mine, cls), b = count(bot, cls);
+            return `<div class="cs-rep-row q-${cls}${a || b ? '' : ' is-zero'}"><b${a ? '' : ' class="is-zero"'}>${a}</b><span>${qBadge(cls)}${esc(tr(`q_${cls}`))}</span><b${b ? '' : ' class="is-zero"'}>${b}</b></div>`;
+        }).join('');
+        return `
+            <div class="cs-rep-head">
+                <div><small>${esc(playerInfo(mine).name)}</small><b>${fmt(accuracy(mine))}</b></div>
+                <span>${esc(tr('accuracy'))}</span>
+                <div><small>${esc(playerInfo(bot).name)}</small><b>${fmt(accuracy(bot))}</b></div>
+            </div>
+            ${done < game.moves.length ? `<p class="cs-rep-progress">${esc(tr('analysing', { done, total: game.moves.length }))}</p>` : ''}
+            <div class="cs-rep-rows">${rows}</div>`;
+    }
+
     /* ---------- экшен-режим: кат-сцены взятий и лучших ходов ----------
        Сцены живут в chess-action.js (three.js) и грузятся лениво. Лучший ход
        считает отдельный Stockfish с двумя линиями: ход «лучший», если он
@@ -1071,12 +1266,12 @@
 
     function scheduleAnalysis() {
         clearTimeout(analysisTimer);
-        if (!settings.action || REDUCED_MOTION || !game || game.over || game.view != null) return;
+        if (!actionOn() || REDUCED_MOTION || !game || game.over || game.view != null) return;
         if (!controls(game.chess.turn()) || game.analysis?.fen === game.chess.fen()) return;
         analysisTimer = setTimeout(runAnalysis, 80);
     }
     async function runAnalysis() {
-        if (!game || game.over || !settings.action) return;
+        if (!game || game.over || !actionOn()) return;
         const fen = game.chess.fen();
         if (game.chess.moves().length < 2) return;
         const token = ++analysisToken;
@@ -1323,7 +1518,8 @@
         let html = '';
         game.moves.forEach((m, i) => {
             if (m.color === 'w' || i === 0) html += `<span class="cs-mn">${Math.floor(i / 2) + 1}.${m.color === 'b' && i === 0 ? '…' : ''}</span>`;
-            html += `<button type="button" class="cs-mv${i + 1 === current ? ' is-current' : ''}" data-ply="${i + 1}">${figurine(m)}</button>`;
+            const q = reviewOn() ? game.review?.marks[i] : null;
+            html += `<button type="button" class="cs-mv${i + 1 === current ? ' is-current' : ''}" data-ply="${i + 1}">${figurine(m)}${q ? qBadge(q.cls) : ''}</button>`;
         });
         refs.moveList.innerHTML = html;
         const active = refs.moveList.querySelector('.is-current');
@@ -1477,7 +1673,7 @@
         setTimeout(layout, 380);
         refs.hintBtn.hidden = !isOwner();
         refs.hintBtn.classList.toggle('is-on', hintOn);
-        if (settings.action && !REDUCED_MOTION) setTimeout(() => Action.load().catch(() => {}), 700);
+        if (actionOn() && !REDUCED_MOTION) setTimeout(() => Action.load().catch(() => {}), 700);
     }
 
     function closeScreen() {
@@ -1828,6 +2024,7 @@
             <div class="cs-result-icon ${iconClass}">${icon}</div>
             <h2>${esc(resultTitle(outcome))}</h2>
             <p data-ref="resultReason">${esc(reasonText(outcome))}</p>
+            ${reviewOn() && game.moves.length ? `<div class="cs-report" data-ref="report">${reportHtml()}</div>` : ''}
             <div class="cs-rating-chip" data-ref="resultRating" hidden></div>
             <p data-ref="resultNote" hidden></p>
             <div class="cs-sheet-actions">
@@ -1870,8 +2067,10 @@
     }
 
     function showSettings() {
-        const rows = [['action', 'actionMode', 'actionModeHint'], ['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
+        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
+        if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
+        if (game?.mode === 'bot') rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
         openDialog('settings', `
             <h2>${esc(tr('settings'))}</h2>
             <div class="cs-settings" style="margin-top:12px">
@@ -1902,8 +2101,14 @@
                 if (key === 'wiggle') screen.classList.toggle('no-wiggle', !settings.wiggle);
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
+                if (key === 'review') {
+                    if (!settings.review) engines.review?.stop();
+                    scheduleReview();
+                    renderBadge();
+                    renderMoveList();
+                }
                 if (key === 'action') {
-                    if (settings.action) { Action.load().catch(() => {}); scheduleAnalysis(); }
+                    if (actionOn()) { Action.load().catch(() => {}); scheduleAnalysis(); }
                     else { analysisToken++; engines.action?.stop(); cancelCinema(); }
                 }
             };
@@ -2125,6 +2330,7 @@
                 </div>
                 <div class="ck-code-row" data-ref="codeRow">
                     <input type="text" inputmode="numeric" autocomplete="off" maxlength="5" data-ref="codeInput">
+                    <button type="button" class="ck-scan" data-sheet="scan" data-ref="scanBtn" hidden>${ICON.qr}</button>
                     <button type="button" data-sheet="join" data-t="join"></button>
                 </div>
                 <div class="ck-rooms-head"><h3 data-t="openRooms"></h3><button class="ck-refresh" type="button" data-sheet="refresh">${ICON.refresh}</button></div>
@@ -2147,7 +2353,8 @@
             <div class="ck-radar" aria-hidden="true"><span></span><span></span><span></span><img src="${BASE}../game-icons/chess.png" alt=""></div>
             <h2 data-ref="waitTitle"></h2>
             <p class="ck-wait-hint" data-ref="waitTc"></p>
-            <div data-ref="waitCodeBox"><p class="ck-wait-sub" data-t="roomCode"></p><div class="ck-wait-code" data-ref="waitCode">-----</div><p class="ck-wait-hint" data-t="shareCode"></p>
+            <div data-ref="waitCodeBox"><p class="ck-wait-sub" data-t="roomCode"></p><div class="ck-wait-code" data-ref="waitCode">-----</div>
+            <div class="ck-qr" data-ref="waitQr" role="img"></div><p class="ck-wait-hint" data-t="qrHint"></p>
             <button class="btn-main ck-invite" type="button" data-wait="invite">${ICON.send}<span data-t="inviteFriend"></span></button></div>
             <button class="cs-btn" type="button" data-wait="cancel" data-t="cancel"></button>`;
         waitEl.querySelectorAll('[data-ref]').forEach(el => { refs['w_' + el.dataset.ref] = el; });
@@ -2164,6 +2371,8 @@
         applyTexts(panel);
         applyTexts(waitEl);
         refs.s_codeInput.placeholder = tr('code');
+        refs.s_scanBtn.hidden = !canScan();
+        refs.s_scanBtn.setAttribute('aria-label', tr('scanQr'));
         const level = core.botLevel(prefs.level);
         refs.s_levelName.textContent = tr(`level${level.level}`);
         refs.s_levelElo.textContent = `~${level.elo}`;
@@ -2232,6 +2441,7 @@
                 return;
             }
             case 'join': return joinByCode();
+            case 'scan': return scanInvite();
             case 'refresh': {
                 const glyph = button;
                 glyph.classList.remove('spin'); void glyph.offsetWidth; glyph.classList.add('spin');
@@ -2326,7 +2536,11 @@
         const quick = !!waitInfo.quick;
         refs.w_waitTitle.textContent = quick ? tr('searching') : tr('waitingFriend');
         refs.w_waitCodeBox.hidden = quick;
-        if (data.roomCode) refs.w_waitCode.textContent = data.roomCode;
+        waitEl.classList.toggle('has-qr', !quick);
+        if (data.roomCode) {
+            refs.w_waitCode.textContent = data.roomCode;
+            renderInviteQr(data.roomCode);
+        }
         const tc = core.timeControl(waitInfo.tc);
         refs.w_waitTc.textContent = tc ? `${tr(tc.cat)} · ${tc.id}` : '';
         applyTexts(waitEl);
@@ -2340,12 +2554,67 @@
         emit('chess_cancel', {});
         hideWait();
     }
+    const inviteLink = code => `https://t.me/spark_game_bot/sparkapp?startapp=cs_${code}`;
+    let qrLib = null;
+    /** Генератор QR (qrcode-generator, MIT) подгружается только для приглашения. */
+    function loadQr() {
+        if (!qrLib) {
+            qrLib = new Promise((resolve, reject) => {
+                if (window.qrcode) return resolve(window.qrcode);
+                const script = document.createElement('script');
+                script.src = `${BASE}vendor/qrcode.js${VERSION ? `?v=${VERSION}` : ''}`;
+                script.onload = () => (window.qrcode ? resolve(window.qrcode) : reject(new Error('qrcode')));
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            qrLib.catch(() => { qrLib = null; });
+        }
+        return qrLib;
+    }
+    /** QR со ссылкой-приглашением: друг наводит камеру — Telegram открывает партию. */
+    async function renderInviteQr(code) {
+        const box = refs.w_waitQr;
+        box.innerHTML = '';
+        box.setAttribute('aria-label', inviteLink(code));
+        try {
+            const make = await loadQr();
+            if (waitInfo?.roomCode !== code) return;
+            const qr = make(0, 'M');
+            qr.addData(inviteLink(code));
+            qr.make();
+            const n = qr.getModuleCount();
+            let d = '';
+            for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
+            box.innerHTML = `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" aria-hidden="true"><path d="${d}" fill="#111"/></svg>`;
+        } catch (_) {
+            box.innerHTML = '';
+        }
+    }
+    /** Встроенный сканер Telegram (Bot API 6.4+); в обычном браузере кнопки нет. */
+    const canScan = () => typeof tg?.showScanQrPopup === 'function' && (typeof tg.isVersionAtLeast !== 'function' || tg.isVersionAtLeast('6.4'));
+    function inviteCodeFrom(text) {
+        const value = String(text || '').trim();
+        const match = value.match(/startapp=cs_(\d{5})(?!\d)/) || value.match(/^(\d{5})$/);
+        return match ? match[1] : null;
+    }
+    function scanInvite() {
+        if (!canScan()) return;
+        haptic('light');
+        try {
+            tg.showScanQrPopup({ text: tr('scanQrHint') }, text => {
+                const code = inviteCodeFrom(text);
+                if (!code) return false;
+                setTimeout(() => joinRoom(code), 60);
+                return true;
+            });
+        } catch (_) {}
+    }
     async function inviteFriend() {
         const code = waitInfo?.roomCode;
         if (!code) return;
         haptic('light');
         if (typeof sharePreparedMessage === 'function' && await sharePreparedMessage('chess', code)) return;
-        const link = `https://t.me/spark_game_bot/sparkapp?startapp=cs_${code}`;
+        const link = inviteLink(code);
         const text = tr('inviteText', { name: myName() });
         const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
         if (tg?.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');

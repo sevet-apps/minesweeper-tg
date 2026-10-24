@@ -39,3 +39,11 @@ Action-mode effects (assets/chess/sounds/fx-*.mp3)
   From the "Lani" editing sound pack supplied by the Spark owner (Telegram channel @LaniVfx):
   bass drops, glitches, transition whoosh, sparkle, pop. Trimmed and converted to MP3.
   Other scene sounds are synthesised at runtime with Web Audio.
+
+qrcode-generator 1.4.4 (assets/chess/vendor/qrcode.js) — QR code of the room invite
+  Copyright (c) 2009 Kazuhiko Arase. MIT License (header kept in the file).
+  https://github.com/kazuhikoarase/qrcode-generator
+
+Opening book (assets/chess/openings.json) — "Book" moves of the move feedback
+  Positions from lichess-org/chess-openings, CC0 1.0 Public Domain Dedication.
+  https://github.com/lichess-org/chess-openings — rebuilt by scripts/build-chess-openings.cjs.
