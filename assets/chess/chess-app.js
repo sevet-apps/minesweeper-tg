@@ -30,7 +30,7 @@
     const me = () => tg?.initDataUnsafe?.user || null;
     const isOwner = () => String(me()?.id || '') === OWNER_ID;
     /** Экшен-режим пока в тесте: только у владельца. */
-    const actionOn = () => !!settings.action && isOwner();
+    const actionOn = () => !!settings.action && isOwner() && game?.mode !== 'puzzle';
     const myName = () => (typeof tgName === 'function' ? tgName(me()) : (me()?.first_name || tr('you')));
     const pieceUrl = code => `${BASE}pieces/${code}.svg`;
     const FLAG_LANGS = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'];
@@ -85,6 +85,10 @@
         send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg>',
         chevron: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
         pen: '<svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z"/><path d="M14 7l3 3"/></svg>',
+        target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+        flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.4 2.4-5.3 3.6-8 .4 1.9 1.5 3 2.6 3.5-.3-3 .9-5.7 3.2-7.4.2 3.1 4.6 5.3 4.6 10.6C19.5 18.1 16.3 21 12 21z"/></svg>',
+        calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/></svg>',
+        eye: '<svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
         device: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.75" width="10" height="18.5" rx="2.6"/><path d="M10.37 8.9v6.2l4.9-3.1z"/></svg>',
         qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM19 14h1M14 19v1M18 18h2v2h-2z"/></svg>',
     };
@@ -526,8 +530,10 @@
             const king = findKing(chess, chess.turn());
             if (king) list.push([king, 'check']);
         }
-        const hint = activeHint();
+        const hint = activeHint() || puzzleHintMove();
         if (hint) { list.push([hint.from, 'hint']); list.push([hint.to, 'hint']); }
+        const pzFrom = puzzleHintFrom();
+        if (pzFrom && !hint) list.push([pzFrom, 'hint']);
         if (ui.selected && settings.showMoves) {
             const seen = new Set();
             for (const m of ui.targets) {
@@ -753,13 +759,14 @@
 
     function controls(color) {
         if (!game || game.over) return false;
+        if (game.mode === 'puzzle') return color === game.myColor && !!game.puzzle && !game.puzzle.locked && !game.puzzle.done;
         return game.mode === 'local' || color === game.myColor;
     }
     function canMoveNow() {
         return !!game && !game.over && game.view == null && !ui.promo && controls(game.chess.turn()) && !game.botBusy && !(game.mode === 'online' && game.online.pending);
     }
     function canPremove() {
-        return !!game && !game.over && game.view == null && game.mode !== 'local' && game.chess.turn() !== game.myColor;
+        return !!game && !game.over && game.view == null && game.mode !== 'local' && game.mode !== 'puzzle' && game.chess.turn() !== game.myColor;
     }
     function canSelect(color) {
         if (canMoveNow() && color === game.chess.turn()) return true;
@@ -881,7 +888,7 @@
         if (!keepSelection) clearSelection(false);
         if (!byUser && ui.drag && (ui.drag.sq === capturedSq || ui.drag.sq === move.from)) ui.drag = null;
         clearAnnotations(false);
-        if (game.view != null) { game.view = null; syncPieces(positionMap(game.chess), { animate: true }); }
+        if (game.view != null) { game.view = null; refs.board.classList.remove('is-review'); syncPieces(positionMap(game.chess), { animate: true }); }
         else animateMove(move, { dropped });
         if (keepSelection) refreshSelection();
         if (game.clock) pressOfflineClock(move.color);
@@ -901,6 +908,10 @@
             game.online.pending = true;
             emit('chess_move', { roomCode: game.online.roomCode, ply: game.moves.length - 1, move: { from: move.from, to: move.to, promotion: move.promotion } });
             setTimeout(() => { if (game?.online) game.online.pending = false; }, 1500);
+        }
+        if (game.mode === 'puzzle') {
+            if (byUser) puzzleUserMove(move);
+            return move;
         }
         if (game.mode !== 'online') {
             const outcome = core.boardOutcome(game.chess);
@@ -979,7 +990,7 @@
     /* ---------- подсказка владельца ---------- */
     let hintOn = false;
     function activeHint() {
-        if (!hintOn || !isOwner() || !game || game.over || game.view != null || !game.hint) return null;
+        if (!hintOn || !isOwner() || !game || game.over || game.mode === 'puzzle' || game.view != null || !game.hint) return null;
         if (game.hint.fen !== game.chess.fen() || !game.hint.move) return null;
         if (!controls(game.chess.turn())) return null;
         return game.hint.move;
@@ -987,7 +998,7 @@
     let hintTimer = null;
     function scheduleHint() {
         clearTimeout(hintTimer);
-        if (!hintOn || !isOwner() || !game || game.over) { renderEval(null); return; }
+        if (!hintOn || !isOwner() || !game || game.over || game.mode === 'puzzle') { renderEval(null); return; }
         hintTimer = setTimeout(runHint, 120);
     }
     /* Анализ идёт непрерывно, пока ход ваш: глубина растёт (20, 25, 30…),
@@ -1051,6 +1062,346 @@
         refs.hintBtn?.classList.toggle('is-on', hintOn);
         if (!hintOn) { hintToken++; if (game) game.hint = null; engines.hint?.stop(); renderMarks(); renderEval(null); }
         else scheduleHint();
+    }
+
+    /* ---------- задачи ----------
+       Тысячи задач из открытой базы lichess (CC0): assets/chess/puzzles, разбиты по
+       рейтингу и грузятся по мере надобности (scripts/build-chess-puzzles.mjs).
+       Режимы: с рейтингом (Эло против рейтинга задачи), серия (без ошибок, всё
+       сложнее), задача дня (одна на всех), темы (мат в 1/2/3, вилка, связка…).
+       «Огонёк» — сколько задач подряд решено с первой попытки и без подсказок. */
+    const PUZZLE_KEY = 'chess_puzzles';
+    const PUZZLE_COLORS = ['#ff3b30', '#ff6b2c', '#ff9f0a', '#34c759', '#00b8d4', '#0a84ff', '#5e5ce6', '#af52de', '#ff2d78', '#c0392b', '#f5b400', '#8e8e93'];
+    const pz = Object.assign({ rating: core.PUZZLE_START_RATING, played: 0, solved: 0, firstTry: 0, bestFirstTry: 0, streakBest: 0, daily: null, dayStreak: 0, seen: [] }, readJson(PUZZLE_KEY, {}));
+    const savePz = () => { pz.seen = pz.seen.slice(-800); writeJson(PUZZLE_KEY, pz); };
+    const puzzleData = { index: null, shards: new Map() };
+    let puzzleRun = null;      // серия: { count }
+    let puzzleToken = 0;       // новая партия или задача отменяет загружающуюся
+    let puzzleStartedAt = 0;
+    const dayKey = (offset = 0) => new Date(Date.now() + offset * 864e5).toISOString().slice(0, 10);
+    const dayBefore = day => new Date(Date.parse(day) - 864e5).toISOString().slice(0, 10);
+    const signed = n => (n > 0 ? `+${n}` : String(n));
+
+    function puzzleFile(name) {
+        return fetch(`${BASE}puzzles/${name}${VERSION ? `?v=${VERSION}` : ''}`).then(r => { if (!r.ok) throw new Error('puzzles'); return r.json(); });
+    }
+    function puzzleIndex() {
+        if (!puzzleData.index) {
+            puzzleData.index = puzzleFile('index.json');
+            puzzleData.index.catch(() => { puzzleData.index = null; });
+        }
+        return puzzleData.index;
+    }
+    /** Часть базы; обещание кладётся сразу, чтобы один файл не качался дважды. */
+    function puzzleShard(n) {
+        if (!puzzleData.shards.has(n)) {
+            const load = puzzleIndex().then(index => puzzleFile(index.shards[n].file));
+            puzzleData.shards.set(n, load);
+            load.catch(() => puzzleData.shards.delete(n));
+        }
+        return puzzleData.shards.get(n);
+    }
+    /** Задачи рядом с рейтингом: своя часть базы, у края — и соседняя (грузятся параллельно). */
+    async function puzzlesNear(target) {
+        const shards = (await puzzleIndex()).shards;
+        let n = shards.findIndex(s => target >= s.from && target < s.to);
+        if (n < 0) n = target < shards[0].from ? 0 : shards.length - 1;
+        const parts = [n];
+        if (n > 0 && target - shards[n].from < 150) parts.push(n - 1);
+        if (n < shards.length - 1 && shards[n].to - target < 150) parts.push(n + 1);
+        return (await Promise.all(parts.map(puzzleShard))).flat();
+    }
+    /** Для тем — вся база: у редких тем на краях рейтинга мало задач. */
+    async function puzzlesAll() {
+        const shards = (await puzzleIndex()).shards;
+        return (await Promise.all(shards.map((_, n) => puzzleShard(n)))).flat();
+    }
+
+    async function startPuzzle(kind, { theme = null, button = null } = {}) {
+        if (Date.now() - puzzleStartedAt < 800) return;   // двойное нажатие
+        const token = ++puzzleToken;
+        button?.classList.add('is-busy');
+        try {
+            let entry;
+            if (kind === 'daily') {
+                const index = await puzzleIndex();
+                const list = await puzzleShard(Math.min(2, index.shards.length - 1));
+                entry = list[core.dailyPuzzleIndex(dayKey(), list.length)];
+            } else {
+                const target = kind === 'streak' ? core.streakTarget(puzzleRun?.count || 0) : pz.rating;
+                const list = theme != null ? await puzzlesAll() : await puzzlesNear(target);
+                entry = core.pickPuzzle(list, { target, themeBit: theme, seen: new Set(pz.seen) });
+            }
+            if (token !== puzzleToken) return;   // пока грузили, начали другую партию или задачу
+            if (!entry) throw new Error('empty');
+            playPuzzle(entry, kind, theme);
+        } catch (_) {
+            if (token === puzzleToken) toast(tr('pzLoadFailed'), 'error');
+        } finally {
+            button?.classList.remove('is-busy');
+        }
+    }
+
+    function playPuzzle([id, fen, moves, rating, mask], kind, theme, { retry = false } = {}) {
+        const solution = String(moves).split(' ');
+        const myColor = new Chess(fen).turn() === 'w' ? 'b' : 'w';   // первый ход — соперника
+        puzzleStartedAt = Date.now();
+        puzzleToken++;
+        if (ui.promo) { ui.promo.el.remove(); ui.promo = null; }
+        hideBanner();
+        closeSheet();
+        // партия раньше экрана: при открытии экрана режим уже «задача» (экшен-режим не грузится)
+        newGame({ mode: 'puzzle', myColor, startFen: fen, orientation: myColor });
+        openScreen();
+        refs.hintBtn.hidden = true;   // оценка движка выдала бы ответ
+        const p = game.puzzle = {
+            id, rating, mask, kind, theme, solution, retry, day: dayKey(), startedAt: Date.now(),
+            step: 0, mistakes: 0, hint: 0, hinted: false, done: false, solved: false, failed: false, locked: true,
+            recorded: false, delta: null, feedback: null, result: null,
+        };
+        if (!pz.seen.includes(id)) pz.seen.push(id);
+        savePz();
+        afterChange();
+        setTimeout(() => {
+            if (game?.puzzle !== p) return;
+            playMove(solution[0]);
+            p.step = 1;
+            p.locked = false;
+            afterChange();
+        }, 700);
+    }
+
+    function puzzleUserMove(move) {
+        const p = game.puzzle;
+        if (!p || p.done) return;
+        const mates = game.chess.isCheckmate();
+        if (core.puzzleMoveOk(p.solution[p.step], move, mates)) {
+            puzzleMark(move.to, true);
+            p.feedback = 'ok';
+            p.step++;
+            if (mates || p.step >= p.solution.length) { puzzleSolved(p); return; }
+            p.locked = true;
+            afterChange();
+            setTimeout(() => {
+                if (game?.puzzle !== p) return;
+                playMove(p.solution[p.step]);
+                p.step++;
+                p.hint = 0;   // подсказка была к прошлому ходу
+                p.locked = false;
+                afterChange();
+            }, 450);
+            return;
+        }
+        // не тот ход: отметка, ход откатывается, ошибка учитывается
+        puzzleMark(move.to, false);
+        haptic('error');
+        p.mistakes++;
+        p.feedback = 'wrong';
+        p.locked = true;
+        if (p.mistakes === 1) puzzleFailed(p);
+        afterChange();
+        setTimeout(() => {
+            if (game?.puzzle !== p) return;
+            // успели листнуть назад — возвращаемся к текущей позиции
+            if (game.view != null) { game.view = null; refs.board.classList.remove('is-review'); }
+            game.chess.undo();
+            game.moves.pop();
+            syncPieces(positionMap(game.chess), { animate: true });
+            p.locked = p.done;
+            afterChange();
+        }, 700);
+    }
+
+    /** Рейтинг меняется один раз за задачу: при первой ошибке, подсказке, решении-ответе или решении. */
+    function recordPuzzle(p, solved) {
+        if (p.recorded || p.kind !== 'rated') return;
+        p.recorded = true;
+        p.delta = core.puzzleRatingChange(pz.rating, p.rating, solved, pz.played);
+        pz.rating = Math.max(400, pz.rating + p.delta);
+        pz.played++;
+        savePz();
+    }
+    /** Повтор и уже решённая сегодня задача дня статистику не меняют. */
+    const countsForStats = p => !p.retry && !(p.kind === 'daily' && pz.daily === p.day);
+
+    function puzzleFailed(p) {
+        p.failed = true;
+        recordPuzzle(p, false);
+        if (countsForStats(p)) pz.firstTry = 0;
+        savePz();
+        if (p.kind !== 'streak') return;
+        // серия заканчивается на первой ошибке
+        const n = puzzleRun?.count || 0;
+        p.done = true;
+        p.runFinal = n;   // заголовок и строка игрока показывают итог серии
+        p.result = { text: tr('streakOver', { n }), tone: 'bad' };
+        puzzleRun = null;
+        pz.streakBest = Math.max(pz.streakBest, n);
+        savePz();
+    }
+
+    function puzzleSolved(p) {
+        p.done = true;
+        p.solved = true;
+        p.locked = true;
+        const perfect = !p.failed && !p.hinted;
+        recordPuzzle(p, perfect);
+        if (countsForStats(p)) {
+            pz.solved++;
+            if (perfect) { pz.firstTry++; pz.bestFirstTry = Math.max(pz.bestFirstTry, pz.firstTry); } else pz.firstTry = 0;
+            if (p.kind === 'daily') {
+                pz.dayStreak = pz.daily === dayBefore(p.day) ? pz.dayStreak + 1 : 1;
+                pz.daily = p.day;
+            }
+        }
+        if (p.kind === 'streak' && puzzleRun) { puzzleRun.count++; pz.streakBest = Math.max(pz.streakBest, puzzleRun.count); }
+        savePz();
+        let text = tr(perfect ? 'pzSolved' : 'pzSolvedLate');
+        if (p.kind === 'rated' && p.delta != null) text += ` ${signed(p.delta)}`;
+        if (p.kind === 'daily' && countsForStats(p) && pz.dayStreak > 1) text += ` ${tr('dailyDays', { n: pz.dayStreak })}`;
+        if (p.kind === 'streak') text = `${tr('pzCorrect')} ${tr('streakNow', { n: puzzleRun?.count || 0 })}`;
+        p.result = { text, tone: perfect ? 'good' : 'late' };
+        Sound.play('win', 0.55);
+        haptic('success');
+        afterChange();
+        // в серии сразу дальше; в остальных — кнопкой «Дальше»
+        if (p.kind === 'streak') setTimeout(() => { if (game?.puzzle === p && puzzleRun) startPuzzle('streak'); }, 1300);
+    }
+
+    function puzzleHint() {
+        const p = game?.puzzle;
+        if (!p || p.done || p.locked || p.kind === 'streak') return;
+        p.hint = Math.min(2, p.hint + 1);
+        if (!p.hinted) {
+            p.hinted = true;
+            if (p.kind === 'rated' && !p.recorded) { recordPuzzle(p, false); toast(tr('pzHintCost')); }
+            if (countsForStats(p)) pz.firstTry = 0;
+            savePz();
+        }
+        haptic('light');
+        afterChange();
+    }
+    function puzzleNextExpected() {
+        const p = game?.puzzle;
+        if (!p || p.done || p.locked || game.view != null) return null;
+        return core.normalizeMove(p.solution[p.step] || '');
+    }
+    function puzzleHintFrom() {
+        const p = game?.puzzle;
+        return p?.hint === 1 ? puzzleNextExpected()?.from || null : null;
+    }
+    function puzzleHintMove() {
+        const p = game?.puzzle;
+        return p?.hint >= 2 ? puzzleNextExpected() : null;
+    }
+
+    /** Решение: оставшиеся ходы проигрываются по очереди. */
+    function showPuzzleSolution() {
+        const p = game?.puzzle;
+        if (!p || (p.locked && !p.done) || p.solved) return;
+        if (!p.done) {
+            p.failed = true;
+            recordPuzzle(p, false);
+            if (countsForStats(p)) pz.firstTry = 0;
+            savePz();
+            p.result = { text: tr('pzFailed'), tone: 'bad' };
+        }
+        p.done = true;
+        p.locked = true;
+        p.showing = true;
+        afterChange();
+        const step = () => {
+            if (game?.puzzle !== p) return;
+            if (p.step >= p.solution.length) { p.showing = false; afterChange(); return; }
+            playMove(p.solution[p.step]);
+            p.step++;
+            setTimeout(step, 700);
+        };
+        setTimeout(step, 250);
+    }
+    function retryPuzzle() {
+        const p = game?.puzzle;
+        if (!p) return;
+        playPuzzle([p.id, game.startFen, p.solution.join(' '), p.rating, p.mask], p.kind === 'rated' ? 'practice' : p.kind, p.theme, { retry: true });
+    }
+    function nextPuzzle() {
+        const p = game?.puzzle;
+        if (!p) return;
+        if (p.kind === 'streak') { if (!puzzleRun) puzzleRun = { count: 0 }; startPuzzle('streak'); return; }
+        if (p.kind === 'daily') { closeScreen(); openSheet('puzzles'); return; }
+        startPuzzle(p.kind === 'practice' ? 'rated' : p.kind, { theme: p.theme });
+    }
+
+    function puzzleMark(sq, ok) {
+        let layer = refs.board.querySelector('.pz-fx');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.className = 'pz-fx';
+            refs.board.appendChild(layer);
+        }
+        const node = document.createElement('div');
+        node.className = `pz-flash ${ok ? 'ok' : 'no'}`;
+        node.style.transform = sqTf(sq);
+        node.innerHTML = `<span class="cs-q">${ok ? Q_GLYPH.good : Q_GLYPH.miss}</span>`;
+        layer.appendChild(node);
+        // крестик уходит вместе с откатом хода, галочка чуть дольше
+        setTimeout(() => node.remove(), ok ? 1200 : 700);
+    }
+
+    function puzzleTitle(p) {
+        if (!p) return tr('modePuzzles');
+        if (p.kind === 'streak') return tr('streakNow', { n: puzzleRun?.count ?? p.runFinal ?? 0 });
+        if (p.kind === 'daily') return tr('dailyPuzzle');
+        if (p.kind === 'theme') return tr(`th_${core.PUZZLE_THEMES[p.theme]}`);
+        return tr('modePuzzles');
+    }
+    function puzzleStatus() {
+        const p = game.puzzle;
+        if (!p) return '';
+        if (p.done) return tr('pzTaskInfo', { rating: p.rating });   // итог — в строке над доской, здесь не повторяется
+        if (p.step === 0) return tr('pzLoading');
+        if (p.feedback === 'wrong' && p.locked) return tr('pzWrong');
+        if (p.feedback === 'ok' && p.step > 1) return tr('pzCorrect');
+        return tr('yourMove');
+    }
+    /** Вместо игроков — задача сверху (задание, потом итог) и вы снизу (рейтинг, «огонёк»). */
+    function renderPuzzlePlayers() {
+        const p = game.puzzle;
+        if (!p) return;
+        const themes = core.PUZZLE_THEMES.filter((t, i) => p.mask & (1 << i)).slice(0, 3).map(t => tr(`th_${t}`)).join(' · ');
+        // задание видно сразу; темы — только после решения, иначе это подсказка
+        const head = p.done && p.result ? `<span class="pz-result pz-${p.result.tone}">${esc(p.result.text)}</span>` : `<span>${esc(tr('pzTaskInfo', { rating: p.rating }))}</span>`;
+        const topSub = p.done ? themes || tr('pzTaskInfo', { rating: p.rating }) : tr(game.myColor === 'w' ? 'findWhite' : 'findBlack');
+        refs.topPlayer.innerHTML = `
+            <div class="cs-ava pz-ava${p.done ? ` pz-${p.result?.tone || 'bad'}` : ''}">${p.done && p.solved ? Q_GLYPH.good : p.done ? Q_GLYPH.miss : ICON.target}</div>
+            <div class="cs-pinfo">
+                <div class="cs-pname">${head}</div>
+                <div class="cs-captured pz-sub">${esc(topSub)}</div>
+            </div>
+            <div class="cs-clock" hidden></div>`;
+        const photo = me()?.photo_url && /^https:\/\//i.test(me().photo_url) ? me().photo_url : null;
+        const avatar = photo ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer">` : `<span class="cs-ava-piece" style="background-image:url('${pieceUrl(game.myColor + 'K')}')"></span>`;
+        const sub = p.kind === 'streak' ? tr('streakNow', { n: puzzleRun?.count ?? p.runFinal ?? 0 }) : `${pz.rating}${p.delta != null ? ` (${signed(p.delta)})` : ''}`;
+        refs.bottomPlayer.innerHTML = `
+            <div class="cs-ava is-turn">${avatar}</div>
+            <div class="cs-pinfo">
+                <div class="cs-pname"><span>${esc(myName())}</span><small class="${p.delta > 0 ? 'pz-up' : p.delta < 0 ? 'pz-down' : ''}">${esc(sub)}</small></div>
+                <div class="cs-captured pz-sub">${pz.firstTry > 0 ? `<span class="pz-fire">${ICON.flame}${esc(tr('firstTry', { n: pz.firstTry }))}</span>` : ''}</div>
+            </div>
+            <div class="cs-clock" hidden></div>`;
+    }
+    function renderPuzzlePanel() {
+        if (!refs.s_pzRating) return;
+        refs.s_pzRating.textContent = String(pz.rating);
+        refs.s_pzStats.textContent = tr('solvedCount', { n: pz.solved });
+        refs.s_pzFirst.hidden = !pz.firstTry;
+        refs.s_pzFirst.innerHTML = pz.firstTry ? `${ICON.flame}<span>${esc(tr('firstTry', { n: pz.firstTry }))}</span>` : '';
+        refs.s_pzStreakSub.textContent = pz.streakBest ? tr('best', { n: pz.streakBest }) : tr('streakSub');
+        const today = pz.daily === dayKey();
+        const alive = today || pz.daily === dayKey(-1);
+        refs.s_pzDailySub.textContent = today
+            ? `${tr('dailySolved')}${pz.dayStreak > 1 ? ` · ${tr('dailyDays', { n: pz.dayStreak })}` : ''}`
+            : alive && pz.dayStreak > 0 ? tr('dailyDays', { n: pz.dayStreak }) : tr('dailyNew');
     }
 
     /* ---------- оценка ходов: только игра с ботом ----------
@@ -1462,6 +1813,10 @@
 
     /* ---------- отрисовка панелей ---------- */
     function playerInfo(color) {
+        if (game.mode === 'puzzle') {
+            if (color === game.myColor) return { name: myName(), sub: String(pz.rating), avatar: me()?.photo_url || null, lang: lang() };
+            return { name: `lichess #${game.puzzle?.id || ''}`, sub: game.puzzle ? String(game.puzzle.rating) : '', avatar: null, bot: true };
+        }
         if (game.mode === 'local') return { name: tr(color === 'w' ? 'white' : 'black'), sub: '', avatar: null };
         if (color === game.myColor) {
             const sub = game.mode === 'online' && game.online.myRating ? String(game.online.myRating) : '';
@@ -1477,6 +1832,7 @@
 
     function renderPlayers() {
         if (!game) return;
+        if (game.mode === 'puzzle') { renderPuzzlePlayers(); return; }
         const chess = viewChess();
         const { score, captured } = core.material(chess);
         for (const [slot, color] of [['topPlayer', other(view.orientation)], ['bottomPlayer', view.orientation]]) {
@@ -1513,12 +1869,17 @@
         return `<i style="background-image:url('${pieceUrl(move.color + letter)}')"></i>${esc(move.san.slice(1))}`;
     }
 
+    /** Номер хода для полухода i с учётом начальной позиции (номер и очередь из FEN). */
+    function moveNumber(i) {
+        const [, side = 'w', , , , full = '1'] = String(game.startFen || '').split(' ');
+        return (Number(full) || 1) + Math.floor((i + (side === 'b' ? 1 : 0)) / 2);
+    }
     function renderMoveList() {
         if (!game) return;
         const current = game.view == null ? game.moves.length : game.view;
         let html = '';
         game.moves.forEach((m, i) => {
-            if (m.color === 'w' || i === 0) html += `<span class="cs-mn">${Math.floor(i / 2) + 1}.${m.color === 'b' && i === 0 ? '…' : ''}</span>`;
+            if (m.color === 'w' || i === 0) html += `<span class="cs-mn">${moveNumber(i)}.${m.color === 'b' && i === 0 ? '…' : ''}</span>`;
             const q = reviewOn() ? game.review?.marks[i] : null;
             html += `<button type="button" class="cs-mv${i + 1 === current ? ' is-current' : ''}" data-ply="${i + 1}">${figurine(m)}${q ? qBadge(q.cls) : ''}</button>`;
         });
@@ -1539,6 +1900,7 @@
         const status = refs.status;
         status.classList.remove('is-alert');
         if (game.view != null) { status.textContent = tr('reviewing', { n: game.view }); return; }
+        if (game.mode === 'puzzle') { status.textContent = puzzleStatus(); status.classList.toggle('is-alert', game.puzzle?.feedback === 'wrong' && game.puzzle.locked && !game.puzzle.done); return; }
         if (game.over) { status.textContent = resultTitle(game.over); return; }
         const turn = game.chess.turn();
         if (game.mode === 'bot' && game.botBusy) status.textContent = tr('botThinking');
@@ -1549,6 +1911,7 @@
     }
 
     function gameTitle() {
+        if (game.mode === 'puzzle') return puzzleTitle(game.puzzle);
         const tc = game.tc ? `${tr(game.tc.cat)} ${game.tc.id}` : '';
         if (game.mode === 'bot') return [tr('modeBot'), tc].filter(Boolean).join(' · ');
         if (game.mode === 'local') return [tr('modeLocal'), tc].filter(Boolean).join(' · ');
@@ -1558,7 +1921,23 @@
     function renderActions() {
         if (!game) return;
         const buttons = [];
-        const add = (act, icon, label, opts = {}) => buttons.push(`<button type="button" class="cs-act${opts.danger ? ' is-danger' : ''}${opts.active ? ' is-active' : ''}" data-act="${act}"${opts.disabled ? ' disabled' : ''}${opts.active != null ? ` aria-pressed="${opts.active ? 'true' : 'false'}"` : ''}>${icon}<span>${esc(label)}</span></button>`);
+        const add = (act, icon, label, opts = {}) => buttons.push(`<button type="button" class="cs-act${opts.danger ? ' is-danger' : ''}${opts.active ? ' is-active' : ''}${opts.primary ? ' is-primary' : ''}" data-act="${act}"${opts.disabled ? ' disabled' : ''}${opts.active != null ? ` aria-pressed="${opts.active ? 'true' : 'false'}"` : ''}>${icon}<span>${esc(label)}</span></button>`);
+        if (game.mode === 'puzzle') {
+            const p = game.puzzle;
+            add('flip', ICON.flip, tr('flip'));
+            if (p && !p.done) {
+                if (p.kind !== 'streak') {
+                    add('pz_hint', ICON.bulb, tr('pzHint'), { disabled: p.locked || p.hint >= 2 });
+                    add('pz_solution', ICON.eye, tr('pzSolution'), { disabled: p.locked });
+                }
+            } else if (p) {
+                if (p.kind === 'streak' && !p.solved && p.step < p.solution.length && !p.showing) add('pz_solution', ICON.eye, tr('pzSolution'));
+                else if (p.failed && p.kind !== 'streak') add('pz_retry', ICON.undo, tr('pzRetry'), { disabled: p.showing });
+                add('pz_next', ICON.next, p.kind === 'streak' && !puzzleRun ? tr('pzNewStreak') : p.kind === 'daily' ? tr('modePuzzles') : tr('pzNext'), { primary: true, disabled: p.showing });
+            }
+            refs.actions.innerHTML = buttons.join('');
+            return;
+        }
         if (game.over) {
             if (game.mode === 'online') add('rematch', ICON.rematch, tr('rematch'));
             else add('again', ICON.plus, tr('newGame'));
@@ -1622,6 +2001,7 @@
 
     /* ---------- начало и конец партии ---------- */
     function newGame({ mode, myColor = 'w', level = 3, tcId = 'none', moves = [], clock = null, online = null, orientation = null, startFen = null }) {
+        if (mode !== 'puzzle') puzzleToken++;
         cancelCinema();
         cancelBot();
         closeDialog(true);
@@ -1774,7 +2154,7 @@
 
     /* ---------- сохранение партии с ботом / вдвоём ---------- */
     function saveOffline() {
-        if (!game || game.mode === 'online' || game.over) return;
+        if (!game || game.mode === 'online' || game.mode === 'puzzle' || game.over) return;
         if (!game.moves.length) { localStorage.removeItem(SAVE_KEY); return; }
         const clock = game.clock ? { w: core.clockLeft(game.clock, 'w', Date.now()), b: core.clockLeft(game.clock, 'b', Date.now()) } : null;
         writeJson(SAVE_KEY, {
@@ -2214,6 +2594,7 @@
         if (mv) { setView(Number(mv.dataset.ply)); return; }
         const button = event.target.closest('[data-act]');
         if (!button || button.disabled) return;
+        if (game?.mode === 'puzzle' && button.dataset.act !== 'back' && Date.now() - (game.puzzle?.startedAt || 0) < 450) return;
         Sound.unlock();
         switch (button.dataset.act) {
             case 'back': return requestLeave();
@@ -2233,6 +2614,10 @@
             case 'again': return playAgain();
             case 'rematch': return emit('chess_rematch', { roomCode: game.online.roomCode }) && toast(tr('rematchWaiting'));
             case 'result': return showResult();
+            case 'pz_hint': return puzzleHint();
+            case 'pz_solution': return showPuzzleSolution();
+            case 'pz_retry': return retryPuzzle();
+            case 'pz_next': return nextPuzzle();
             default: return undefined;
         }
     }
@@ -2241,6 +2626,7 @@
         if (ui.promo) { ui.promo.el.remove(); ui.promo = null; syncPieces(positionMap(game.chess), { animate: true }); return; }
         if (ui.dialog) { closeDialog(); return; }
         if (!game) { closeScreen(); return; }
+        if (game.mode === 'puzzle') { puzzleRun = null; hideBanner(); closeScreen(); openSheet('puzzles'); return; }
         if (game.mode === 'online' && !game.over) {
             confirmDialog({
                 title: tr('confirmLeave'), text: tr('confirmLeaveOnline'), okLabel: tr('leave'),
@@ -2322,6 +2708,7 @@
                 <button type="button" class="segment-item" data-tab="bot" data-t="modeBot"></button>
                 <button type="button" class="segment-item" data-tab="online" data-t="modeOnline"></button>
                 <button type="button" class="segment-item" data-tab="local" data-t="modeLocal"></button>
+                <button type="button" class="segment-item" data-tab="puzzles" data-t="modePuzzles"></button>
             </div>
             <button type="button" class="cs-continue is-elsewhere" data-sheet="takeover" hidden><span class="cs-continue-ico">${ICON.device}</span><span><b data-t="elsewhereTitle"></b><small data-ref="elsewhereHint"></small></span>${ICON.chevron}</button>
             <button type="button" class="cs-continue" data-sheet="continue" hidden><i style="background-image:url('${pieceUrl('wN')}')"></i><span><b data-t="continueGame"></b><small data-ref="continueHint"></small></span>${ICON.chevron}</button>
@@ -2365,6 +2752,21 @@
                 <p class="cs-label" data-t="timeControl"></p>
                 <div class="cs-tcs" data-tcs="localTc">${tcButtons(offlineTcs, true)}</div>
                 <button type="button" class="btn-main" data-sheet="playLocal" data-t="play"></button>
+            </div>
+            <div class="cs-panel" data-panel="puzzles">
+                <div class="cs-rating-card pz-rating"><i class="pz-rating-ico">${ICON.target}</i><div><small data-t="puzzleRating"></small><b data-ref="pzRating">—</b></div><span data-ref="pzStats"></span></div>
+                <p class="pz-first" data-ref="pzFirst" hidden></p>
+                <button class="ck-hero pz-hero" type="button" data-sheet="pz_rated">
+                    <span class="ck-hero-icon">${ICON.target}</span>
+                    <span class="ck-hero-text"><b data-t="solvePuzzles"></b><small data-t="solveHint"></small></span>
+                    ${ICON.arrow}
+                </button>
+                <div class="ck-tiles">
+                    <button class="ck-tile pz-tile-streak" type="button" data-sheet="pz_streak"><span class="ck-tile-icon">${ICON.flame}</span><b data-t="puzzleStreak"></b><small data-ref="pzStreakSub"></small></button>
+                    <button class="ck-tile pz-tile-daily" type="button" data-sheet="pz_daily"><span class="ck-tile-icon">${ICON.calendar}</span><b data-t="dailyPuzzle"></b><small data-ref="pzDailySub"></small></button>
+                </div>
+                <p class="cs-label" data-t="themes"></p>
+                <div class="pz-themes">${core.PUZZLE_THEMES.map((theme, i) => `<button type="button" class="pz-theme" data-pz-theme="${i}" style="--c:${PUZZLE_COLORS[i]}"><i></i><span data-t="th_${theme}"></span></button>`).join('')}</div>
             </div>`;
         panel.style.setProperty('--cs-wk', `url('${pieceUrl('wK')}')`);
         panel.style.setProperty('--cs-bk', `url('${pieceUrl('bK')}')`);
@@ -2394,6 +2796,7 @@
         const panel = sheetEl.querySelector('.ui-mode-panel');
         applyTexts(panel);
         applyTexts(waitEl);
+        renderPuzzlePanel();
         refs.s_codeInput.placeholder = tr('code');
         refs.s_scanBtn.hidden = !canScan();
         refs.s_scanBtn.setAttribute('aria-label', tr('scanQr'));
@@ -2435,6 +2838,7 @@
         refs.s_glider.style.transform = `translateX(${index * 100}%)`;
         panel.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
         clearInterval(roomsTimer);
+        if (tab === 'puzzles') { renderPuzzlePanel(); puzzlesNear(pz.rating).catch(() => {}); }
         if (tab === 'online') {
             loadRating();
             requestRooms();
@@ -2453,6 +2857,8 @@
         if (color) { prefs.color = color.dataset.color; savePrefs(); refreshSheetTexts(); haptic('select'); return; }
         const tc = event.target.closest('[data-tc]');
         if (tc) { prefs[tc.closest('[data-tcs]').dataset.tcs] = tc.dataset.tc; savePrefs(); refreshSheetTexts(); haptic('select'); return; }
+        const pzTheme = event.target.closest('[data-pz-theme]');
+        if (pzTheme) { haptic('light'); startPuzzle('theme', { theme: Number(pzTheme.dataset.pzTheme), button: pzTheme }); return; }
         const join = event.target.closest('[data-join]');
         if (join) { joinRoom(join.dataset.join); return; }
         const button = event.target.closest('[data-sheet]');
@@ -2478,6 +2884,9 @@
                 return;
             }
             case 'join': return joinByCode();
+            case 'pz_rated': return startPuzzle('rated', { button });
+            case 'pz_streak': puzzleRun = { count: 0 }; return startPuzzle('streak', { button });
+            case 'pz_daily': return startPuzzle('daily', { button });
             case 'scan': return scanInvite();
             case 'refresh': {
                 const glyph = button;

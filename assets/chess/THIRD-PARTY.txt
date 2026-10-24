@@ -47,3 +47,7 @@ qrcode-generator 1.4.4 (assets/chess/vendor/qrcode.js) — QR code of the room i
 Opening book (assets/chess/openings.json) — "Book" moves of the move feedback
   Positions from lichess-org/chess-openings, CC0 1.0 Public Domain Dedication.
   https://github.com/lichess-org/chess-openings — rebuilt by scripts/build-chess-openings.cjs.
+
+Chess puzzles (assets/chess/puzzles/*.json) — puzzles mode
+  Selected from the lichess.org puzzle database, CC0 1.0 Public Domain Dedication.
+  https://database.lichess.org/#puzzles — rebuilt by scripts/build-chess-puzzles.mjs.

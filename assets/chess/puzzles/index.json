@@ -1,0 +1,63 @@
+{
+ "source": "lichess.org puzzle database (CC0)",
+ "themes": [
+  "mateIn1",
+  "mateIn2",
+  "mateIn3",
+  "fork",
+  "pin",
+  "skewer",
+  "discoveredAttack",
+  "sacrifice",
+  "deflection",
+  "backRankMate",
+  "promotion",
+  "endgame"
+ ],
+ "shards": [
+  {
+   "file": "p0.json",
+   "from": 0,
+   "to": 1100,
+   "count": 1524
+  },
+  {
+   "file": "p1.json",
+   "from": 1100,
+   "to": 1500,
+   "count": 1310
+  },
+  {
+   "file": "p2.json",
+   "from": 1500,
+   "to": 1900,
+   "count": 1335
+  },
+  {
+   "file": "p3.json",
+   "from": 1900,
+   "to": 2300,
+   "count": 1320
+  },
+  {
+   "file": "p4.json",
+   "from": 2300,
+   "to": 4000,
+   "count": 1155
+  }
+ ],
+ "themeCounts": {
+  "mateIn1": 651,
+  "mateIn2": 780,
+  "mateIn3": 568,
+  "fork": 765,
+  "pin": 580,
+  "skewer": 483,
+  "discoveredAttack": 546,
+  "sacrifice": 945,
+  "deflection": 561,
+  "backRankMate": 355,
+  "promotion": 480,
+  "endgame": 3437
+ }
+}

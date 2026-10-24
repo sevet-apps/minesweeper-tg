@@ -308,6 +308,46 @@
         return { cls, loss };
     }
 
+    /* ---------- Задачи ----------
+       Задачи lichess (CC0): [id, fen, ходы UCI, рейтинг, темы маской]. Первый ход —
+       соперника, дальше решающий и ответы по очереди. Темы — биты PUZZLE_THEMES
+       (тот же порядок, что в scripts/build-chess-puzzles.mjs). */
+    const PUZZLE_THEMES = Object.freeze(['mateIn1', 'mateIn2', 'mateIn3', 'fork', 'pin', 'skewer', 'discoveredAttack', 'sacrifice', 'deflection', 'backRankMate', 'promotion', 'endgame']);
+    const PUZZLE_START_RATING = 1200;
+
+    /** Изменение рейтинга задач: Эло против рейтинга задачи, первые задачи весомее. */
+    function puzzleRatingChange(rating, puzzleRating, solved, played = 0) {
+        const k = played < 20 ? 40 : played < 60 ? 28 : 18;
+        const expected = 1 / (1 + Math.pow(10, (puzzleRating - rating) / 400));
+        return Math.round(k * ((solved ? 1 : 0) - expected));
+    }
+    /** Ход верный: совпал с решением или ставит мат (любой мат засчитывается, как на lichess). */
+    function puzzleMoveOk(expected, move, mates = false) {
+        if (mates) return true;
+        const uci = `${move.from}${move.to}${move.promotion || ''}`;
+        return uci === expected;
+    }
+    /** Задача под уровень: ближайшие по рейтингу и ещё не виденные, случайно; всё видено — повтор. */
+    function pickPuzzle(list, { target, themeBit = null, seen = new Set(), random = Math.random } = {}) {
+        const fits = p => themeBit == null || (p[4] & (1 << themeBit));
+        for (const span of [75, 150, 300, 600, 1200, 5000]) {
+            const pool = list.filter(p => fits(p) && !seen.has(p[0]) && Math.abs(p[3] - target) <= span);
+            if (pool.length) return pool[Math.floor(random() * pool.length)];
+        }
+        const any = list.filter(fits);
+        return any.length ? any[Math.floor(random() * any.length)] : null;
+    }
+    /** Задача дня: одна на всех в этот день (FNV-1a от даты). */
+    function dailyPuzzleIndex(day, length) {
+        let h = 2166136261;
+        for (const ch of String(day)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+        return length ? (h >>> 0) % length : 0;
+    }
+    /** Серия: каждая следующая задача сложнее. */
+    function streakTarget(count) {
+        return Math.min(2700, 650 + Math.max(0, count) * 75);
+    }
+
     return Object.freeze({
         TIME_CONTROLS, TIME_CATEGORIES, DEFAULT_ONLINE_TC, timeControl, RATING_CATEGORIES, ratingCategory,
         createClock, clockLeft, clockPress, clockStop, clockFlagged, clockSnapshot,
@@ -317,5 +357,6 @@
         BOT_LEVELS, botLevel, botThinkTime,
         normalizeMove, moveToUci, tryMove,
         MOVE_CLASSES, scoreToCp, winPercent, moveAccuracy, gameAccuracy, sacrifice, classifyMove,
+        PUZZLE_THEMES, PUZZLE_START_RATING, puzzleRatingChange, puzzleMoveOk, pickPuzzle, dailyPuzzleIndex, streakTarget,
     });
 });

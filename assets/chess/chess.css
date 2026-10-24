@@ -237,7 +237,7 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 
 /* ---------- шторка выбора режима ---------- */
 #modalChess .cs-tabs { margin-bottom: 16px; }
-#modalChess .cs-tabs .segment-glider { width: calc((100% - 8px) / 3); }
+#modalChess .cs-tabs .segment-glider { width: calc((100% - 8px) / 4); }
 .cs-panel { display: none; }
 .cs-panel.active { display: block; animation: fadeInSlide .3s ease both; }
 .cs-label { margin: 16px 2px 8px; font-size: 13px; font-weight: 700; color: var(--ui-muted); text-transform: none; }
@@ -507,3 +507,43 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-continue .cs-continue-ico svg rect { fill: none; stroke: #fff; stroke-width: 2; }
 .cs-continue .cs-continue-ico svg path { fill: #fff; stroke: none; }
 [data-theme="dark"] .cs-continue.is-elsewhere b { color: #4cd964; }
+
+/* ---------- задачи ---------- */
+.cs-act.is-primary { background: var(--ui-accent); color: #fff; box-shadow: 0 6px 16px rgba(0, 122, 255, .3); }
+.pz-rating-ico { display: grid; place-items: center; color: var(--ui-accent); }
+.pz-rating-ico svg { width: 30px; height: 30px; }
+.pz-first { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -2px 0 12px; font-size: 14px; font-weight: 750; color: #ff6b2c; }
+.pz-first svg, .pz-fire svg { width: 17px; height: 17px; }
+.pz-fire { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 750; color: #ff6b2c; }
+.pz-tile-streak .ck-tile-icon { color: #ff6b2c; }
+.pz-tile-daily .ck-tile-icon { color: #34c759; }
+.pz-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pz-theme { display: flex; align-items: center; gap: 9px; min-height: 46px; margin: 0; padding: 8px 12px; border: 1px solid var(--ui-border); border-radius: 14px; background: var(--ui-surface); color: var(--ui-text); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; text-align: left; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease); }
+.pz-theme:active { transform: scale(.97); }
+.pz-theme i { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
+.pz-ava { display: grid; place-items: center; color: var(--ui-accent); }
+.pz-ava svg { width: 60%; height: 60%; }
+.pz-sub { font-size: 12.5px; font-weight: 650; color: var(--ui-muted); }
+.cs-pname small.pz-up { color: #34c759; }
+.cs-pname small.pz-down { color: #ff3b30; }
+.pz-fx { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.pz-flash { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; }
+.pz-flash::before { content: ''; position: absolute; inset: 0; animation: pzFlash 1.1s ease-out both; }
+.pz-flash.ok::before { background: rgba(52, 199, 89, .45); }
+.pz-flash.no::before { background: rgba(255, 59, 48, .5); }
+.pz-flash .cs-q { position: absolute; right: 1%; top: 1%; width: 48%; height: 48%; box-shadow: 0 0 0 calc(var(--cs-size, 92vw) * .004 + 1px) #fff, 0 2px 7px rgba(0, 0, 0, .38); animation: csQPop .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+.pz-flash.ok .cs-q { --q: #34c759; }
+.pz-flash.no .cs-q { --q: #ff3b30; }
+@keyframes pzFlash { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+.pz-result { font-weight: 800; }
+.pz-result.pz-good, .pz-ava.pz-good { color: #34c759; }
+.pz-result.pz-late, .pz-ava.pz-late { color: #ff9f0a; }
+.pz-result.pz-bad, .pz-ava.pz-bad { color: #ff3b30; }
+.pz-ava.pz-good svg, .pz-ava.pz-late svg { fill: none; stroke: currentColor; }
+.pz-ava.pz-bad svg path { stroke: currentColor; }
+.pz-ava.pz-good svg path, .pz-ava.pz-late svg path { stroke: currentColor; }
+#modalChess .is-busy { opacity: .6; pointer-events: none; animation: pzBusy 1s ease-in-out infinite; }
+@keyframes pzBusy { 50% { opacity: .4; } }
+/* четыре вкладки: на узких экранах шрифт мельче, без переноса */
+#modalChess .cs-tabs .segment-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 400px) { #modalChess .cs-tabs .segment-item { font-size: 13px; padding-inline: 2px; } }
