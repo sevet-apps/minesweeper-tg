@@ -112,7 +112,7 @@
             const top = visible().at(-1);
             if (top) {
                 for (const el of doc.body.children) {
-                    if (el === top.overlay || /^(SCRIPT|STYLE|LINK)$/.test(el.tagName)) continue;
+                    if (el === top.overlay || el.classList.contains('ob-overlay') || /^(SCRIPT|STYLE|LINK)$/.test(el.tagName)) continue;
                     background.set(el,el.inert); el.inert = true;
                 }
                 const previousControl = changed.find(s => !s.open)?.opener;

@@ -1,13 +1,15 @@
 /* Знакомство со Spark: шторка с яркими карточками (assets/ui/onboarding.js). */
-.ob-overlay {
-    position: fixed; inset: 0; z-index: 30000; display: flex; align-items: flex-end; justify-content: center;
-    background: rgba(0, 0, 0, .58); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-    opacity: 0; transition: opacity .35s ease; touch-action: none;
+.ob-overlay { position: fixed; inset: 0; z-index: 30000; display: flex; align-items: flex-end; justify-content: center; touch-action: none; }
+.ob-overlay::before {
+    content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, .58); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    opacity: 0; transition: opacity .35s ease;
 }
-.ob-overlay.show { opacity: 1; }
+.ob-overlay.show::before { opacity: 1; }
 .ob-sheet {
     --ob-w: min(100vw, 480px);
-    position: relative; box-sizing: border-box; width: var(--ob-w); max-height: 100%; overflow: hidden;
+    /* на низких экранах (альбомная ориентация) картинка уменьшается, чтобы кнопка влезала */
+    --ob-art: max(120px, min(calc(var(--ob-w) - 32px), 46vh, calc(100vh - 340px)));
+    position: relative; box-sizing: border-box; width: var(--ob-w); max-height: 100%; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
     padding: 16px 16px calc(16px + max(var(--safe-bottom, 0px), env(safe-area-inset-bottom, 0px)));
     border-radius: 30px 30px 0 0; background: var(--ui-sheet, #1c1c1e); color: var(--ui-text, #fff);
     box-shadow: 0 -20px 60px rgba(0, 0, 0, .35);
@@ -27,10 +29,11 @@
 /* Кнопка «Дальше»: наполняется слева направо, пока читают карточку. */
 .ob-next {
     position: relative; display: block; width: 100%; height: 58px; overflow: hidden; margin: 0; padding: 0; border: 0; border-radius: 999px;
-    background: rgba(0, 122, 255, .28); color: #fff; font: inherit; font-size: 18px; font-weight: 750; letter-spacing: .1px;
+    background: #4f8fe0; color: #fff; font: inherit; font-size: 18px; font-weight: 750; letter-spacing: .1px;
     -webkit-appearance: none; appearance: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
     transition: transform .15s, box-shadow .3s;
 }
+[data-theme="dark"] .ob-next { background: rgba(0, 122, 255, .28); }
 .ob-fill { position: absolute; inset: 0; transform-origin: 0 50%; transform: scaleX(0); background: var(--ui-accent, #007aff); border-radius: inherit; }
 .ob-next.is-filling .ob-fill { animation: obFill 1.5s linear forwards; }
 .ob-next.is-ready .ob-fill { animation: none; transform: none; }
@@ -43,7 +46,7 @@
 
 /* ---------- иллюстрации ---------- */
 .ob-art {
-    position: relative; overflow: hidden; height: min(calc(var(--ob-w) - 32px), 46vh); border-radius: 26px; color: #fff; isolation: isolate;
+    position: relative; overflow: hidden; height: var(--ob-art); border-radius: 26px; color: #fff; isolation: isolate;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 14px 34px rgba(0, 0, 0, .22);
 }
 .ob-art::after { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(70% 45% at 50% 0%, rgba(255, 255, 255, .35), transparent 70%); }
@@ -63,7 +66,7 @@
 
 .ob-art--games { background: radial-gradient(130% 100% at 50% 0%, #7d9bff 0%, #4a63ff 32%, #3221d8 64%, #1b0f86 100%); }
 .ob-art--online { background: radial-gradient(130% 100% at 50% 0%, #6dffb8 0%, #16cc7c 32%, #0aa08a 62%, #06566a 100%); }
-.ob-art--tops { background: radial-gradient(130% 100% at 50% 0%, #ffe066 0%, #ffa21f 32%, #ff5a1f 62%, #b5122b 100%); }
+.ob-art--tops { background: radial-gradient(130% 100% at 50% 0%, #ffb547 0%, #ff7a1f 30%, #e8431f 60%, #8f0f2e 100%); }
 .ob-art--prize { background: radial-gradient(130% 100% at 50% 0%, #d39bff 0%, #9a3dff 32%, #6512e0 62%, #2c0675 100%); }
 
 /* 1. Игры: восемь иконок волной */
@@ -91,60 +94,75 @@
 .ob-board { position: relative; flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); width: 46%; overflow: hidden; border-radius: 16px; box-shadow: 0 14px 30px rgba(0, 40, 30, .4), 0 0 0 3px rgba(255, 255, 255, .9); }
 .ob-board span { display: block; padding-top: 100%; background: #effff7; }
 .ob-board span.d { background: #4fd39a; }
-.ob-board i { position: absolute; left: 0; top: 0; width: 25%; height: 25%; background: center / 92% no-repeat; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 4px 4px rgba(0, 40, 20, .45)); animation: obKnight 6s cubic-bezier(.5, 0, .2, 1) infinite; }
+.ob-board i { position: absolute; left: 0; top: 0; width: 25%; height: 25%; background: center / 92% no-repeat; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 4px 4px rgba(0, 40, 20, .45)); transform: translate(0%, 300%); }
+.ob-card.is-active .ob-board i { animation: obKnight 6s ease-in-out .8s infinite; }
 .ob-card.is-active .ob-board { animation: obPop .6s cubic-bezier(.34, 1.56, .64, 1) .18s both; }
 @keyframes obKnight {
-    0%, 18% { transform: translate(0%, 300%); }
-    25%, 43% { transform: translate(100%, 100%); }
-    50%, 68% { transform: translate(300%, 0%); }
-    75%, 93% { transform: translate(200%, 200%); }
-    100% { transform: translate(0%, 300%); }
+    0%, 18% { transform: translate(0%, 300%) scale(1); }
+    21.5% { transform: translate(50%, 200%) scale(1.35); }
+    25%, 43% { transform: translate(100%, 100%) scale(1); }
+    46.5% { transform: translate(200%, 50%) scale(1.35); }
+    50%, 68% { transform: translate(300%, 0%) scale(1); }
+    71.5% { transform: translate(250%, 100%) scale(1.35); }
+    75%, 93% { transform: translate(200%, 200%) scale(1); }
+    96.5% { transform: translate(100%, 250%) scale(1.35); }
+    100% { transform: translate(0%, 300%) scale(1); }
 }
 
 /* 3. Топы: пьедестал, корона, +25 */
 .ob-podium { position: absolute; left: 12%; right: 12%; top: 34%; bottom: 0; display: flex; align-items: flex-end; gap: 4%; }
 .ob-bar { position: relative; flex: 1 1 0; display: flex; justify-content: center; border-radius: 16px 16px 0 0; box-shadow: inset 0 3px 0 rgba(255, 255, 255, .6), 0 -6px 20px rgba(120, 20, 0, .25); transform-origin: 50% 100%; }
-.ob-bar.p1 { height: 72%; background: linear-gradient(180deg, #ffe680, #ffc21a 45%, #f08c00); }
-.ob-bar.p2 { height: 52%; background: linear-gradient(180deg, #ffffff, #d5dde8 45%, #9aa8bb); }
-.ob-bar.p3 { height: 38%; background: linear-gradient(180deg, #ffd9b3, #f0a462 45%, #c56a24); }
+.ob-bar.p1 { height: 68%; background: linear-gradient(180deg, #fff1a8, #ffd21f 40%, #f5a300); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .75), 0 0 28px rgba(255, 220, 80, .55); }
+.ob-bar.p2 { height: 50%; background: linear-gradient(180deg, #eef2f7, #c3ccd9 45%, #8d9bb0); }
+.ob-bar.p3 { height: 37%; background: linear-gradient(180deg, #ffd0a3, #e08a45 45%, #a8531a); }
 .ob-bar em { margin-top: 12%; font-style: normal; font-size: clamp(30px, 9vw, 44px); font-weight: 900; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .18), 0 4px 12px rgba(90, 30, 0, .45); }
 .ob-card.is-active .ob-bar { animation: obRise .7s cubic-bezier(.22, 1, .36, 1) both; }
 .ob-card.is-active .ob-bar.p1 { animation-delay: .15s; }
 .ob-card.is-active .ob-bar.p3 { animation-delay: .08s; }
 @keyframes obRise { from { transform: scaleY(0); } }
-.ob-crown { position: absolute; left: 50%; bottom: 100%; width: 54%; margin: 0 0 6% -27%; animation: obBob 2.2s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(150, 60, 0, .4)); }
-.ob-crown svg { display: block; width: 100%; height: auto; }
-.ob-medal { position: absolute; left: 50%; bottom: 100%; width: 38%; margin: 0 0 10% -19%; border-radius: 50%; box-shadow: 0 6px 12px rgba(120, 30, 0, .35), inset 0 0 0 3px rgba(255, 255, 255, .6); }
-.ob-medal::before { content: ''; display: block; padding-top: 100%; }
-.ob-medal.silver { background: radial-gradient(circle at 35% 30%, #ffffff, #c9d1dc 55%, #8e9aab); }
-.ob-medal.bronze { background: radial-gradient(circle at 35% 30%, #ffe0c2, #e3954f 55%, #a85a1e); }
-@keyframes obBob { 50% { transform: translateY(-10%) rotate(-4deg); } }
+/* игроки: создатель на первом месте, боты на втором и третьем */
+.ob-player { position: absolute; left: 0; right: 0; bottom: 100%; z-index: 1; display: grid; place-items: center; width: min(66%, calc(var(--ob-art) * .15)); margin: 0 auto 14%; overflow: hidden; border-radius: 50%; }
+.ob-player::before { content: ''; display: block; padding-top: 100%; grid-area: 1 / 1; }
+.ob-player img { grid-area: 1 / 1; display: block; width: 100%; height: 100%; object-fit: cover; }
+.ob-player svg { grid-area: 1 / 1; width: 64%; height: 64%; fill: #fff; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .18)); }
+.ob-player.owner { width: min(80%, calc(var(--ob-art) * .185)); margin-bottom: 16%; background: #d6f5cf; box-shadow: 0 0 0 4px #ffd23f, 0 0 0 7px rgba(255, 255, 255, .6), 0 12px 24px rgba(120, 40, 0, .45); }
+.ob-player.silver { background: linear-gradient(160deg, #f4f7fb, #a3b0c2); color: #8592a8; box-shadow: 0 0 0 4px #eef2f7, 0 8px 18px rgba(90, 30, 0, .35); }
+.ob-player.bronze { background: linear-gradient(160deg, #ffdcb8, #cf7a35); color: #b8662a; box-shadow: 0 0 0 4px #ffd8b0, 0 8px 18px rgba(90, 30, 0, .35); }
+.ob-card.is-active .ob-player { animation: obPop .55s cubic-bezier(.34, 1.56, .64, 1) .5s both; }
+.ob-card.is-active .ob-player.owner { animation-delay: .62s; }
 
 /* 4. Призы: кубок, лучи, монеты */
 .ob-rays { position: absolute; left: 50%; top: 62%; z-index: -1; width: 150%; aspect-ratio: auto; margin-left: -75%; transform: translateY(-50%); }
 .ob-rays::before { content: ''; display: block; padding-top: 100%; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, .2) 0deg 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%); animation: obSpin 18s linear infinite; }
 @keyframes obSpin { to { transform: rotate(360deg); } }
-/* медаль и веер купюр */
-.ob-cash { position: absolute; left: 50%; top: 29%; width: 54%; height: 66%; transform: translateX(-50%); }
-.ob-medal-big { position: absolute; left: 50%; bottom: 0; width: 74%; height: auto; transform: translateX(-50%); overflow: visible; filter: drop-shadow(0 14px 22px rgba(40, 0, 90, .5)); }
-.ob-bill { position: absolute; left: 50%; top: 8%; width: 66%; margin-left: -33%; transform-origin: 50% 120%; filter: drop-shadow(0 8px 14px rgba(20, 0, 70, .35)); }
-.ob-bill svg { display: block; width: 100%; height: auto; }
-.ob-bill.b1 { transform: rotate(-24deg) translateX(-26%); }
-.ob-bill.b2 { transform: translateY(-10%); }
-.ob-bill.b3 { transform: rotate(24deg) translateX(26%); }
-.ob-card.is-active .ob-medal-big { animation: obMedalIn .75s cubic-bezier(.34, 1.56, .64, 1) .15s both; }
-.ob-card.is-active .ob-bill { animation: obBillIn .6s cubic-bezier(.22, 1, .36, 1) both; }
-.ob-card.is-active .ob-bill.b1 { animation-delay: .05s; }
-.ob-card.is-active .ob-bill.b3 { animation-delay: .1s; }
-@keyframes obMedalIn { from { opacity: 0; transform: translateX(-50%) translateY(16%) scale(.5); } }
-@keyframes obBillIn { from { opacity: 0; transform: translateY(30%) rotate(0deg) scale(.6); } }
-.ob-shine { animation: obShine 3.2s ease-in-out 1s infinite; }
-@keyframes obShine { 0% { transform: translateX(0); } 45%, 100% { transform: translateX(190px); } }
-.ob-coin { position: absolute; bottom: -12%; width: 10%; filter: drop-shadow(0 4px 8px rgba(60, 0, 100, .4)); animation: obCoin 3.6s ease-in var(--d) infinite; opacity: 0; }
-.ob-coin svg { display: block; width: 100%; height: auto; }
-@keyframes obCoin { 0% { opacity: 0; transform: translateY(0) scaleX(1) rotate(-12deg); } 15% { opacity: 1; } 50% { transform: translateY(-280%) scaleX(.72) rotate(10deg); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-560%) scaleX(1) rotate(-8deg); } }
+/* анимированные эмодзи: сундук в центре, медаль «1» и мешок денег по бокам */
+.ob-prize { position: absolute; inset: 0; }
+.ob-lottie { position: absolute; display: block; }
+.ob-lottie svg { display: block; }
+.ob-l-chest { left: 0; right: 0; bottom: 2%; width: calc(var(--ob-art) * .54); height: calc(var(--ob-art) * .54); margin: 0 auto; filter: drop-shadow(0 14px 22px rgba(40, 0, 90, .45)); }
+.ob-l-medal { left: 5%; top: 25%; width: calc(var(--ob-art) * .27); height: calc(var(--ob-art) * .27); }
+.ob-l-cash { right: 5%; top: 25%; width: calc(var(--ob-art) * .27); height: calc(var(--ob-art) * .27); filter: drop-shadow(0 6px 12px rgba(20, 60, 0, .35)); }
+.ob-fb { display: none; }
+.ob-lottie.is-waiting .ob-fb { display: grid; place-items: center; width: 100%; height: 100%; font-style: normal; font-size: calc(var(--ob-art) * .17); line-height: 1; }
+.ob-l-chest.is-waiting .ob-fb { font-size: calc(var(--ob-art) * .3); }
+.ob-card.is-active .ob-l-medal { animation: obPop .55s cubic-bezier(.34, 1.56, .64, 1) .3s both, obFloat2 3.4s ease-in-out .9s infinite; }
+.ob-card.is-active .ob-l-cash { animation: obPop .55s cubic-bezier(.34, 1.56, .64, 1) .42s both, obFloat2 3.4s ease-in-out 2.6s infinite; }
+.ob-lottie.is-fallback { display: grid; place-items: center; font-size: calc(var(--ob-art) * .18); line-height: 1; }
+.ob-l-chest.is-fallback { font-size: calc(var(--ob-art) * .34); }
+.ob-card.is-active .ob-l-chest { animation: obPop .7s cubic-bezier(.34, 1.56, .64, 1) .1s both; }
+@keyframes obFloat2 { 50% { transform: translateY(-8%) rotate(-3deg); } }
+/* невидимые карточки не тратят батарею на бесконечные анимации */
+.ob-card:not(.is-active) *, .ob-card:not(.is-active) *::before { animation-play-state: paused !important; }
+.ob-next:focus { outline: none; }
+.ob-next:focus-visible { outline: 3px solid rgba(0, 122, 255, .45); outline-offset: 3px; }
+/* «Упрощённая графика»: без размытия и без бесконечных анимаций */
+.lite-mode .ob-overlay::before { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(0, 0, 0, .72); }
+.lite-mode .ob-glow, .lite-mode .ob-spark { animation: none; }
+.lite-mode .ob-icons i, .lite-mode .ob-rays::before, .lite-mode .ob-link b { animation: none; }
+.lite-mode .ob-card.is-active .ob-l-medal, .lite-mode .ob-card.is-active .ob-l-cash { animation: obPop .55s cubic-bezier(.34, 1.56, .64, 1) .3s both; }
 
 @media (prefers-reduced-motion: reduce) {
     .ob-overlay *, .ob-overlay *::before { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    .ob-overlay, .ob-sheet, .ob-track { transition-duration: .01ms !important; }
     .ob-next.is-filling .ob-fill { animation: obFill 1.5s linear forwards !important; }
 }

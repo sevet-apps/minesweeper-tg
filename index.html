@@ -3620,7 +3620,7 @@
     <link rel="stylesheet" href="assets/block-blast/picker.css">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
-    <script src="assets/ui/sheets.js?v=20261024" defer></script>
+    <script src="assets/ui/sheets.js?v=20261025" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
@@ -5048,53 +5048,62 @@
         }
 
         // --- Знакомство со Spark (assets/ui/onboarding.*): грузится, только когда нужно ---
-        const SPARK_INTRO_VERSION = '20261024-2';
+        const SPARK_INTRO_VERSION = '20261025';
         let sparkIntroLoading = null;
+        let sparkIntroStyled = false;
         function loadSparkIntro() {
-            if (window.SparkIntro) return Promise.resolve(window.SparkIntro);
+            if (window.SparkIntro && sparkIntroStyled) return Promise.resolve(window.SparkIntro);
             if (sparkIntroLoading) return sparkIntroLoading;
             const load = (tag, attrs) => new Promise((resolve, reject) => {
                 const node = document.createElement(tag);
                 Object.assign(node, attrs);
                 node.onload = resolve;
-                node.onerror = reject;
+                node.onerror = () => { node.remove(); reject(new Error(`${tag} failed`)); };
                 document.head.appendChild(node);
             });
+            // стили и скрипт грузятся независимо: без стилей знакомство не открываем
             sparkIntroLoading = Promise.all([
-                load('link', { rel: 'stylesheet', href: `assets/ui/onboarding.css?v=${SPARK_INTRO_VERSION}` }),
-                load('script', { src: `assets/ui/onboarding.js?v=${SPARK_INTRO_VERSION}` }),
+                sparkIntroStyled ? null : load('link', { rel: 'stylesheet', href: `assets/ui/onboarding.css?v=${SPARK_INTRO_VERSION}` }).then(() => { sparkIntroStyled = true; }),
+                window.SparkIntro ? null : load('script', { src: `assets/ui/onboarding.js?v=${SPARK_INTRO_VERSION}` }),
             ]).then(() => window.SparkIntro);
-            sparkIntroLoading.catch(() => { sparkIntroLoading = null; });
+            sparkIntroLoading.catch(() => {}).finally(() => { sparkIntroLoading = null; });
             return sparkIntroLoading;
         }
-        /** Уже знаком со Spark: прошёл карточки или пользовался приложением раньше (есть его данные). */
+        /** Уже знаком со Spark: прошёл карточки или пользовался приложением раньше (есть его данные).
+            Если знакомство начали показывать и не досмотрели — покажем снова. */
         function sparkIntroSeen() {
             try {
                 if (localStorage.getItem('spark_intro_done')) return true;
+                if (localStorage.getItem('spark_intro_pending')) return false;
                 const used = ['spark_theme_preference', 'vibration', 'sounds_enabled', 'lite_mode', 'tower_best', 'tower_combo', 'wordle_wins', 'wordle_saved_game',
                     'sudo_state', 'bb_state_original', 'bb_mode_slide', 'chess_settings', 'chess_stats', 'chess_saved_game', 'language_owner', 'language'];
                 return used.some(key => localStorage.getItem(key) !== null) || Object.keys(localStorage).some(key => /^language_\d+$/.test(key));
             } catch (_) { return true; }
         }
+        /** Нельзя перекрывать: открыта игра (например, пришёл по приглашению), другая шторка или окно. */
+        function sparkIntroBusy() {
+            return !!document.querySelector('#appLoader, .game-overlay.visible, .modal-overlay.visible, .bottom-sheet-overlay.visible, .title-bottom-overlay.visible');
+        }
         function showSparkIntroWhenReady() {
-            // ждём, пока уйдёт заставка с видео, иначе «Дальше» наполнится под ней
-            if (document.getElementById('appLoader')) { setTimeout(showSparkIntroWhenReady, 200); return; }
-            loadSparkIntro().then(intro => intro && intro.open()).catch(() => {});
+            // ждём заставку и свободный главный экран; партия по приглашению важнее знакомства
+            if (sparkIntroBusy()) { setTimeout(showSparkIntroWhenReady, 600); return; }
+            try { if (localStorage.getItem('spark_intro_done')) return; } catch (_) {}
+            loadSparkIntro().then(intro => intro && !intro.isOpen() && !sparkIntroBusy() ? intro.open() : setTimeout(showSparkIntroWhenReady, 600)).catch(() => {});
         }
         function maybeShowSparkIntro() {
             if (sparkIntroSeen()) return;
+            try { localStorage.setItem('spark_intro_pending', '1'); } catch (_) {}
+            // уже смотрел на другом устройстве — ответ облака учитываем, когда бы он ни пришёл
             const cloud = tg.CloudStorage;
-            if (!cloud || typeof cloud.getItem !== 'function' || (tg.isVersionAtLeast && !tg.isVersionAtLeast('6.9'))) { showSparkIntroWhenReady(); return; }
-            // уже смотрел на другом устройстве — не показываем
-            let settled = false;
-            const decide = seen => {
-                if (settled) return;
-                settled = true;
-                if (seen) { try { localStorage.setItem('spark_intro_done', '1'); } catch (_) {} return; }
-                showSparkIntroWhenReady();
-            };
-            setTimeout(() => decide(false), 1500);
-            try { cloud.getItem('spark_intro_done', (error, value) => decide(!error && !!value)); } catch (_) { decide(false); }
+            if (cloud && typeof cloud.getItem === 'function' && (!tg.isVersionAtLeast || tg.isVersionAtLeast('6.9'))) {
+                try {
+                    cloud.getItem('spark_intro_done', (error, value) => {
+                        if (error || !value) return;
+                        try { localStorage.setItem('spark_intro_done', '1'); localStorage.removeItem('spark_intro_pending'); } catch (_) {}
+                    });
+                } catch (_) {}
+            }
+            showSparkIntroWhenReady();
         }
         function replaySparkIntro() {
             if (typeof closeSettingsSheet === 'function') closeSettingsSheet();
