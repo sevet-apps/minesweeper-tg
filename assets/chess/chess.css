@@ -196,8 +196,14 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 /* Диалог и итог партии — свои шторки внутри экрана. */
 .cs-sheet-scrim { position: absolute; inset: 0; z-index: 40; background: var(--ui-scrim); opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s; }
 .cs-sheet-scrim.show { opacity: 1; visibility: visible; transition-delay: 0s; }
-.cs-sheet { position: absolute; left: 50%; bottom: 0; z-index: 41; width: min(100%, 480px); max-height: 92%; overflow: auto; padding: 26px 20px calc(20px + var(--safe-bottom, 0px)); border-radius: var(--ui-sheet-radius) var(--ui-sheet-radius) 0 0; background: var(--ui-sheet); border: 1px solid var(--ui-border); border-bottom: 0; box-shadow: 0 -12px 48px #0003; transform: translate(-50%, 105%); transition: transform var(--ui-sheet-exit) var(--ui-ease); text-align: center; }
+.cs-sheet { position: absolute; left: 50%; bottom: 0; z-index: 41; display: flex; flex-direction: column; width: min(100%, 480px); max-height: 75%; overflow: hidden; padding: 0; border-radius: var(--ui-sheet-radius) var(--ui-sheet-radius) 0 0; background: var(--ui-sheet); border: 1px solid var(--ui-border); border-bottom: 0; box-shadow: 0 -12px 48px #0003; transform: translate(-50%, 105%); transition: transform var(--ui-sheet-exit) var(--ui-ease); text-align: center; }
 .cs-sheet.show { transform: translate(-50%, 0); transition-duration: var(--ui-sheet-enter); }
+/* Не выше 3/4 экрана: шапка с крестиком стоит на месте, содержимое листается под ней. */
+.cs-sheet-head { position: relative; flex: none; height: 26px; }
+.cs-sheet-head.has-close { height: 52px; }
+.cs-sheet-close { position: absolute; right: 10px; top: 8px; z-index: 2; }
+.cs-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 20px calc(20px + var(--safe-bottom, 0px)); }
+.cs-sheet-head.has-close + .cs-sheet-body { margin-top: -12px; }
 .cs-sheet h2 { margin: 0; font-size: 26px; letter-spacing: -.5px; }
 .cs-sheet p { margin: 8px 0 0; color: var(--ui-muted); font-size: 15px; line-height: 1.4; }
 .cs-sheet-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
@@ -426,11 +432,11 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 
 /* Выбор доски в настройках партии. */
 .cs-skins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
-.cs-skin { position: relative; display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; padding: 8px 8px 9px; border: 1px solid var(--ui-border); border-radius: 16px; background: var(--ui-surface); color: var(--ui-text); font: inherit; text-align: center; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), box-shadow .2s, border-color .2s; }
+.cs-skin { position: relative; display: block; width: 100%; box-sizing: border-box; min-width: 0; padding: 8px 8px 9px; border: 1px solid var(--ui-border); border-radius: 16px; background: var(--ui-surface); color: var(--ui-text); font: inherit; text-align: center; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), box-shadow .2s, border-color .2s; }
 .cs-skin:active { transform: scale(.96); }
 .cs-skin.is-active { border-color: var(--ui-accent); box-shadow: 0 0 0 2px var(--ui-accent); }
-.cs-skin-board { position: relative; display: block; padding: 4px; border-radius: 10px; background: var(--cs-frame); box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
-.cs-skin-grid { position: relative; display: block; height: 0; padding-top: 50%; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px var(--cs-line); }
+.cs-skin-board { position: relative; display: block; width: 100%; box-sizing: border-box; padding: 4px; border-radius: 10px; background: var(--cs-frame); box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
+.cs-skin-grid { position: relative; display: block; width: 100%; height: 0; padding-top: 50%; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px var(--cs-line); }
 /* Высоту превью задаёт padding-top (4×2 клетки), клетки — сетка поверх на всю
    площадь: свойство соотношения сторон в WebKit внутри кнопки сжимало их до нуля. */
 .cs-skin-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
@@ -440,8 +446,8 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-skin-piece { position: absolute; width: 25%; height: 50%; background: center / contain no-repeat; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
 .cs-skin-piece.w { left: 0; top: 50%; }
 .cs-skin-piece.b { left: 75%; top: 0; }
-.cs-skin b { display: -webkit-box; margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.18; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-.cs-skin small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-skin b { display: -webkit-box; width: 100%; margin-top: 7px; text-align: center; font-size: 13px; font-weight: 700; line-height: 1.18; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.cs-skin small { display: block; width: 100%; margin-top: 2px; text-align: center; font-size: 11px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-skin.is-locked .cs-skin-board { filter: saturate(.55) brightness(.92); }
 .cs-skin.is-locked::after { content: ''; position: absolute; top: 12px; left: 14px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0, 0, 0, .55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / 12px no-repeat; }
 .cs-settings-label { margin: 20px 4px 10px; font-size: 13px; font-weight: 700; color: var(--ui-muted); text-align: left; }
@@ -489,3 +495,13 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .ck-code-row button.ck-scan { display: grid; place-items: center; flex-shrink: 0; width: 48px; min-width: 48px; padding: 0; background: var(--ui-track); color: var(--ui-text); border: 1px solid var(--ui-border); }
 .ck-code-row button.ck-scan[hidden] { display: none; }
 .ck-code-row button.ck-scan svg { width: 24px; height: 24px; }
+
+/* Главное меню шахмат: шторка не выше 3/4 экрана, крестик в закреплённой шапке. */
+#modalChess .modal.ui-mode-panel { max-height: 75%; }
+
+/* Партия идёт на другом устройстве. */
+.cs-continue.is-elsewhere { background: rgba(52, 199, 89, .14); }
+.cs-continue.is-elsewhere b { color: #1f9d48; }
+.cs-continue-ico { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: #34c759; color: #fff; }
+.cs-continue .cs-continue-ico svg { width: 18px; height: 18px; margin: 0 1px 0 -1px; color: #fff; stroke: #fff; fill: none; }
+[data-theme="dark"] .cs-continue.is-elsewhere b { color: #4cd964; }

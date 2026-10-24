@@ -4809,7 +4809,19 @@
         
         // --- SOCKET.IO INIT ---
         // Signed initData lets the server trust our Telegram id; ids in event bodies are ignored.
-        const socket = io(API_BASE_URL, { auth: { initData: tg.initData || '' } });
+        // Постоянный ID устройства: сервер отличает «тот же телефон перезапустил
+        // приложение» от «Telegram на компьютере переподключился» (шахматы).
+        const SPARK_DEVICE_ID = (() => {
+            try {
+                let id = localStorage.getItem('spark_device_id') || '';
+                if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+                    id = (window.crypto?.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, '');
+                    localStorage.setItem('spark_device_id', id);
+                }
+                return id;
+            } catch (_) { return ''; }
+        })();
+        const socket = io(API_BASE_URL, { auth: { initData: tg.initData || '', deviceId: SPARK_DEVICE_ID } });
         
         // Stable Telegram user id, captured at first successful read. Some
         // calls happen before tg.initDataUnsafe.user is populated (cold start
@@ -6455,7 +6467,7 @@
         }
 
         // --- Шахматы: модуль грузится при первом открытии ---
-        const CHESS_VERSION = '20261024-1';
+        const CHESS_VERSION = '20261024-2';
         let chessLoading = null;
         function loadChessApp() {
             if (window.SparkChess?.init) return window.SparkChess.init();
@@ -6496,6 +6508,8 @@
         }
         // Сервер возвращает в незаконченную онлайн-партию (тот же Telegram ID).
         socket.on('connect', () => socket.emit('chess_rejoin'));
+        // Партия идёт на другом устройстве: шахматы покажут «Играть здесь».
+        socket.on('chess_elsewhere', data => { window.__chessElsewhere = data && data.roomCode ? { ...data, at: Date.now() } : null; });
         socket.on('chess_start', data => {
             if (window.SparkChess?.ready) return;
             if (data?.resumed) loadChessApp().then(chess => chess.handleStart(data)).catch(() => {});

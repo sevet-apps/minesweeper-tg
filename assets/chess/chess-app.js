@@ -1681,8 +1681,9 @@
         cancelBot();
         hintToken++;
         analysisToken++;
-        engines.hint?.stop();
-        engines.action?.stop();
+        // Вспомогательные движки освобождают память: на iPhone WebView с
+        // несколькими Stockfish могли выгрузить, и приложение открывалось заново.
+        for (const kind of ['hint', 'action', 'review']) { engines[kind]?.terminate(); engines[kind] = null; }
         clearInterval(clockTimer);
         clockTimer = null;
         closeDialog(true);
@@ -1840,7 +1841,7 @@
             else toast(I18N.T[key] ? tr(key) : tr('e_network'), 'error');
             if (data?.code !== 'drawUnavailable' && data?.code !== 'alreadyPlaying') hideWait();
         });
-        socket.on('chess_start', handleStart);
+        socket.on('chess_start', data => { window.__chessElsewhere = null; handleStart(data); });
         socket.on('chess_state', data => {
             if (!forMe(data)) return;
             const sameMoves = data.moves.length === game.moves.length && data.moves.every((m, i) => m.san === game.moves[i].san);
@@ -1917,7 +1918,17 @@
             renderPlayers();
             toast(tr('opponentBack'));
         });
-        socket.on('chess_moved_elsewhere', data => { if (forMe(data)) closeScreen(); });
+        socket.on('chess_moved_elsewhere', data => {
+            if (!forMe(data)) return;
+            window.__chessElsewhere = { roomCode: data.roomCode, tc: game.tc?.id, opponent: game.online.opponent, at: Date.now() };
+            closeScreen();
+            toast(tr('movedElsewhere'));
+            openSheet('online');
+        });
+        socket.on('chess_elsewhere', data => {
+            window.__chessElsewhere = data && data.roomCode ? { ...data, at: Date.now() } : null;
+            if (sheetEl?.classList.contains('visible')) refreshSheetTexts();
+        });
         socket.on('chess_rematch_waiting', data => { if (forMe(data)) setResultNote(tr('rematchWaiting')); });
         socket.on('chess_rematch_offer', data => {
             if (!forMe(data)) return;
@@ -1988,7 +1999,9 @@
     /* ---------- шторки внутри экрана: подтверждение, итог, настройки ---------- */
     function openDialog(kind, html, { dismissable = true } = {}) {
         ui.dialog = { kind, dismissable };
-        refs.sheet.innerHTML = html;
+        // Шапка с крестиком не прокручивается; содержимое листается внутри.
+        refs.sheet.innerHTML = `<div class="cs-sheet-head${dismissable ? ' has-close' : ''}">${dismissable ? `<button class="ui-close cs-sheet-close" type="button" data-dlg="x" aria-label="${esc(tr('cancel'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button>` : ''}</div><div class="cs-sheet-body">${html}</div>`;
+        refs.sheet.querySelector('[data-dlg="x"]')?.addEventListener('click', () => closeDialog());
         refs.scrim.classList.add('show');
         requestAnimationFrame(() => refs.sheet.classList.add('show'));
     }
@@ -2300,6 +2313,7 @@
                 <button type="button" class="segment-item" data-tab="online" data-t="modeOnline"></button>
                 <button type="button" class="segment-item" data-tab="local" data-t="modeLocal"></button>
             </div>
+            <button type="button" class="cs-continue is-elsewhere" data-sheet="takeover" hidden><span class="cs-continue-ico">${ICON.send}</span><span><b data-t="elsewhereTitle"></b><small data-ref="elsewhereHint"></small></span>${ICON.chevron}</button>
             <button type="button" class="cs-continue" data-sheet="continue" hidden><i style="background-image:url('${pieceUrl('wN')}')"></i><span><b data-t="continueGame"></b><small data-ref="continueHint"></small></span>${ICON.chevron}</button>
             <div class="cs-panel" data-panel="bot">
                 <p class="cs-label" data-t="botLevel"></p>
@@ -2385,6 +2399,12 @@
             const value = prefs[group.dataset.tcs];
             group.querySelectorAll('[data-tc]').forEach(b => b.classList.toggle('active', b.dataset.tc === value));
         });
+        const away = elsewhereGame();
+        panel.querySelector('[data-sheet="takeover"]').hidden = !away;
+        if (away) {
+            const tc = core.timeControl(away.tc);
+            refs.s_elsewhereHint.textContent = [tr('playHere'), away.opponent?.name, tc ? `${tr(tc.cat)} ${tc.id}` : ''].filter(Boolean).join(' · ');
+        }
         const saved = savedGame();
         const cont = panel.querySelector('[data-sheet="continue"]');
         cont.hidden = !saved;
@@ -2430,6 +2450,13 @@
         switch (button.dataset.sheet) {
             case 'close': return closeSheet();
             case 'continue': return resumeSaved();
+            case 'takeover': {
+                window.__chessElsewhere = null;
+                refreshSheetTexts();
+                closeSheet();
+                emit('chess_rejoin', { takeover: true });
+                return;
+            }
             case 'playBot': return startOffline('bot');
             case 'playLocal': return startOffline('local');
             case 'quick': return quickMatch();
@@ -2620,8 +2647,15 @@
         if (tg?.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');
     }
 
+    /** Онлайн-партия, открытая на другом устройстве (сведения не старше часа). */
+    function elsewhereGame() {
+        const away = window.__chessElsewhere;
+        return away && away.roomCode && Date.now() - (away.at || 0) < 3600e3 ? away : null;
+    }
     function openSheet(tab) {
         if (!sheetEl) return;
+        // Свежие сведения: если другое устройство уже закрыто, сервер сам вернёт партию сюда.
+        if (typeof socket !== 'undefined' && socket?.connected && !game) socket.emit('chess_rejoin');
         refreshSheetTexts();
         setTab(tab || prefs.tab || 'bot', false);
         sheetEl.classList.add('visible');
