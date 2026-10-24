@@ -4605,6 +4605,15 @@
                 </button>
             </div>
 
+            <div class="settings-group-sheet intro-replay-group">
+                <button class="settings-row-sheet language-row" type="button" onclick="replaySparkIntro()">
+                    <span class="settings-label-sheet">
+                        <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5c.9 5.2 3.3 7.6 8.5 8.5-5.2.9-7.6 3.3-8.5 8.5-.9-5.2-3.3-7.6-8.5-8.5 5.2-.9 7.6-3.3 8.5-8.5z"/></svg>
+                        <span data-i18n="introReplay">Знакомство со Spark</span>
+                    </span>
+                    <span class="language-row-value"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+                </button>
+            </div>
             <!-- Тема -->
             <div class="settings-section-label" data-i18n="appearance">ВНЕШНИЙ ВИД</div>
             <div class="settings-group-sheet">
@@ -5038,6 +5047,60 @@
             btn.innerText = t('checkSub');
         }
 
+        // --- Знакомство со Spark (assets/ui/onboarding.*): грузится, только когда нужно ---
+        const SPARK_INTRO_VERSION = '20261024';
+        let sparkIntroLoading = null;
+        function loadSparkIntro() {
+            if (window.SparkIntro) return Promise.resolve(window.SparkIntro);
+            if (sparkIntroLoading) return sparkIntroLoading;
+            const load = (tag, attrs) => new Promise((resolve, reject) => {
+                const node = document.createElement(tag);
+                Object.assign(node, attrs);
+                node.onload = resolve;
+                node.onerror = reject;
+                document.head.appendChild(node);
+            });
+            sparkIntroLoading = Promise.all([
+                load('link', { rel: 'stylesheet', href: `assets/ui/onboarding.css?v=${SPARK_INTRO_VERSION}` }),
+                load('script', { src: `assets/ui/onboarding.js?v=${SPARK_INTRO_VERSION}` }),
+            ]).then(() => window.SparkIntro);
+            sparkIntroLoading.catch(() => { sparkIntroLoading = null; });
+            return sparkIntroLoading;
+        }
+        /** Уже знаком со Spark: прошёл карточки или пользовался приложением раньше (есть его данные). */
+        function sparkIntroSeen() {
+            try {
+                if (localStorage.getItem('spark_intro_done')) return true;
+                const used = ['spark_theme_preference', 'vibration', 'sounds_enabled', 'lite_mode', 'tower_best', 'tower_combo', 'wordle_wins', 'wordle_saved_game',
+                    'sudo_state', 'bb_state_original', 'bb_mode_slide', 'chess_settings', 'chess_stats', 'chess_saved_game', 'language_owner', 'language'];
+                return used.some(key => localStorage.getItem(key) !== null) || Object.keys(localStorage).some(key => /^language_\d+$/.test(key));
+            } catch (_) { return true; }
+        }
+        function showSparkIntroWhenReady() {
+            // ждём, пока уйдёт заставка с видео, иначе «Дальше» наполнится под ней
+            if (document.getElementById('appLoader')) { setTimeout(showSparkIntroWhenReady, 200); return; }
+            loadSparkIntro().then(intro => intro && intro.open()).catch(() => {});
+        }
+        function maybeShowSparkIntro() {
+            if (sparkIntroSeen()) return;
+            const cloud = tg.CloudStorage;
+            if (!cloud || typeof cloud.getItem !== 'function' || (tg.isVersionAtLeast && !tg.isVersionAtLeast('6.9'))) { showSparkIntroWhenReady(); return; }
+            // уже смотрел на другом устройстве — не показываем
+            let settled = false;
+            const decide = seen => {
+                if (settled) return;
+                settled = true;
+                if (seen) { try { localStorage.setItem('spark_intro_done', '1'); } catch (_) {} return; }
+                showSparkIntroWhenReady();
+            };
+            setTimeout(() => decide(false), 1500);
+            try { cloud.getItem('spark_intro_done', (error, value) => decide(!error && !!value)); } catch (_) { decide(false); }
+        }
+        function replaySparkIntro() {
+            if (typeof closeSettingsSheet === 'function') closeSettingsSheet();
+            setTimeout(() => loadSparkIntro().then(intro => intro && intro.open()).catch(() => showToast(t('networkError'), 'error')), 320);
+        }
+
         function initApp() {
             updateBackgroundPatterns();
             applyTheme();
@@ -5052,6 +5115,8 @@
             
             // Check subscription first
             checkSubscriptionOnStart();
+            // Новым игрокам — карточки «Знакомство со Spark» (поверх проверки подписки)
+            maybeShowSparkIntro();
             
             // Referral system
             checkAndRegisterReferral();
@@ -5381,6 +5446,7 @@
                 inlineMatchFinished: "Партия завершена",
                 languageTitle: "Язык",
                 languageInterface: "Язык интерфейса",
+                introReplay: "Знакомство со Spark",
                 languageSearch: "Найти язык",
                 languageAuto: "Как в Telegram",
                 languageAutoHint: "Определяется языком Telegram",
@@ -5683,6 +5749,7 @@
                 inlineMatchFinished: "The match is over",
                 languageTitle: "Language",
                 languageInterface: "Interface language",
+                introReplay: "Spark intro",
                 languageSearch: "Search language",
                 languageAuto: "Same as Telegram",
                 languageAutoHint: "Follows your Telegram language",
@@ -5980,7 +6047,7 @@
                 glassDensity: "玻璃厚重感",
                 glassLight: "轻盈",
                 glassDense: "厚重",
-                settings: '设置', language: '语言', inlineMatchNotStarted: "请先在聊天中接受挑战", inlineMatchFinished: "对局已结束", languageTitle: "语言", languageInterface: "界面语言", languageSearch: "搜索语言", languageAuto: "跟随 Telegram", languageAutoHint: "使用 Telegram 的语言", languageNotFound: "未找到", findOpponentHint: "随机在线玩家", inviteFriend: "邀请好友", enterCode: "输入代码", joinFriend: "好友房间", openRooms: "公开房间", noOpenRooms: "暂无公开房间", noOpenRoomsHint: "创建一个，其他玩家就能看到", waitingForPlayer: "等待对手", searchingOpponent: "正在寻找对手…", rematch: "再来一局", acceptRematch: "接受再战", rematchWaiting: "等待对手回应…", rematchOffered: "{name} 想再来一局", rematchDeclined: "对手拒绝了再战", shareCheckersInviteText: "{name} 邀请你下一局跳棋", checkersInviteRoom: "房间 {code} · 1 对 1", acceptChallenge: "接受挑战", appearance: '外观', theme: '主题',
+                settings: '设置', language: '语言', inlineMatchNotStarted: "请先在聊天中接受挑战", inlineMatchFinished: "对局已结束", languageTitle: "语言", languageInterface: "界面语言", introReplay: "Spark 入门", languageSearch: "搜索语言", languageAuto: "跟随 Telegram", languageAutoHint: "使用 Telegram 的语言", languageNotFound: "未找到", findOpponentHint: "随机在线玩家", inviteFriend: "邀请好友", enterCode: "输入代码", joinFriend: "好友房间", openRooms: "公开房间", noOpenRooms: "暂无公开房间", noOpenRoomsHint: "创建一个，其他玩家就能看到", waitingForPlayer: "等待对手", searchingOpponent: "正在寻找对手…", rematch: "再来一局", acceptRematch: "接受再战", rematchWaiting: "等待对手回应…", rematchOffered: "{name} 想再来一局", rematchDeclined: "对手拒绝了再战", shareCheckersInviteText: "{name} 邀请你下一局跳棋", checkersInviteRoom: "房间 {code} · 1 对 1", acceptChallenge: "接受挑战", appearance: '外观', theme: '主题',
                 simplifiedGraphics: '简化画面', vibration: '振动', sounds: '声音', privacy: '隐私政策',
                 privacyTitle: '隐私政策', support: '支持', profile: '个人资料', tops: '排行榜', games: '游戏',
                 myRecords: '我的纪录', overview: '概览', statistics: '统计', profileSections: '个人资料栏目', copyReferralLink: '复制邀请链接', favoriteGame: '最喜欢的游戏', noPlaytime: '开始游戏后，这里会显示时长',
