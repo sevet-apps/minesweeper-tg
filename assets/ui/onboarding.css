@@ -118,21 +118,30 @@
 .ob-medal::before { content: ''; display: block; padding-top: 100%; }
 .ob-medal.silver { background: radial-gradient(circle at 35% 30%, #ffffff, #c9d1dc 55%, #8e9aab); }
 .ob-medal.bronze { background: radial-gradient(circle at 35% 30%, #ffe0c2, #e3954f 55%, #a85a1e); }
-.ob-chip { position: absolute; right: -26%; top: 4%; padding: 4px 10px; border-radius: 999px; background: #22c55e; color: #fff; font-size: clamp(14px, 4vw, 17px); font-weight: 800; box-shadow: 0 6px 14px rgba(0, 80, 30, .35); animation: obChip 2.6s ease-out 1s infinite; opacity: 0; }
 @keyframes obBob { 50% { transform: translateY(-10%) rotate(-4deg); } }
-@keyframes obChip { 0% { opacity: 0; transform: translateY(20%) scale(.8); } 15% { opacity: 1; transform: none; } 70% { opacity: 1; transform: translateY(-45%); } 100% { opacity: 0; transform: translateY(-80%); } }
 
 /* 4. Призы: кубок, лучи, монеты */
 .ob-rays { position: absolute; left: 50%; top: 62%; z-index: -1; width: 150%; aspect-ratio: auto; margin-left: -75%; transform: translateY(-50%); }
 .ob-rays::before { content: ''; display: block; padding-top: 100%; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, .2) 0deg 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%); animation: obSpin 18s linear infinite; }
 @keyframes obSpin { to { transform: rotate(360deg); } }
-.ob-trophy { position: absolute; left: 50%; top: 31%; width: auto; height: 58%; transform: translateX(-50%); filter: drop-shadow(0 14px 22px rgba(40, 0, 90, .5)); overflow: visible; }
-.ob-card.is-active .ob-trophy { animation: obTrophyIn .7s cubic-bezier(.34, 1.56, .64, 1) .1s both; }
-@keyframes obTrophyIn { from { opacity: 0; transform: translateX(-50%) translateY(18%) scale(.5); } }
+/* медаль и веер купюр */
+.ob-cash { position: absolute; left: 50%; top: 29%; width: 54%; height: 66%; transform: translateX(-50%); }
+.ob-medal-big { position: absolute; left: 50%; bottom: 0; width: 74%; height: auto; transform: translateX(-50%); overflow: visible; filter: drop-shadow(0 14px 22px rgba(40, 0, 90, .5)); }
+.ob-bill { position: absolute; left: 50%; top: 8%; width: 66%; margin-left: -33%; transform-origin: 50% 120%; filter: drop-shadow(0 8px 14px rgba(20, 0, 70, .35)); }
+.ob-bill svg { display: block; width: 100%; height: auto; }
+.ob-bill.b1 { transform: rotate(-24deg) translateX(-26%); }
+.ob-bill.b2 { transform: translateY(-10%); }
+.ob-bill.b3 { transform: rotate(24deg) translateX(26%); }
+.ob-card.is-active .ob-medal-big { animation: obMedalIn .75s cubic-bezier(.34, 1.56, .64, 1) .15s both; }
+.ob-card.is-active .ob-bill { animation: obBillIn .6s cubic-bezier(.22, 1, .36, 1) both; }
+.ob-card.is-active .ob-bill.b1 { animation-delay: .05s; }
+.ob-card.is-active .ob-bill.b3 { animation-delay: .1s; }
+@keyframes obMedalIn { from { opacity: 0; transform: translateX(-50%) translateY(16%) scale(.5); } }
+@keyframes obBillIn { from { opacity: 0; transform: translateY(30%) rotate(0deg) scale(.6); } }
 .ob-shine { animation: obShine 3.2s ease-in-out 1s infinite; }
-@keyframes obShine { 0% { transform: rotate(20deg) translateX(0); } 45%, 100% { transform: rotate(20deg) translateX(170px); } }
-.ob-coin { position: absolute; bottom: -12%; width: 9%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c4, #ffcc33 50%, #e08a00); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .45), 0 4px 10px rgba(60, 0, 100, .4); animation: obCoin 3.6s ease-in var(--d) infinite; opacity: 0; }
-.ob-coin::before { content: ''; display: block; padding-top: 100%; }
+@keyframes obShine { 0% { transform: translateX(0); } 45%, 100% { transform: translateX(190px); } }
+.ob-coin { position: absolute; bottom: -12%; width: 10%; filter: drop-shadow(0 4px 8px rgba(60, 0, 100, .4)); animation: obCoin 3.6s ease-in var(--d) infinite; opacity: 0; }
+.ob-coin svg { display: block; width: 100%; height: auto; }
 @keyframes obCoin { 0% { opacity: 0; transform: translateY(0) scaleX(1) rotate(-12deg); } 15% { opacity: 1; } 50% { transform: translateY(-280%) scaleX(.72) rotate(10deg); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-560%) scaleX(1) rotate(-8deg); } }
 
 @media (prefers-reduced-motion: reduce) {

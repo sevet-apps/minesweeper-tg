@@ -21,9 +21,9 @@
         topsLabel: ['Топ-1', 'Top 1', '第 1 名', 'Top 1', 'Top 1', 'Top 1', 'Top 1', 'トップ1', 'Top 1', '1위', 'Zirve', 'Top 1'],
         topsTitle: ['Поднимайся в топах', 'Climb the leaderboards', '冲上排行榜', 'Sube en las clasificaciones', 'Suba nos rankings', 'Naik di papan peringkat', 'Grimpe dans les classements', 'ランキングを駆け上がろう', 'Steig in den Bestenlisten auf', '랭킹을 올려라', 'Sıralamalarda yüksel', 'Leo bảng xếp hạng'],
         topsText: ['У каждой игры свой рейтинг. Побеждай и собирай титулы в профиле.', 'Every game has its own rating. Win and collect titles in your profile.', '每款游戏都有独立评分。赢下对局，在个人资料中收集称号。', 'Cada juego tiene su ranking. Gana y colecciona títulos en tu perfil.', 'Cada jogo tem seu ranking. Vença e colecione títulos no perfil.', 'Setiap game punya peringkat. Menang dan kumpulkan gelar di profil.', 'Chaque jeu a son classement. Gagne et collectionne des titres.', 'ゲームごとにランキング。勝ってプロフィールで称号を集めよう。', 'Jedes Spiel hat eine Wertung. Gewinne und sammle Titel im Profil.', '게임마다 랭킹이 있어요. 이기고 프로필에 칭호를 모으세요.', 'Her oyunun sıralaması var. Kazan ve profilinde unvan topla.', 'Mỗi trò có bảng xếp hạng riêng. Thắng và sưu tầm danh hiệu.'],
-        prizeLabel: ['Призы', 'Prizes', '奖品', 'Premios', 'Prêmios', 'Hadiah', 'Prix', '賞品', 'Preise', '상품', 'Ödüller', 'Giải thưởng'],
-        prizeTitle: ['Турниры с призами', 'Tournaments with prizes', '有奖锦标赛', 'Torneos con premios', 'Torneios com prêmios', 'Turnamen berhadiah', 'Tournois avec prix', '賞品付きトーナメント', 'Turniere mit Preisen', '상품이 걸린 토너먼트', 'Ödüllü turnuvalar', 'Giải đấu có thưởng'],
-        prizeText: ['Участвуй в турнирах и зови друзей — лучшие получают призы.', 'Join tournaments and invite friends — the best win prizes.', '参加锦标赛、邀请好友——最强者赢取奖品。', 'Participa en torneos e invita amigos: los mejores ganan premios.', 'Participe de torneios e convide amigos — os melhores ganham prêmios.', 'Ikuti turnamen dan ajak teman — yang terbaik dapat hadiah.', 'Participe aux tournois et invite tes amis — les meilleurs gagnent des prix.', 'トーナメントに参加して友達を招待 — 上位には賞品。', 'Spiel Turniere und lade Freunde ein — die Besten gewinnen Preise.', '토너먼트에 참여하고 친구를 초대하세요 — 상위권은 상품을 받아요.', 'Turnuvalara katıl, arkadaş davet et — en iyiler ödül kazanır.', 'Tham gia giải đấu, mời bạn bè — người giỏi nhất nhận thưởng.'],
+        prizeLabel: ['Турниры', 'Tournaments', '锦标赛', 'Torneos', 'Torneios', 'Turnamen', 'Tournois', 'トーナメント', 'Turniere', '토너먼트', 'Turnuvalar', 'Giải đấu'],
+        prizeTitle: ['Денежные призы', 'Cash prizes', '现金奖励', 'Premios en dinero', 'Prêmios em dinheiro', 'Hadiah uang', 'Prix en argent', '賞金', 'Geldpreise', '상금', 'Para ödülleri', 'Thưởng tiền mặt'],
+        prizeText: ['Займи первое место в турнире или в топе рефералов — получи деньги.', 'Take first place in a tournament or the referral top — and win money.', '在锦标赛或邀请排行榜中夺得第一，赢取现金。', 'Gana un torneo o el top de referidos y llévate dinero.', 'Fique em 1º num torneio ou no top de indicações e ganhe dinheiro.', 'Jadi juara turnamen atau top referal dan menangkan uang.', 'Termine premier d’un tournoi ou du top parrainage et gagne de l’argent.', 'トーナメントや招待ランキングで1位になって賞金をゲット。', 'Werde Erster im Turnier oder im Einladungs-Top und gewinne Geld.', '토너먼트나 초대 랭킹에서 1위를 하고 상금을 받으세요.', 'Turnuvada ya da davet sıralamasında birinci ol, para kazan.', 'Đứng đầu giải đấu hoặc bảng mời bạn và nhận tiền thưởng.'],
     };
     const lang = () => {
         const code = typeof currentLang === 'string' ? currentLang : 'ru';
@@ -36,19 +36,27 @@
     const sparkles = list => list.map(([x, y, s, d]) => `<i class="ob-spark" style="left:${x}%;top:${y}%;--s:${s};--d:${d}s">${SPARK}</i>`).join('');
     const PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="4.4"/><path d="M3.6 21.2c.6-4.6 4.1-7.4 8.4-7.4s7.8 2.8 8.4 7.4z"/></svg>';
     const CROWN = '<svg viewBox="0 0 48 36" aria-hidden="true"><defs><linearGradient id="obGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6c2"/><stop offset=".45" stop-color="#ffd23f"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs><path fill="url(#obGold)" d="M4 30 1.5 8.5 14 18 24 2l10 16 12.5-9.5L44 30z"/><rect x="4" y="30.5" width="40" height="5" rx="2.5" fill="url(#obGold)"/><circle cx="24" cy="2.6" r="2.6" fill="#fff6c2"/></svg>';
-    const TROPHY = `<svg class="ob-trophy" viewBox="0 0 120 130" aria-hidden="true">
+    /* Медаль «1» на ленте; цифра — фигура с центром ровно в центре медали (80, 118). */
+    const MEDAL = `<svg class="ob-medal-big" viewBox="0 0 160 190" aria-hidden="true">
         <defs>
-            <linearGradient id="obCup" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff7c7"/><stop offset=".35" stop-color="#ffd54a"/><stop offset=".75" stop-color="#f5a30b"/><stop offset="1" stop-color="#c96d00"/></linearGradient>
-            <clipPath id="obCupClip"><path d="M30 8h60v26c0 22-12 38-30 40-18-2-30-18-30-40z"/></clipPath>
+            <linearGradient id="obRibL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5c7c"/><stop offset="1" stop-color="#c8102e"/></linearGradient>
+            <linearGradient id="obRibR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset="1" stop-color="#1e40af"/></linearGradient>
+            <linearGradient id="obRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4b8"/><stop offset=".4" stop-color="#ffcf33"/><stop offset=".75" stop-color="#f29a00"/><stop offset="1" stop-color="#b86a00"/></linearGradient>
+            <linearGradient id="obFace" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fff1a6"/><stop offset=".5" stop-color="#ffc928"/><stop offset="1" stop-color="#e88f00"/></linearGradient>
+            <clipPath id="obMedalClip"><circle cx="80" cy="118" r="54"/></clipPath>
         </defs>
-        <path d="M30 18H14c0 22 10 32 22 34M90 18h16c0 22-10 32-22 34" fill="none" stroke="url(#obCup)" stroke-width="8" stroke-linecap="round"/>
-        <path d="M30 8h60v26c0 22-12 38-30 40-18-2-30-18-30-40z" fill="url(#obCup)"/>
-        <g clip-path="url(#obCupClip)"><rect class="ob-shine" x="-40" y="-10" width="22" height="110" fill="#fff" opacity=".55" transform="rotate(20)"/></g>
-        <path d="M52 74h16l3 22H49z" fill="url(#obCup)"/>
-        <rect x="34" y="96" width="52" height="12" rx="4" fill="url(#obCup)"/>
-        <rect x="28" y="108" width="64" height="14" rx="5" fill="url(#obCup)"/>
-        <path d="M60 22l4.5 9.2 10.1 1.5-7.3 7.1 1.7 10-9-4.7-9 4.7 1.7-10-7.3-7.1 10.1-1.5z" fill="#fff" opacity=".9"/>
+        <path d="M44 0h30l20 70H64z" fill="url(#obRibL)"/>
+        <path d="M86 0h30L96 70H66z" fill="url(#obRibR)"/>
+        <path d="M44 0h8l20 70h-8zM108 0h8L96 70h-8z" fill="#fff" opacity=".35"/>
+        <circle cx="80" cy="118" r="56" fill="url(#obRing)"/>
+        <circle cx="80" cy="118" r="43" fill="url(#obFace)" stroke="#b86a00" stroke-opacity=".35" stroke-width="2"/>
+        <circle cx="80" cy="118" r="49" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.6" stroke-dasharray="2 4"/>
+        <path d="M71 99 83 92h7v52H77v-37l-6 3z" fill="#fff" opacity=".95"/>
+        <path d="M71 99 83 92h7v52H77v-37l-6 3z" fill="none" stroke="#c97a00" stroke-width="2" stroke-linejoin="round" opacity=".55"/>
+        <g clip-path="url(#obMedalClip)"><path class="ob-shine" d="M6 50h16L-8 190h-16z" fill="#fff" opacity=".5"/></g>
     </svg>`;
+    const BILL = '<svg viewBox="0 0 100 52" aria-hidden="true"><rect x="1" y="1" width="98" height="50" rx="7" fill="#2fbf71"/><rect x="5" y="5" width="90" height="42" rx="5" fill="none" stroke="#e9ffe9" stroke-opacity=".75" stroke-width="2"/><circle cx="50" cy="26" r="14" fill="#e9ffe9" opacity=".9"/><path d="M50 15v22M55 20.5c-1.2-1.8-3-2.6-5.2-2.6-3 0-5 1.5-5 3.7 0 5.3 10.6 2.6 10.6 8.3 0 2.3-2.3 3.9-5.4 3.9-2.4 0-4.4-1-5.6-2.9" fill="none" stroke="#1d8a4f" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="26" r="4" fill="#e9ffe9" opacity=".6"/><circle cx="84" cy="26" r="4" fill="#e9ffe9" opacity=".6"/></svg>';
+    const COIN = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#f2a400"/><circle cx="20" cy="20" r="15.5" fill="#ffd34d" stroke="#fff3b0" stroke-width="1.5"/><path d="M20 11.5v17M23.6 15.8c-.9-1.3-2.2-1.9-3.8-1.9-2.2 0-3.7 1.1-3.7 2.7 0 3.9 7.8 1.9 7.8 6.1 0 1.7-1.7 2.9-4 2.9-1.8 0-3.2-.7-4.1-2.1" fill="none" stroke="#b86a00" stroke-width="2.2" stroke-linecap="round"/></svg>';
 
     function cards() {
         const icons = ['chess', 'checkers', 'minesweeper', 'sudoku', 'block-blast', 'tower', 'wordle', 'monopoly'];
@@ -73,14 +81,14 @@
                 theme: 'tops', label: tr('topsLabel'), title: tr('topsTitle'), text: tr('topsText'),
                 art: `<div class="ob-podium">
                         <div class="ob-bar p2"><span class="ob-medal silver"></span><em>2</em></div>
-                        <div class="ob-bar p1"><span class="ob-crown">${CROWN}</span><em>1</em><span class="ob-chip">+25</span></div>
+                        <div class="ob-bar p1"><span class="ob-crown">${CROWN}</span><em>1</em></div>
                         <div class="ob-bar p3"><span class="ob-medal bronze"></span><em>3</em></div>
                     </div>` + sparkles([[10, 34, .8, .3], [90, 40, .7, 1], [16, 62, .5, 1.6], [84, 66, .6, .7]]),
             },
             {
                 theme: 'prize', label: tr('prizeLabel'), title: tr('prizeTitle'), text: tr('prizeText'),
-                art: `<span class="ob-rays"></span>${TROPHY}`
-                    + [[18, 0], [32, 1.1], [70, .5], [84, 1.6], [50, 2.2]].map(([x, d]) => `<i class="ob-coin" style="left:${x}%;--d:${d}s"></i>`).join('')
+                art: `<span class="ob-rays"></span><div class="ob-cash"><i class="ob-bill b1">${BILL}</i><i class="ob-bill b2">${BILL}</i><i class="ob-bill b3">${BILL}</i>${MEDAL}</div>`
+                    + [[12, 0], [28, 1.1], [72, .5], [88, 1.6], [50, 2.3]].map(([x, d]) => `<i class="ob-coin" style="left:${x}%;--d:${d}s">${COIN}</i>`).join('')
                     + sparkles([[12, 30, .8, .4], [88, 34, .7, 1.2], [20, 74, .5, .9], [80, 72, .6, 0]]),
             },
         ];
