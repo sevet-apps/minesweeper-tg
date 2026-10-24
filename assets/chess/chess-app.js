@@ -85,6 +85,7 @@
         send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg>',
         chevron: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
         pen: '<svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z"/><path d="M14 7l3 3"/></svg>',
+        device: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.75" width="10" height="18.5" rx="2.6"/><path d="M10.37 8.9v6.2l4.9-3.1z"/></svg>',
         qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM19 14h1M14 19v1M18 18h2v2h-2z"/></svg>',
     };
 
@@ -2002,6 +2003,8 @@
         // Шапка с крестиком не прокручивается; содержимое листается внутри.
         refs.sheet.innerHTML = `<div class="cs-sheet-head${dismissable ? ' has-close' : ''}">${dismissable ? `<button class="ui-close cs-sheet-close" type="button" data-dlg="x" aria-label="${esc(tr('cancel'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button>` : ''}</div><div class="cs-sheet-body">${html}</div>`;
         refs.sheet.querySelector('[data-dlg="x"]')?.addEventListener('click', () => closeDialog());
+        const head = refs.sheet.querySelector('.cs-sheet-head'), body = refs.sheet.querySelector('.cs-sheet-body');
+        body.addEventListener('scroll', () => head.classList.toggle('is-scrolled', body.scrollTop > 2), { passive: true });
         refs.scrim.classList.add('show');
         requestAnimationFrame(() => refs.sheet.classList.add('show'));
     }
@@ -2313,7 +2316,7 @@
                 <button type="button" class="segment-item" data-tab="online" data-t="modeOnline"></button>
                 <button type="button" class="segment-item" data-tab="local" data-t="modeLocal"></button>
             </div>
-            <button type="button" class="cs-continue is-elsewhere" data-sheet="takeover" hidden><span class="cs-continue-ico">${ICON.send}</span><span><b data-t="elsewhereTitle"></b><small data-ref="elsewhereHint"></small></span>${ICON.chevron}</button>
+            <button type="button" class="cs-continue is-elsewhere" data-sheet="takeover" hidden><span class="cs-continue-ico">${ICON.device}</span><span><b data-t="elsewhereTitle"></b><small data-ref="elsewhereHint"></small></span>${ICON.chevron}</button>
             <button type="button" class="cs-continue" data-sheet="continue" hidden><i style="background-image:url('${pieceUrl('wN')}')"></i><span><b data-t="continueGame"></b><small data-ref="continueHint"></small></span>${ICON.chevron}</button>
             <div class="cs-panel" data-panel="bot">
                 <p class="cs-label" data-t="botLevel"></p>
@@ -2360,6 +2363,8 @@
         panel.style.setProperty('--cs-bk', `url('${pieceUrl('bK')}')`);
         panel.querySelectorAll('[data-ref]').forEach(el => { refs['s_' + el.dataset.ref] = el; });
         panel.addEventListener('click', onSheetClick);
+        const heading = panel.querySelector('.ui-sheet-heading');
+        panel.addEventListener('scroll', () => heading.classList.toggle('is-scrolled', panel.scrollTop > 2), { passive: true });
         refs.s_codeInput.addEventListener('keydown', event => { if (event.key === 'Enter') joinByCode(); });
         refs.s_codeInput.addEventListener('input', () => { refs.s_codeInput.value = refs.s_codeInput.value.replace(/\D/g, '').slice(0, 5); });
 

@@ -199,11 +199,13 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-sheet { position: absolute; left: 50%; bottom: 0; z-index: 41; display: flex; flex-direction: column; width: min(100%, 480px); max-height: 75%; overflow: hidden; padding: 0; border-radius: var(--ui-sheet-radius) var(--ui-sheet-radius) 0 0; background: var(--ui-sheet); border: 1px solid var(--ui-border); border-bottom: 0; box-shadow: 0 -12px 48px #0003; transform: translate(-50%, 105%); transition: transform var(--ui-sheet-exit) var(--ui-ease); text-align: center; }
 .cs-sheet.show { transform: translate(-50%, 0); transition-duration: var(--ui-sheet-enter); }
 /* Не выше 3/4 экрана: шапка с крестиком стоит на месте, содержимое листается под ней. */
-.cs-sheet-head { position: relative; flex: none; height: 26px; }
-.cs-sheet-head.has-close { height: 52px; }
-.cs-sheet-close { position: absolute; right: 10px; top: 8px; z-index: 2; }
+/* Шапка 56px: видимый круг крестика (32px) ровно посередине — по 12px сверху и снизу,
+   справа круг на одной линии с полями содержимого (20px). */
+.cs-sheet-head { position: relative; flex: none; box-sizing: border-box; height: 26px; border-bottom: 1px solid transparent; transition: border-color .2s; }
+.cs-sheet-head.has-close { height: 56px; }
+.cs-sheet-head.is-scrolled { border-bottom-color: var(--ui-border); }
+.cs-sheet-close { position: absolute; right: 14px; top: 6px; z-index: 2; }
 .cs-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 20px calc(20px + var(--safe-bottom, 0px)); }
-.cs-sheet-head.has-close + .cs-sheet-body { margin-top: -12px; }
 .cs-sheet h2 { margin: 0; font-size: 26px; letter-spacing: -.5px; }
 .cs-sheet p { margin: 8px 0 0; color: var(--ui-muted); font-size: 15px; line-height: 1.4; }
 .cs-sheet-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
@@ -498,10 +500,16 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 
 /* Главное меню шахмат: шторка не выше 3/4 экрана, крестик в закреплённой шапке. */
 #modalChess .modal.ui-mode-panel { max-height: 75%; }
+/* Заголовок и крестик посередине шапки: одинаковые отступы сверху и снизу (16px),
+   под шапкой при прокрутке — тонкая линия, содержимое не подъезжает вплотную. */
+#modalChess .modal.ui-mode-panel > .ui-sheet-heading { padding: 16px 14px 16px 20px; margin-bottom: 4px; transition: box-shadow .2s; }
+#modalChess .modal.ui-mode-panel > .ui-sheet-heading.is-scrolled { box-shadow: 0 1px 0 0 var(--ui-border); }
 
 /* Партия идёт на другом устройстве. */
 .cs-continue.is-elsewhere { background: rgba(52, 199, 89, .14); }
 .cs-continue.is-elsewhere b { color: #1f9d48; }
 .cs-continue-ico { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: #34c759; color: #fff; }
-.cs-continue .cs-continue-ico svg { width: 18px; height: 18px; margin: 0 1px 0 -1px; color: #fff; stroke: #fff; fill: none; }
+.cs-continue .cs-continue-ico svg { width: 20px; height: 20px; margin: 0; }
+.cs-continue .cs-continue-ico svg rect { fill: none; stroke: #fff; stroke-width: 2; }
+.cs-continue .cs-continue-ico svg path { fill: #fff; stroke: none; }
 [data-theme="dark"] .cs-continue.is-elsewhere b { color: #4cd964; }
