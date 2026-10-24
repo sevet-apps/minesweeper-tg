@@ -285,6 +285,47 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
     .cs-pc.selected > i, .cs-clock.is-low, .cs-mark.check { animation: none; }
 }
 
+/* ---------- экшен-режим: кат-сцены поверх партии ---------- */
+.ca-root { position: absolute; inset: 0; z-index: 35; overflow: hidden; opacity: 0; visibility: hidden; background: #050607; transition: opacity .3s ease, visibility 0s .3s; touch-action: none; cursor: pointer; }
+.ca-root.on { opacity: 1; visibility: visible; transition: opacity .22s ease; }
+.ca-root > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ca-speed { position: absolute; inset: -30%; opacity: 0; pointer-events: none; background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg 5deg, rgba(255, 255, 255, .2) 5.4deg, transparent 6deg 11deg); -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 24%, #000 62%); mask-image: radial-gradient(circle at 50% 50%, transparent 24%, #000 62%); animation: caSpeed .12s steps(2) infinite; }
+@keyframes caSpeed { 50% { transform: rotate(3deg) scale(1.03); } }
+.ca-streak { position: absolute; left: -20%; right: -20%; top: 48%; height: 7px; opacity: 0; pointer-events: none; transform: rotate(-24deg); background: linear-gradient(90deg, transparent, #ff3a3a 20%, #fff 50%, #ff3a3a 80%, transparent); box-shadow: 0 0 24px 8px rgba(255, 60, 60, .8), 0 -3px 0 rgba(0, 200, 255, .6), 0 3px 0 rgba(255, 220, 0, .6); }
+.ca-crt { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: #000 linear-gradient(transparent calc(50% - 2px), #fff calc(50% - 2px), #fff calc(50% + 2px), transparent calc(50% + 2px)); }
+.ca-labels, .ca-caption { position: absolute; inset: 0; pointer-events: none; }
+.ca-label { position: absolute; left: 0; top: 0; will-change: transform; }
+.ca-label-in { transform: translate(-50%, -100%); animation: caPop .4s cubic-bezier(.34, 1.56, .64, 1) both; white-space: nowrap; transition: opacity .25s, filter .25s; }
+.ca-label.out .ca-label-in { opacity: 0; filter: blur(4px); }
+@keyframes caPop { from { opacity: 0; transform: translate(-50%, -40%) scale(.3); } }
+/* Числа «+9 / −9»: объёмные, с выдавленной гранью и свечением. */
+.ca-val .ca-label-in { --vc: #ff4a3d; --vd: #8f1414; --ve: #4a0707; font: 900 clamp(48px, 13.5vw, 70px)/1 var(--ui-font, system-ui); letter-spacing: -1px; font-variant-numeric: tabular-nums; color: transparent; background: linear-gradient(180deg, #ffffff 0%, #ffffff 18%, var(--vc) 58%, var(--vd) 100%); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 1px 0 var(--vd)) drop-shadow(0 1px 0 var(--vd)) drop-shadow(0 1px 0 var(--vd)) drop-shadow(0 1px 0 var(--ve)) drop-shadow(0 1px 0 var(--ve)) drop-shadow(0 1px 0 var(--ve)) drop-shadow(0 8px 10px rgba(0, 0, 0, .6)) drop-shadow(0 0 16px var(--vc)); animation: caPop3d .55s cubic-bezier(.2, 1.4, .4, 1) both, caFloat 2.6s ease-out both; }
+.ca-val.pos .ca-label-in { --vc: #3dffb4; --vd: #0b7a56; --ve: #043a28; }
+.ca-val.big .ca-label-in { font-size: clamp(60px, 17vw, 92px); }
+@keyframes caPop3d { from { opacity: 0; transform: translate(-50%, -30%) perspective(300px) rotateX(75deg) scale(.4); } 60% { opacity: 1; } }
+@keyframes caFloat { to { margin-top: -22px; } }
+/* Бейджи: насыщенный круг, белый SVG-значок строго по центру. */
+.ca-badge .ca-label-in { transform: translate(-50%, -50%); }
+.ca-badge i { position: relative; display: block; width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--c) 55%, #fff) 0%, var(--c) 46%, color-mix(in srgb, var(--c) 70%, #000) 100%); box-shadow: 0 0 0 2.5px #fff inset, 0 0 0 1px rgba(0, 0, 0, .25), 0 4px 10px rgba(0, 0, 0, .45), 0 0 22px var(--c); }
+.ca-badge i svg { position: absolute; left: 50%; top: 50%; width: 58%; height: 58%; transform: translate(-50%, -50%); fill: #fff; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
+.ca-badge i::before, .ca-badge i::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2.5px solid var(--c); opacity: 0; animation: caRing 1.2s ease-out infinite; }
+.ca-badge i::after { animation-delay: .6s; }
+@keyframes caRing { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.3); opacity: 0; } }
+.ca-x .ca-label-in { transform: translate(-50%, -50%); color: #ff3a3a; font: 900 36px/1 var(--ui-font, system-ui); -webkit-text-stroke: 2px rgba(0, 0, 0, .5); paint-order: stroke fill; text-shadow: 0 0 12px #ff2a2a, 0 0 26px #ff0000; animation: caPop .3s both, caFlick .125s steps(2) 3; }
+@keyframes caFlick { 50% { opacity: .2; } }
+.ca-cap { position: absolute; left: 0; right: 0; top: 50%; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; animation: caCapIn .45s cubic-bezier(.2, .9, .25, 1) both; transition: opacity .3s, transform .3s, filter .3s; }
+.ca-cap-top { top: 15%; }
+.ca-cap-low { top: 74%; }
+.ca-cap-mid { top: 22%; }
+.ca-cap b { display: block; max-width: 88%; overflow-wrap: anywhere; font: 900 calc(clamp(38px, 11.5vw, 72px) * var(--s, 1))/0.95 var(--ui-font, system-ui); font-stretch: condensed; letter-spacing: .04em; text-transform: uppercase; color: #fff; text-shadow: 0 0 14px var(--c), 0 0 34px var(--c), 0 0 70px var(--c), 0 4px 0 rgba(0, 0, 0, .35); -webkit-text-stroke: 1px color-mix(in srgb, var(--c) 50%, #fff); }
+.ca-cap small { font: 900 clamp(24px, 7vw, 38px)/1 var(--ui-font, system-ui); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--c) 45%, #fff); text-shadow: 0 0 12px var(--c); }
+.ca-cap small.num { --vc: #3dffb4; --vd: #0b7a56; --ve: #043a28; margin-top: 4px; font: 900 clamp(40px, 12vw, 62px)/1 var(--ui-font, system-ui); letter-spacing: -1px; text-shadow: none; color: transparent; background: linear-gradient(180deg, #ffffff 0%, #ffffff 18%, var(--vc) 58%, var(--vd) 100%); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 1px 0 var(--vd)) drop-shadow(0 1px 0 var(--vd)) drop-shadow(0 1px 0 var(--vd)) drop-shadow(0 1px 0 var(--ve)) drop-shadow(0 1px 0 var(--ve)) drop-shadow(0 1px 0 var(--ve)) drop-shadow(0 8px 10px rgba(0, 0, 0, .6)) drop-shadow(0 0 16px var(--vc)); }
+.ca-cap small.num.neg { --vc: #ff4a3d; --vd: #8f1414; --ve: #4a0707; }
+.ca-cap.out { opacity: 0; transform: scale(1.08); filter: blur(6px); }
+@keyframes caCapIn { from { opacity: 0; transform: translateY(26px) scale(.9); filter: blur(10px); } }
+.ca-skip { position: absolute; left: 0; right: 0; bottom: calc(10px + var(--safe-bottom, 0px)); z-index: 2; opacity: 0; pointer-events: none; text-align: center; font: 600 12px/1.2 var(--ui-font, system-ui); color: rgba(255, 255, 255, .5); transition: opacity .4s; }
+.cs-switch-sub { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--ui-muted); }
+
 /* ---------- скины доски ----------
    Каждый скин — набор переменных. Атрибут data-skin стоит на экране партии
    и на плитках выбора, поэтому превью в настройках выглядит как доска. */

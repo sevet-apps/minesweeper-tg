@@ -86,7 +86,7 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, action: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
@@ -207,25 +207,33 @@
             });
         }
         /** Один поиск за раз: команды разных поисков не перемешиваются. */
-        search({ fen, skill = 20, depth = null, movetime = null, onInfo = null }) {
+        /** multipv > 1 — несколько лучших продолжений (lines[1], lines[2]…). */
+        search({ fen, skill = 20, depth = null, movetime = null, multipv = 1, onInfo = null }) {
             const job = this.queue.then(() => this.ready).then(() => new Promise(resolve => {
                 if (this.skill !== skill) { this.send(`setoption name Skill Level value ${skill}`); this.skill = skill; }
+                if ((this.multipv || 1) !== multipv) { this.send(`setoption name MultiPV value ${multipv}`); this.multipv = multipv; }
                 const turn = fen.split(' ')[1] || 'w';
                 let score = null;
+                const lines = {};
                 const fn = line => {
                     if (line.startsWith('info') && line.includes(' pv ')) {
                         const s = line.match(/ score (cp|mate) (-?\d+)/);
                         const pv = line.match(/ pv (.+)$/);
                         const d = line.match(/ depth (\d+)/);
+                        const mp = line.match(/ multipv (\d+)/);
                         if (s && !/ (?:lower|upper)bound/.test(line)) {
                             const sign = turn === 'w' ? 1 : -1;
-                            score = { type: s[1], value: Number(s[2]) * sign, depth: d ? Number(d[1]) : 0 };
-                            if (onInfo && pv) onInfo({ score, move: pv[1].split(' ')[0] });
+                            const k = mp ? Number(mp[1]) : 1;
+                            const sc = { type: s[1], value: Number(s[2]) * sign, depth: d ? Number(d[1]) : 0 };
+                            const move = pv ? pv[1].split(' ')[0] : null;
+                            lines[k] = { score: sc, move };
+                            if (k === 1) score = sc;
+                            if (onInfo && pv) onInfo({ score: sc, move, multipv: k });
                         }
                     } else if (line.startsWith('bestmove')) {
                         this.listeners.delete(fn);
                         const best = line.split(' ')[1];
-                        resolve({ bestmove: best && best !== '(none)' ? best : null, score });
+                        resolve({ bestmove: best && best !== '(none)' ? best : null, score, lines });
                     }
                 };
                 this.listeners.add(fn);
@@ -241,7 +249,7 @@
         stop() { try { this.send('stop'); } catch (_) {} }
         terminate() { try { this.worker.terminate(); } catch (_) {} }
     }
-    const engines = { bot: null, hint: null };
+    const engines = { bot: null, hint: null, action: null };
     function engine(kind) {
         if (!engines[kind]) {
             engines[kind] = new Engine({ hash: kind === 'hint' ? 32 : 16 });
@@ -855,6 +863,8 @@
     /* ---------- ход ---------- */
     function playMove(raw, { byUser = false, dropped = false, quiet = false } = {}) {
         if (!game || game.over) return null;
+        if (!byUser) cancelCinema();   // ход соперника прерывает кат-сцену
+        const before = byUser && settings.action && game.view == null ? { fen: game.chess.fen(), board: positionMap(game.chess) } : null;
         const move = core.tryMove(game.chess, raw);
         if (!move) return null;
         game.moves.push(move);
@@ -870,6 +880,8 @@
         if (keepSelection) refreshSelection();
         if (game.clock) pressOfflineClock(move.color);
         const check = game.chess.inCheck();
+        const cinema = before ? planCinema(move, before) : null;
+        if (cinema) quiet = true;
         if (!quiet) {
             playMoveSound(move, check);
             haptic(move.captured ? 'medium' : 'light');
@@ -878,6 +890,7 @@
         playtime('note');
         game.hint = null;
         afterChange();
+        if (cinema) startCinema(cinema);
         if (game.mode === 'online' && byUser) {
             game.online.pending = true;
             emit('chess_move', { roomCode: game.online.roomCode, ply: game.moves.length - 1, move: { from: move.from, to: move.to, promotion: move.promotion } });
@@ -911,6 +924,7 @@
         renderStatus();
         renderActions();
         scheduleHint();
+        scheduleAnalysis();
     }
 
     /* ---------- бот ---------- */
@@ -941,6 +955,7 @@
         const minDelay = lowTime ? 120 : 420 + Math.random() * 380;
         const spent = performance.now() - started;
         if (spent < minDelay) await sleep(minDelay - spent);
+        if (cinema) { await waitCinema(); await sleep(260); }
         if (token !== botToken || !game || game.over || game.chess.fen() !== fen) return;
         game.botBusy = false;
         if (!playMove(choice)) { const any = legal[0]; if (any) playMove(any); }
@@ -1029,6 +1044,163 @@
         refs.hintBtn?.classList.toggle('is-on', hintOn);
         if (!hintOn) { hintToken++; if (game) game.hint = null; engines.hint?.stop(); renderMarks(); renderEval(null); }
         else scheduleHint();
+    }
+
+    /* ---------- экшен-режим: кат-сцены взятий и лучших ходов ----------
+       Сцены живут в chess-action.js (three.js) и грузятся лениво. Лучший ход
+       считает отдельный Stockfish с двумя линиями: ход «лучший», если он
+       совпал с первой линией и заметно сильнее второй. */
+    const Action = {
+        director: null, choose: null, loading: null, last: null,
+        load() {
+            if (this.loading) return this.loading;
+            this.loading = import(`${BASE}chess-action.js${VERSION ? `?v=${VERSION}` : ''}`).then(mod => {
+                this.director = mod.createDirector({ host: screen, base: BASE });
+                this.choose = mod.chooseTemplate;
+                setTimeout(() => this.director?.warmup(Sound.ctx), 60);
+                return this.director;
+            });
+            this.loading.catch(() => { this.loading = null; });
+            return this.loading;
+        },
+    };
+    let cinema = null;   // { id, game, clockColor, waiters }
+    let cinemaId = 0;
+    let analysisToken = 0;
+    let analysisTimer = null;
+
+    function scheduleAnalysis() {
+        clearTimeout(analysisTimer);
+        if (!settings.action || REDUCED_MOTION || !game || game.over || game.view != null) return;
+        if (!controls(game.chess.turn()) || game.analysis?.fen === game.chess.fen()) return;
+        analysisTimer = setTimeout(runAnalysis, 80);
+    }
+    async function runAnalysis() {
+        if (!game || game.over || !settings.action) return;
+        const fen = game.chess.fen();
+        if (game.chess.moves().length < 2) return;
+        const token = ++analysisToken;
+        const store = { fen, lines: {} };
+        game.analysis = store;
+        try {
+            const eng = engine('action');
+            eng.stop();
+            const result = await eng.search({
+                fen, skill: 20, depth: 14, movetime: 1500, multipv: 2,
+                onInfo: info => {
+                    if (token !== analysisToken) return;
+                    const move = core.normalizeMove(info.move);
+                    if (move) store.lines[info.multipv] = { move, score: info.score };
+                },
+            });
+            if (token !== analysisToken) return;
+            for (const [k, line] of Object.entries(result.lines || {})) {
+                const move = core.normalizeMove(line.move);
+                if (move) store.lines[k] = { move, score: line.score };
+            }
+        } catch (_) {}
+    }
+    const scoreCp = s => (s.type === 'mate' ? Math.sign(s.value || 1) * (100000 - Math.abs(s.value) * 100) : s.value);
+    /** Ход совпал с первой линией движка и сильнее второй хотя бы на ~пешку. */
+    function isBestMove(fen, move) {
+        const a = game?.analysis;
+        if (!a || a.fen !== fen) return false;
+        const l1 = a.lines[1], l2 = a.lines[2];
+        if (!l1 || !l2 || l1.score.depth < 8 || l2.score.depth < l1.score.depth - 1) return false;
+        if (l1.move.from !== move.from || l1.move.to !== move.to) return false;
+        const sign = fen.split(' ')[1] === 'w' ? 1 : -1;
+        return (scoreCp(l1.score) - scoreCp(l2.score)) * sign >= 110;
+    }
+
+    /** Нужна ли кат-сцена: взятие, лучший ход или мат — и какая. */
+    function planCinema(move, before) {
+        if (REDUCED_MOTION || !Action.director || document.hidden || !screen.classList.contains('visible')) return null;
+        const mate = game.chess.isCheckmate();
+        const capture = !!move.captured;
+        const promo = !!move.promotion;
+        const best = isBestMove(before.fen, move);
+        if (!capture && !best && !mate && !promo) return null;
+        const value = capture ? core.PIECE_VALUE[move.captured] : 0;
+        let threats = [];
+        try {
+            const parts = game.chess.fen().split(' ');
+            parts[1] = move.color;
+            parts[3] = '-';
+            threats = [...new Set(new Chess(parts.join(' ')).moves({ square: move.to, verbose: true }).filter(m => m.captured).map(m => m.to))];
+        } catch (_) {}
+        // Вилка: ход бьёт сразу две ценные фигуры (или короля и фигуру).
+        const weight = sq => { const p = game.chess.get(sq); return !p ? 0 : p.type === 'k' ? 100 : core.PIECE_VALUE[p.type]; };
+        const fork = threats.filter(sq => weight(sq) >= 3).length >= 2;
+        const { template, world } = Action.choose({ capture, best, mate, promo, fork, value }, Action.last);
+        Action.last = template;
+        return {
+            template, world, best, threats,
+            pieces: [...before.board],
+            move: {
+                from: move.from, to: move.to, color: move.color, piece: move.piece, captured: move.captured, promotion: move.promotion,
+                capSq: move.flags.includes('e') ? move.to[0] + move.from[1] : (move.captured ? move.to : null),
+            },
+            kingSq: mate ? findKing(game.chess, game.chess.turn()) : null,
+        };
+    }
+
+    function startCinema(plan) {
+        const director = Action.director;
+        if (!director || !game) return;
+        cancelCinema();
+        const board = refs.board.getBoundingClientRect();
+        const host = screen.getBoundingClientRect();
+        const style = getComputedStyle(screen);
+        const css = name => style.getPropertyValue(name).trim();
+        const spec = {
+            ...plan,
+            orientation: view.orientation,
+            rect: { x: board.left - host.left, y: board.top - host.top, w: board.width, h: board.height, margin: parseFloat(css('--cs-margin')) || 16 },
+            theme: { light: css('--cs-light') || '#fff', dark: css('--cs-dark') || '#e1e5ea', frame: css('--cs-frame') || '#fff', line: css('--cs-line') || '#c9ced6', coord: css('--cs-coord') || '#9aa2ad' },
+            coords: settings.coords ? { files: [...refs.filesTop.children].map(el => el.textContent), ranks: [...refs.ranksLeft.children].map(el => el.textContent) } : null,
+            texts: {
+                best: tr('bestMove'), mate: tr('mateTitle'), skip: tr('tapToSkip'), capture: tr('actCapture'), brilliant: tr('actBrilliant'),
+                fork: tr('actFork'), forkSub: tr('actForkSub'), promotion: tr('actPromotion'),
+                pieces: { Q: tr('pieceQ'), R: tr('pieceR'), B: tr('pieceB'), N: tr('pieceN'), P: tr('pieceP'), K: tr('pieceK') },
+            },
+            sound: settings.sound, music: settings.sound, audio: Sound.ctx,
+            onImpact: kind => haptic(kind),
+        };
+        const id = ++cinemaId;
+        // часы на время сцены стоят: она не должна стоить никому времени
+        let clockColor = null;
+        if (game.clock?.running) {
+            clockColor = game.clock.running;
+            game.clock.left[clockColor] = core.clockLeft(game.clock, clockColor, Date.now());
+            game.clock.running = null;
+        }
+        cinema = { id, game, clockColor, waiters: [] };
+        Sound.unlock();
+        director.play(spec).then(() => endCinema(id), () => endCinema(id));
+    }
+    function endCinema(id) {
+        if (!cinema || cinema.id !== id) return;
+        const done = cinema;
+        cinema = null;
+        if (done.game === game && game?.clock && done.clockColor && !game.over && !game.clock.running) {
+            game.clock.running = done.clockColor;
+            game.clock.since = Date.now();
+        }
+        done.waiters.forEach(fn => { try { fn(); } catch (_) {} });
+    }
+    function cancelCinema() {
+        if (!cinema) return;
+        const id = cinema.id;
+        Action.director?.skip();
+        endCinema(id);
+    }
+    function waitCinema() {
+        return cinema ? new Promise(resolve => cinema.waiters.push(resolve)) : Promise.resolve();
+    }
+    /** Выполнить после кат-сцены (итог партии не перекрывает её). */
+    function afterCinema(fn, delay = 0) {
+        if (!cinema) { fn(); return; }
+        cinema.waiters.push(() => setTimeout(fn, delay));
     }
 
     /* ---------- часы ---------- */
@@ -1253,6 +1425,7 @@
 
     /* ---------- начало и конец партии ---------- */
     function newGame({ mode, myColor = 'w', level = 3, tcId = 'none', moves = [], clock = null, online = null, orientation = null, startFen = null }) {
+        cancelCinema();
         cancelBot();
         closeDialog(true);
         hideBanner();
@@ -1304,12 +1477,16 @@
         setTimeout(layout, 380);
         refs.hintBtn.hidden = !isOwner();
         refs.hintBtn.classList.toggle('is-on', hintOn);
+        if (settings.action && !REDUCED_MOTION) setTimeout(() => Action.load().catch(() => {}), 700);
     }
 
     function closeScreen() {
+        cancelCinema();
         cancelBot();
         hintToken++;
+        analysisToken++;
         engines.hint?.stop();
+        engines.action?.stop();
         clearInterval(clockTimer);
         clockTimer = null;
         closeDialog(true);
@@ -1343,14 +1520,14 @@
         if (game.mode !== 'online') localStorage.removeItem(SAVE_KEY);
         recordStats(outcome);
         const result = myResult(outcome);
-        setTimeout(() => {
+        setTimeout(() => afterCinema(() => {
             if (result === 'win' || result === 'white' || result === 'black') { Sound.play('win'); haptic('success'); celebrate(); }
             else if (result === 'loss') { Sound.play('lose'); haptic('error'); }
             else { Sound.play('draw'); haptic('warning'); }
-        }, 180);
+        }), 180);
         afterChange();
         tickClocks();
-        setTimeout(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, outcome.reason === 'checkmate' ? 900 : 450);
+        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), outcome.reason === 'checkmate' ? 900 : 450);
     }
 
     /** 'win' | 'loss' | 'draw' | 'aborted' | 'white' | 'black' (вдвоём). */
@@ -1693,12 +1870,12 @@
     }
 
     function showSettings() {
-        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
+        const rows = [['action', 'actionMode', 'actionModeHint'], ['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
         openDialog('settings', `
             <h2>${esc(tr('settings'))}</h2>
             <div class="cs-settings" style="margin-top:12px">
-                ${rows.map(([key, label]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button></div>`).join('')}
+                ${rows.map(([key, label, sub]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}${sub ? `<small class="cs-switch-sub">${esc(tr(sub))}</small>` : ''}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button></div>`).join('')}
             </div>
             <p class="cs-settings-label">${esc(tr('board'))}</p>
             <div class="cs-skins" data-ref="skins">${skinTiles()}</div>
@@ -1725,6 +1902,10 @@
                 if (key === 'wiggle') screen.classList.toggle('no-wiggle', !settings.wiggle);
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
+                if (key === 'action') {
+                    if (settings.action) { Action.load().catch(() => {}); scheduleAnalysis(); }
+                    else { analysisToken++; engines.action?.stop(); cancelCinema(); }
+                }
             };
         });
         refs.sheet.querySelector('[data-dlg="close"]').onclick = () => closeDialog();
@@ -1846,6 +2027,7 @@
 
     function takeback() {
         if (!game || game.over || game.mode === 'online' || !game.moves.length) return;
+        cancelCinema();
         cancelBot();
         let undo = 1;
         if (game.mode === 'bot' && game.chess.turn() === game.myColor && game.moves.length >= 2) undo = 2;

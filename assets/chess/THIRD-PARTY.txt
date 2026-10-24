@@ -22,3 +22,20 @@ Move sounds (assets/chess/sounds/move, move2, capture, castle .mp3)
 Game sounds (assets/chess/sounds/check, promote, notify, start, win, lose, draw, lowtime .mp3)
   Supplied by the Spark owner (UI sound packs from the Telegram channel @LaniVfx).
   Trimmed, levelled and converted to MP3.
+
+three.js r160 (assets/chess/vendor/three.module.min.js, SVGLoader.js) — 3D scenes of the action mode
+  Copyright (c) 2010-2023 three.js authors. MIT License, see vendor/LICENSE-three.txt.
+  https://github.com/mrdoob/three.js — SVGLoader's import path points at the local copy.
+
+three.js post-processing (assets/chess/vendor/post/*.js: EffectComposer, UnrealBloomPass and helpers)
+  Same MIT licence as three.js r160; imports point at the local copy.
+
+Action-mode music (assets/chess/music/track1.mp3, track2.mp3)
+  Short excerpts chosen and supplied by the Spark owner: Adele "Skyfall" (from 1:16) and
+  Sayfalse / TRXVELER / DJ ALIM "DARE (Slowed)" (from 0:16). Not covered by this project's licences;
+  the rights stay with their holders.
+
+Action-mode effects (assets/chess/sounds/fx-*.mp3)
+  From the "Lani" editing sound pack supplied by the Spark owner (Telegram channel @LaniVfx):
+  bass drops, glitches, transition whoosh, sparkle, pop. Trimmed and converted to MP3.
+  Other scene sounds are synthesised at runtime with Web Audio.
