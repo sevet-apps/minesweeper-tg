@@ -1603,72 +1603,6 @@
         }
         
         /* Subscription Modal */
-        .subscription-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            z-index: 30000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.25s;
-        }
-        .subscription-overlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .subscription-modal {
-            background: var(--bg-color);
-            border-radius: 24px;
-            padding: 30px 25px;
-            width: 90%;
-            max-width: 340px;
-            text-align: center;
-            border: 1px solid var(--glass-border);
-        }
-        .subscription-icon {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 15px;
-        }
-        .subscription-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 12px;
-        }
-        .subscription-text {
-            font-size: 15px;
-            color: #8e8e93;
-            line-height: 1.5;
-            margin-bottom: 25px;
-        }
-        .subscription-btn {
-            width: 100%;
-            height: 52px;
-            border: none;
-            border-radius: 14px;
-            font-size: 17px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-        .subscription-btn.primary {
-            background: var(--accent);
-            color: white;
-        }
-        .subscription-btn.secondary {
-            background: var(--glass-bg);
-            color: var(--text-color);
-            border: 1px solid var(--glass-border);
-        }
-        .subscription-btn.loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
         
         .bottom-sheet {
             position: fixed;
@@ -2072,14 +2006,14 @@
         body.android-opt .tab-bar,
         body.android-opt .dropdown-menu,
         body.android-opt .bottom-sheet-overlay,
-        body.android-opt .subscription-overlay,
+        body.android-opt .sg-overlay::before,
+        body.android-opt .ob-overlay::before,
         body.android-opt .modal-overlay {
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
         }
         body.android-opt .tab-bar { background: rgba(30, 30, 30, 0.98); }
         body.android-opt .bottom-sheet-overlay { background: rgba(0,0,0,0.6); }
-        body.android-opt .subscription-overlay { background: rgba(0,0,0,0.85); }
         body.android-opt .modal-overlay { background: rgba(0,0,0,0.6); }
         body.android-opt .card,
         body.android-opt .dropdown-menu,
@@ -4720,21 +4654,6 @@
     <div class="toast" id="toast"></div>
     
     <!-- Subscription Required Modal -->
-    <div class="subscription-overlay" id="subscriptionModal">
-        <div class="subscription-modal">
-            <div class="subscription-icon" id="subscriptionLottie"></div>
-            <div class="subscription-title" data-i18n="subscribeChannel">Подпишитесь на канал</div>
-            <div class="subscription-text" data-i18n="subscribeText">
-                Чтобы играть, подпишитесь на наш новостной канал. Там только полезная информация о новых обновлениях и развитии приложения.
-            </div>
-            <button class="subscription-btn primary" onclick="openChannel()" data-i18n="goToChannel">
-                Перейти на канал
-            </button>
-            <button class="subscription-btn secondary" id="checkSubBtn" onclick="checkSubscription()" data-i18n="checkSub">
-                Проверить подписку
-            </button>
-        </div>
-    </div>
 
         <script>
         const tg = window.Telegram.WebApp; 
@@ -4813,8 +4732,6 @@
         // TODO(bb-live): трансляции Block Blast в топах скрыты до переработки.
         const BB_LIVE_IN_LEADERBOARD = false;
         const API_BASE_URL = 'https://spark-game-backend.onrender.com';
-        const REQUIRED_CHANNEL = '@spark_game_news'; // Канал для проверки подписки
-        const CHANNEL_LINK = 'https://t.me/spark_game_news'; // Ссылка на канал
         
         // --- SOCKET.IO INIT ---
         // Signed initData lets the server trust our Telegram id; ids in event bodies are ignored.
@@ -4977,74 +4894,63 @@
         }
 
 
-        // --- SUBSCRIPTION CHECK ---
-        let subscriptionLottie = null;
-        
+        // --- ОБЯЗАТЕЛЬНАЯ ПОДПИСКА (assets/ui/subscribe-gate.*) ---
+        // Первый запуск — без подписки: знакомство и игра. Со второго — экран
+        // с каналами (список ведёт админ в боте), проверка сама при возвращении из канала.
+        const SPARK_GATE_VERSION = '20261025';
+        const sparkLaunches = (() => {
+            try {
+                let count = Number(localStorage.getItem('spark_launches')) || 0;
+                // старые игроки уже «заходили» — для них это не первый запуск
+                if (!count && typeof sparkIntroSeen === 'function' && sparkIntroSeen() && !localStorage.getItem('spark_intro_pending')) count = 1;
+                localStorage.setItem('spark_launches', String(count + 1));
+                return count + 1;
+            } catch (_) { return 2; }
+        })();
+        async function fetchSubscription(userId) {
+            const resp = await fetch(`${API_BASE_URL}/check-subscription?user_id=${encodeURIComponent(userId)}`);
+            const data = await resp.json();
+            const channels = (Array.isArray(data.channels) ? data.channels : []).map(c => ({ ...c, photo: c.photo ? `${API_BASE_URL}${c.photo}` : null }));
+            return { subscribed: data.subscribed !== false, channels };
+        }
+        let sparkGateLoading = null;
+        function loadSparkGate() {
+            if (window.SparkGate && sparkGateLoading === true) return Promise.resolve(window.SparkGate);
+            const load = (tag, attrs) => new Promise((resolve, reject) => {
+                const node = document.createElement(tag);
+                Object.assign(node, attrs);
+                node.onload = resolve;
+                node.onerror = () => { node.remove(); reject(new Error(`${tag} failed`)); };
+                document.head.appendChild(node);
+            });
+            return Promise.all([
+                load('link', { rel: 'stylesheet', href: `assets/ui/subscribe-gate.css?v=${SPARK_GATE_VERSION}` }),
+                window.SparkGate ? null : load('script', { src: `assets/ui/subscribe-gate.js?v=${SPARK_GATE_VERSION}` }),
+            ]).then(() => { sparkGateLoading = true; return window.SparkGate; });
+        }
+        function showSubscribeGate(userId, channels) {
+            // как и знакомство: не поверх заставки, партии по приглашению или другой шторки
+            const busy = document.querySelector('#appLoader, .ob-overlay, .game-overlay.visible, .modal-overlay.visible, .bottom-sheet-overlay.visible');
+            if (busy) { setTimeout(() => showSubscribeGate(userId, channels), 800); return; }
+            loadSparkGate().then(gate => gate.open({
+                channels,
+                check: async () => (await fetchSubscription(userId)).channels,
+                onDone: () => { isSubscribed = true; showToast(t('welcome'), 'welcome'); },
+            })).catch(() => { isSubscribed = true; });
+        }
         async function checkSubscriptionOnStart() {
             const user = tg.initDataUnsafe.user;
-            if (!user) {
-                isSubscribed = true; // No user info, allow access
-                return;
-            }
-            
+            if (!user) { isSubscribed = true; return; }
+            if (sparkLaunches < 2) { isSubscribed = true; return; }
             try {
-                const resp = await fetch(`${API_BASE_URL}/check-subscription?user_id=${user.id}`);
-                const data = await resp.json();
+                const data = await fetchSubscription(user.id);
                 isSubscribed = data.subscribed;
-                
-                if (!isSubscribed) {
-                    document.getElementById('subscriptionModal').classList.add('visible');
-                    // Запускаем Lottie глобус
-                    subscriptionLottie = lottie.loadAnimation({
-                        container: document.getElementById('subscriptionLottie'),
-                        renderer: 'svg',
-                        loop: true,
-                        autoplay: true,
-                        path: 'globus.json'
-                    });
-                }
+                if (!isSubscribed && data.channels.some(c => !c.subscribed)) showSubscribeGate(user.id, data.channels);
+                else isSubscribed = true;
             } catch (e) {
                 console.log('Subscription check failed:', e);
-                isSubscribed = true; // On error, allow access
+                isSubscribed = true; // при сбое не запираем вход
             }
-        }
-        
-        function openChannel() {
-            tg.openTelegramLink(CHANNEL_LINK);
-        }
-        
-        async function checkSubscription() {
-            const btn = document.getElementById('checkSubBtn');
-            btn.classList.add('loading');
-            btn.innerText = t('checking');
-            
-            const user = tg.initDataUnsafe.user;
-            if (!user) {
-                btn.classList.remove('loading');
-                btn.innerText = t('checkSub');
-                return;
-            }
-            
-            try {
-                const resp = await fetch(`${API_BASE_URL}/check-subscription?user_id=${user.id}`);
-                const data = await resp.json();
-                
-                if (data.subscribed) {
-                    isSubscribed = true;
-                    document.getElementById('subscriptionModal').classList.remove('visible');
-                    if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
-                    showToast(t('welcome'), 'welcome');
-                } else {
-                    if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');
-                    // Не показываем toast, так как модалка всё равно видна
-                }
-            } catch (e) {
-                console.log('Subscription check failed:', e);
-                // Не показываем toast об ошибке
-            }
-            
-            btn.classList.remove('loading');
-            btn.innerText = t('checkSub');
         }
 
         // --- Знакомство со Spark (assets/ui/onboarding.*): грузится, только когда нужно ---
