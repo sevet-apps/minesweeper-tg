@@ -1831,8 +1831,15 @@
         socket.__chessBound = true;
         const forMe = data => game?.mode === 'online' && data && data.roomCode === game.online.roomCode;
 
+        // переподключились (или сервер перезапустился) — просим свою партию по коду
         socket.on('connect', () => {
-            if (game?.mode === 'online' && !game.over) socket.emit('chess_rejoin');
+            if (game?.mode === 'online' && !game.over) socket.emit('chess_rejoin', { roomCode: game.online.roomCode });
+        });
+        // партии на сервере больше нет: не «замираем» с идущими часами, а честно заканчиваем
+        socket.on('chess_gone', data => {
+            if (!forMe(data) || game.over) return;
+            hideBanner();
+            finishGame({ result: 'aborted', reason: 'serverLost' });
         });
         socket.on('chess_rooms', data => renderRooms(Array.isArray(data?.rooms) ? data.rooms : []));
         socket.on('chess_created', data => showWait(data));
