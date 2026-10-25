@@ -3550,17 +3550,17 @@
         }
 
     </style>
-    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261001">
-    <link rel="stylesheet" href="assets/block-blast/picker.css">
+    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261025">
+    <link rel="stylesheet" href="assets/block-blast/picker.css?v=20261025">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
     <script src="assets/ui/sheets.js?v=20261025" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
-    <script src="assets/block-blast/motion.js"></script>
-    <script src="assets/block-blast/picker.js?v=20261003"></script>
-    <script src="assets/block-blast/visuals.js?v=20261003"></script>
+    <script src="assets/block-blast/motion.js?v=20261025"></script>
+    <script src="assets/block-blast/picker.js?v=20261025"></script>
+    <script src="assets/block-blast/visuals.js?v=20261025"></script>
 </head>
 <body>
     <div class="app-loader" id="appLoader" aria-hidden="true">
@@ -4234,7 +4234,7 @@
         </div> 
     </div>
     <div id="chess-screen" class="game-overlay" data-i18n-skip></div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span data-i18n="best">Best</span><span id="bbBestScore">0</span></div><button id="bbMaterialButton" class="bb-style-button" aria-label="Настройки Блок Бласта" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.25v1.4m0 14.7v1.4M20.75 12h-1.4M4.65 12h-1.4m15.1-6.35-.99.99M6.64 17.36l-.99.99m12.7 0-.99-.99M6.64 6.64l-.99-.99"/><circle cx="12" cy="12" r="7.1"/><circle cx="12" cy="12" r="2.65"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span id="bbBestScore">0</span><span data-i18n="best">Best</span></div><button id="bbMaterialButton" class="bb-style-button" type="button" aria-label="Настройки Блок Бласта" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
@@ -9438,6 +9438,30 @@
         function bbPlayPickup() { bbPlaySample('pickup', 0.9); }
         function bbPlayPlace()  { bbPlaySample('place', 0.9); }
         function bbPlayClear()  { bbPlaySample('clear', 1.0); }
+        // Telegram haptics as in the original: a short tap on pickup, a tick per board cell
+        // while dragging, a thud on placement and a heavier double knock when a line clears.
+        let bbLastHaptic = 0;
+        function bbHaptic(kind) {
+            if (!vibrationEnabled) return;
+            const h = tg?.HapticFeedback;
+            if (!h) return;
+            if (kind === 'select') { const at = Date.now(); if (at - bbLastHaptic < 35) return; bbLastHaptic = at; }
+            try {
+                if (kind === 'select') h.selectionChanged();
+                else if (kind === 'success' || kind === 'error' || kind === 'warning') h.notificationOccurred(kind);
+                else h.impactOccurred(kind);
+            } catch (_) {}
+        }
+        function bbClearHaptic(lines) {
+            bbHaptic('heavy');
+            setTimeout(() => bbHaptic('rigid'), 80);
+            if (lines > 1) setTimeout(() => bbHaptic('heavy'), 170);
+        }
+        // All clear: the success pattern as the caption lands, then one more heavy knock.
+        function bbAllClearHaptic() {
+            setTimeout(() => bbHaptic('success'), 260);
+            setTimeout(() => bbHaptic('heavy'), 430);
+        }
 
 
         let bbCellCache = [];
@@ -9644,6 +9668,7 @@
             e.preventDefault();
             e.stopPropagation();
             bbPlayPickup();
+            bbHaptic('light');
             const touch = e.touches ? e.touches[0] : e; 
             const gridRect = document.getElementById('bbGrid').getBoundingClientRect(); 
             const logicalCell = (gridRect.width - 36) / 8;
@@ -9738,8 +9763,9 @@
             // Collect cells that will be highlighted
             let cellsToHighlight = new Set();
             
-            if(canPlace(dragData.matrix, r, c)) { 
-                dragData.validPos = { r: r, c: c }; 
+            if(canPlace(dragData.matrix, r, c)) {
+                if (!dragData.validPos || dragData.validPos.r !== r || dragData.validPos.c !== c) bbHaptic('select');
+                dragData.validPos = { r: r, c: c };
                 let tempGrid = bbGrid.map(row => [...row]); let rowsToClear = [], colsToClear = [];
                 for(let i=0; i<dragData.matrix.length; i++) { for(let j=0; j<dragData.matrix[0].length; j++) { if(dragData.matrix[i][j] === 1) tempGrid[r+i][c+j] = 1; } }
                 for(let rr=0; rr<BB_ROWS; rr++) if(tempGrid[rr].every(val => val !== 0)) rowsToClear.push(rr);
@@ -9757,7 +9783,7 @@
             }
             
             // Быстрый проход по кэшу вместо querySelectorAll
-            const bgStyle = GRADIENT_MAP[dragData.color] || hexToRgba(hex, 1);
+            const bgStyle = BBVisuals.gradient?.(dragData.color) || GRADIENT_MAP[dragData.color] || hexToRgba(hex, 1);
             const bsStyle = `inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.15)`;
             const glowCol = bbGlowColor(dragData.color);
             const sparkHex = BBVisuals.previewGlow(COLOR_MAP[dragData.color] || '#ffffff');
@@ -9858,11 +9884,14 @@
         }
 
         function placeShape(matrix, r, c, color) {
-            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
             bbPlayPlace();
             const occupied = [];
             matrix.forEach((row, i) => row.forEach((v, j) => { if (v) occupied.push({ r: r + i, c: c + j }); }));
             BBVisuals.occlude(occupied);
+            // A clearing placement gets the stronger clear haptic instead of two overlapping taps.
+            const completes = occupied.some(pos => bbGrid[pos.r].every((v, cc) => v !== 0 || occupied.some(o => o.r === pos.r && o.c === cc))
+                || bbGrid.every((row, rr) => row[pos.c] !== 0 || occupied.some(o => o.r === rr && o.c === pos.c)));
+            if (!completes) bbHaptic('medium');
             for (const pos of occupied) {
                 bbGrid[pos.r][pos.c] = color;
                 const cell = getCellFast(pos.r, pos.c);
@@ -9893,15 +9922,15 @@
             if (!total) return 0;
             bbCombo += total;
             bbComboBuffer = BB_SCORING.COMBO_BUFFER_MOVES;
-            if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
+            bbClearHaptic(total);
             bbPlayClear();
-            BBVisuals.clearLines(rows, cols, getCellFast, triggerColor);
+            BBVisuals.clearLines(rows, cols, getCellFast, triggerColor, placedCells);
             BBVisuals.uniqueCells(rows, cols).forEach(({ r, c }) => { bbGrid[r][c] = 0; });
             const points = bbLineScore(total, bbCombo);
             addScore(points);
-            BBVisuals.lineScore(points, placedCells, getCellFast);
+            BBVisuals.lineScore(points, placedCells, getCellFast, bbCombo);
             BBVisuals.combo(bbCombo);
-            checkAllClear();
+            checkAllClear(rows, cols);
             saveBBState();
             checkGameOver();
             return total;
@@ -9953,11 +9982,12 @@
             });
             bbLastComboFilled = count - 1;
         }
-        function checkAllClear() {
+        function checkAllClear(rows = [], cols = []) {
             if (countFreeCells() !== BB_ROWS * BB_COLS) return;
             const bonus = 500 * (bbCombo > 0 ? bbCombo : 1);
             addScore(bonus);
-            BBVisuals.allClear(bonus);
+            bbAllClearHaptic();
+            BBVisuals.allClear(bonus, { rows, cols });
         }
         async function checkGameOver() {
             if (bbIsAnimating || bbGameEnded) return;

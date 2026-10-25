@@ -169,7 +169,10 @@
                 button.className = 'bb-picker-choice';
                 button.dataset.materialChoice = item.id;
                 button.innerHTML = `<span class="bb-picker-swatch" data-bb-swatch="${item.id}" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bb-picker-name"></span><span class="bb-picker-check">${check}</span>`;
-                button.querySelector('.bb-picker-swatch').style.setProperty('--swatch-texture', item.id === 'classic' ? 'none' : `url("${options.textureBase}${item.id}.svg")`);
+                const swatch = button.querySelector('.bb-picker-swatch');
+                swatch.style.setProperty('--swatch-texture', `url("${options.textureBase}${item.id}.svg${options.textureQuery || ''}")`);
+                // The preview uses the material's own palette, the same one the board renders.
+                if (options.gradient) swatch.querySelectorAll('i').forEach((tile, index) => { tile.style.background = options.gradient(item.id, [4, 3, 1, 6][index]); });
                 button.addEventListener('click', () => {
                     options.selectTheme(item.id);
                     updateSelection();
