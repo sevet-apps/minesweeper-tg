@@ -3558,6 +3558,7 @@
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
+    <script src="assets/block-blast/hand.js?v=20261025"></script>
     <script src="assets/block-blast/motion.js?v=20261025"></script>
     <script src="assets/block-blast/picker.js?v=20261025"></script>
     <script src="assets/block-blast/visuals.js?v=20261025"></script>
@@ -9535,112 +9536,10 @@
             return 0; // Doesn't help
         }
         
-        // Diagonal strip shapes (2- and 3-long) — spawned less often
-        const DIAGONAL_SHAPES = [
-            [[0, 1], [1, 0]],
-            [[1, 0], [0, 1]],
-            [[0, 0, 1], [0, 1, 0], [1, 0, 0]],
-            [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-        ];
-        function isDiagonalShape(m) {
-            return DIAGONAL_SHAPES.some(d =>
-                d.length === m.length && d[0].length === m[0].length &&
-                d.every((row, i) => row.every((v, j) => v === m[i][j]))
-            );
-        }
-
-        // HARD_SHAPES unlock progressively: first kind at 100,000,000 points,
-        // one more kind every 10,000,000 after that.
-        const HARD_UNLOCK_START = 100_000_000;
-        const HARD_UNLOCK_STEP  = 10_000_000;
-        function unlockedHardShapes(score) {
-            if (score < HARD_UNLOCK_START) return [];
-            const kinds = 1 + Math.floor((score - HARD_UNLOCK_START) / HARD_UNLOCK_STEP);
-            return HARD_SHAPES.slice(0, Math.min(kinds, HARD_SHAPES.length));
-        }
-
-        // Simulate placing `matrix` at (r,c) and count how many lines that
-        // placement would clear. Returns best over all valid positions:
-        // { lines: maxLinesCleared, fits: canPlaceSomewhere }
-        function bestPlacementResult(matrix) {
-            let best = -1;
-            const h = matrix.length, w = matrix[0]?.length || 0;
-            for (let r = 0; r <= BB_ROWS - h; r++) {
-                for (let c = 0; c <= BB_COLS - w; c++) {
-                    if (!canPlace(matrix, r, c)) continue;
-                    // simulate
-                    const rows = new Set(), cols = new Set();
-                    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) {
-                        if (matrix[i][j] === 1) { rows.add(r + i); cols.add(c + j); }
-                    }
-                    let lines = 0;
-                    for (const rr of rows) {
-                        let full = true;
-                        for (let cc = 0; cc < BB_COLS; cc++) {
-                            const filled = bbGrid[rr][cc] !== 0 ||
-                                (rr >= r && rr < r + h && cc >= c && cc < c + w && matrix[rr - r][cc - c] === 1);
-                            if (!filled) { full = false; break; }
-                        }
-                        if (full) lines++;
-                    }
-                    for (const cc of cols) {
-                        let full = true;
-                        for (let rr = 0; rr < BB_ROWS; rr++) {
-                            const filled = bbGrid[rr][cc] !== 0 ||
-                                (rr >= r && rr < r + h && cc >= c && cc < c + w && matrix[rr - r][cc - c] === 1);
-                            if (!filled) { full = false; break; }
-                        }
-                        if (full) lines++;
-                    }
-                    if (lines > best) best = lines;
-                }
-            }
-            return { fits: best >= 0, lines: Math.max(0, best) };
-        }
-
-        function normalizeBBHandSeed(seed) {
-            return Number.isInteger(seed) ? seed >>> 0 : 0;
-        }
-        function advanceBBHandSeed(seed) {
-            let value = (normalizeBBHandSeed(seed) + 0x9e3779b9) >>> 0;
-            value = Math.imul(value ^ (value >>> 16), 0x21f0aaad);
-            value = Math.imul(value ^ (value >>> 15), 0x735a2d97);
-            return (value ^ (value >>> 15)) >>> 0;
-        }
-        function seededBBRandom(seed) {
-            let state = normalizeBBHandSeed(seed);
-            return function () {
-                state = (state + 0x6d2b79f5) >>> 0;
-                let value = state;
-                value = Math.imul(value ^ (value >>> 15), value | 1);
-                value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-                return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-            };
-        }
+        // The hand generator is shared with the server (assets/block-blast/hand.js), so a predicted hand is
+        // always the signed one, including the occasional all-clear assist hand on a nearly empty board.
         function generateSeededBBHand(seed, scoreForUnlocks = bbScore) {
-            const random = seededBBRandom(seed);
-            const includeDiagonals = random() < 0.35;
-            const pool = SHAPES.filter(matrix => includeDiagonals || !isDiagonalShape(matrix))
-                .concat(unlockedHardShapes(scoreForUnlocks));
-            const ranked = pool.map(matrix => ({ matrix, ...bestPlacementResult(matrix) }));
-            const placeable = ranked.filter(item => item.fits);
-            const lineClearers = placeable.filter(item => item.lines >= 1);
-            const multiClearers = placeable.filter(item => item.lines >= 2);
-            const fallback = SHAPES[0];
-            const pick = items => items.length ? items[Math.floor(random() * items.length)].matrix : fallback;
-            const matrices = [];
-            matrices.push(pick(multiClearers.length ? multiClearers : (lineClearers.length ? lineClearers : placeable)));
-            let second = (lineClearers.length ? lineClearers : placeable).filter(item => item.matrix !== matrices[0]);
-            if (!second.length) second = lineClearers.length ? lineClearers : placeable;
-            matrices.push(pick(second));
-            let third = placeable.filter(item => item.matrix !== matrices[0] && item.matrix !== matrices[1]);
-            if (!third.length) third = placeable;
-            matrices.push(pick(third));
-            return matrices.map((matrix, id) => ({
-                matrix,
-                color: COLORS[Math.floor(random() * COLORS.length)],
-                id,
-            }));
+            return BBHand.generateHand({ grid: bbGrid, score: scoreForUnlocks, shapeList: SHAPES.concat(HARD_SHAPES), baseShapeCount: SHAPES.length, colors: COLORS, seed });
         }
         function spawnShapes() {
             const seedValues = new Uint32Array(1);
@@ -9872,7 +9771,7 @@
                     // Clear bonuses are already committed before generating the next hand.
                     const authoritativeScore = bbScore;
                     bbShapes = generateSeededBBHand(bbNextHandSeed, authoritativeScore);
-                    bbNextHandSeed = advanceBBHandSeed(bbNextHandSeed);
+                    bbNextHandSeed = BBHand.nextSeed(bbNextHandSeed, bbShapes);
                     renderBBShapeSlots();
                     saveBBState();
                 }
