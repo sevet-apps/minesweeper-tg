@@ -61,8 +61,135 @@
             volumeInput.style.setProperty('--bb-volume-fill', volumeInput.value + '%');
             panel.querySelector('.bb-picker-volume-value').textContent = volumeInput.value + '%';
         }
+        // ---- Progress tab: the line value and four bonuses. The server computes everything. ----
+        const make = (tag, className, content) => {
+            const node = doc.createElement(tag);
+            if (className) node.className = className;
+            if (content !== undefined) node.textContent = content;
+            return node;
+        };
+        const number = value => { try { return new Intl.NumberFormat(options.lang?.() || 'ru').format(value); } catch (_) { return String(value); } };
+        function challengeText(stat) {
+            switch (stat) {
+                case 'best_combo': return copy('Серия ×{n} в одной игре', 'Combo ×{n} in one game', '单局连击 ×{n}');
+                case 'lines': return copy('Закройте {n} линий за день', 'Clear {n} lines today', '今日消除 {n} 行');
+                case 'best_game_lines': return copy('{n} линий в одной игре', '{n} lines in one game', '单局消除 {n} 行');
+                case 'pieces': return copy('Поставьте {n} фигур за день', 'Place {n} pieces today', '今日放置 {n} 个方块');
+                case 'best_score': return copy('{n} очков в одной игре', '{n} points in one game', '单局得分 {n}');
+                case 'points': return copy('{n} очков за день', '{n} points today', '今日累计 {n} 分');
+                case 'doubles': return copy('2 линии одним ходом {n} раза', 'Clear 2 lines in one move {n} times', '一步消除两行 {n} 次');
+                case 'games': return copy('Сыграйте {n} игры', 'Play {n} games', '完成 {n} 局游戏');
+                default: return '';
+            }
+        }
+        function bonusRow(bonus, source) {
+            const row = make('div', 'bb-bonus' + (bonus.active ? ' is-active' : ''));
+            row.dataset.bonus = bonus.id;
+            const icon = make('span', 'bb-bonus-icon');
+            icon.setAttribute('aria-hidden', 'true');
+            const emoji = { friends: '👥', streak: '🔥', daily: '🎯', channel: '📢' }[bonus.id] || '★';
+            const photo = bonus.id === 'channel' && bonus.channel?.photo ? source?.photo?.(bonus.channel.photo) : null;
+            if (photo) {
+                const img = make('img');
+                img.alt = '';
+                img.decoding = 'async';
+                img.onerror = () => { img.remove(); icon.textContent = emoji; };
+                img.src = photo;
+                icon.appendChild(img);
+            } else icon.textContent = emoji;
+            const body = make('div', 'bb-bonus-body');
+            const names = {
+                friends: copy('Друзья', 'Friends', '好友'),
+                streak: copy('Серия дней', 'Daily streak', '连续天数'),
+                daily: copy('Задание дня', 'Daily challenge', '每日挑战'),
+                channel: bonus.channel?.title || copy('Канал', 'Channel', '频道'),
+            };
+            const conditions = {
+                friends: copy('3 друга по вашей ссылке играют 2 дня', 'Invite 3 friends who play on 2 days', '邀请 3 位好友各玩 2 天'),
+                streak: copy('Играйте 7 дней без пропусков', 'Play 7 days without a break', '连续 7 天不间断'),
+                daily: challengeText(bonus.stat).replace('{n}', number(bonus.target)),
+                channel: bonus.active ? copy('Вы подписаны', 'Subscribed', '已订阅') : copy('Подпишитесь на канал', 'Subscribe to the channel', '订阅频道'),
+            };
+            const done = bonus.active && (bonus.id === 'daily' || bonus.id === 'channel');
+            const count = bonus.id === 'channel' ? (bonus.active ? '✓' : '') : done ? '✓' : `${number(bonus.progress)}/${number(bonus.target)}`;
+            const top = make('div', 'bb-bonus-top');
+            top.append(make('span', 'bb-bonus-name', names[bonus.id] || bonus.id), make('span', 'bb-bonus-count', count));
+            body.append(top, make('small', 'bb-bonus-detail', conditions[bonus.id] || ''));
+            if (bonus.id === 'daily') body.appendChild(make('small', 'bb-bonus-detail bb-bonus-note', copy('Награда со следующей игры до полуночи', 'Reward from your next game until midnight', '奖励自下一局起生效至午夜')));
+            if (bonus.id !== 'channel') {
+                const bar = make('div', 'bb-bonus-bar');
+                const fill = make('i');
+                fill.style.transform = `scaleX(${Math.max(0, Math.min(1, bonus.progress / Math.max(1, bonus.target)))})`;
+                bar.appendChild(fill);
+                body.appendChild(bar);
+            }
+            const action = !bonus.active && (bonus.id === 'friends' ? copy('Позвать друзей', 'Invite friends', '邀请好友') : bonus.id === 'channel' && bonus.channel?.link ? copy('Подписаться', 'Subscribe', '订阅') : '');
+            if (action) {
+                const button = make('button', 'bb-bonus-action', action);
+                button.type = 'button';
+                button.addEventListener('click', () => {
+                    if (bonus.id === 'friends') source?.invite?.();
+                    else { source?.openChannel?.(bonus.channel.link); }
+                });
+                body.appendChild(button);
+            }
+            row.append(icon, body, make('span', 'bb-bonus-chip', '+' + bonus.points));
+            return row;
+        }
+        let renderedProgress = '';
+        function renderProgress(force = false) {
+            const page = panel?.querySelector('.bb-progress');
+            if (!page) return;
+            const data = progressData;
+            // A background refresh with the same numbers leaves the rows (and their fill animation) alone.
+            const key = (options.lang?.() || 'ru') + progressState + JSON.stringify(data);
+            if (!force && key === renderedProgress) return;
+            renderedProgress = key;
+            page.textContent = '';
+            if (!data) {
+                page.appendChild(make('p', 'bb-progress-empty', progressState === 'failed'
+                    ? copy('Не удалось загрузить бонусы. Попробуйте позже.', 'Could not load bonuses. Try again later.', '无法加载奖励，请稍后再试。')
+                    : copy('Загружаем бонусы…', 'Loading bonuses…', '正在加载奖励…')));
+                return;
+            }
+            const head = make('div', 'bb-progress-head');
+            const value = make('strong', 'bb-progress-value');
+            const [before, after = ''] = copy('Линия: {n} очков', 'Line: {n} points', '每行 {n} 分').split('{n}');
+            value.append(before, make('b', '', number(data.line_points)), after);
+            head.append(value, make('small', 'bb-progress-caption', copy('Столько очков даёт каждая закрытая линия', 'Points for every line you clear', '每消除一行获得的分数')));
+            const steps = Math.max(1, Math.round((data.max - data.base) / 5));
+            const lit = Math.round((data.line_points - data.base) / 5);
+            const scale = make('div', 'bb-progress-scale');
+            scale.setAttribute('role', 'img');
+            scale.setAttribute('aria-label', `${data.line_points} / ${data.max}`);
+            for (let i = 0; i < steps; i++) scale.appendChild(make('i', i < lit ? 'is-on' : ''));
+            const ticks = make('div', 'bb-progress-ticks');
+            ticks.append(make('span', '', number(data.base)), make('span', '', number(data.max)));
+            const list = make('div', 'bb-progress-list');
+            const source = options.progress?.();
+            for (const bonus of data.bonuses || []) list.appendChild(bonusRow(bonus, source));
+            page.append(head, scale, ticks, list);
+        }
+        let progressData = null, progressState = 'idle', progressRequest = 0;
+        function loadProgress(fresh = false) {
+            const source = options.progress?.();
+            if (!source?.load) { progressState = 'failed'; renderProgress(); return; }
+            const request = ++progressRequest;
+            if (!progressData) { progressState = 'loading'; renderProgress(); }
+            Promise.resolve(source.load({ fresh })).catch(() => null).then(data => {
+                if (request !== progressRequest) return;
+                if (data) progressData = data;
+                progressState = data || progressData ? 'ready' : 'failed';
+                renderProgress();
+            });
+        }
+        // Back from the channel or the share sheet: re-check right away.
+        function visible() {
+            if (state === 'open' && activeTab === 'progress' && !doc.hidden) loadProgress(true);
+        }
         function setTab(next, animate = true) {
             activeTab = next;
+            if (next === 'progress' && state === 'open') loadProgress();
             const tabs = ['settings', 'skins', 'progress'];
             panel.querySelector('.bb-picker-tabs').style.setProperty('--bb-tab-index', String(tabs.indexOf(next)));
             for (const tab of tabs) {
@@ -95,8 +222,7 @@
             panel.querySelector('.bb-picker-volume-title').textContent = copy('Громкость звуков', 'Sound volume', '音效音量');
             volumeInput.setAttribute('aria-label', copy('Громкость звуков', 'Sound volume', '音效音量'));
             panel.querySelector('.bb-picker-volume-detail').textContent = copy('Звуки фигур и закрытия линий', 'Pieces and line clears', '方块与消除音效');
-            panel.querySelector('.bb-picker-progress-title').textContent = copy('Бонусы к очкам', 'Score bonuses', '分数奖励');
-            panel.querySelector('.bb-picker-progress-detail').textContent = copy('Условия и награды скоро появятся здесь.', 'Challenges and rewards will appear here soon.', '挑战与奖励即将开放。');
+            renderProgress();
             choices.querySelectorAll('[data-material-choice]').forEach(button => {
                 const item = options.catalog.find(item => item.id === button.dataset.materialChoice);
                 const lang = options.lang?.() || 'ru';
@@ -153,7 +279,7 @@
             overlay = doc.createElement('div');
             overlay.className = 'bb-picker-overlay';
             overlay.hidden = true;
-            overlay.innerHTML = `<div class="bb-picker-backdrop" aria-hidden="true"></div><section class="bb-picker-panel" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><header class="bb-picker-header"><div class="bb-picker-grab" aria-hidden="true"><span></span></div><div class="bb-picker-heading"><h2 class="bb-picker-title" id="${titleId}"></h2><button type="button" class="bb-picker-close">${cross}</button></div></header><div class="bb-picker-tabs" role="tablist" aria-label="Block Blast"><span class="bb-picker-tab-indicator" aria-hidden="true"></span><button type="button" role="tab" data-bb-tab="settings"></button><button type="button" role="tab" data-bb-tab="skins"></button><button type="button" role="tab" data-bb-tab="progress"></button></div><div class="bb-picker-content"><div class="bb-picker-page" data-bb-page="settings" role="tabpanel"><label class="bb-picker-motion"><span><span class="bb-picker-motion-title"></span><small class="bb-picker-motion-detail"></small></span><input class="bb-calm-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><label class="bb-picker-motion bb-picker-shake"><span><span class="bb-picker-motion-title bb-picker-shake-title"></span><small class="bb-picker-motion-detail bb-picker-shake-detail"></small></span><input class="bb-shake-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><div class="bb-picker-volume"><div class="bb-picker-volume-heading"><span><span class="bb-picker-volume-title"></span><small class="bb-picker-volume-detail"></small></span><strong class="bb-picker-volume-value"></strong></div><input class="bb-volume-input" type="range" min="0" max="100" step="1" value="100" aria-label="Sound volume"></div></div><div class="bb-picker-page" data-bb-page="skins" role="tabpanel" hidden><div class="bb-picker-choices" role="group"></div></div><div class="bb-picker-page" data-bb-page="progress" role="tabpanel" hidden><div class="bb-picker-progress"><span class="bb-picker-progress-icon" aria-hidden="true">✦</span><strong class="bb-picker-progress-title"></strong><p class="bb-picker-progress-detail"></p></div></div></div></section>`;
+            overlay.innerHTML = `<div class="bb-picker-backdrop" aria-hidden="true"></div><section class="bb-picker-panel" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><header class="bb-picker-header"><div class="bb-picker-grab" aria-hidden="true"><span></span></div><div class="bb-picker-heading"><h2 class="bb-picker-title" id="${titleId}"></h2><button type="button" class="bb-picker-close">${cross}</button></div></header><div class="bb-picker-tabs" role="tablist" aria-label="Block Blast"><span class="bb-picker-tab-indicator" aria-hidden="true"></span><button type="button" role="tab" data-bb-tab="settings"></button><button type="button" role="tab" data-bb-tab="skins"></button><button type="button" role="tab" data-bb-tab="progress"></button></div><div class="bb-picker-content"><div class="bb-picker-page" data-bb-page="settings" role="tabpanel"><label class="bb-picker-motion"><span><span class="bb-picker-motion-title"></span><small class="bb-picker-motion-detail"></small></span><input class="bb-calm-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><label class="bb-picker-motion bb-picker-shake"><span><span class="bb-picker-motion-title bb-picker-shake-title"></span><small class="bb-picker-motion-detail bb-picker-shake-detail"></small></span><input class="bb-shake-input" type="checkbox" role="switch"><i aria-hidden="true"></i></label><div class="bb-picker-volume"><div class="bb-picker-volume-heading"><span><span class="bb-picker-volume-title"></span><small class="bb-picker-volume-detail"></small></span><strong class="bb-picker-volume-value"></strong></div><input class="bb-volume-input" type="range" min="0" max="100" step="1" value="100" aria-label="Sound volume"></div></div><div class="bb-picker-page" data-bb-page="skins" role="tabpanel" hidden><div class="bb-picker-choices" role="group"></div></div><div class="bb-picker-page" data-bb-page="progress" role="tabpanel" hidden><div class="bb-progress"></div></div></div></section>`;
             doc.body.appendChild(overlay);
             panel = overlay.querySelector('.bb-picker-panel');
             backdrop = overlay.querySelector('.bb-picker-backdrop');
@@ -227,6 +353,8 @@
             panel.querySelector('.bb-picker-content').scrollTop = 0;
             doc.addEventListener('keydown', keydown, true);
             doc.addEventListener('focusin', containFocus, true);
+            doc.addEventListener('visibilitychange', visible);
+            if (activeTab === 'progress') loadProgress();
             focus(closeButton);
             setBackgroundInert();
             // These explicit first keyframes apply before the browser's first paint.
@@ -256,6 +384,7 @@
                 backdrop.style.opacity = '0';
                 doc.removeEventListener('keydown', keydown, true);
                 doc.removeEventListener('focusin', containFocus, true);
+                doc.removeEventListener('visibilitychange', visible);
                 restoreBackground();
                 focus(restoreFocus);
             };
@@ -264,7 +393,7 @@
             backdropAnimation = backdrop.animate([{ opacity }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'both' });
             panelAnimation.onfinish = finish;
         }
-        return { open, close, refresh };
+        return { open, close, refresh, showTab: tab => setTab(tab, false) };
     }
     const api = { create };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -3550,8 +3550,8 @@
         }
 
     </style>
-    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261025">
-    <link rel="stylesheet" href="assets/block-blast/picker.css?v=20261025">
+    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261026">
+    <link rel="stylesheet" href="assets/block-blast/picker.css?v=20261026">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
     <script src="assets/ui/sheets.js?v=20261025" defer></script>
@@ -3560,8 +3560,8 @@
     <script src="assets/ui/native-back.js?v=20261001"></script>
     <script src="assets/block-blast/hand.js?v=20261025"></script>
     <script src="assets/block-blast/motion.js?v=20261025"></script>
-    <script src="assets/block-blast/picker.js?v=20261025"></script>
-    <script src="assets/block-blast/visuals.js?v=20261025"></script>
+    <script src="assets/block-blast/picker.js?v=20261026"></script>
+    <script src="assets/block-blast/visuals.js?v=20261026"></script>
 </head>
 <body>
     <div class="app-loader" id="appLoader" aria-hidden="true">
@@ -7088,6 +7088,7 @@
                 if (data.session_token) activeSessionTokens[game_type] = data.session_token;
                 if (game_type === 'bb_best_score') {
                     bbServerCheckpoint = data.bb_checkpoint || null;
+                    setBBLinePoints(data.line_points);
                 }
                 return data;
             } catch(e) { console.error('Session start error:', e); }
@@ -8698,10 +8699,42 @@
         function bbSimultaneousMultiplier(k) {
             return BB_SCORING.SIMULTANEOUS_MULT[k] || BB_SCORING.SIMULTANEOUS_MULT_DEFAULT;
         }
-        // Очки за закрытые линии: round( k * BASE * N * M(N) * S(k) )
-        function bbLineScore(k, N) {
-            return Math.round(k * BB_SCORING.BASE_LINE_POINTS * N * bbComboMultiplier(N) * bbSimultaneousMultiplier(k));
+        // Цена линии с бонусами «Прогресса»: сервер фиксирует её на старте игры (line_points),
+        // бонус канала может смениться на ходу — новое значение приходит в ответе на ход.
+        let bbLinePoints = BB_SCORING.BASE_LINE_POINTS;
+        function setBBLinePoints(value) {
+            if (Number.isInteger(value) && value >= BB_SCORING.BASE_LINE_POINTS && value <= 60) bbLinePoints = value;
         }
+        // Очки за закрытые линии: round( k * BASE * N * M(N) * S(k) ), BASE — цена линии
+        function bbLineScore(k, N) {
+            return Math.round(k * bbLinePoints * N * bbComboMultiplier(N) * bbSimultaneousMultiplier(k));
+        }
+        // Вкладка «Прогресс»: бонусы считает сервер. Запрос заодно перепроверяет подписку на канал за бонус.
+        async function loadBBProgress(fresh = false) {
+            if (!tg.initData) return null;
+            try {
+                const resp = await fetch(`${API_BASE_URL}/bb-bonuses${fresh ? '?fresh=1' : ''}`, { headers: { 'X-Init-Data': tg.initData } });
+                const data = await resp.json().catch(() => null);
+                if (!resp.ok || !data || !data.ok) return null;
+                if (Number.isInteger(data.game_line_points)) setBBLinePoints(data.game_line_points);
+                return data;
+            } catch (error) {
+                return null;
+            }
+        }
+        BBVisuals.setProgressSource?.({
+            load: ({ fresh = false } = {}) => loadBBProgress(fresh),
+            invite: () => shareReferralLink(),
+            openChannel(link) {
+                if (!/^https:\/\/t\.me\//.test(String(link || ''))) return;
+                if (tg.openTelegramLink) tg.openTelegramLink(link); else window.open(link, '_blank');
+            },
+            photo: path => (path ? API_BASE_URL + path : null),
+        });
+        // Вернулись в приложение посреди игры: отписку от канала за бонус ловим и без обновления от Telegram.
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && document.getElementById('bb-screen')?.classList.contains('visible')) loadBBProgress(true);
+        });
         // ======================================================================
 
         // Полный набор фигур как в оригинальном Block Blast
@@ -8841,6 +8874,7 @@
             if (shapes) bbShapes = shapes;
             if (Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
             bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
+            setBBLinePoints(data.line_points);
             renderBBGrid();
             updateBBScoreUI();
             renderBBShapeSlots();
@@ -8851,6 +8885,8 @@
         function acceptBBServerMove(data, preserveOptimisticHand = false) {
             bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
             if (Number.isInteger(data.revision)) bbRevision = data.revision;
+            // Отписка от канала за бонус меняет цену линии посреди игры.
+            setBBLinePoints(data.line_points);
             const shapes = normalizedBBShapes(data.shapes);
             if (shapes && !preserveOptimisticHand) {
                 bbShapes = shapes;
@@ -9320,6 +9356,7 @@
                 }
                 bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
                 bbRevision = Number.isInteger(data.revision) ? data.revision : bbRevision;
+                setBBLinePoints(data.line_points);
                 const serverShapes = normalizedBBShapes(data.shapes);
                 if (serverShapes) bbShapes = serverShapes;
                 if (Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
@@ -9827,7 +9864,7 @@
             BBVisuals.uniqueCells(rows, cols).forEach(({ r, c }) => { bbGrid[r][c] = 0; });
             const points = bbLineScore(total, bbCombo);
             addScore(points);
-            BBVisuals.lineScore(points, placedCells, getCellFast, bbCombo);
+            BBVisuals.lineScore(points, placedCells, getCellFast, bbCombo, bbLinePoints);
             BBVisuals.combo(bbCombo);
             checkAllClear(rows, cols);
             saveBBState();

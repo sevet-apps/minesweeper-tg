@@ -157,7 +157,7 @@
         }
         for (const { cell } of snapshots) { cell.className = 'bb-cell'; cell.removeAttribute('style'); }
     };
-    api.lineScore = (points, cells, getCell, combo = 0) => {
+    api.lineScore = (points, cells, getCell, combo = 0, linePoints = 20) => {
         if (!points || !cells || !cells.length || doc.hidden) return;
         const rects = cells.map(p => getCell(p.r, p.c)?.getBoundingClientRect()).filter(Boolean);
         if (!rects.length) return;
@@ -166,6 +166,8 @@
         const el = doc.createElement('div');
         el.className = 'bb-line-score';
         el.textContent = '+' + formatNumber(points);
+        // Bonuses from the Progress tab: a small "+N%" next to the points, nothing when the line is at its base value.
+        if (linePoints > 20) { const boost = doc.createElement('sup'); boost.className = 'bb-line-boost'; boost.textContent = '+' + Math.round((linePoints / 20 - 1) * 100) + '%'; el.appendChild(boost); }
         // Like the original's combo callout, but tucked under the points instead of a second banner.
         if (combo > 1) { const tag = doc.createElement('small'); tag.textContent = text('Серия', 'Combo', '连击') + ' ×' + formatNumber(combo); el.appendChild(tag); }
         const x = rects.reduce((n, b) => n + b.left + b.width / 2, 0) / rects.length;
@@ -173,7 +175,8 @@
         el.style.left = Math.max(90, Math.min(innerWidth - 90, x)) + 'px';
         el.style.top = (y - labels.length * 26) + 'px';
         doc.body.appendChild(el);
-        const half = Math.min(innerWidth / 2 - 12, el.offsetWidth / 2 + 8);
+        // The "+N%" mark hangs off the right of the points, outside offsetWidth.
+        const half = Math.min(innerWidth / 2 - 12, el.offsetWidth / 2 + 8 + (linePoints > 20 ? 30 : 0));
         el.style.left = Math.max(half, Math.min(innerWidth - half, x)) + 'px';
         motion(el, api.reduced() ? [{ opacity: 1 }, { opacity: 0 }] : [
             { opacity: 0, transform: 'translate(-50%,-25%) scale(.7)' },
@@ -259,8 +262,11 @@
     }
     api.selectTheme = selectTheme;
     api.refreshLanguage = () => { selectTheme(theme.id, false); picker?.refresh(); };
+    // The app supplies the Progress tab data (server bonuses, invite and channel links).
+    let progressSource = null;
+    api.setProgressSource = source => { progressSource = source; };
     api.openPicker = () => {
-        if (!picker) picker = root.BBMaterialPicker.create({ catalog, textureBase, textureQuery, gradient: root.BBMaterialMotion.gradient, getTheme: () => theme, isCalm: () => calm, isShake: () => shake, getVolume: api.volume, setVolume: api.setVolume,
+        if (!picker) picker = root.BBMaterialPicker.create({ catalog, textureBase, textureQuery, gradient: root.BBMaterialMotion.gradient, getTheme: () => theme, isCalm: () => calm, isShake: () => shake, getVolume: api.volume, setVolume: api.setVolume, progress: () => progressSource,
             setShake(value) { shake = value; write('bb_shake', shake ? 'on' : 'off'); if (!shake) shakeAnimation?.cancel(); },
             setCalm(value) { calm = value; write('bb_motion', calm ? 'calm' : 'full'); doc.body.dataset.bbMotion = calm ? 'calm' : 'full'; if (calm) { renderer.cleanup(); shakeAnimation?.cancel(); } },
             selectTheme, reduced: api.reduced, lang });
