@@ -3550,7 +3550,7 @@
         }
 
     </style>
-    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261026">
+    <link rel="stylesheet" href="assets/block-blast/visuals.css?v=20261026-2">
     <link rel="stylesheet" href="assets/block-blast/picker.css?v=20261026">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
@@ -3561,7 +3561,7 @@
     <script src="assets/block-blast/hand.js?v=20261025"></script>
     <script src="assets/block-blast/motion.js?v=20261025"></script>
     <script src="assets/block-blast/picker.js?v=20261026"></script>
-    <script src="assets/block-blast/visuals.js?v=20261026"></script>
+    <script src="assets/block-blast/visuals.js?v=20261026-2"></script>
 </head>
 <body>
     <div class="app-loader" id="appLoader" aria-hidden="true">
@@ -9864,7 +9864,7 @@
             BBVisuals.uniqueCells(rows, cols).forEach(({ r, c }) => { bbGrid[r][c] = 0; });
             const points = bbLineScore(total, bbCombo);
             addScore(points);
-            BBVisuals.lineScore(points, placedCells, getCellFast, bbCombo, bbLinePoints);
+            BBVisuals.lineScore(points, placedCells, getCellFast, bbCombo);
             BBVisuals.combo(bbCombo);
             checkAllClear(rows, cols);
             saveBBState();
