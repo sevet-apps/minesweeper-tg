@@ -3495,8 +3495,9 @@
             margin-top: -88px;
             border-radius: 99px;
             background: linear-gradient(to top, color-mix(in srgb, var(--title-color) 74%, transparent), transparent 92%);
+            /* нижний конец луча — в центре иконки: поворот вокруг него, сдвиг наружу */
             transform: rotate(calc(var(--ray-index) * 22.5deg)) translateY(-28px);
-            transform-origin: 50% 116px;
+            transform-origin: 50% 100%;
         }
         .title-reward-card {
             --title-color: #8e8e93;
@@ -13027,6 +13028,8 @@
             if (document.querySelector('.modal-overlay.visible')) return false;
             if (document.querySelector('.bottom-sheet-overlay.visible')) return false;
             if (document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) return false;
+            // знакомство и подписка делают остальную страницу inert — поверх них титул не нажать
+            if (document.querySelector('.ob-overlay, .sg-overlay')) return false;
             return true;
         }
         function scheduleTitleRewardCheck(delay = 500, refresh = false) {
