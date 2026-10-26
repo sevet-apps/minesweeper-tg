@@ -3555,7 +3555,7 @@
     <link rel="stylesheet" href="assets/block-blast/picker.css?v=20261026">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
-    <script src="assets/ui/sheets.js?v=20261025" defer></script>
+    <script src="assets/ui/sheets.js?v=20261026" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
@@ -13030,6 +13030,8 @@
             if (document.getElementById('titleLibraryOverlay')?.classList.contains('visible')) return false;
             // знакомство и подписка делают остальную страницу inert — поверх них титул не нажать
             if (document.querySelector('.ob-overlay, .sg-overlay')) return false;
+            // любая открытая шторка (у них aria-hidden="false") — титул подождёт
+            if (document.querySelector('[aria-hidden="false"]:not(#titleRewardOverlay)')) return false;
             return true;
         }
         function scheduleTitleRewardCheck(delay = 500, refresh = false) {
@@ -13055,6 +13057,8 @@
             titleRewardIndex = 0;
             titleRewardRunning = true;
             const overlay = document.getElementById('titleRewardOverlay');
+            // титул всегда сверху и всегда нажимается: открытые шторки не должны делать его inert
+            overlay.inert = false;
             overlay.classList.add('visible'); overlay.setAttribute('aria-hidden', 'false');
             renderTitleReward();
         }
