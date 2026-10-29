@@ -158,7 +158,7 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-nav svg { width: 20px; height: 20px; stroke-width: 2.4; }
 .cs-nav:active { transform: scale(.9); }
 .cs-nav:disabled { opacity: .35; }
-.cs-movelist { flex: 1; min-width: 0; height: 38px; display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); padding: 0 8px; }
+.cs-movelist { position: relative; flex: 1; min-width: 0; height: 38px; display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); padding: 0 8px; }
 .cs-movelist::-webkit-scrollbar { display: none; }
 .cs-movelist:empty::before { content: '—'; color: var(--ui-muted); font-size: 13px; margin: auto; }
 .cs-mn { flex-shrink: 0; margin: 0 2px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--ui-muted); }
@@ -281,6 +281,10 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 #modalChess .ck-refresh .refresh-glyph { position: absolute; left: 50%; top: 50%; margin: -9px 0 0 -9px; }
 .cs-room-tc { flex-shrink: 0; padding: 4px 8px; border-radius: 8px; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
 #modalChessWait .ck-radar img { background: #fff; }
+/* Строки комнат живут между обновлениями: появляются один раз, ушедшие сворачиваются */
+#modalChess .ck-room.is-settled { animation: none; }
+#modalChess .ck-room.is-leaving { overflow: hidden; pointer-events: none; animation: csRoomOut .26s ease forwards; }
+@keyframes csRoomOut { from { max-height: 72px; } to { max-height: 0; opacity: 0; transform: scale(.97); padding-top: 0; padding-bottom: 0; margin-bottom: -8px; border-width: 0; } }
 /* Счётчик онлайна над комнатами: зелёная точка «дышит», числа доезжают плавно */
 .cs-rooms-title { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cs-online { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; animation: csOnlineIn .4s var(--ui-spring) both; }
@@ -503,6 +507,61 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-rep-row > b.is-zero { color: var(--ui-muted); opacity: .45; }
 .cs-rep-row.is-zero > span { color: var(--ui-muted); }
 .cs-rep-row.is-zero .cs-q { opacity: .55; box-shadow: none; }
+/* Ходы, которые стоит заметить, подкрашены цветом своего класса */
+.cs-mv.q-brilliant, .cs-mv.q-great, .cs-mv.q-mistake, .cs-mv.q-miss, .cs-mv.q-blunder { color: var(--q); }
+.cs-mv.is-current { color: var(--ui-accent); }
+
+/* ---------- разбор партии: ход, оценка, лучший ход ---------- */
+.cs-coach { width: var(--cs-outer, 92vw); }
+.cs-coach[hidden] { display: none; }
+.cs-coach-row { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 6px 7px 6px 9px; border-radius: 15px; background: var(--ui-track); box-sizing: border-box; }
+.cs-coach-row > .cs-q { width: 28px; height: 28px; box-shadow: 0 3px 8px color-mix(in srgb, var(--q, #8e8e93) 40%, transparent); animation: csQPop .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+.cs-coach-row > .cs-coach-dot { --q: #8e8e93; opacity: .45; box-shadow: none; animation: none; }
+.cs-coach-text { flex: 1; min-width: 0; line-height: 1.2; }
+.cs-coach-text b { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 14.5px; font-weight: 750; white-space: nowrap; overflow: hidden; }
+.cs-coach-move { display: inline-flex; align-items: center; flex-shrink: 0; }
+.cs-coach-move i { width: 16px; height: 16px; background: center / contain no-repeat; display: inline-block; }
+.cs-coach-cls { overflow: hidden; text-overflow: ellipsis; color: var(--q, var(--ui-text)); }
+.cs-coach-text small { display: block; margin-top: 2px; overflow: hidden; font-size: 12.5px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; text-overflow: ellipsis; }
+.cs-coach-eval { flex-shrink: 0; min-width: 50px; padding: 6px 8px; border-radius: 10px; text-align: center; font-size: 13.5px; font-weight: 850; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cs-coach-eval.is-w { background: #f5f5f5; color: #1c1c1e; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1); }
+.cs-coach-eval.is-b { background: #2c2c2e; color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.cs-coach .cs-graph { display: none; }
+/* График партии: белая часть — перевес белых, точки — яркие ходы и ошибки */
+.cs-graph { position: relative; height: 66px; margin-top: 12px; border-radius: 12px; overflow: hidden; background: #3a3a3c; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cs-graph svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cs-graph path { fill: #f2f2f2; }
+.cs-graph line { stroke: #8e8e93; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: .7; }
+.cs-gdot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--q); box-shadow: 0 0 0 1.5px #fff; pointer-events: none; }
+.cs-gcur { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ui-accent); box-shadow: 0 0 6px var(--ui-accent); pointer-events: none; transition: left .2s var(--ui-ease); }
+
+/* ---------- колонка с доской и панель ходов ----------
+   На телефоне обёртки не видны (display: contents) и всё идёт столбиком.
+   На широком окне ходы, стрелки и кнопки — в панели справа от доски. */
+.cs-col, .cs-side { display: contents; }
+.cs-side-head, .cs-nav-end, .cs-mv-gap { display: none; }
+#chess-screen.is-wide .cs-main { flex-direction: row; gap: 18px; }
+#chess-screen.is-wide .cs-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; gap: 10px; }
+#chess-screen.is-wide .cs-side { display: flex; flex-direction: column; gap: 10px; width: var(--cs-side, 300px); height: var(--cs-col-h, 520px); min-height: 0; padding: 12px; box-sizing: border-box; border-radius: 22px; background: var(--ui-surface); border: 1px solid var(--ui-border); box-shadow: 0 12px 32px rgba(0, 0, 0, .1); }
+#chess-screen.is-wide .cs-side-head { display: block; margin: 0 -12px; padding: 0 16px 10px; border-bottom: 1px solid var(--ui-border); font-size: 15px; font-weight: 800; }
+#chess-screen.is-wide .cs-coach, #chess-screen.is-wide .cs-moves, #chess-screen.is-wide .cs-actions { width: 100%; }
+#chess-screen.is-wide .cs-coach .cs-graph { display: block; height: 58px; margin-top: 8px; }
+#chess-screen.is-wide .cs-moves { flex: 1; min-height: 0; align-items: stretch; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) auto; gap: 8px; }
+#chess-screen.is-wide .cs-movelist { grid-column: 1 / -1; grid-row: 1; height: auto; min-height: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: 34px; align-items: center; align-content: start; gap: 0; padding: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; -webkit-mask-image: none; mask-image: none; border-radius: 12px; background: repeating-linear-gradient(180deg, transparent 0 34px, var(--ui-track) 34px 68px); background-attachment: local; }
+#chess-screen.is-wide .cs-movelist::-webkit-scrollbar { display: block; width: 6px; }
+#chess-screen.is-wide .cs-movelist::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--ui-border); }
+#chess-screen.is-wide .cs-movelist:empty::before { grid-column: 1 / -1; justify-self: center; padding-top: 40px; }
+#chess-screen.is-wide .cs-mn { margin: 0; padding-left: 12px; font-size: 13px; }
+#chess-screen.is-wide .cs-mv { justify-self: start; max-width: 100%; padding: 4px 9px; font-size: 14.5px; }
+#chess-screen.is-wide .cs-mv-gap { display: block; }
+#chess-screen.is-wide .cs-nav { grid-row: 2; width: 100%; height: 42px; }
+#chess-screen.is-wide .cs-nav-end { display: block; }
+#chess-screen.is-wide .cs-act { max-width: none; }
+@media (hover: hover) {
+    .cs-mv:hover:not(.is-current) { background: var(--ui-track); }
+    #chess-screen.is-wide .cs-nav:not(:disabled):hover { background: var(--ui-accent-soft); color: var(--ui-accent); }
+}
+@media (prefers-reduced-motion: reduce) { .cs-coach-row > .cs-q, .cs-gcur { animation: none; transition: none; } }
 
 /* ---------- QR-приглашение ---------- */
 #modalChessWait.has-qr .ck-radar { display: none; }

@@ -67,6 +67,8 @@
         bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></svg>',
         prev: '<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>',
         next: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+        first: '<svg viewBox="0 0 24 24"><path d="M17 18l-6-6 6-6M7 6v12"/></svg>',
+        last: '<svg viewBox="0 0 24 24"><path d="M7 6l6 6-6 6M17 6v12"/></svg>',
         flip: '<svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>',
         undo: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
         flag: '<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
@@ -290,6 +292,7 @@
                 </div>
             </div>
             <div class="cs-main" data-ref="main">
+                <div class="cs-col" data-ref="col">
                 <div class="cs-player" data-ref="topPlayer"></div>
                 <div class="cs-board-wrap" data-ref="frame">
                     <div class="cs-coords cs-files top" data-ref="filesTop" aria-hidden="true"></div>
@@ -306,12 +309,19 @@
                     </div>
                 </div>
                 <div class="cs-player" data-ref="bottomPlayer"></div>
-                <div class="cs-moves">
-                    <button class="cs-nav" type="button" data-act="prev" data-ref="prevBtn">${ICON.prev}</button>
-                    <div class="cs-movelist" data-ref="moveList"></div>
-                    <button class="cs-nav" type="button" data-act="next" data-ref="nextBtn">${ICON.next}</button>
                 </div>
-                <div class="cs-actions" data-ref="actions"></div>
+                <div class="cs-side" data-ref="side">
+                    <div class="cs-side-head" data-t="movesTitle"></div>
+                    <div class="cs-coach" data-ref="coach" hidden></div>
+                    <div class="cs-moves">
+                        <button class="cs-nav cs-nav-end" type="button" data-act="first" data-ref="firstBtn">${ICON.first}</button>
+                        <button class="cs-nav" type="button" data-act="prev" data-ref="prevBtn">${ICON.prev}</button>
+                        <div class="cs-movelist" data-ref="moveList"></div>
+                        <button class="cs-nav" type="button" data-act="next" data-ref="nextBtn">${ICON.next}</button>
+                        <button class="cs-nav cs-nav-end" type="button" data-act="last" data-ref="lastBtn">${ICON.last}</button>
+                    </div>
+                    <div class="cs-actions" data-ref="actions"></div>
+                </div>
             </div>
             <div class="cs-banner" data-ref="banner"><p></p></div>
             <div class="cs-sheet-scrim" data-ref="scrim"></div>
@@ -323,6 +333,7 @@
         refs.scrim.addEventListener('click', () => { if (ui.dialog?.dismissable !== false) closeDialog(); });
         bindBoard();
         window.addEventListener('resize', () => { if (screen.classList.contains('visible')) layout(); });
+        document.addEventListener('keydown', onKey);
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) { hintToken++; engines.hint?.stop(); engines.review?.stop(); }
             else if (screen.classList.contains('visible')) { scheduleHint(); scheduleReview(); }
@@ -331,30 +342,57 @@
         applyTexts(screen);
     }
 
+    /** ← → листают ходы, Home / End — к началу и к концу партии. */
+    function onKey(event) {
+        if (!game || !screen.classList.contains('visible') || ui.dialog || ui.promo || event.altKey || event.ctrlKey || event.metaKey) return;
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
+        const current = game.view == null ? game.moves.length : game.view;
+        const target = { ArrowLeft: current - 1, ArrowRight: current + 1, Home: 0, End: game.moves.length }[event.key];
+        if (target == null) return;
+        event.preventDefault();
+        setView(target);
+    }
+
     function applyTexts(root) {
         root.querySelectorAll('[data-t]').forEach(el => { el.textContent = tr(el.dataset.t); });
     }
 
-    /** Размер доски: сколько помещается между шапкой и кнопками. */
+    /** Размер доски: сколько помещается между шапкой и кнопками.
+        На широком окне (Telegram на компьютере) ходы, стрелки и кнопки
+        уходят в панель справа от доски, а доска занимает всю высоту. */
+    const SIDE_GAP = 18;
     function layout() {
         const main = refs.main;
         if (!main) return;
         const style = getComputedStyle(main);
         const gap = parseFloat(style.rowGap) || 10;
-        let others = 0;
-        for (const child of main.children) if (!child.classList.contains('cs-board-wrap')) others += child.offsetHeight;
         const width = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-        const height = main.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - others - gap * (main.children.length - 1);
+        const full = main.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        const players = refs.topPlayer.offsetHeight + refs.bottomPlayer.offsetHeight;
+        const side = Math.round(Math.max(270, Math.min(360, width * 0.3)));
+        // широкий вид — только если доска в нём не меньше, чем в обычном
+        const narrowAvail = Math.min(width, full - players - 190, 600);
+        const wideAvail = Math.min(width - side - SIDE_GAP, full - players - gap * 2, 760);
+        const wide = width >= 640 && wideAvail >= narrowAvail - 16;
+        screen.classList.toggle('is-wide', wide);
+        screen.style.setProperty('--cs-side', `${side}px`);
+        let avail = wideAvail;
+        if (!wide) {
+            const flow = [refs.topPlayer, refs.frame, refs.bottomPlayer, refs.coach, screen.querySelector('.cs-moves'), refs.actions].filter(el => el && !el.hidden);
+            const others = flow.reduce((sum, el) => sum + (el === refs.frame ? 0 : el.offsetHeight), 0);
+            avail = Math.min(width, full - others - gap * (flow.length - 1), 600);
+        }
         // Рамка вокруг доски: поля с буквами и цифрами одинаковые со всех сторон.
-        const avail = Math.min(width, height, 600);
         const margin = settings.coords ? Math.max(15, Math.min(22, Math.round(avail * 0.046))) : 9;
         const size = Math.max(200, Math.floor((avail - 2 * margin) / 8) * 8);
         view.size = size;
         screen.style.setProperty('--cs-size', `${size}px`);
         screen.style.setProperty('--cs-margin', `${margin}px`);
         screen.style.setProperty('--cs-outer', `${size + 2 * margin}px`);
-        const moves = screen.querySelector('.cs-moves').getBoundingClientRect().top;
-        screen.style.setProperty('--cs-banner-top', `${Math.max(8, moves - screen.getBoundingClientRect().top - 4)}px`);
+        screen.style.setProperty('--cs-col-h', `${refs.col.offsetHeight}px`);
+        const anchor = wide ? refs.frame.getBoundingClientRect().bottom - 64 : screen.querySelector('.cs-moves').getBoundingClientRect().top;
+        screen.style.setProperty('--cs-banner-top', `${Math.max(8, anchor - screen.getBoundingClientRect().top - 4)}px`);
+        renderMoveList();
     }
 
     /* ---------- координаты на доске ---------- */
@@ -545,7 +583,7 @@
         }
         if (ui.hover) list.push([ui.hover, 'hover']);
         refs.marks.innerHTML = list.map(([sq, cls]) => `<div class="cs-mark ${cls}" style="transform:${sqTf(sq)}"></div>`).join('');
-        renderArrow(hint);
+        renderArrow(hint || reviewArrow());
         renderBadge();
     }
 
@@ -936,6 +974,7 @@
 
     function afterChange() {
         renderMarks();
+        renderCoach();
         renderMoveList();
         renderPlayers();
         renderStatus();
@@ -1404,11 +1443,13 @@
             : alive && pz.dayStreak > 0 ? tr('dailyDays', { n: pz.dayStreak }) : tr('dailyNew');
     }
 
-    /* ---------- оценка ходов: только игра с ботом ----------
+    /* ---------- оценка ходов и разбор партии ----------
        Отдельный Stockfish разбирает каждую позицию партии (две лучшие линии),
        и ход получает класс, как в разборе chess.com (core.classifyMove).
-       На доске — значок у фигуры для ходов игрока, в списке ходов и в отчёте
-       после партии — классы обеих сторон и точность. */
+       С ботом — по ходу партии; с человеком и вдвоём — только после конца,
+       чтобы движок ничего не подсказывал во время игры. На доске — значок
+       у фигуры, в списке ходов и в отчёте — классы обеих сторон и точность;
+       при разборе — оценка позиции, лучший ход стрелкой и график партии. */
     const REVIEW_DEPTH = 12;
     const REVIEW_MS = 900;
     const BOOK_PLIES = 30;
@@ -1430,7 +1471,12 @@
         blunder: qSvg(qQuest(7) + qQuest(17), 0.78),
     };
     const qBadge = cls => `<span class="cs-q q-${cls}">${Q_GLYPH[cls]}</span>`;
-    const reviewOn = () => !!game && game.mode === 'bot' && settings.review !== false;
+    const reviewOn = () => !!game && settings.review !== false && (game.mode === 'bot'
+        || ((game.mode === 'online' || game.mode === 'local') && !!game.over && game.over.result !== 'aborted' && game.moves.length > 0));
+    const BAD_MOVES = new Set(['inaccuracy', 'mistake', 'miss', 'blunder']);
+    const TOP_MOVES = new Set(['brilliant', 'great', 'best', 'book']);
+    const GRAPH_DOTS = new Set(['brilliant', 'great', 'mistake', 'miss', 'blunder']);
+    const reviewFens = g => [g.startFen, ...g.moves.map(m => m.after)];
     const bookKey = fen => fen.split(' ').slice(0, 3).join(' ');
     let openingBook = null;
     /** Дебютная книга: позиции из линий lichess chess-openings (CC0). */
@@ -1531,12 +1577,109 @@
         return changed;
     }
     function renderReview() {
-        renderBadge();
+        renderMarks();
         renderMoveList();
+        renderCoach();
         if (ui.dialog?.kind === 'result') {
             const box = refs.sheet.querySelector('[data-ref="report"]');
             if (box) box.innerHTML = reportHtml();
         }
+    }
+
+    /** Разбор после партии: панель с оценкой показанного хода. */
+    function openReview(ply) {
+        if (!game || !reviewOn()) return;
+        game.coach = true;
+        renderCoach();
+        setView(ply);
+        renderMarks();
+        renderCoach();
+    }
+    /** Оценка за белых: «+1.4», «−0.3», «M3», «−M2», после мата — «1-0». */
+    function evalLabel(ev) {
+        if (!ev) return null;
+        if (ev.terminal != null) return { text: ev.terminal === 0 ? '½-½' : ev.terminal === 1 ? '1-0' : '0-1', white: ev.terminal >= 0 };
+        const sc = ev.lines[1]?.score;
+        if (!sc) return null;
+        if (sc.type === 'mate') return { text: `${sc.value < 0 ? '−' : ''}M${Math.abs(sc.value)}`, white: sc.value > 0 };
+        const v = sc.value / 100;
+        return { text: `${v > 0.04 ? '+' : v < -0.04 ? '−' : ''}${Math.abs(v).toFixed(Math.abs(v) >= 10 ? 0 : 1)}`, white: v >= 0 };
+    }
+    function sanOf(fen, move) {
+        if (!move) return null;
+        try { return new Chess(fen).move({ from: move.from, to: move.to, promotion: move.promotion || 'q' })?.san || null; } catch (_) { return null; }
+    }
+    /** Лучший ход на месте ошибки — зелёной стрелкой поверх доски. */
+    function reviewArrow() {
+        if (!game?.coach || !reviewOn()) return null;
+        const ply = game.view == null ? game.moves.length : game.view;
+        const mark = ply > 0 ? game.review?.marks[ply - 1] : null;
+        if (!mark || !BAD_MOVES.has(mark.cls)) return null;
+        const before = game.review.evals[ply - 1];
+        return before?.fen === reviewFens(game)[ply - 1] ? before.lines[1]?.move || null : null;
+    }
+    function renderCoach() {
+        const box = refs.coach;
+        if (!box) return;
+        const show = !!game?.coach && reviewOn();
+        if (box.hidden === show) { box.hidden = !show; layout(); }
+        if (!show) { box.innerHTML = ''; return; }
+        const review = game.review || { evals: [], marks: [] };
+        const fens = reviewFens(game);
+        const ply = game.view == null ? game.moves.length : game.view;
+        const total = game.moves.length;
+        const done = review.marks.filter(Boolean).length;
+        const ev = review.evals[ply]?.fen === fens[ply] ? review.evals[ply] : null;
+        const score = evalLabel(ev);
+        const mark = ply > 0 ? review.marks[ply - 1] : null;
+        let icon = '<span class="cs-q cs-coach-dot"></span>';
+        let title = esc(tr('startPos'));
+        let note = '';
+        if (ply > 0) {
+            const move = game.moves[ply - 1];
+            const label = `${moveNumber(ply - 1)}${move.color === 'b' ? '…' : '.'} ${figurine(move)}`;
+            if (mark) {
+                icon = qBadge(mark.cls);
+                title = `<span class="cs-coach-move">${label}</span><span class="cs-coach-cls">${esc(tr(`q_${mark.cls}`))}</span>`;
+                const before = review.evals[ply - 1];
+                const best = before?.fen === fens[ply - 1] ? before.lines[1]?.move : null;
+                const same = best && best.from === move.from && best.to === move.to;
+                if (best && !same && !TOP_MOVES.has(mark.cls)) note = esc(tr('betterWas', { move: sanOf(fens[ply - 1], best) || `${best.from}-${best.to}` }));
+            } else title = `<span class="cs-coach-move">${label}</span>`;
+        }
+        if (!note && done < total) note = esc(tr('analysing', { done, total }));
+        box.className = `cs-coach${mark ? ` q-${mark.cls}` : ''}`;
+        box.innerHTML = `
+            <div class="cs-coach-row">
+                ${icon}
+                <div class="cs-coach-text"><b>${title}</b>${note ? `<small>${note}</small>` : ''}</div>
+                ${score ? `<span class="cs-coach-eval ${score.white ? 'is-w' : 'is-b'}">${esc(score.text)}</span>` : ''}
+            </div>
+            ${graphHtml(ply)}`;
+    }
+    /** График шансов белых по ходам: белая часть — перевес белых. Нажатие — к ходу. */
+    function graphHtml(current = null) {
+        const review = game?.review;
+        if (!review || !game.moves.length) return '';
+        const fens = reviewFens(game);
+        const n = fens.length - 1;
+        const points = [];
+        fens.forEach((fen, i) => {
+            const ev = review.evals[i];
+            const w = ev?.fen === fen ? winFor(ev, 'w') : null;
+            if (w != null) points.push([i / n * 100, 100 - w]);
+        });
+        if (points.length < 2) return '';
+        const path = `M${points[0][0].toFixed(2)},100 ${points.map(([x, y]) => `L${x.toFixed(2)},${y.toFixed(2)}`).join(' ')} L${points[points.length - 1][0].toFixed(2)},100 Z`;
+        const dots = review.marks.map((mark, i) => {
+            if (!mark || !GRAPH_DOTS.has(mark.cls)) return '';
+            const ev = review.evals[i + 1];
+            const w = ev?.fen === fens[i + 1] ? winFor(ev, 'w') : null;
+            return w == null ? '' : `<i class="cs-gdot q-${mark.cls}" style="left:${((i + 1) / n * 100).toFixed(2)}%;top:${Math.min(93, Math.max(7, 100 - w)).toFixed(2)}%" title="${esc(tr(`q_${mark.cls}`))}"></i>`;
+        }).join('');
+        const cur = current == null ? '' : `<i class="cs-gcur" style="left:${(current / n * 100).toFixed(2)}%"></i>`;
+        return `<div class="cs-graph" data-plies="${n}" role="img" aria-label="${esc(tr('gameReview'))}">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"/><line x1="0" y1="50" x2="100" y2="50"/></svg>${cur}${dots}</div>`;
     }
     /** Значки классов у фигур: в партии — у двух последних ходов (свой и бота),
         при просмотре — у показанного хода. Значки не пересоздаются, чтобы не мигать. */
@@ -1574,7 +1717,7 @@
     function reportHtml() {
         const review = game?.review;
         if (!reviewOn() || !review || !game.moves.length) return '';
-        const mine = game.myColor, bot = other(mine);
+        const mine = game.myColor || 'w', bot = other(mine);
         const done = review.marks.filter(Boolean).length;
         const accuracy = color => core.gameAccuracy(game.moves.map((m, i) => (m.color === color ? review.marks[i]?.acc : null)).filter(v => v != null));
         const count = (color, cls) => game.moves.filter((m, i) => m.color === color && review.marks[i]?.cls === cls).length;
@@ -1589,6 +1732,7 @@
                 <span>${esc(tr('accuracy'))}</span>
                 <div><small>${esc(playerInfo(bot).name)}</small><b>${fmt(accuracy(bot))}</b></div>
             </div>
+            ${graphHtml()}
             ${done < game.moves.length ? `<p class="cs-rep-progress">${esc(tr('analysing', { done, total: game.moves.length }))}</p>` : ''}
             <div class="cs-rep-rows">${rows}</div>`;
     }
@@ -1875,23 +2019,28 @@
         return (Number(full) || 1) + Math.floor((i + (side === 'b' ? 1 : 0)) / 2);
     }
     function renderMoveList() {
-        if (!game) return;
+        if (!game || !refs.moveList) return;
         const current = game.view == null ? game.moves.length : game.view;
         let html = '';
         game.moves.forEach((m, i) => {
             if (m.color === 'w' || i === 0) html += `<span class="cs-mn">${moveNumber(i)}.${m.color === 'b' && i === 0 ? '…' : ''}</span>`;
+            // в таблице ходов первый ход чёрных стоит во второй колонке
+            if (m.color === 'b' && i === 0) html += '<span class="cs-mv-gap"></span>';
             const q = reviewOn() ? game.review?.marks[i] : null;
-            html += `<button type="button" class="cs-mv${i + 1 === current ? ' is-current' : ''}" data-ply="${i + 1}">${figurine(m)}${q ? qBadge(q.cls) : ''}</button>`;
+            html += `<button type="button" class="cs-mv${i + 1 === current ? ' is-current' : ''}${q ? ` q-${q.cls}` : ''}" data-ply="${i + 1}">${figurine(m)}${q ? qBadge(q.cls) : ''}</button>`;
         });
-        refs.moveList.innerHTML = html;
-        const active = refs.moveList.querySelector('.is-current');
-        if (active) {
-            const list = refs.moveList;
-            const left = active.offsetLeft - list.clientWidth / 2 + active.offsetWidth / 2;
-            list.scrollTo({ left, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+        const list = refs.moveList;
+        if (list.csHtml !== html) { list.innerHTML = html; list.csHtml = html; }
+        const active = list.querySelector('.is-current');
+        const behavior = REDUCED_MOTION ? 'auto' : 'smooth';
+        if (screen.classList.contains('is-wide')) {
+            if (active) list.scrollTo({ top: active.offsetTop - list.clientHeight / 2 + active.offsetHeight / 2, behavior });
+            else if (!current) list.scrollTo({ top: 0, behavior });
+        } else if (active) {
+            list.scrollTo({ left: active.offsetLeft - list.clientWidth / 2 + active.offsetWidth / 2, behavior });
         }
-        refs.prevBtn.disabled = current <= 0;
-        refs.nextBtn.disabled = current >= game.moves.length;
+        refs.prevBtn.disabled = refs.firstBtn.disabled = current <= 0;
+        refs.nextBtn.disabled = refs.lastBtn.disabled = current >= game.moves.length;
     }
 
     function renderStatus() {
@@ -1986,6 +2135,7 @@
         renderMoveList();
         renderPlayers();
         renderStatus();
+        renderCoach();
     }
     function goLive() { if (game?.view != null) setView(game.moves.length); }
 
@@ -2427,16 +2577,17 @@
             <div class="cs-result-icon ${iconClass}">${icon}</div>
             <h2>${esc(resultTitle(outcome))}</h2>
             <p data-ref="resultReason">${esc(reasonText(outcome))}</p>
-            ${reviewOn() && game.moves.length ? `<div class="cs-report" data-ref="report">${reportHtml()}</div>` : ''}
+            ${reviewOn() ? `<div class="cs-report" data-ref="report">${reportHtml()}</div>` : ''}
             <div class="cs-rating-chip" data-ref="resultRating" hidden></div>
             <p data-ref="resultNote" hidden></p>
             <div class="cs-sheet-actions">
                 ${primary}
-                <button type="button" class="cs-btn" data-dlg="review">${esc(tr('review'))}</button>
+                <button type="button" class="cs-btn" data-dlg="review">${esc(tr(reviewOn() ? 'gameReview' : 'review'))}</button>
                 <button type="button" class="cs-btn" data-dlg="menu">${esc(tr('menu'))}</button>
             </div>`);
         const sheet = refs.sheet;
-        sheet.querySelector('[data-dlg="review"]').onclick = () => closeDialog();
+        sheet.querySelector('[data-dlg="review"]').onclick = () => { closeDialog(); if (reviewOn()) openReview(game.view ?? 1); };
+        if (reviewOn() && !game.coach) { game.coach = true; renderCoach(); renderMarks(); }
         sheet.querySelector('[data-dlg="menu"]').onclick = () => { closeDialog(true); closeScreen(); openSheet(); };
         sheet.querySelector('[data-dlg="again"]')?.addEventListener('click', () => { closeDialog(); playAgain(); });
         sheet.querySelector('[data-dlg="rematch"]')?.addEventListener('click', () => {
@@ -2473,7 +2624,7 @@
         const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
-        if (game?.mode === 'bot') rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
+        if (game?.mode === 'bot' || (game?.over && game.mode !== 'puzzle')) rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
         openDialog('settings', `
             <h2>${esc(tr('settings'))}</h2>
             <div class="cs-settings" style="margin-top:12px">
@@ -2507,8 +2658,9 @@
                 if (key === 'review') {
                     if (!settings.review) engines.review?.stop();
                     scheduleReview();
-                    renderBadge();
+                    renderMarks();
                     renderMoveList();
+                    renderCoach();
                 }
                 if (key === 'action') {
                     if (actionOn()) { Action.load().catch(() => {}); scheduleAnalysis(); }
@@ -2592,6 +2744,14 @@
     function onScreenClick(event) {
         const mv = event.target.closest('.cs-mv');
         if (mv) { setView(Number(mv.dataset.ply)); return; }
+        const graph = event.target.closest('.cs-graph');
+        if (graph && game) {
+            const box = graph.getBoundingClientRect();
+            const ply = Math.round(Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)) * Number(graph.dataset.plies));
+            if (ui.dialog) closeDialog();
+            openReview(ply);
+            return;
+        }
         const button = event.target.closest('[data-act]');
         if (!button || button.disabled) return;
         if (game?.mode === 'puzzle' && button.dataset.act !== 'back' && Date.now() - (game.puzzle?.startedAt || 0) < 450) return;
@@ -2606,6 +2766,8 @@
                 return;
             case 'prev': return setView((game.view == null ? game.moves.length : game.view) - 1);
             case 'next': return setView((game.view == null ? game.moves.length : game.view) + 1);
+            case 'first': return setView(0);
+            case 'last': return setView(game.moves.length);
             case 'flip': haptic('light'); return setOrientation(other(view.orientation));
             case 'pen': return setDrawMode(!ui.drawMode);
             case 'undo': return takeback();
@@ -2938,22 +3100,52 @@
     }
     function requestRooms() { emit('chess_list', {}); }
 
+    function roomHtml(room) {
+        const avatar = typeof room.avatar === 'string' && /^https:\/\//i.test(room.avatar)
+            ? `<img class="ck-room-ava" src="${esc(room.avatar)}" alt="" referrerpolicy="no-referrer">`
+            : `<span class="ck-room-ava">${esc((room.name || '?').slice(0, 1).toUpperCase())}</span>`;
+        const tc = core.timeControl(room.tc);
+        return `${avatar}<div class="ck-room-text"><b>${flagHtml(room.lang)}${esc(room.name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
+            <span class="cs-room-tc">${esc(tc ? tc.id : room.tc)}</span>
+            <button class="ck-room-join" type="button" data-join="${esc(room.code)}">${esc(tr('join'))}</button>`;
+    }
+    /** Список обновляется раз в 5 с, но строки не пересоздаются: те же комнаты
+        остаются на месте, новые плавно появляются, ушедшие сворачиваются. */
     function renderRooms(rooms) {
         const list = refs.s_rooms;
         if (!list) return;
+        const live = el => !el.classList.contains('is-leaving');
+        const rows = new Map([...list.querySelectorAll('.ck-room[data-code]')].filter(live).map(el => [el.dataset.code, el]));
+        const codes = new Set(rooms.map(room => String(room.code)));
+        for (const [code, el] of rows) {
+            if (codes.has(code)) continue;
+            el.classList.add('is-leaving');
+            el.querySelector('[data-join]')?.removeAttribute('data-join');
+            setTimeout(() => el.remove(), REDUCED_MOTION ? 0 : 280);
+        }
+        const empty = list.querySelector('.ck-empty');
         if (!rooms.length) {
-            list.innerHTML = `<div class="ck-empty"><b>${esc(tr('noRooms'))}</b>${esc(tr('noRoomsHint'))}</div>`;
+            if (!empty) list.insertAdjacentHTML('beforeend', `<div class="ck-empty"><b>${esc(tr('noRooms'))}</b>${esc(tr('noRoomsHint'))}</div>`);
             return;
         }
-        list.innerHTML = rooms.map(room => {
-            const avatar = typeof room.avatar === 'string' && /^https:\/\//i.test(room.avatar)
-                ? `<img class="ck-room-ava" src="${esc(room.avatar)}" alt="" referrerpolicy="no-referrer">`
-                : `<span class="ck-room-ava">${esc((room.name || '?').slice(0, 1).toUpperCase())}</span>`;
-            const tc = core.timeControl(room.tc);
-            return `<div class="ck-room">${avatar}<div class="ck-room-text"><b>${flagHtml(room.lang)}${esc(room.name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
-                <span class="cs-room-tc">${esc(tc ? tc.id : room.tc)}</span>
-                <button class="ck-room-join" type="button" data-join="${esc(room.code)}">${esc(tr('join'))}</button></div>`;
-        }).join('');
+        empty?.remove();
+        const nextLive = node => { while (node && !live(node)) node = node.nextElementSibling; return node; };
+        let prev = null;
+        for (const room of rooms) {
+            const code = String(room.code);
+            const html = roomHtml(room);
+            let el = rows.get(code);
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'ck-room';
+                el.dataset.code = code;
+                el.addEventListener('animationend', () => el.classList.add('is-settled'), { once: true });
+            }
+            if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html; }
+            const at = nextLive(prev ? prev.nextElementSibling : list.firstElementChild);
+            if (at !== el) list.insertBefore(el, at);
+            prev = el;
+        }
     }
 
     /** Счётчик «в сети · в игре» над комнатами: числа плавно доезжают до новых. */
