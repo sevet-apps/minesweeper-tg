@@ -38,6 +38,8 @@
         join: ['Войти', 'Join', '加入', 'Entrar', 'Entrar', 'Gabung', 'Rejoindre', '参加', 'Beitreten', '입장', 'Katıl', 'Vào'],
         code: ['Код', 'Code', '代码', 'Código', 'Código', 'Kode', 'Code', 'コード', 'Code', '코드', 'Kod', 'Mã'],
         openRooms: ['Открытые комнаты', 'Open rooms', '公开房间', 'Salas abiertas', 'Salas abertas', 'Ruang terbuka', 'Salons ouverts', '公開ルーム', 'Offene Räume', '열린 방', 'Açık odalar', 'Phòng đang mở'],
+        onlineNow: ['онлайн', 'online', '在线', 'en línea', 'online', 'online', 'en ligne', 'オンライン', 'online', '온라인', 'çevrimiçi', 'trực tuyến'],
+        inGame: ['в игре', 'playing', '对局中', 'jugando', 'jogando', 'bermain', 'en partie', '対局中', 'spielen', '대국 중', 'oyunda', 'đang chơi'],
         noRooms: ['Пока нет комнат', 'No rooms yet', '暂无房间', 'Aún no hay salas', 'Ainda não há salas', 'Belum ada ruang', 'Aucun salon', 'ルームはまだありません', 'Noch keine Räume', '아직 방이 없어요', 'Henüz oda yok', 'Chưa có phòng'],
         noRoomsHint: ['Создайте свою — её увидят другие', 'Create one and others will see it', '创建一个，其他人就能看到', 'Crea una y otros la verán', 'Crie uma e outros vão vê-la', 'Buat satu agar terlihat pemain lain', 'Créez-en un, les autres le verront', '作成すると他の人に表示されます', 'Erstelle einen, andere sehen ihn', '방을 만들면 다른 사람에게 보여요', 'Bir tane oluştur, diğerleri görsün', 'Tạo phòng để người khác thấy'],
         refresh: ['Обновить', 'Refresh', '刷新', 'Actualizar', 'Atualizar', 'Muat ulang', 'Actualiser', '更新', 'Aktualisieren', '새로고침', 'Yenile', 'Làm mới'],

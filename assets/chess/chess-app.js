@@ -2221,7 +2221,7 @@
             hideBanner();
             finishGame({ result: 'aborted', reason: 'serverLost' });
         });
-        socket.on('chess_rooms', data => renderRooms(Array.isArray(data?.rooms) ? data.rooms : []));
+        socket.on('chess_rooms', data => { renderRooms(Array.isArray(data?.rooms) ? data.rooms : []); renderOnline(data?.online); });
         socket.on('chess_created', data => showWait(data));
         socket.on('chess_error', data => {
             const key = `e_${data?.code}`;
@@ -2744,7 +2744,10 @@
                     <button type="button" class="ck-scan" data-sheet="scan" data-ref="scanBtn" hidden>${ICON.qr}</button>
                     <button type="button" data-sheet="join" data-t="join"></button>
                 </div>
-                <div class="ck-rooms-head"><h3 data-t="openRooms"></h3><button class="ck-refresh" type="button" data-sheet="refresh">${ICON.refresh}</button></div>
+                <div class="ck-rooms-head">
+                    <div class="cs-rooms-title"><h3 data-t="openRooms"></h3><span class="cs-online" data-ref="online" role="status" hidden><i class="cs-online-dot"></i><b data-ref="onlineNum">0</b><span data-t="onlineNow"></span><em><b data-ref="onlinePlay">0</b><span data-t="inGame"></span></em></span></div>
+                    <button class="ck-refresh" type="button" data-sheet="refresh">${ICON.refresh}</button>
+                </div>
                 <div class="ck-rooms" data-ref="rooms"></div>
             </div>
             <div class="cs-panel" data-panel="local">
@@ -2951,6 +2954,32 @@
                 <span class="cs-room-tc">${esc(tc ? tc.id : room.tc)}</span>
                 <button class="ck-room-join" type="button" data-join="${esc(room.code)}">${esc(tr('join'))}</button></div>`;
         }).join('');
+    }
+
+    /** Счётчик «в сети · в игре» над комнатами: числа плавно доезжают до новых. */
+    let onlineNow = null;
+    let onlineFrame = 0;
+    function renderOnline(online) {
+        const box = refs.s_online;
+        if (!box) return;
+        const total = Math.round(Number(online?.total));
+        if (!(total > 0)) { box.hidden = true; onlineNow = null; return; }
+        const to = { total, playing: Math.max(0, Math.min(total, Math.round(Number(online.playing) || 0))) };
+        const paint = v => { refs.s_onlineNum.textContent = v.total; refs.s_onlinePlay.textContent = v.playing; onlineNow = v; };
+        box.setAttribute('aria-label', `${to.total} ${tr('onlineNow')}, ${to.playing} ${tr('inGame')}`);
+        const from = onlineNow || { total: Math.round(total * 0.7), playing: Math.round(to.playing * 0.7) };
+        if (box.hidden) box.hidden = false;
+        else if (from.total !== to.total) { box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump'); }
+        cancelAnimationFrame(onlineFrame);
+        if (REDUCED_MOTION || (from.total === to.total && from.playing === to.playing)) { paint(to); return; }
+        const started = performance.now();
+        const step = time => {
+            const k = Math.min(1, (time - started) / 700);
+            const e = 1 - Math.pow(1 - k, 3);
+            paint({ total: Math.round(from.total + (to.total - from.total) * e), playing: Math.round(from.playing + (to.playing - from.playing) * e) });
+            if (k < 1) onlineFrame = requestAnimationFrame(step);
+        };
+        onlineFrame = requestAnimationFrame(step);
     }
 
     async function fetchProfile() {

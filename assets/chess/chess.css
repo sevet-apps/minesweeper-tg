@@ -281,6 +281,21 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 #modalChess .ck-refresh .refresh-glyph { position: absolute; left: 50%; top: 50%; margin: -9px 0 0 -9px; }
 .cs-room-tc { flex-shrink: 0; padding: 4px 8px; border-radius: 8px; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
 #modalChessWait .ck-radar img { background: #fff; }
+/* Счётчик онлайна над комнатами: зелёная точка «дышит», числа доезжают плавно */
+.cs-rooms-title { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cs-online { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; animation: csOnlineIn .4s var(--ui-spring) both; }
+.cs-online[hidden] { display: none; }
+.cs-online b { min-width: 1ch; color: var(--ui-text); font-weight: 800; font-variant-numeric: tabular-nums; }
+.cs-online > b { display: inline-block; }
+.cs-online em { display: inline-flex; align-items: center; gap: 5px; font-style: normal; }
+.cs-online em::before { content: ''; width: 3px; height: 3px; margin: 0 1px; border-radius: 50%; background: currentColor; opacity: .55; }
+.cs-online-dot { position: relative; flex-shrink: 0; width: 8px; height: 8px; margin: 0 2px 0 1px; border-radius: 50%; background: #34c759; box-shadow: 0 0 6px rgba(52, 199, 89, .55); }
+.cs-online-dot::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: #34c759; animation: csOnlinePing 2.2s cubic-bezier(0, 0, .2, 1) infinite; }
+.cs-online.bump > b { animation: csOnlineBump .5s var(--ui-spring); }
+@keyframes csOnlinePing { 0% { transform: scale(1); opacity: .55; } 75%, 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes csOnlineIn { from { opacity: 0; transform: translateY(-3px); } }
+@keyframes csOnlineBump { 40% { transform: translateY(-2px) scale(1.14); color: #34c759; } }
+@media (prefers-reduced-motion: reduce) { .cs-online, .cs-online-dot::after, .cs-online.bump > b { animation: none; } }
 
 @media (max-height: 640px) {
     .cs-player { min-height: 40px; }
