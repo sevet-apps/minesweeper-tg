@@ -58,7 +58,7 @@
     function init() {
         const doc = root.document;
         const definitions = [
-            ['modalSaper',null], ['modalSudoku',null], ['modalCheckers',null], ['modalChess','closeChessSheet'], ['modalChessWait','cancelChessWait',true],
+            ['modalSaper',null], ['modalSudoku',null], ['modalCheckers',null], ['modalChess','closeChessSheet'], ['modalChessWait','cancelChessWait',true], ['modalNardy','closeNardySheet'], ['modalNardyWait','cancelNardyWait',true],
             ['modalResult','closeResult',true], ['modalLoading',null,true], ['modalWaitOpponent','cancelOnlineWait',true],
             ['settingsSheet','closeSettingsSheet'], ['languageSheet','closeLanguageSheet'],  ['referralConditionsSheet','hideReferralConditions'],
             ['titleDetailOverlay','closeTitleDetail'], ['titleChoiceOverlay','closeTitleChoiceMenu'],

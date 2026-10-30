@@ -399,6 +399,13 @@
         #view-games .game-card--chess {
             background: linear-gradient(112deg, rgba(126, 134, 146, .9), rgba(36, 40, 48, .94));
         }
+        #view-games .game-card--nardy {
+            background: linear-gradient(112deg, rgba(128, 70, 30, .92), rgba(52, 26, 12, .95));
+            /* Keep the composited ribbon inside the rounded card on iOS. */
+            overflow: hidden;
+            clip-path: inset(0 round 20px);
+            contain: paint;
+        }
         #view-games .game-card--block-blast {
             background: linear-gradient(112deg, rgba(18, 100, 83, .9), rgba(12, 48, 83, .92));
         }
@@ -3665,6 +3672,12 @@
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
+        <div class="card" onclick="openLeaderboardDetail('nardy')">
+            <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/nardy.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsNardy">Топ Нарды</h3></div>
+            <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+        </div>
+
         <div class="card" onclick="openLeaderboardDetail('bb')">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/block-blast.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" id="bbLbTitle" data-i18n="topsBlockBlast">Топ Блок Бласт</h3></div>
@@ -3840,6 +3853,12 @@
         <div class="card game-card game-card--chess" onclick="openChess()">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/chess.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="chess">Шахматы</h3></div>
+            <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
+        </div>
+        <div class="card game-card game-card--nardy" onclick="openNardy()">
+            <div class="game-beta-ribbon" data-i18n="newBadge">НОВОЕ</div>
+            <div class="game-icon-box game-icon-real"><img src="assets/game-icons/nardy.png" alt=""></div>
+            <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="nardy">Нарды</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
         <div class="card game-card game-card--block-blast" id="bbHomeCard" onclick="startBlockBlastCheck()">
@@ -4161,6 +4180,15 @@
                         </button>
                         <div class="record-details"><div class="record-details-inner" id="details-chess"></div></div>
                     </div>
+                    <div class="record-row" data-profile-game="nardy">
+                        <button class="record-summary" onclick="toggleProfileGameStats('nardy')">
+                            <img class="record-icon" src="assets/game-icons/nardy.png" alt="">
+                            <span class="record-game-wrap"><span class="record-game" data-i18n="nardy">Нарды</span><span class="record-time" id="time-nardy">—</span></span>
+                            <span class="record-score" id="rec-nardy">--</span><span class="record-rank" id="rank-nardy"></span>
+                            <svg class="record-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                        </button>
+                        <div class="record-details"><div class="record-details-inner" id="details-nardy"></div></div>
+                    </div>
                     <div class="record-row" data-profile-game="wordle">
                         <button class="record-summary" onclick="toggleProfileGameStats('wordle')">
                             <img class="record-icon" src="assets/game-icons/wordle.png" alt="">
@@ -4236,6 +4264,7 @@
         </div> 
     </div>
     <div id="chess-screen" class="game-overlay" data-i18n-skip></div>
+    <div id="nardy-screen" class="game-overlay" data-i18n-skip></div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span id="bbBestScore">0</span><span data-i18n="best">Best</span></div><button id="bbMaterialButton" class="bb-style-button" type="button" aria-label="Настройки Блок Бласта" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
@@ -4329,6 +4358,8 @@
     
     <div class="modal-overlay ui-mode-sheet" id="modalChess"><div class="modal ui-mode-panel" data-i18n-skip></div></div>
     <div class="modal-overlay" id="modalChessWait"><div class="modal ck-wait" data-i18n-skip></div></div>
+    <div class="modal-overlay ui-mode-sheet" id="modalNardy"><div class="modal ui-mode-panel" data-i18n-skip></div></div>
+    <div class="modal-overlay" id="modalNardyWait"><div class="modal ck-wait" data-i18n-skip></div></div>
     <div class="modal-overlay" id="modalWaitOpponent"><div class="modal ck-wait"><div class="ck-radar" aria-hidden="true"><span></span><span></span><span></span><img src="assets/game-icons/checkers.png" alt=""></div><h2 id="ckWaitTitle">Ожидание...</h2><p class="ck-wait-sub" data-i18n="roomCode">Код комнаты:</p><div class="ck-wait-code" id="displayRoomCode">-----</div><p class="ck-wait-hint" data-i18n="shareCode">Передай этот код другу</p><button class="btn-main ck-invite" type="button" onclick="inviteCheckersFriend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg><span data-i18n="inviteFriend">Позвать друга</span></button><button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
@@ -5425,6 +5456,7 @@
                 tower: 'Башня',
                 sudoku: 'Судоку',
                 checkers: 'Шашки',
+                nardy: 'Нарды', topsNardy: 'Топ Нарды', nardyLong: 'Длинные', nardyShort: 'Короткие', nardyMars: 'Марсы', newBadge: 'НОВОЕ',
                 chess: 'Шахматы', topsChess: 'Топ Шахматы', chessRating: 'Рейтинг', chessPeak: 'Лучший рейтинг', chessBestLevel: 'Уровень бота', chessBullet: 'Пуля', chessBlitz: 'Блиц', chessRapid: 'Рапид', chessClassical: 'Классика',
                 wordle: 'Вордли',
                 monopoly: 'Монополия',
@@ -5728,6 +5760,7 @@
                 tower: 'Tower',
                 sudoku: 'Sudoku',
                 checkers: 'Checkers',
+                nardy: 'Backgammon', topsNardy: 'Top Backgammon', nardyLong: 'Long', nardyShort: 'Short', nardyMars: 'Gammons', newBadge: 'NEW',
                 chess: 'Chess', topsChess: 'Top Chess', chessRating: 'Rating', chessPeak: 'Best rating', chessBestLevel: 'Bot level beaten', chessBullet: 'Bullet', chessBlitz: 'Blitz', chessRapid: 'Rapid', chessClassical: 'Classical',
                 wordle: 'Wordle',
                 monopoly: 'Monopoly',
@@ -5975,6 +6008,7 @@
                 conditionsText: '使用您的专属链接邀请好友，并参加邀请排行榜。', invite: '邀请', invited: '已邀请',
                 activated: '已计入', rankInTop: '名次', blockBlast: '方块爆破', minesweeper: '扫雷', tower: '叠塔',
                 sudoku: '数独', checkers: '跳棋', wordle: '猜词', monopoly: '大富翁', referrals: '邀请达人',
+                nardy: '双陆棋', topsNardy: '双陆棋排行', nardyLong: '长双陆', nardyShort: '短双陆', nardyMars: '全胜', newBadge: '新',
                 chess: '国际象棋', topsChess: '国际象棋排行', chessRating: '等级分', chessPeak: '最高等级分', chessBestLevel: '击败的机器人等级', chessBullet: '子弹', chessBlitz: '闪电', chessRapid: '快棋', chessClassical: '慢棋',
                 playerFallback: '玩家', playerLeftRoom: '{name} 离开了房间',
                 playerDisconnected: '{name} 已断线，等待重连…', playerReconnected: '{name} 已重新加入游戏',
@@ -6173,6 +6207,7 @@
             });
             updateLanguageRow();
             window.SparkChess?.refreshLanguage?.();
+            window.SparkNardy?.refreshLanguage?.();
             // Update lang buttons
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 const active = btn.dataset.lang === currentLang;
@@ -6490,6 +6525,52 @@
         function joinChessInvite(code) {
             loadChessApp().then(chess => chess.joinInvite(code)).catch(() => showToast(t('networkError'), 'error'));
         }
+        // --- Нарды: модуль грузится при первом открытии ---
+        const NARDY_VERSION = '20261031';
+        let nardyLoading = null;
+        function loadNardyApp() {
+            if (window.SparkNardy?.init) return window.SparkNardy.init();
+            if (nardyLoading) return nardyLoading;
+            const base = 'assets/nardy/';
+            const css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = `${base}nardy.css?v=${NARDY_VERSION}`;
+            document.head.appendChild(css);
+            const script = file => new Promise((resolve, reject) => {
+                const el = document.createElement('script');
+                el.src = `${base}${file}?v=${NARDY_VERSION}`;
+                el.onload = resolve;
+                el.onerror = () => reject(new Error(`Nardy: ${file}`));
+                document.head.appendChild(el);
+            });
+            nardyLoading = script('nardy-core.js')
+                .then(() => script('nardy-i18n.js'))
+                .then(() => script('nardy-app.js'))
+                .then(() => window.SparkNardy.init())
+                .catch(error => { nardyLoading = null; throw error; });
+            return nardyLoading;
+        }
+        function openNardy(tab) {
+            if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
+            loadNardyApp().then(nardy => nardy.openSheet(tab)).catch(() => showToast(t('networkError'), 'error'));
+        }
+        function closeNardySheet() {
+            if (window.SparkNardy) window.SparkNardy.closeSheet();
+            else document.getElementById('modalNardy').classList.remove('visible');
+        }
+        function cancelNardyWait() {
+            if (window.SparkNardy) window.SparkNardy.cancelWait();
+            document.getElementById('modalNardyWait').classList.remove('visible');
+        }
+        function joinNardyInvite(code) {
+            loadNardyApp().then(nardy => nardy.joinInvite(code)).catch(() => showToast(t('networkError'), 'error'));
+        }
+        socket.on('connect', () => socket.emit('nd_rejoin'));
+        socket.on('nd_elsewhere', data => { window.__nardyElsewhere = data && data.roomCode ? { ...data, at: Date.now() } : null; });
+        socket.on('nd_start', data => {
+            if (window.SparkNardy?.ready) return;
+            if (data?.resumed) loadNardyApp().then(nardy => nardy.handleStart(data)).catch(() => {});
+        });
         // Сервер возвращает в незаконченную онлайн-партию (тот же Telegram ID).
         socket.on('connect', () => socket.emit('chess_rejoin'));
         // Партия идёт на другом устройстве: шахматы покажут «Играть здесь».
@@ -6551,6 +6632,7 @@
             sudoku:   { nameKey: 'sudoku', icon: 'assets/game-icons/sudoku.png' },
             checkers: { nameKey: 'checkers', icon: 'assets/game-icons/checkers.png' },
             chess:    { nameKey: 'chess', icon: 'assets/game-icons/chess.png' },
+            nardy:    { nameKey: 'nardy', icon: 'assets/game-icons/nardy.png' },
             wordle:   { nameKey: 'wordle', icon: 'assets/game-icons/wordle.png' },
             monopoly: { nameKey: 'monopoly', icon: 'assets/game-icons/monopoly.png' }
         };
@@ -6563,6 +6645,7 @@
             sudoku: 'playtime_sudoku_ms',
             checkers: 'playtime_checkers_ms',
             chess: 'playtime_chess_ms',
+            nardy: 'playtime_nardy_ms',
             wordle: 'playtime_wordle_ms',
             monopoly: 'playtime_monopoly_ms'
         });
@@ -6572,7 +6655,7 @@
         const PLAYTIME_IDLE_WINDOW_MS = 3 * 60 * 1000;
         const PLAYTIME_GAME_SURFACES = Object.freeze({
             bb: ['bb-screen'], saper: ['saper-screen'], tower: ['tower-screen'],
-            sudoku: ['sudoku-screen'], checkers: ['checkers-screen'], chess: ['chess-screen'],
+            sudoku: ['sudoku-screen'], checkers: ['checkers-screen'], chess: ['chess-screen'], nardy: ['nardy-screen'],
             wordle: ['wordle-screen'], monopoly: ['monopoly-lobby', 'monopoly-game']
         });
         function readPlaytime() {
@@ -6854,6 +6937,7 @@
                 sudoku: [detailCard(t('numWins'), valueOrDash('sudoku_wins')), detailCard(t('top'), rankText(profileRankData.sudoku_wins)), detailCard(t('totalTime'), (times.sudoku || 0) > 0 ? formatPlaytime(times.sudoku) : '—')],
                 checkers: [detailCard(t('totalGames'), valueOrDash('checkers_total')), detailCard(t('winsVsBot'), valueOrDash('checkers_wins_pve')), detailCard(t('checkersPoints'), valueOrDash('checkers_points')), detailCard(t('top'), rankText(profileRankData.checkers_wins_pve)), detailCard(t('totalTime'), (times.checkers || 0) > 0 ? formatPlaytime(times.checkers) : '—')],
                 chess: chessProfileCards(detailCard, times),
+                nardy: nardyProfileCards(detailCard, times),
                 wordle: [detailCard(t('numWins'), valueOrDash('wordle_wins')), detailCard(t('top'), rankText(profileRankData.wordle_wins)), detailCard(t('totalTime'), (times.wordle || 0) > 0 ? formatPlaytime(times.wordle) : '—')]
             };
             Object.entries(blocks).forEach(([game, cards]) => {
@@ -6887,6 +6971,52 @@
                 detailCard(t('chessBestLevel'), value(local.bestLevel)),
                 detailCard(t('totalTime'), (times.chess || 0) > 0 ? formatPlaytime(times.chess) : '—'),
             ];
+        }
+        // Нарды: рейтинг онлайн с сервера, победы над ботом — локально.
+        let nardyProfileData = null;
+        let nardyProfileAt = 0;
+        function nardyLocalStats() {
+            try { return JSON.parse(localStorage.getItem('nardy_stats') || '{}') || {}; } catch (_) { return {}; }
+        }
+        function nardyProfileCards(detailCard, times) {
+            const local = nardyLocalStats();
+            const online = nardyProfileData || {};
+            const value = number => (Number(number) > 0 ? String(number) : '—');
+            const byCat = cat => {
+                const row = online.categories?.[cat];
+                return row?.games ? `${row.rating}${row.rank ? ` · #${row.rank}` : ''}` : '—';
+            };
+            const sum = key => ['long', 'short'].reduce((total, cat) => total + (Number(online.categories?.[cat]?.[key]) || 0), 0);
+            return [
+                detailCard(t('nardyLong'), byCat('long')),
+                detailCard(t('nardyShort'), byCat('short')),
+                detailCard(t('totalGames'), value(sum('games'))),
+                detailCard(t('numWins'), value(sum('wins'))),
+                detailCard(t('nardyMars'), value(sum('mars') + (Number(local.mars) || 0))),
+                detailCard(t('winsVsBot'), value(local.botWins)),
+                detailCard(t('totalTime'), (times.nardy || 0) > 0 ? formatPlaytime(times.nardy) : '—'),
+            ];
+        }
+        function renderNardyProfile() {
+            const rec = document.getElementById('rec-nardy');
+            const rank = document.getElementById('rank-nardy');
+            if (!rec) return;
+            const cats = nardyProfileData?.categories || {};
+            const best = ['long', 'short'].map(cat => cats[cat]).filter(row => row?.games).sort((a, b) => b.rating - a.rating)[0];
+            const wins = Number(nardyLocalStats().botWins) || 0;
+            rec.innerText = best ? `${best.rating}` : wins > 0 ? `${wins} ${t('winsShort')}` : '--';
+            if (rank) rank.innerText = best?.rank ? `#${best.rank}` : '';
+        }
+        async function loadNardyProfile(force = false) {
+            if (!tg.initData || (!force && Date.now() - nardyProfileAt < 60000)) return;
+            nardyProfileAt = Date.now();
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/nardy/profile`, { headers: { 'X-Init-Data': tg.initData } });
+                if (!response.ok) return;
+                nardyProfileData = await response.json();
+                renderNardyProfile();
+                renderProfileStatsDetails();
+            } catch (_) {}
         }
         function renderChessProfile() {
             const rec = document.getElementById('rec-chess');
@@ -6923,6 +7053,7 @@
             if (game === 'bb') startBlockBlastCheck();
             else if (game === 'saper' || game === 'checkers' || game === 'tower') openGameModal(game);
             else if (game === 'chess') openChess();
+            else if (game === 'nardy') openNardy();
             else if (game === 'sudoku') startSudokuCheck();
             else if (game === 'wordle') startWordle();
         }
@@ -6988,6 +7119,8 @@
             document.getElementById('rec-wordle').innerText = wordleScore > 0 ? wordleScore + ' ' + t('winsShort') : '--';
             renderChessProfile();
             loadChessProfile();
+            renderNardyProfile();
+            loadNardyProfile();
             
             if(document.getElementById('bbBestScore')) document.getElementById('bbBestScore').innerText = BBVisuals.formatNumber(bbScore);
             updateFavoriteGame();
@@ -7623,6 +7756,10 @@
                 const chessCode = startParam.slice(3);
                 setTimeout(() => joinChessInvite(chessCode), 400);
             }
+            if (startParam && /^nd_\d{5}$/.test(startParam)) {
+                const nardyCode = startParam.slice(3);
+                setTimeout(() => joinNardyInvite(nardyCode), 400);
+            }
             if (startParam && /^ck_\d{5}$/.test(startParam)) {
                 const inviteCode = startParam.slice(3);
                 setTimeout(() => joinCheckersRoom(inviteCode), 400);
@@ -7725,6 +7862,7 @@
         const TOWER_CATS = [{ id: 'tower_best', nameKey: 'towerHeight' },{ id: 'tower_combo', nameKey: 'cleanSeries' }];
         const WORDLE_CATS = [{ id: 'wordle_wins', nameKey: 'numWins' }];
         const CHESS_CATS = [{ id: 'chess_blitz', nameKey: 'chessBlitz', serverAuthoritative: true }, { id: 'chess_bullet', nameKey: 'chessBullet', serverAuthoritative: true }, { id: 'chess_rapid', nameKey: 'chessRapid', serverAuthoritative: true }, { id: 'chess_classical', nameKey: 'chessClassical', serverAuthoritative: true }];
+        const NARDY_CATS = [{ id: 'nardy_long', nameKey: 'nardyLong', serverAuthoritative: true }, { id: 'nardy_short', nameKey: 'nardyShort', serverAuthoritative: true }];
         const MONOPOLY_CATS = [{ id: 'monopoly_points', nameKey: 'ratingPoints', serverAuthoritative: true }, { id: 'monopoly_wins', nameKey: 'numWins', serverAuthoritative: true }];
 
         function openLeaderboardDetail(game) {
@@ -7744,6 +7882,7 @@
             else if (game === 'wordle') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.wordle}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(WORDLE_CATS[0]); }
             else if (game === 'monopoly') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.monopoly}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(MONOPOLY_CATS[0]); }
             else if (game === 'chess') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.chess}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(CHESS_CATS[0]); }
+            else if (game === 'nardy') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.nardy || t('nardy')}`; if(selectorWrapper) selectorWrapper.style.display = ''; loadLeaderboardData(NARDY_CATS[0]); }
             else if (game === 'referral') { document.getElementById('lbGameTitle').innerText = `${tr.top} ${tr.referrals}`; if(selectorWrapper) selectorWrapper.style.display = 'none'; loadReferralLeaderboard(); }
             document.getElementById('view-leaderboard-detail').classList.add('active');
         }
@@ -7888,7 +8027,7 @@
             const menu = document.getElementById('dropdownMenu'); const catcher = document.getElementById('dropdownCatcher'); const selector = document.getElementById('lbSelector');
             if(!menu.classList.contains('active')) {
                 menu.innerHTML = ''; let cats = [];
-                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS; else if(currentLbGame === 'wordle') cats = WORDLE_CATS; else if(currentLbGame === 'monopoly') cats = MONOPOLY_CATS; else if(currentLbGame === 'chess') cats = CHESS_CATS;
+                if(currentLbGame === 'saper') cats = SAPER_CATS; else if(currentLbGame === 'checkers') cats = CHECKERS_CATS; else if(currentLbGame === 'bb') cats = BB_CATS; else if(currentLbGame === 'sudoku') cats = SUDOKU_CATS; else if(currentLbGame === 'tower') cats = TOWER_CATS; else if(currentLbGame === 'wordle') cats = WORDLE_CATS; else if(currentLbGame === 'monopoly') cats = MONOPOLY_CATS; else if(currentLbGame === 'chess') cats = CHESS_CATS; else if(currentLbGame === 'nardy') cats = NARDY_CATS;
                 cats.forEach(cat => { const el = document.createElement('div'); el.className = `dd-item ${cat.id === currentLbCat.id ? 'selected' : ''}`; el.innerText = t(cat.nameKey); el.onclick = () => { loadLeaderboardData(cat); toggleDropdown(); }; menu.appendChild(el); });
                 menu.classList.add('active'); catcher.classList.add('active'); selector.classList.add('open'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
             } else { menu.classList.remove('active'); catcher.classList.remove('active'); selector.classList.remove('open'); }
@@ -12572,6 +12711,7 @@
             saper: 'assets/game-icons/minesweeper.png',
             checkers: 'assets/game-icons/checkers.png',
             chess: 'assets/game-icons/chess.png',
+            nardy: 'assets/game-icons/nardy.png',
             bb: 'assets/game-icons/block-blast.png',
             sudoku: 'assets/game-icons/sudoku.png',
             tower: 'assets/game-icons/tower.png',
@@ -12975,7 +13115,7 @@
                 return;
             }
             const cardByGame = {
-                saper: '.game-card--minesweeper', checkers: '.game-card--checkers', chess: '.game-card--chess',
+                saper: '.game-card--minesweeper', checkers: '.game-card--checkers', chess: '.game-card--chess', nardy: '.game-card--nardy',
                 bb: '.game-card--block-blast', sudoku: '.game-card--sudoku',
                 tower: '.game-card--tower', wordle: '.game-card--wordle',
                 monopoly: '.game-card--monopoly'
