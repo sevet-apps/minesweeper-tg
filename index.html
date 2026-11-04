@@ -8175,7 +8175,9 @@
 
             try {
                 const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}`;
-                const response = await fetch(url); const data = await response.json();
+                // initData нужен только шахматному топу: по нему сервер узнаёт владельца и подписывает ботов
+                const lbHeaders = String(category.id).startsWith('chess') && tg.initData ? { 'X-Init-Data': tg.initData } : {};
+                const response = await fetch(url, { headers: lbHeaders }); const data = await response.json();
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id); let userVal = Number(userValRaw); let hasStats = true;
                 if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal >= 9999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
