@@ -6486,7 +6486,7 @@
         }
 
         // --- Шахматы: модуль грузится при первом открытии ---
-        const CHESS_VERSION = '20261101';
+        const CHESS_VERSION = '20261105';
         let chessLoading = null;
         function loadChessApp() {
             if (window.SparkChess?.init) return window.SparkChess.init();
@@ -6505,6 +6505,7 @@
             });
             chessLoading = script('chess-core.js')
                 .then(() => script('chess-i18n.js'))
+                .then(() => script('chess-swing.js'))
                 .then(() => script('chess-app.js'))
                 .then(() => window.SparkChess.init())
                 .catch(error => { chessLoading = null; throw error; });

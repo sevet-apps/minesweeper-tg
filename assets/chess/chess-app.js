@@ -18,6 +18,9 @@
     const HINT_KEY = 'chess_admin_hint';
     const PIECE_NAMES = 'KQRBNP';
     const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // Раскачка фигуры при перетаскивании — только на компьютере с мышью.
+    const Swing = window.SparkChessSwing;
+    const FINE_POINTER = !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
     let Chess = null;
     let ready = null;
@@ -96,7 +99,7 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, autoFlip: false, action: true, review: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, autoFlip: false, action: true, review: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
@@ -725,6 +728,13 @@
             const el = view.els.get(sq);
             if (el) {
                 ui.drag = { sq, el, x: event.clientX, y: event.clientY, active: false, wasSelected, pointerId: event.pointerId };
+                if (swingOn(event)) {
+                    // где на клетке фигуры взяли: от этого зависит рычаг и сила раскачки
+                    const box = el.getBoundingClientRect();
+                    ui.drag.grabX = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+                    ui.drag.grabY = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
+                    ui.drag.swing = Swing.createSwing(ui.drag.grabX, ui.drag.grabY);
+                }
                 try { refs.board.setPointerCapture(event.pointerId); } catch (_) {}
             }
             return;
@@ -747,12 +757,15 @@
             drag.active = true;
             drag.el.classList.remove('selected');
             drag.el.classList.add('dragging');
+            if (drag.swing) startSwing(drag);
         }
         const rect = refs.board.getBoundingClientRect();
         const cell = rect.width / 8;
         const lift = event.pointerType === 'touch' ? cell * 0.45 : 0;
-        const px = (event.clientX - rect.left) / cell - 0.5;
-        const py = (event.clientY - rect.top - lift) / cell - 0.5;
+        // с раскачкой фигура висит на той точке, за которую её взяли; без неё — центром под пальцем
+        const px = (event.clientX - rect.left) / cell - (drag.swing ? drag.grabX : 0.5);
+        const py = (event.clientY - rect.top - lift) / cell - (drag.swing ? drag.grabY : 0.5);
+        if (drag.swing) { drag.cx = (event.clientX - rect.left) / cell; drag.cy = (event.clientY - rect.top) / cell; }
         drag.el.style.transform = tf(Math.max(-0.4, Math.min(7.4, px)), Math.max(-0.6, Math.min(7.4, py)));
         const over = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
         const hover = over && ui.targets.some(m => m.to === over) ? over : null;
@@ -775,6 +788,7 @@
             if (drag.wasSelected) clearSelection();
             return;
         }
+        settleSwing(drag);
         drag.el.classList.remove('dragging');
         const lift = event.pointerType === 'touch' ? refs.board.getBoundingClientRect().width / 8 * 0.45 : 0;
         const target = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
@@ -792,7 +806,47 @@
         const drag = ui.drag;
         ui.drag = null;
         ui.hover = null;
+        if (drag) settleSwing(drag);
         if (drag?.active && restore) { drag.el.classList.remove('dragging'); slide(drag.el, drag.sq, { dropped: true }); }
+    }
+
+    /* ---------- раскачка фигуры под мышью (chess-swing.js) ---------- */
+    function swingOn(event) {
+        return !!Swing && FINE_POINTER && event.pointerType === 'mouse' && settings.swing !== false && !REDUCED_MOTION;
+    }
+    function startSwing(drag) {
+        const face = drag.el.firstChild;
+        face.style.transformOrigin = `${(drag.grabX * 100).toFixed(1)}% ${(drag.grabY * 100).toFixed(1)}%`;
+        let last = null;
+        const frame = time => {
+            // фигуру отпустили, взяли или забрали ходом соперника — возвращаем её прямо
+            if (ui.drag !== drag || !drag.active) { settleSwing(drag); return; }
+            if (last != null && drag.cx != null) {
+                const angle = drag.swing.step(drag.cx, drag.cy, (time - last) / 1000);
+                face.style.transform = `rotate(${(angle * 180 / Math.PI).toFixed(2)}deg) scale(1.24)`;
+            }
+            last = time;
+            drag.raf = requestAnimationFrame(frame);
+        };
+        drag.raf = requestAnimationFrame(frame);
+    }
+    function settleSwing(drag) {
+        if (!drag?.swing || drag.settled) return;
+        drag.settled = true;
+        cancelAnimationFrame(drag.raf);
+        const face = drag.el.firstChild;
+        const origin = face.style.transformOrigin;
+        const from = face.style.transform;
+        face.style.transform = '';
+        face.style.transformOrigin = '';
+        if (!from || !face.animate) return;
+        // докручиваем до прямого положения коротким путём, с лёгким покачиванием
+        const deg = Swing.settleAngle(drag.swing.angle) * 180 / Math.PI;
+        const settle = Math.min(380, 200 + Math.abs(deg) * 1.2);
+        face.animate([
+            { transform: `rotate(${deg.toFixed(2)}deg) scale(1.24)`, transformOrigin: origin },
+            { transform: 'rotate(0deg) scale(1)', transformOrigin: origin },
+        ], { duration: settle, easing: 'cubic-bezier(.3,1.35,.55,1)' });
     }
 
     function controls(color) {
@@ -2622,6 +2676,7 @@
 
     function showSettings() {
         const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
+        if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', 'swingDragHint']);
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
         if (game?.mode === 'bot' || (game?.over && game.mode !== 'puzzle')) rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
