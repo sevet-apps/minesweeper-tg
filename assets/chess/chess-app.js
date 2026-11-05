@@ -509,6 +509,7 @@
     }
 
     function rebuildPieces(chess) {
+        preloadShapes();
         refs.pieces.innerHTML = '';
         view.els = new Map();
         for (const [sq, code] of positionMap(chess)) view.els.set(sq, createPiece(code, sq));
@@ -692,6 +693,7 @@
         board.addEventListener('pointerdown', onPointerDown);
         board.addEventListener('pointermove', onPointerMove);
         board.addEventListener('pointerup', onPointerUp);
+        board.addEventListener('pointerleave', () => { if (!ui.drag) setGrabCursor(''); });
         board.addEventListener('pointercancel', () => { ui.noteDrag = null; renderNotes(); cancelDrag(true); });
         board.addEventListener('contextmenu', event => event.preventDefault());
     }
@@ -729,11 +731,13 @@
             if (el) {
                 ui.drag = { sq, el, x: event.clientX, y: event.clientY, active: false, wasSelected, pointerId: event.pointerId };
                 if (swingOn(event)) {
-                    // где на клетке фигуры взяли: от этого зависит рычаг и сила раскачки
+                    // где взяли: от этого зависит, как фигура повиснет и раскачается
                     const box = el.getBoundingClientRect();
-                    ui.drag.grabX = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
-                    ui.drag.grabY = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
-                    ui.drag.swing = Swing.createSwing(ui.drag.grabX, ui.drag.grabY);
+                    const gx = (event.clientX - box.left) / box.width, gy = (event.clientY - box.top) / box.height;
+                    const shape = pieceShape(el.dataset.code);
+                    // поднять можно только саму фигуру; пустое место клетки её лишь выбирает
+                    if (!shape.hit(gx, gy)) ui.drag.noLift = true;
+                    else Object.assign(ui.drag, { grabX: gx, grabY: gy, swing: Swing.createSwing(shape, gx, gy) });
                 }
                 try { refs.board.setPointerCapture(event.pointerId); } catch (_) {}
             }
@@ -751,9 +755,10 @@
             return;
         }
         const drag = ui.drag;
-        if (!drag || event.pointerId !== drag.pointerId) return;
+        if (!drag) { hoverGrab(event); return; }
+        if (event.pointerId !== drag.pointerId) return;
         if (!drag.active) {
-            if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
+            if (drag.noLift || Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
             drag.active = true;
             drag.el.classList.remove('selected');
             drag.el.classList.add('dragging');
@@ -814,7 +819,61 @@
     function swingOn(event) {
         return !!Swing && FINE_POINTER && event.pointerType === 'mouse' && settings.swing !== false && !REDUCED_MOTION;
     }
+    /* Силуэт каждой фигуры: по нему видно, попали ли в саму фигуру, и считаются её центр тяжести
+       и момент инерции. Картинка рисуется на холст 64×64 один раз. */
+    const SHAPE_SIZE = 64;
+    const shapes = new Map();
+    function preloadShapes() {
+        if (!Swing || !FINE_POINTER || shapes.size) return;
+        for (const color of 'wb') for (const name of PIECE_NAMES) loadShape(color + name);
+    }
+    function pieceShape(code) {
+        const shape = shapes.get(code);
+        if (shape && shape !== 'loading') return shape;
+        if (!shape) loadShape(code);
+        return Swing.FALLBACK;
+    }
+    async function loadShape(code) {
+        shapes.set(code, 'loading');
+        try {
+            // у SVG фигур нет своих размеров — задаём их, чтобы все браузеры рисовали одинаково
+            const svg = (await (await fetch(pieceUrl(code))).text()).replace(/<svg\b/, `<svg width="${SHAPE_SIZE}" height="${SHAPE_SIZE}" preserveAspectRatio="none"`);
+            const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+            const img = new Image();
+            img.src = url;
+            await img.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = SHAPE_SIZE;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, SHAPE_SIZE, SHAPE_SIZE);
+            URL.revokeObjectURL(url);
+            const rgba = ctx.getImageData(0, 0, SHAPE_SIZE, SHAPE_SIZE).data;
+            const alpha = new Uint8Array(SHAPE_SIZE * SHAPE_SIZE);
+            for (let i = 0; i < alpha.length; i++) alpha[i] = rgba[i * 4 + 3];
+            const shape = Swing.analyzeShape(alpha, SHAPE_SIZE);
+            // пустой или странный силуэт (браузер не нарисовал SVG) — остаёмся на усреднённой фигуре
+            if (shape.area < 0.05 || shape.area > 0.9) throw new Error('shape');
+            shapes.set(code, shape);
+        } catch (_) {
+            shapes.set(code, Swing.FALLBACK);
+        }
+    }
+    /** Курсор «рука» только над самой фигурой, которую можно взять. */
+    function hoverGrab(event) {
+        if (!swingOn(event) || !game || game.view != null || ui.promo) { setGrabCursor(''); return; }
+        const sq = pointSq(event);
+        const piece = sq && game.chess.get(sq);
+        const el = sq && view.els.get(sq);
+        if (!piece || !el || !canSelect(piece.color)) { setGrabCursor(''); return; }
+        const box = el.getBoundingClientRect();
+        setGrabCursor(pieceShape(el.dataset.code).hit((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height) ? 'grab' : '');
+    }
+    function setGrabCursor(kind) {
+        refs.board.classList.toggle('is-grab', kind === 'grab');
+        refs.board.classList.toggle('is-grabbing', kind === 'grabbing');
+    }
     function startSwing(drag) {
+        setGrabCursor('grabbing');
         const face = drag.el.firstChild;
         face.style.transformOrigin = `${(drag.grabX * 100).toFixed(1)}% ${(drag.grabY * 100).toFixed(1)}%`;
         let last = null;
@@ -834,6 +893,7 @@
         if (!drag?.swing || drag.settled) return;
         drag.settled = true;
         cancelAnimationFrame(drag.raf);
+        setGrabCursor('');
         const face = drag.el.firstChild;
         const origin = face.style.transformOrigin;
         const from = face.style.transform;
@@ -2674,16 +2734,45 @@
         if (btn && withAccept) btn.textContent = tr('accept');
     }
 
+    /* ---------- облачко с подробностями у кнопки «i» в настройках ---------- */
+    function toggleBubble(btn) {
+        const row = btn.closest('.cs-toggle-row');
+        const bubble = row?.querySelector('.cs-bubble');
+        if (!bubble) return;
+        const opening = bubble.hidden || bubble.classList.contains('is-closing');
+        refs.sheet.querySelectorAll('.cs-bubble:not([hidden])').forEach(other => { if (other !== bubble) closeBubble(other); });
+        if (!opening) { closeBubble(bubble); return; }
+        // хвостик облачка смотрит точно на «i»
+        const rowBox = row.getBoundingClientRect(), iBox = btn.getBoundingClientRect();
+        bubble.style.setProperty('--tail-x', `${Math.round(iBox.left + iBox.width / 2 - rowBox.left)}px`);
+        clearTimeout(bubble.closeTimer);
+        bubble.classList.remove('is-closing');
+        bubble.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        haptic('select');
+    }
+    function closeBubble(bubble) {
+        if (bubble.hidden || bubble.classList.contains('is-closing')) return;
+        bubble.closest('.cs-toggle-row')?.querySelector('.cs-info')?.setAttribute('aria-expanded', 'false');
+        if (REDUCED_MOTION) { bubble.hidden = true; return; }
+        bubble.classList.add('is-closing');
+        bubble.closeTimer = setTimeout(() => { bubble.hidden = true; bubble.classList.remove('is-closing'); }, 170);
+    }
+    function closeBubblesOutside(event) {
+        if (event.target.closest?.('.cs-bubble, .cs-info')) return;
+        refs.sheet.querySelectorAll('.cs-bubble:not([hidden])').forEach(closeBubble);
+    }
+
     function showSettings() {
         const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
-        if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', 'swingDragHint']);
+        if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', null, 'swingDragInfo']);
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
         if (game?.mode === 'bot' || (game?.over && game.mode !== 'puzzle')) rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
         openDialog('settings', `
             <h2>${esc(tr('settings'))}</h2>
             <div class="cs-settings" style="margin-top:12px">
-                ${rows.map(([key, label, sub]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}${sub ? `<small class="cs-switch-sub">${esc(tr(sub))}</small>` : ''}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button></div>`).join('')}
+                ${rows.map(([key, label, sub, info]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}${info ? `<button type="button" class="cs-info" data-info="${info}" aria-expanded="false" aria-label="${esc(tr('moreInfo'))}">i</button>` : ''}${sub ? `<small class="cs-switch-sub">${esc(tr(sub))}</small>` : ''}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button>${info ? `<div class="cs-bubble" data-bubble="${info}" role="tooltip" hidden>${esc(tr(info))}</div>` : ''}</div>`).join('')}
             </div>
             <p class="cs-settings-label">${esc(tr('board'))}</p>
             <div class="cs-skins" data-ref="skins">${skinTiles()}</div>
@@ -2693,6 +2782,8 @@
             </div>`);
         refs.sheet.querySelector('[data-dlg="pgn"]')?.addEventListener('click', copyPgn);
         refs.sheet.querySelector('.cs-skins').addEventListener('click', onSkinClick);
+        refs.sheet.querySelectorAll('.cs-info').forEach(btn => { btn.onclick = event => { event.stopPropagation(); toggleBubble(btn); }; });
+        refs.sheet.addEventListener('click', closeBubblesOutside);
         fetchProfile().then(() => {
             const grid = refs.sheet.querySelector('.cs-skins');
             if (grid && ui.dialog?.kind === 'settings') grid.innerHTML = skinTiles();

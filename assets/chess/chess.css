@@ -351,6 +351,19 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .ca-cap.out { opacity: 0; transform: scale(1.08); filter: blur(6px); }
 @keyframes caCapIn { from { opacity: 0; transform: translateY(26px) scale(.9); filter: blur(10px); } }
 .ca-skip { position: absolute; left: 0; right: 0; bottom: calc(10px + var(--safe-bottom, 0px)); z-index: 2; opacity: 0; pointer-events: none; text-align: center; font: 600 12px/1.2 var(--ui-font, system-ui); color: rgba(255, 255, 255, .5); transition: opacity .4s; }
+/* Кнопка «i» у переключателя и облачко с подробностями: хвостик смотрит на «i», открывается пружинкой. */
+.cs-toggle-row { position: relative; }
+.cs-info { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin: 0 0 0 7px; padding: 0 1px 0 0; border: 0; border-radius: 50%; background: var(--ui-track); color: var(--ui-muted); font: italic 700 13px/1 Georgia, 'Times New Roman', serif; vertical-align: 1px; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .2s, color .2s; -webkit-tap-highlight-color: transparent; }
+.cs-info:active { transform: scale(.88); }
+.cs-info[aria-expanded="true"] { background: var(--ui-accent); color: #fff; }
+.cs-bubble { position: absolute; left: -6px; right: -6px; top: calc(100% - 4px); z-index: 6; padding: 12px 14px 13px; border: 1px solid var(--ui-border); border-radius: 18px; background: var(--ui-surface); color: var(--ui-text); box-shadow: 0 14px 36px rgba(15, 20, 30, .18), 0 2px 6px rgba(15, 20, 30, .08); font-size: 14px; font-weight: 500; line-height: 1.45; text-align: left; transform-origin: calc(var(--tail-x, 24px) + 6px) -8px; animation: csBubbleIn .46s cubic-bezier(.34, 1.56, .64, 1) both; }
+.cs-bubble::before { content: ''; position: absolute; top: -7px; left: calc(var(--tail-x, 24px) + 6px - 7px); width: 12px; height: 12px; background: inherit; border-left: 1px solid var(--ui-border); border-top: 1px solid var(--ui-border); border-top-left-radius: 4px; transform: rotate(45deg); }
+.cs-bubble.is-closing { animation: csBubbleOut .17s ease-in both; }
+@keyframes csBubbleIn { from { opacity: 0; transform: translateY(-6px) scale(.5); } 45% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes csBubbleOut { to { opacity: 0; transform: translateY(-4px) scale(.88); } }
+/* Курсор «рука» над фигурой, которую можно взять мышью (раскачка). */
+.cs-board.is-grab { cursor: grab; }
+.cs-board.is-grabbing, .cs-board.is-grabbing * { cursor: grabbing; }
 .cs-switch-sub { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--ui-muted); }
 
 /* ---------- скины доски ----------
