@@ -646,3 +646,123 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 /* четыре вкладки: на узких экранах шрифт мельче, без переноса */
 #modalChess .cs-tabs .segment-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 400px) { #modalChess .cs-tabs .segment-item { font-size: 13px; padding-inline: 2px; } }
+
+/* ---------- меню на весь экран и история партий ---------- */
+#modalChess .cs-head-btns { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.cs-expand {
+    position: relative; display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border: 0; padding: 0; border-radius: 50%;
+    background: transparent; color: var(--ui-muted); cursor: pointer; line-height: 0; touch-action: manipulation;
+    transition: transform var(--ui-press) var(--ui-ease), color .2s;
+}
+.cs-expand::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--ui-track); }
+.cs-expand svg { position: relative; display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.cs-expand:hover { color: var(--ui-accent); }
+.cs-expand:active { transform: scale(.92); }
+.cs-expand:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+html[data-liquid-glass="on"] .cs-expand::before {
+    background: linear-gradient(150deg, #ffffff30, transparent), rgba(var(--sg-surface), var(--sg-opacity));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--sg-rim)), 0 2px 8px #0002;
+    backdrop-filter: blur(var(--sg-blur)); -webkit-backdrop-filter: blur(var(--sg-blur));
+}
+
+/* шторка разворачивается до краёв экрана */
+#modalChess .ui-mode-panel {
+    transition: transform var(--ui-sheet-exit) var(--ui-ease), max-height .42s var(--ui-ease), max-width .42s var(--ui-ease), width .42s var(--ui-ease), border-radius .42s var(--ui-ease);
+}
+#modalChess.visible .ui-mode-panel { transition-duration: var(--ui-sheet-enter), .42s, .42s, .42s, .42s; }
+#modalChess.is-full { padding-top: 0; }
+#modalChess.is-full .ui-mode-panel {
+    width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; border: 0;
+    padding-top: max(18px, env(safe-area-inset-top));
+}
+#modalChess.is-full .ui-sheet-grab { opacity: 0; }
+#modalChess.is-full .ui-sheet-heading { max-width: 1240px; margin-inline: auto; }
+#modalChess .cs-history { display: none; }
+#modalChess.is-full .cs-history { display: block; }
+#modalChess .cs-history-row { margin: 18px 0 0; }
+#modalChess .cs-history-row .cs-continue-ico { background: var(--ui-accent); }
+#modalChess .cs-history-row .cs-continue-ico svg { margin: 0; width: 19px; height: 19px; fill: none; stroke: #fff; stroke-width: 2.2; }
+#modalChess.is-full .cs-history-row { display: none; }
+#modalChess .cs-history-row .cs-continue-ico svg path { fill: none; stroke: #fff; }
+#modalChess.is-full .cs-sheet-body { max-width: 1240px; margin: 0 auto; }
+#modalChess.is-full .cs-history { margin-top: 26px; }
+@media (min-width: 860px) {
+    #modalChess.is-full .cs-sheet-body { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 34px; align-items: start; }
+    #modalChess.is-full .cs-menu { position: sticky; top: 0; }
+    #modalChess.is-full .cs-history { margin-top: 0; }
+    #modalChess.is-full .cs-history-list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+}
+
+.cs-history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+.cs-history-head h3 { margin: 0; font-size: 20px; line-height: 1.2; }
+.cs-history-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.cs-history-stats[hidden] { display: none; }
+.cs-hstat { padding: 10px 12px; border-radius: 16px; background: var(--ui-surface); border: 1px solid var(--ui-border); }
+.cs-hstat b { display: block; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cs-hstat small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ui-muted); }
+.cs-hstat.is-win b { color: #1f9d48; }
+.cs-hstat.is-loss b { color: #e5484d; }
+.cs-hbar { grid-column: 1 / -1; display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--ui-track); }
+.cs-hbar i { display: block; height: 100%; transition: width .5s var(--ui-ease); }
+.cs-hbar .is-win { background: #34c759; }
+.cs-hbar .is-draw { background: #a1a1aa; }
+.cs-hbar .is-loss { background: #ff453a; }
+.cs-history-filters { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+.cs-history-filters::-webkit-scrollbar { display: none; }
+.cs-history-filters button {
+    flex: 0 0 auto; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--ui-track); color: var(--ui-text);
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s, color .2s, transform var(--ui-press) var(--ui-ease);
+}
+.cs-history-filters button.active { background: var(--ui-accent); color: #fff; }
+.cs-history-filters button:active { transform: scale(.95); }
+.cs-history-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.cs-hist {
+    position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 10px 12px 10px 10px;
+    border: 1px solid var(--ui-border); border-radius: 18px; background: var(--ui-surface); color: var(--ui-text);
+    font: inherit; text-align: left; cursor: pointer; overflow: hidden;
+    transition: transform var(--ui-press) var(--ui-ease), box-shadow .2s, border-color .2s;
+    animation: csHistIn .32s var(--ui-ease) both;
+}
+.cs-hist::before { content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: #a1a1aa; }
+.cs-hist.is-win::before { background: #34c759; }
+.cs-hist.is-loss::before { background: #ff453a; }
+.cs-hist.is-side::before { background: var(--ui-accent); }
+.cs-hist:active { transform: scale(.985); }
+@media (hover: hover) { .cs-hist:hover { border-color: color-mix(in srgb, var(--ui-accent) 40%, transparent); box-shadow: 0 6px 22px #0000000f; } }
+@keyframes csHistIn { from { opacity: 0; transform: translateY(6px); } }
+.cs-mini {
+    position: relative; flex: 0 0 auto; width: 68px; height: 68px; border-radius: 9px; overflow: hidden;
+    background: repeating-conic-gradient(var(--cs-dark) 0 25%, var(--cs-light) 0 50%) 0 0 / 25% 25%;
+    box-shadow: inset 0 0 0 1px #0000000f;
+}
+.cs-mini i { position: absolute; width: 12.5%; height: 12.5%; background: center / 92% no-repeat; }
+.cs-hist-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.cs-hist-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cs-hist-res { font-size: 15.5px; }
+.cs-hist.is-win .cs-hist-res { color: #1f9d48; }
+.cs-hist.is-loss .cs-hist-res { color: #e5484d; }
+.cs-hist-top time { flex-shrink: 0; font-size: 12px; color: var(--ui-muted); }
+.cs-hist-opp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; }
+.cs-hist-opp img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.cs-hist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-hist-opp small { flex-shrink: 0; font-size: 12.5px; font-weight: 500; color: var(--ui-muted); }
+.cs-hist-mode { display: grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px; background: var(--ui-accent-soft); color: var(--ui-accent); }
+.cs-hist-mode svg { width: 14px; height: 14px; }
+.cs-hist-meta { font-size: 12.5px; color: var(--ui-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-hist-delta { align-self: center; flex-shrink: 0; min-width: 40px; padding: 4px 8px; border-radius: 999px; font-size: 13px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.cs-hist-delta.is-up { color: #1f9d48; background: rgba(52, 199, 89, .14); }
+.cs-hist-delta.is-down { color: #e5484d; background: rgba(255, 69, 58, .12); }
+.cs-hist.is-skeleton { pointer-events: none; animation: pzBusy 1.2s ease-in-out infinite; }
+.cs-hist.is-skeleton::before { display: none; }
+.cs-hist.is-skeleton .cs-mini { background: var(--ui-track); box-shadow: none; }
+.cs-hist.is-skeleton .cs-hist-main i { display: block; height: 11px; border-radius: 6px; background: var(--ui-track); }
+.cs-hist.is-skeleton .cs-hist-main i:nth-child(1) { width: 40%; }
+.cs-hist.is-skeleton .cs-hist-main i:nth-child(2) { width: 70%; }
+.cs-hist.is-skeleton .cs-hist-main i:nth-child(3) { width: 55%; }
+.cs-history-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 30px 16px; border-radius: 18px; background: var(--ui-surface); border: 1px dashed var(--ui-border); text-align: center; }
+.cs-history-empty i { width: 46px; height: 46px; margin-bottom: 6px; background: center / contain no-repeat; opacity: .8; }
+.cs-history-empty b { font-size: 15.5px; }
+.cs-history-empty small { font-size: 13px; color: var(--ui-muted); }
+#modalChess .cs-history-more { width: 100%; margin-top: 10px; }
+#modalChess .cs-history-more[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .cs-hist { animation: none; } #modalChess .ui-mode-panel { transition-duration: 0ms !important; } }

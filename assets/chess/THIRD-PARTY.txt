@@ -7,6 +7,8 @@ chess.js 1.4.0 (assets/chess/vendor/chess.js, server/vendor/chess.js)
 Stockfish 19 lite, single-threaded WebAssembly build (assets/chess/engine/stockfish.js, stockfish.wasm)
   The Stockfish developers; WebAssembly port by Nathan Rugg (stockfish.js npm package 19.0.1).
   GNU General Public License v3, see engine/COPYING-stockfish.txt.
+  Stockfish 19 lite, multi-threaded build of the same package (engine/stockfish-mt.js, stockfish-mt.wasm),
+  used only for the owner's best-move hint on a desktop computer.
   The engine runs unmodified as a separate Web Worker. Source code:
   https://github.com/official-stockfish/Stockfish and https://github.com/nmrugg/stockfish.js
 

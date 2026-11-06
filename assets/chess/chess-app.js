@@ -16,6 +16,8 @@
     const PREFS_KEY = 'chess_prefs';
     const STATS_KEY = 'chess_stats';
     const HINT_KEY = 'chess_admin_hint';
+    const HISTORY_KEY = 'chess_history';              // партии с ботом и вдвоём на этом устройстве
+    const HISTORY_CACHE_KEY = 'chess_history_cache';  // последний список партий с сервера
     const PIECE_NAMES = 'KQRBNP';
     const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     // Раскачка фигуры при перетаскивании — только на компьютере с мышью.
@@ -65,6 +67,12 @@
     }
 
     const ICON = {
+        expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/></svg>',
+        collapse: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l6.5-6.5M10 14l-6.5 6.5"/></svg>',
+        history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7.5V12l3 2"/></svg>',
+        mOnline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.4 5.9 12 3.5z"/></svg>',
+        mBot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="7.5" width="15" height="12" rx="3.5"/><path d="M12 3.5v4M9.2 12.6h.01M14.8 12.6h.01M9.5 16.2h5"/></svg>',
+        mLocal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.5"/><path d="M15.8 14.4a4.4 4.4 0 0 1 5 4.6"/></svg>',
         back: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
         gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
         bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></svg>',
@@ -197,11 +205,13 @@
 
     /* ---------- Stockfish в Web Worker ---------- */
     class Engine {
-        constructor({ hash = 16 } = {}) {
+        constructor({ hash = 16, threads = 1, url = null } = {}) {
             this.listeners = new Set();
             this.queue = Promise.resolve();
             this.skill = null;
-            this.worker = new Worker(`${BASE}engine/stockfish.js`);
+            this.threads = threads;
+            this.hash = hash;
+            this.worker = new Worker(url || `${BASE}engine/stockfish.js`);
             this.worker.onmessage = event => {
                 const line = typeof event.data === 'string' ? event.data : String(event.data || '');
                 for (const fn of [...this.listeners]) fn(line);
@@ -210,7 +220,11 @@
                 const timer = setTimeout(() => reject(new Error('engine timeout')), 20000);
                 this.worker.onerror = error => { clearTimeout(timer); reject(error instanceof Error ? error : new Error('engine failed')); };
                 this.wait('uci', line => line === 'uciok')
-                    .then(() => { this.send(`setoption name Hash value ${hash}`); return this.wait('isready', line => line === 'readyok'); })
+                    .then(() => {
+                        if (threads > 1) this.send(`setoption name Threads value ${threads}`);
+                        this.send(`setoption name Hash value ${hash}`);
+                        return this.wait('isready', line => line === 'readyok');
+                    })
                     .then(() => { clearTimeout(timer); resolve(); }, reject);
             });
         }
@@ -268,10 +282,44 @@
     const engines = { bot: null, hint: null, action: null, review: null };
     function engine(kind) {
         if (!engines[kind]) {
-            engines[kind] = new Engine({ hash: kind === 'hint' ? 32 : 16 });
-            engines[kind].ready.catch(() => { engines[kind]?.terminate(); engines[kind] = null; });
+            const options = kind === 'hint' ? hintEngineOptions() : { hash: 16 };
+            const created = engines[kind] = new Engine(options);
+            created.ready.catch(() => {
+                if (options.threads > 1) mtFailed = true;   // многопоточный не завёлся — дальше обычный
+                created.terminate();
+                if (engines[kind] === created) engines[kind] = null;
+            });
         }
         return engines[kind];
+    }
+
+    /* ---------- подсказка владельца на компьютере: движок на полную ----------
+       На телефоне подсказка бережёт батарею: один поток, 32 МБ, глубина 30.
+       На компьютере владельца — многопоточный Stockfish на все ядра (кроме
+       одного), большая хеш-таблица и расчёт без потолка, пока ход твой.
+       Потокам нужна изолированная страница: её даёт chess-isolation-sw.js,
+       он ставится здесь же и включается со следующего запуска приложения. */
+    const DESKTOP = FINE_POINTER && (navigator.hardwareConcurrency || 0) >= 4;
+    const ISOLATION_SW = new URL('../../chess-isolation-sw.js', BASE).href;
+    let mtFailed = false;
+    const maxHint = () => isOwner() && DESKTOP;
+    const canThreads = () => typeof SharedArrayBuffer === 'function' && window.crossOriginIsolated === true && !mtFailed;
+    function hintEngineOptions() {
+        if (!maxHint()) return { hash: 32 };
+        const cores = navigator.hardwareConcurrency || 4;
+        const memory = navigator.deviceMemory || 8;          // браузер называет не больше 8 ГБ
+        if (canThreads()) return { url: `${BASE}engine/stockfish-mt.js${VERSION ? `?v=${VERSION}` : ''}`, threads: Math.max(2, Math.min(cores - 1, 32)), hash: memory >= 8 ? 1024 : 512 };
+        return { hash: memory >= 8 ? 512 : 256 };
+    }
+    /** Ставит service worker изоляции на компьютере владельца; у остальных — снимает, если остался. */
+    function setupIsolation() {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            if (maxHint()) navigator.serviceWorker.register(ISOLATION_SW).catch(() => {});
+            else navigator.serviceWorker.getRegistrations().then(list => list.forEach(reg => {
+                if ((reg.active || reg.waiting || reg.installing)?.scriptURL === ISOLATION_SW) reg.unregister();
+            })).catch(() => {});
+        } catch (_) {}
     }
 
     /* ---------- DOM ---------- */
@@ -1290,7 +1338,7 @@
     let hintTimer = null;
     function scheduleHint() {
         clearTimeout(hintTimer);
-        if (!hintOn || !isOwner() || !game || game.over || game.mode === 'puzzle') { renderEval(null); return; }
+        if (!hintOn || !isOwner() || !game || game.over || game.mode === 'puzzle') { hintToken++; engines.hint?.stop(); renderEval(null); return; }
         hintTimer = setTimeout(runHint, 120);
     }
     /* Анализ идёт непрерывно, пока ход ваш: глубина растёт (20, 25, 30…),
@@ -1300,6 +1348,9 @@
     const HINT_MIN_DEPTH = 14;
     const HINT_MAX_DEPTH = 30;
     const HINT_MAX_MS = 30000;
+    // компьютер владельца: считаем, пока ход твой (до 245 — предел Stockfish, или 20 минут)
+    const HINT_FULL_DEPTH = 245;
+    const HINT_FULL_MS = 20 * 60 * 1000;
     async function runHint() {
         if (!hintOn || !isOwner() || !game || game.over || document.hidden) return;
         const fen = game.chess.fen();
@@ -1318,8 +1369,8 @@
             eng.stop();
             const result = await eng.search({
                 fen, skill: 20,
-                depth: mine ? HINT_MAX_DEPTH : 16,
-                movetime: mine ? HINT_MAX_MS : 2500,
+                depth: mine ? (maxHint() ? HINT_FULL_DEPTH : HINT_MAX_DEPTH) : (maxHint() ? 22 : 16),
+                movetime: mine ? (maxHint() ? HINT_FULL_MS : HINT_MAX_MS) : 2500,
                 onInfo: info => {
                     if (token !== hintToken || !game || game.chess.fen() !== fen) return;
                     if (info.score.depth < HINT_MIN_DEPTH && info.score.type !== 'mate') return;
@@ -1353,7 +1404,10 @@
         try { localStorage.setItem(HINT_KEY, hintOn ? '1' : '0'); } catch (_) {}
         refs.hintBtn?.classList.toggle('is-on', hintOn);
         if (!hintOn) { hintToken++; if (game) game.hint = null; engines.hint?.stop(); renderMarks(); renderEval(null); }
-        else scheduleHint();
+        else {
+            scheduleHint();
+            if (maxHint() && !canThreads() && !mtFailed) setTimeout(() => toast(tr('hintRestart')), 1200);
+        }
     }
 
     /* ---------- задачи ----------
@@ -2303,7 +2357,7 @@
         status.classList.remove('is-alert');
         if (game.view != null) { status.textContent = tr('reviewing', { n: game.view }); return; }
         if (game.mode === 'puzzle') { status.textContent = puzzleStatus(); status.classList.toggle('is-alert', game.puzzle?.feedback === 'wrong' && game.puzzle.locked && !game.puzzle.done); return; }
-        if (game.over) { status.textContent = resultTitle(game.over); return; }
+        if (game.over) { status.textContent = game.archive ? `${resultTitle(game.over)} · ${whenText(game.archive.at)}` : resultTitle(game.over); return; }
         const turn = game.chess.turn();
         if (game.mode === 'bot' && game.botBusy) status.textContent = tr('botThinking');
         else if (game.mode === 'local') status.textContent = tr(turn === 'w' ? 'whiteToMove' : 'blackToMove');
@@ -2340,7 +2394,12 @@
             refs.actions.innerHTML = buttons.join('');
             return;
         }
-        if (game.over) {
+        if (game.archive) {
+            add('history', ICON.history, tr('histShort'));
+            add('flip', ICON.flip, tr('flip'));
+            add('pen', ICON.pen, tr('arrows'), { active: ui.drawMode });
+            add('result', ICON.trophy, tr('resultBtn'));
+        } else if (game.over) {
             if (game.mode === 'online') add('rematch', ICON.rematch, tr('rematch'));
             else add('again', ICON.plus, tr('newGame'));
             add('flip', ICON.flip, tr('flip'));
@@ -2405,7 +2464,7 @@
     }
 
     /* ---------- начало и конец партии ---------- */
-    function newGame({ mode, myColor = 'w', level = 3, tcId = 'none', moves = [], clock = null, online = null, orientation = null, startFen = null }) {
+    function newGame({ mode, myColor = 'w', level = 3, tcId = 'none', moves = [], clock = null, online = null, orientation = null, startFen = null, archive = null }) {
         if (mode !== 'puzzle') puzzleToken++;
         cancelCinema();
         cancelBot();
@@ -2424,10 +2483,14 @@
             mode, myColor: mode === 'local' ? null : myColor, level, tc, tcBase: tc?.base || 0,
             chess, startFen: startFen || new Chess().fen(),
             moves: played, view: null, over: null, premove: null, hint: null, botBusy: false,
-            clock: mode !== 'online' && tc ? core.createClock(tc) : null,
+            clock: mode !== 'online' && tc && !archive ? core.createClock(tc) : null,
             online,
             id: Date.now(),
         };
+        if (archive) {
+            game.archive = archive;
+            game.over = { result: archive.result, reason: archive.reason || null, rated: !!archive.rated };
+        }
         if (game.clock && clock) {
             game.clock.left.w = Number(clock.w) || tc.base;
             game.clock.left.b = Number(clock.b) || tc.base;
@@ -2441,9 +2504,11 @@
         buildSquares();
         rebuildPieces(chess);
         refs.board.classList.remove('is-review', 'is-over');
+        if (archive) refs.board.classList.add('is-over');
         clearSelection(false);
         afterChange();
         startClockLoop();
+        if (archive) return game;
         if (mode === 'bot' && chess.turn() !== game.myColor) setTimeout(botMove, 500);
         if (mode !== 'online') saveOffline();
         return game;
@@ -2480,7 +2545,7 @@
         cancelDrag(false);
         screen.classList.remove('visible');
         playtime('stop');
-        if (game?.mode === 'online' && game.over) emit('chess_leave', {});
+        if (game?.mode === 'online' && game.over && !game.archive) emit('chess_leave', {});
         if (game && game.mode !== 'online' && !game.over && game.clock) {
             core.clockStop(game.clock, Date.now());
             saveOffline();
@@ -2504,6 +2569,7 @@
         refs.board.classList.add('is-over');
         if (game.mode !== 'online') localStorage.removeItem(SAVE_KEY);
         recordStats(outcome);
+        archiveFinished(outcome);
         const result = myResult(outcome);
         setTimeout(() => afterCinema(() => {
             if (result === 'win' || result === 'white' || result === 'black') { Sound.play('win'); haptic('success'); celebrate(); }
@@ -2561,7 +2627,7 @@
 
     /* ---------- сохранение партии с ботом / вдвоём ---------- */
     function saveOffline() {
-        if (!game || game.mode === 'online' || game.mode === 'puzzle' || game.over) return;
+        if (!game || game.mode === 'online' || game.mode === 'puzzle' || game.over || game.archive) return;
         if (!game.moves.length) { localStorage.removeItem(SAVE_KEY); return; }
         const clock = game.clock ? { w: core.clockLeft(game.clock, 'w', Date.now()), b: core.clockLeft(game.clock, 'b', Date.now()) } : null;
         writeJson(SAVE_KEY, {
@@ -2828,7 +2894,9 @@
         const r = myResult(outcome);
         const icon = r === 'win' ? ICON.trophy : r === 'loss' ? ICON.broken : r === 'aborted' ? ICON.abort : r === 'draw' ? ICON.handshake : ICON.trophy;
         const iconClass = r === 'win' || r === 'white' || r === 'black' ? 'win' : r === 'loss' ? 'loss' : 'draw';
-        const primary = game.mode === 'online'
+        const primary = game.archive
+            ? `<button type="button" class="cs-btn is-primary" data-dlg="history">${esc(tr('history'))}</button>`
+            : game.mode === 'online'
             ? `<button type="button" class="cs-btn is-primary" data-dlg="rematch">${esc(tr('rematch'))}</button>`
             : `<button type="button" class="cs-btn is-primary" data-dlg="again">${esc(tr(game.mode === 'bot' ? 'playAgain' : 'newGame'))}</button>`;
         openDialog('result', `
@@ -2848,6 +2916,7 @@
         if (reviewOn() && !game.coach) { game.coach = true; renderCoach(); renderMarks(); }
         sheet.querySelector('[data-dlg="menu"]').onclick = () => { closeDialog(true); closeScreen(); openSheet(); };
         sheet.querySelector('[data-dlg="again"]')?.addEventListener('click', () => { closeDialog(); playAgain(); });
+        sheet.querySelector('[data-dlg="history"]')?.addEventListener('click', () => { closeDialog(true); closeScreen(); showHistory(); });
         sheet.querySelector('[data-dlg="rematch"]')?.addEventListener('click', () => {
             emit('chess_rematch', { roomCode: game.online.roomCode });
             setResultNote(tr('rematchWaiting'));
@@ -3070,6 +3139,7 @@
             case 'again': return playAgain();
             case 'rematch': return emit('chess_rematch', { roomCode: game.online.roomCode }) && toast(tr('rematchWaiting'));
             case 'result': return showResult();
+            case 'history': closeScreen(); return showHistory();
             case 'pz_hint': return puzzleHint();
             case 'pz_solution': return showPuzzleSolution();
             case 'pz_retry': return retryPuzzle();
@@ -3083,6 +3153,7 @@
         if (ui.dialog) { closeDialog(); return; }
         if (!game) { closeScreen(); return; }
         if (game.mode === 'puzzle') { puzzleRun = null; hideBanner(); closeScreen(); openSheet('puzzles'); return; }
+        if (game.archive) { closeScreen(); showHistory(); return; }
         if (game.mode === 'online' && !game.over) {
             confirmDialog({
                 title: tr('confirmLeave'), text: tr('confirmLeaveOnline'), okLabel: tr('leave'),
@@ -3159,7 +3230,8 @@
         const offlineTcs = core.TIME_CONTROLS.filter(tc => ['1+0', '3+0', '3+2', '5+0', '10+0', '15+10', '30+0'].includes(tc.id));
         panel.innerHTML = `
             <div class="ui-sheet-grab" aria-hidden="true"></div>
-            <div class="ui-sheet-heading"><h2 data-t="title"></h2><button class="ui-close" type="button" data-sheet="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+            <div class="ui-sheet-heading"><h2 data-t="title"></h2><span class="cs-head-btns"><button class="cs-expand" type="button" data-sheet="expand" data-ref="expandBtn" aria-expanded="false">${ICON.expand}</button><button class="ui-close" type="button" data-sheet="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></span></div>
+            <div class="cs-sheet-body"><div class="cs-menu">
             <div class="segment-control cs-tabs" role="tablist">
                 <div class="segment-glider" data-ref="glider"></div>
                 <button type="button" class="segment-item" data-tab="bot" data-t="modeBot"></button>
@@ -3227,6 +3299,21 @@
                 </div>
                 <p class="cs-label" data-t="themes"></p>
                 <div class="pz-themes">${core.PUZZLE_THEMES.map((theme, i) => `<button type="button" class="pz-theme" data-pz-theme="${i}" style="--c:${PUZZLE_COLORS[i]}"><i></i><span data-t="th_${theme}"></span></button>`).join('')}</div>
+            </div>
+            <button type="button" class="cs-continue cs-history-row" data-sheet="history"><span class="cs-continue-ico">${ICON.history}</span><span><b data-t="history"></b><small data-ref="histRowHint"></small></span>${ICON.chevron}</button>
+            </div>
+            <section class="cs-history" data-ref="history">
+                <div class="cs-history-head"><h3 data-t="history"></h3><button class="ck-refresh" type="button" data-sheet="histRefresh" data-ref="histRefresh">${ICON.refresh}</button></div>
+                <div class="cs-history-stats" data-ref="histStats"></div>
+                <div class="cs-history-filters" data-ref="histFilters">
+                    <button type="button" data-hist-filter="all" data-t="histAll"></button>
+                    <button type="button" data-hist-filter="online" data-t="modeOnline"></button>
+                    <button type="button" data-hist-filter="bot" data-t="modeBot"></button>
+                    <button type="button" data-hist-filter="local" data-t="modeLocal"></button>
+                </div>
+                <div class="cs-history-list" data-ref="histList"></div>
+                <button type="button" class="cs-btn cs-history-more" data-sheet="histMore" data-ref="histMore" data-t="histMore" hidden></button>
+            </section>
             </div>`;
         panel.style.setProperty('--cs-wk', `url('${pieceUrl('wK')}')`);
         panel.style.setProperty('--cs-bk', `url('${pieceUrl('bK')}')`);
@@ -3278,6 +3365,7 @@
             const tc = core.timeControl(away.tc);
             refs.s_elsewhereHint.textContent = [tr('playHere'), nick(away.opponent?.name), tc ? `${tr(tc.cat)} ${tc.id}` : ''].filter(Boolean).join(' · ');
         }
+        renderHistory();
         const saved = savedGame();
         const cont = panel.querySelector('[data-sheet="continue"]');
         cont.hidden = !saved;
@@ -3321,10 +3409,21 @@
         if (pzTheme) { haptic('light'); startPuzzle('theme', { theme: Number(pzTheme.dataset.pzTheme), button: pzTheme }); return; }
         const join = event.target.closest('[data-join]');
         if (join) { joinRoom(join.dataset.join); return; }
+        const histFilter = event.target.closest('[data-hist-filter]');
+        if (histFilter) { prefs.histFilter = histFilter.dataset.histFilter; savePrefs(); histShown = HIST_PAGE; renderHistory(); haptic('select'); return; }
+        const hist = event.target.closest('[data-hist]');
+        if (hist) { openArchived(historyGames().find(g => g.id === hist.dataset.hist)); return; }
         const button = event.target.closest('[data-sheet]');
         if (!button) return;
         switch (button.dataset.sheet) {
             case 'close': return closeSheet();
+            case 'expand': haptic('light'); return setFull(!prefs.full);
+            case 'history': haptic('light'); return showHistory();
+            case 'histMore': histShown += HIST_PAGE; return renderHistory();
+            case 'histRefresh': {
+                button.classList.remove('spin'); void button.offsetWidth; button.classList.add('spin');
+                return loadHistory(true).then(renderHistory);
+            }
             case 'continue': return resumeSaved();
             case 'takeover': {
                 window.__chessElsewhere = null;
@@ -3588,17 +3687,274 @@
         const away = window.__chessElsewhere;
         return away && away.roomCode && Date.now() - (away.at || 0) < 3600e3 ? away : null;
     }
-    function openSheet(tab) {
+    function openSheet(tab, { history = false } = {}) {
         if (!sheetEl) return;
         // Свежие сведения: если другое устройство уже закрыто, сервер сам вернёт партию сюда.
         if (typeof socket !== 'undefined' && socket?.connected && !game) socket.emit('chess_rejoin');
         refreshSheetTexts();
         setTab(tab || prefs.tab || 'bot', false);
+        setFull(history || !!prefs.full, { save: false, scroll: history });
         sheetEl.classList.add('visible');
+        loadHistory().then(renderHistory);
+        uploadHistory();
     }
     function closeSheet() {
         clearInterval(roomsTimer);
         sheetEl?.classList.remove('visible');
+    }
+
+    /* ---------- шторка на весь экран ----------
+       Стрелки у крестика разворачивают меню на весь экран; там же — история партий
+       (на широком экране — второй колонкой справа). Выбор запоминается. */
+    function setFull(on, { save = true, scroll = false } = {}) {
+        if (!sheetEl) return;
+        if (save) { prefs.full = !!on; savePrefs(); }
+        sheetEl.classList.toggle('is-full', !!on);
+        const btn = refs.s_expandBtn;
+        if (btn) {
+            btn.innerHTML = on ? ICON.collapse : ICON.expand;
+            btn.setAttribute('aria-label', tr(on ? 'collapse' : 'expand'));
+            btn.setAttribute('aria-expanded', String(!!on));
+        }
+        if (on) renderHistory();
+        if (scroll && on) setTimeout(() => refs.s_history?.scrollIntoView({ behavior: REDUCED_MOTION ? 'auto' : 'smooth', block: 'start' }), 60);
+    }
+    function showHistory() {
+        if (!sheetEl.classList.contains('visible')) { openSheet(null, { history: true }); return; }
+        setFull(true, { save: false, scroll: true });
+        loadHistory(true).then(renderHistory);
+    }
+
+    /* ---------- история партий ----------
+       Онлайн-партии записывает сервер. Партии с ботом и вдвоём сохраняются здесь
+       (HISTORY_KEY) и отправляются на сервер, чтобы были видны на всех устройствах.
+       Список: с сервера, плюс свои партии, которые туда ещё не дошли. */
+    const HIST_PAGE = 30;
+    const HISTORY_LOCAL_MAX = 100;
+    let histShown = HIST_PAGE;
+    const histStore = { server: null, at: 0, loading: null, uploading: false };
+    const apiBase = () => (typeof API_BASE_URL === 'string' ? API_BASE_URL : '');
+    const localHistory = () => { const list = readJson(HISTORY_KEY, []); return Array.isArray(list) ? list.filter(g => g && Array.isArray(g.moves)) : []; };
+
+    /** Партия с ботом или вдвоём закончилась: в историю на устройстве и на сервер. */
+    function archiveFinished(outcome) {
+        if (!game || game.archive || (game.mode !== 'bot' && game.mode !== 'local')) return;
+        if (!outcome || outcome.result === 'aborted' || !game.moves.length) return;
+        const entry = {
+            id: `l${game.id}`,
+            cid: `g-${game.id.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            mode: game.mode, at: Date.now(), result: outcome.result, reason: outcome.reason || null,
+            tc: game.tc?.id || 'none', rated: false, level: game.mode === 'bot' ? game.level : null,
+            myColor: game.mode === 'local' ? null : game.myColor,
+            startFen: game.startFen && game.startFen !== new Chess().fen() ? game.startFen : null,
+            moves: game.moves.map(m => m.san), white: null, black: null, synced: false,
+        };
+        writeJson(HISTORY_KEY, [entry, ...localHistory()].slice(0, HISTORY_LOCAL_MAX));
+        uploadHistory();
+    }
+    async function uploadHistory() {
+        if (histStore.uploading || !tg?.initData) return;
+        const pending = localHistory().filter(g => !g.synced).slice(0, 20);
+        if (!pending.length) return;
+        histStore.uploading = true;
+        try {
+            for (const entry of pending) {
+                const response = await fetch(`${apiBase()}/api/chess/history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
+                    body: JSON.stringify({ cid: entry.cid, mode: entry.mode, level: entry.level, myColor: entry.myColor, tc: entry.tc, result: entry.result, reason: entry.reason, startFen: entry.startFen, moves: entry.moves, at: entry.at }),
+                });
+                // 400 — сервер партию не принял (не прошла проверку): больше не шлём, но у себя оставляем
+                if (!response.ok && response.status !== 400) break;
+                const list = localHistory();
+                const hit = list.find(g => g.cid === entry.cid);
+                if (hit) { hit.synced = true; writeJson(HISTORY_KEY, list); }
+            }
+        } catch (_) {
+        } finally {
+            histStore.uploading = false;
+        }
+    }
+    function loadHistory(force = false) {
+        if (histStore.loading) return histStore.loading;
+        if (!force && histStore.server && Date.now() - histStore.at < 20000) return Promise.resolve();
+        if (!histStore.server) {
+            const cache = readJson(HISTORY_CACHE_KEY, null);
+            if (cache && String(cache.uid) === String(me()?.id || '') && Array.isArray(cache.games)) histStore.server = cache.games;
+        }
+        histStore.loading = (async () => {
+            try {
+                if (!tg?.initData) throw new Error('no initData');
+                const response = await fetch(`${apiBase()}/api/chess/history`, { headers: { 'X-Init-Data': tg.initData } });
+                if (!response.ok) throw new Error(String(response.status));
+                const data = await response.json();
+                histStore.server = Array.isArray(data?.games) ? data.games : [];
+                histStore.at = Date.now();
+                writeJson(HISTORY_CACHE_KEY, { uid: me()?.id || null, games: histStore.server });
+            } catch (_) {
+                if (!histStore.server) histStore.server = [];
+                histStore.failed = true;
+            } finally {
+                histStore.loading = null;
+            }
+        })();
+        return histStore.loading;
+    }
+    function historyGames() {
+        const server = histStore.server || [];
+        const known = new Set(server.map(g => g.cid).filter(Boolean));
+        return [...server, ...localHistory().filter(g => !known.has(g.cid))].sort((a, b) => b.at - a.at);
+    }
+
+    /** Итог партии для игрока: win | loss | draw, а вдвоём — white | black | draw. */
+    function entryResult(g) {
+        if (g.result === 'draw') return 'draw';
+        if (g.mode === 'local' || !g.myColor) return g.result;
+        return (g.result === 'white') === (g.myColor === 'w') ? 'win' : 'loss';
+    }
+    function entryOpponent(g) {
+        if (g.mode === 'bot') {
+            const level = core.botLevel(g.level);
+            return { name: tr('botName', { level: tr(`level${level.level}`) }), sub: `~${level.elo}`, avatar: null };
+        }
+        if (g.mode === 'local') return { name: `${tr('white')} — ${tr('black')}`, sub: '', avatar: null };
+        const opp = g.myColor === 'b' ? g.white : g.black;
+        return { name: nick(opp?.name) || tr('opponent'), sub: opp?.rating ? String(opp.rating) : '', avatar: opp?.avatar || null };
+    }
+    function entryDelta(g) {
+        if (g.mode !== 'online' || !g.rated) return null;
+        const mine = g.myColor === 'b' ? g.black : g.white;
+        return Number.isFinite(mine?.delta) ? mine.delta : null;
+    }
+    function entryReason(g, res) {
+        const r = g.reason;
+        if (!r) return '';
+        if (r === 'resign' || r === 'abandon') {
+            if (res !== 'win' && res !== 'loss') return '';
+            return tr(r === 'resign' ? (res === 'win' ? 'r_resign' : 'r_resignSelf') : (res === 'win' ? 'r_abandon' : 'r_abandonSelf'));
+        }
+        return I18N.T[`r_${r}`] ? tr(`r_${r}`) : '';
+    }
+    function whenText(at) {
+        try {
+            const d = new Date(at), now = new Date();
+            const time = d.toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' });
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            if (at >= today) return `${tr('today')}, ${time}`;
+            if (at >= today - 86400000) return `${tr('yesterday')}, ${time}`;
+            return d.toLocaleDateString(lang(), { day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
+        } catch (_) { return ''; }
+    }
+    const finalBoards = new Map();
+    /** Последняя позиция партии — для мини-доски в списке. */
+    function finalBoard(g) {
+        if (finalBoards.has(g.id)) return finalBoards.get(g.id);
+        let board = null;
+        try {
+            const chess = new Chess(g.startFen || undefined);
+            for (const san of g.moves) {
+                let m = null;
+                try { m = chess.move(san); } catch (_) { m = core.tryMove(chess, san); }
+                if (!m) break;
+            }
+            board = chess.board();
+        } catch (_) {}
+        finalBoards.set(g.id, board);
+        return board;
+    }
+    function currentSkinId() {
+        const skin = SKINS.find(item => item.id === settings.skin);
+        return skin && skinUnlocked(skin, ratingCache?.data) ? skin.id : 'classic';
+    }
+    function miniBoardHtml(g) {
+        const board = finalBoard(g);
+        const flip = g.myColor === 'b';
+        let pieces = '';
+        if (board) board.forEach((row, r) => row.forEach((p, f) => {
+            if (!p) return;
+            const x = flip ? 7 - f : f, y = flip ? 7 - r : r;
+            pieces += `<i style="left:${x * 12.5}%;top:${y * 12.5}%;background-image:url('${pieceUrl(p.color + p.type.toUpperCase())}')"></i>`;
+        }));
+        return `<span class="cs-mini" data-skin="${currentSkinId()}" aria-hidden="true">${pieces}</span>`;
+    }
+    function historyItemHtml(g) {
+        const res = entryResult(g);
+        const resText = res === 'win' ? tr('resWin') : res === 'loss' ? tr('loss') : res === 'draw' ? tr('drawResult') : tr(res === 'white' ? 'whiteWins' : 'blackWins');
+        const opp = entryOpponent(g);
+        const delta = entryDelta(g);
+        const tc = core.timeControl(g.tc);
+        const meta = [tc ? `${tr(tc.cat)} ${tc.id}` : tr('noTime'), tr('histMoves', { n: Math.ceil(g.moves.length / 2) }), entryReason(g, res)].filter(Boolean).join(' · ');
+        const icon = g.mode === 'online' ? ICON.mOnline : g.mode === 'bot' ? ICON.mBot : ICON.mLocal;
+        const safeAvatar = opp.avatar && /^https:\/\//i.test(opp.avatar) ? opp.avatar : null;
+        const tone = res === 'win' ? 'win' : res === 'loss' ? 'loss' : res === 'draw' ? 'draw' : 'side';
+        return `<button type="button" class="cs-hist is-${tone}" data-hist="${esc(g.id)}">
+            ${miniBoardHtml(g)}
+            <span class="cs-hist-main">
+                <span class="cs-hist-top"><b class="cs-hist-res">${esc(resText)}</b><time>${esc(whenText(g.at))}</time></span>
+                <span class="cs-hist-opp"><span class="cs-hist-mode" title="${esc(tr(g.mode === 'online' ? 'modeOnline' : g.mode === 'bot' ? 'modeBot' : 'modeLocal'))}">${icon}</span>${safeAvatar ? `<img src="${esc(safeAvatar)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}<span class="cs-hist-name">${esc(opp.name)}</span>${opp.sub ? `<small>${esc(opp.sub)}</small>` : ''}</span>
+                <span class="cs-hist-meta">${esc(meta)}</span>
+            </span>
+            ${delta != null ? `<span class="cs-hist-delta ${delta >= 0 ? 'is-up' : 'is-down'}">${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}</span>` : ''}
+        </button>`;
+    }
+    function renderHistory() {
+        if (!refs.s_histList || !Chess) return;
+        const all = historyGames();
+        const filter = ['all', 'online', 'bot', 'local'].includes(prefs.histFilter) ? prefs.histFilter : 'all';
+        const list = filter === 'all' ? all : all.filter(g => g.mode === filter);
+        refs.s_histRowHint.textContent = all.length ? tr('histCount', { n: all.length }) : tr('histRowHint');
+        refs.s_histRefresh.setAttribute('aria-label', tr('refresh'));
+        refs.s_histFilters.querySelectorAll('[data-hist-filter]').forEach(b => {
+            b.classList.toggle('active', b.dataset.histFilter === filter);
+            b.setAttribute('aria-pressed', String(b.dataset.histFilter === filter));
+        });
+        // счёт: победы, ничьи, поражения (без партий вдвоём — там играешь сам с собой)
+        const scored = list.filter(g => g.mode !== 'local');
+        const count = { win: 0, draw: 0, loss: 0 };
+        for (const g of scored) count[entryResult(g)]++;
+        const total = scored.length;
+        refs.s_histStats.hidden = !total;
+        if (total) {
+            const pct = n => `${(n / total * 100).toFixed(2)}%`;
+            refs.s_histStats.innerHTML = `
+                <div class="cs-hstat is-win"><b>${count.win}</b><small>${esc(tr('histWins'))}</small></div>
+                <div class="cs-hstat is-draw"><b>${count.draw}</b><small>${esc(tr('histDraws'))}</small></div>
+                <div class="cs-hstat is-loss"><b>${count.loss}</b><small>${esc(tr('histLosses'))}</small></div>
+                <div class="cs-hbar" aria-hidden="true"><i class="is-win" style="width:${pct(count.win)}"></i><i class="is-draw" style="width:${pct(count.draw)}"></i><i class="is-loss" style="width:${pct(count.loss)}"></i></div>`;
+        }
+        const loading = !histStore.server && !!histStore.loading;
+        if (loading && !list.length) {
+            refs.s_histList.innerHTML = Array.from({ length: 3 }, () => '<div class="cs-hist is-skeleton"><span class="cs-mini"></span><span class="cs-hist-main"><i></i><i></i><i></i></span></div>').join('');
+        } else if (!list.length) {
+            refs.s_histList.innerHTML = `<div class="cs-history-empty"><i style="background-image:url('${pieceUrl('wN')}')"></i><b>${esc(tr('histEmpty'))}</b><small>${esc(tr('histEmptyHint'))}</small></div>`;
+        } else {
+            refs.s_histList.innerHTML = list.slice(0, histShown).map(historyItemHtml).join('');
+        }
+        refs.s_histMore.hidden = list.length <= histShown;
+    }
+
+    /** Партия из истории: на доске, с ходами, разбором и итогом; часов и ходов нет. */
+    function openArchived(entry) {
+        if (!entry || !Array.isArray(entry.moves) || !entry.moves.length) return;
+        let online = null;
+        if (entry.mode === 'online') {
+            const mine = entry.myColor === 'b' ? entry.black : entry.white;
+            const opp = entry.myColor === 'b' ? entry.white : entry.black;
+            const delta = entryDelta(entry);
+            online = {
+                roomCode: null, archived: true,
+                opponent: { name: opp?.name || '', avatar: opp?.avatar || null, rating: opp?.rating ?? null },
+                myRating: mine?.rating ?? null,
+                ratingChange: delta != null && Number.isFinite(mine?.rating) ? { rating: mine.rating + delta, delta } : null,
+                clock: null, clockAt: 0, serverNow: () => Date.now(), firstMoveDeadline: null,
+                drawSent: false, pending: false, away: null,
+            };
+        }
+        haptic('light');
+        closeSheet();
+        openScreen();
+        newGame({ mode: entry.mode, myColor: entry.myColor || 'w', level: entry.level || 3, tcId: entry.tc || 'none', moves: entry.moves, startFen: entry.startFen || null, online, orientation: entry.myColor || 'w', archive: entry });
+        Sound.play('start', 0.5);
     }
 
     /* ---------- запуск ---------- */
@@ -3610,6 +3966,7 @@
             buildSheet();
             bindSocket();
             hintOn = isOwner() && localStorage.getItem(HINT_KEY) === '1';
+            setupIsolation();
             return api;
         });
         ready.catch(() => { ready = null; });
