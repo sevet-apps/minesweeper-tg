@@ -99,9 +99,12 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, talk: false, autoFlip: false, action: true, review: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, talk: false, autoFlip: false, action: true, review: true, botLabel: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
+    // Владельцу сервер дописывает к нику бота « (бот)»; в настройках он может эту приписку спрятать.
+    const BOT_LABEL_RE = / \(бот\)$/;
+    const nick = name => (name && settings.botLabel === false && isOwner() ? String(name).replace(BOT_LABEL_RE, '') : name);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
 
     /* ---------- скины доски ----------
@@ -2221,7 +2224,7 @@
             return { name: tr('botName', { level: tr(`level${level.level}`) }), sub: `~${level.elo}`, avatar: null, bot: true };
         }
         const opp = game.online.opponent || {};
-        return { name: opp.name || tr('opponent'), sub: opp.rating ? String(opp.rating) : '', avatar: opp.avatar || null, lang: opp.lang || null, away: !!game.online.away };
+        return { name: nick(opp.name) || tr('opponent'), sub: opp.rating ? String(opp.rating) : '', avatar: opp.avatar || null, lang: opp.lang || null, away: !!game.online.away };
     }
 
     function renderPlayers() {
@@ -2749,7 +2752,7 @@
     function showDrawOffer() {
         Sound.play('notify');
         haptic('warning');
-        const name = game.online.opponent?.name || tr('opponent');
+        const name = nick(game.online.opponent?.name) || tr('opponent');
         showBanner(tr('drawOffered', { name }), [
             { label: tr('decline'), act: () => emit('chess_draw_answer', { roomCode: game.online.roomCode, accept: false }) },
             { label: tr('accept'), primary: true, act: () => emit('chess_draw_answer', { roomCode: game.online.roomCode, accept: true }) },
@@ -2909,6 +2912,7 @@
         if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', null, 'swingDragInfo']);
         if (Talk) rows.push(['talk', 'talkingPieces', null, 'talkingPiecesInfo']);
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
+        if (isOwner()) rows.push(['botLabel', 'botLabel', 'botLabelHint']);
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
         if (game?.mode === 'bot' || (game?.over && game.mode !== 'puzzle')) rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
         openDialog('settings', `
@@ -2944,6 +2948,7 @@
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
                 if (key === 'talk') { if (settings.talk) ui.talkHello = true; else clearTalk(); }
+                if (key === 'botLabel') renderPlayers();
                 if (key === 'review') {
                     if (!settings.review) engines.review?.stop();
                     scheduleReview();
@@ -3271,7 +3276,7 @@
         panel.querySelector('[data-sheet="takeover"]').hidden = !away;
         if (away) {
             const tc = core.timeControl(away.tc);
-            refs.s_elsewhereHint.textContent = [tr('playHere'), away.opponent?.name, tc ? `${tr(tc.cat)} ${tc.id}` : ''].filter(Boolean).join(' · ');
+            refs.s_elsewhereHint.textContent = [tr('playHere'), nick(away.opponent?.name), tc ? `${tr(tc.cat)} ${tc.id}` : ''].filter(Boolean).join(' · ');
         }
         const saved = savedGame();
         const cont = panel.querySelector('[data-sheet="continue"]');
@@ -3391,11 +3396,12 @@
     function requestRooms() { emit('chess_list', {}); }
 
     function roomHtml(room) {
+        const name = nick(room.name);
         const avatar = typeof room.avatar === 'string' && /^https:\/\//i.test(room.avatar)
             ? `<img class="ck-room-ava" src="${esc(room.avatar)}" alt="" referrerpolicy="no-referrer">`
-            : `<span class="ck-room-ava">${esc((room.name || '?').slice(0, 1).toUpperCase())}</span>`;
+            : `<span class="ck-room-ava">${esc((name || '?').slice(0, 1).toUpperCase())}</span>`;
         const tc = core.timeControl(room.tc);
-        return `${avatar}<div class="ck-room-text"><b>${flagHtml(room.lang)}${esc(room.name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
+        return `${avatar}<div class="ck-room-text"><b>${flagHtml(room.lang)}${esc(name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
             <span class="cs-room-tc">${esc(tc ? tc.id : room.tc)}</span>
             <button class="ck-room-join" type="button" data-join="${esc(room.code)}">${esc(tr('join'))}</button>`;
     }

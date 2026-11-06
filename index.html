@@ -6486,7 +6486,7 @@
         }
 
         // --- Шахматы: модуль грузится при первом открытии ---
-        const CHESS_VERSION = '20261108';
+        const CHESS_VERSION = '20261109';
         let chessLoading = null;
         function loadChessApp() {
             if (window.SparkChess?.init) return window.SparkChess.init();
@@ -8184,7 +8184,9 @@
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id); let userVal = Number(userValRaw); let hasStats = true;
                 if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal >= 9999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
-                const displayList = data.map((item) => ({ user_id: item.user_id, username: item.username, photo_url: item.photo_url, score: item.score, rank: Number(item.rank) || 0, isMe: item.user_id.toString() === user.id.toString(), isLive: false }));
+                // Владелец может спрятать приписку «(бот)» в настройках шахмат — тогда её нет и в топе.
+                const hideBotLabel = currentLbGame === 'chess' && (() => { try { return JSON.parse(localStorage.getItem('chess_settings') || '{}').botLabel === false; } catch (_) { return false; } })();
+                const displayList = data.map((item) => ({ user_id: item.user_id, username: hideBotLabel ? String(item.username || '').replace(/ \(бот\)$/, '') : item.username, photo_url: item.photo_url, score: item.score, rank: Number(item.rank) || 0, isMe: item.user_id.toString() === user.id.toString(), isLive: false }));
                 
                 // Check for live BB streamers
                 // TODO(bb-live): LIVE в топах временно скрыт — трансляции Block Blast
