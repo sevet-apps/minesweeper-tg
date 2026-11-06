@@ -3231,7 +3231,7 @@
         panel.innerHTML = `
             <div class="ui-sheet-grab" aria-hidden="true"></div>
             <div class="ui-sheet-heading"><h2 data-t="title"></h2><span class="cs-head-btns"><button class="cs-expand" type="button" data-sheet="expand" data-ref="expandBtn" aria-expanded="false">${ICON.expand}</button><button class="ui-close" type="button" data-sheet="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></span></div>
-            <div class="cs-sheet-body"><div class="cs-menu">
+            <div class="cs-menu-body"><div class="cs-menu">
             <div class="segment-control cs-tabs" role="tablist">
                 <div class="segment-glider" data-ref="glider"></div>
                 <button type="button" class="segment-item" data-tab="bot" data-t="modeBot"></button>

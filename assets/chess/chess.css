@@ -671,14 +671,15 @@ html[data-liquid-glass="on"] .cs-expand::before {
 }
 #modalChess.visible .ui-mode-panel { transition-duration: var(--ui-sheet-enter), .42s, .42s, .42s, .42s; }
 #modalChess.is-full { padding-top: 0; }
-#modalChess.is-full .ui-mode-panel {
-    width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; border: 0;
-    /* на телефоне сверху кнопки Telegram («Закрыть», «⌄ •••»): отступ как у шапки экрана партии */
-    padding-top: calc(110px + var(--safe-top, 0px));
+#modalChess.is-full .ui-mode-panel { width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; border: 0; }
+/* На телефоне сверху кнопки Telegram («Закрыть», «⌄ •••»). Отступ под них — внутри
+   прилипающей шапки: её фон закрывает эту полосу, и прокрученное меню не видно над
+   заголовком. Шапка во всю ширину, а заголовок и кнопки — по краям колонок меню. */
+#modalChess.is-full .ui-mode-panel > .ui-sheet-heading {
+    padding: calc(96px + var(--safe-top, 0px)) max(14px, calc(14px + (100% - 1240px) / 2)) 14px max(20px, calc(20px + (100% - 1240px) / 2));
 }
-body.desktop #modalChess.is-full .ui-mode-panel { padding-top: 18px; }
+body.desktop #modalChess.is-full .ui-mode-panel > .ui-sheet-heading { padding-top: 16px; }
 #modalChess.is-full .ui-sheet-grab { opacity: 0; }
-#modalChess.is-full .ui-sheet-heading { max-width: 1240px; margin-inline: auto; }
 #modalChess .cs-history { display: none; }
 #modalChess.is-full .cs-history { display: block; }
 #modalChess .cs-history-row { margin: 18px 0 0; }
@@ -686,11 +687,12 @@ body.desktop #modalChess.is-full .ui-mode-panel { padding-top: 18px; }
 #modalChess .cs-history-row .cs-continue-ico svg { margin: 0; width: 19px; height: 19px; fill: none; stroke: #fff; stroke-width: 2.2; }
 #modalChess.is-full .cs-history-row { display: none; }
 #modalChess .cs-history-row .cs-continue-ico svg path { fill: none; stroke: #fff; }
-#modalChess.is-full .cs-sheet-body { max-width: 1240px; margin: 0 auto; }
+#modalChess.is-full .cs-menu-body { max-width: 1240px; margin: 0 auto; }
 #modalChess.is-full .cs-history { margin-top: 26px; }
 @media (min-width: 860px) {
-    #modalChess.is-full .cs-sheet-body { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 34px; align-items: start; }
-    #modalChess.is-full .cs-menu { position: sticky; top: 0; }
+    #modalChess.is-full .cs-menu-body { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 34px; align-items: start; }
+    /* колонка меню стоит на месте, пока листаешь историю: сразу под шапкой */
+    #modalChess.is-full .cs-menu { position: sticky; top: 52px; }
     #modalChess.is-full .cs-history { margin-top: 0; }
     #modalChess.is-full .cs-history-list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
 }
