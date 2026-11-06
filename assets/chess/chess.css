@@ -359,7 +359,7 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-say.is-b { background: #1d1f24; color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .34), 0 0 0 1px rgba(255, 255, 255, .14); }
 .cs-say.is-below { transform: none; transform-origin: var(--tail, 50%) 0; }
 .cs-say.is-below::after { bottom: auto; top: -5px; border-radius: 3px 0 0 0; }
-.cs-say.is-out { animation: csSayOut .2s ease-in both; }
+.cs-say.is-out { animation: csSayOut .16s ease-in both; }
 @keyframes csSayIn { from { opacity: 0; scale: .45; } 55% { opacity: 1; } to { opacity: 1; scale: 1; } }
 @keyframes csSayOut { to { opacity: 0; scale: .86; } }
 @media (prefers-reduced-motion: reduce) { .cs-say, .cs-say.is-out { animation: none; } }

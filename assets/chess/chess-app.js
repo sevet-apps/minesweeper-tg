@@ -912,16 +912,23 @@
 
     /* ---------- говорящие фигуры ----------
        После хода фигура говорит реплику в облачке над собой (кто и что — решает
-       chess-talk.js). Каждую реплику видно хотя бы секунду: если ходы идут
-       быстрее (бот отвечает сразу), следующая сценка ждёт, а из нескольких
-       ждущих остаётся самая важная. Ответ во втором облачке — только если
-       следующий ход его не перебил. */
+       chess-talk.js). Облачко висит 2,2–4,2 с — по длине фразы, чтобы успеть
+       прочитать. Следующий ход (бот отвечает сразу) не перебивает реплику, пока
+       её не показали хотя бы на 80%: его сценка ждёт, а из нескольких ждущих
+       остаётся самая важная. Облачка никогда не налезают друг на друга: ответ
+       в диалоге появляется рядом, пока первая реплика ещё видна, только если
+       есть свободное место (над фигурой или под ней), иначе — после неё. */
     const Talk = window.SparkChessTalk;
-    const SAY_MIN = 1000;
+    const REPLY_AT = 1300;
     const talkView = { engine: null, gameId: null, current: null, pending: null, pendingTimer: 0, timers: [], token: 0, lastEnd: 0 };
     const talkOn = () => !!Talk && !!settings.talk && !!game && game.mode !== 'puzzle';
-    const sayDuration = text => Math.max(1200, Math.min(2200, 1000 + 28 * text.length));
-    const sceneLength = scene => sayDuration(scene.lines[0].text) + (scene.lines[1] ? 120 + sayDuration(scene.lines[1].text) : 0);
+    const sayDuration = text => Math.max(2200, Math.min(4200, 1500 + 60 * text.length));
+    /** Сколько реплику нельзя перебить следующим ходом. */
+    const sayGuard = ms => Math.max(1800, ms * 0.8);
+    const sceneLength = scene => {
+        const d0 = sayDuration(scene.lines[0].text);
+        return scene.lines[1] ? Math.max(d0, Math.min(REPLY_AT, d0 / 2) + sayDuration(scene.lines[1].text)) : d0;
+    };
     /** Сколько ещё идёт сценка последнего хода — окно итогов партии ждёт, пока король договорит. */
     const talkHold = () => (talkOn() && talkView.lastEnd ? Math.max(0, talkView.lastEnd - performance.now()) : 0);
     function talkEngine() {
@@ -943,67 +950,91 @@
     }
     function queueScene(scene) {
         if (!talkOn()) return;
-        const shown = talkView.current ? performance.now() - talkView.current.at : Infinity;
-        if (shown < SAY_MIN) {
+        const wait = talkView.current ? talkView.current.until - performance.now() : 0;
+        if (wait > 0) {
             if (!talkView.pending || scene.prio >= talkView.pending.prio) talkView.pending = scene;
             clearTimeout(talkView.pendingTimer);
             talkView.pendingTimer = setTimeout(() => {
                 const next = talkView.pending;
                 talkView.pending = null;
                 if (next) queueScene(next);
-            }, SAY_MIN - shown + 20);
+            }, wait + 20);
             return;
         }
         playScene(scene);
     }
     function playScene(scene) {
-        clearTalk({ keepPending: true });
+        // старое облачко сначала уходит, новое появляется следом — без наложения
+        const fade = clearTalk({ keepPending: true }) ? 170 : 0;
         const token = talkView.token;
+        const later = (fn, ms) => talkView.timers.push(setTimeout(() => { if (token === talkView.token) fn(); }, ms));
         const [first, reply] = scene.lines;
         const d0 = sayDuration(first.text);
-        talkView.current = { at: performance.now() };
-        showBubble(first, d0);
-        if (!reply) return;
-        talkView.timers.push(setTimeout(() => {
-            if (token !== talkView.token) return;
-            talkView.current = { at: performance.now() };
-            showBubble(reply, sayDuration(reply.text));
-        }, d0 + 120));
+        const start = performance.now() + fade;
+        const cur = talkView.current = { until: start + sayGuard(d0) };
+        later(() => {
+            showBubble(first, d0);
+            if (!reply) return;
+            const d1 = sayDuration(reply.text);
+            const at = Math.min(REPLY_AT, d0 / 2);
+            cur.until = Math.max(cur.until, start + at + sayGuard(d1));
+            later(() => {
+                if (showBubble(reply, d1, { avoid: true })) return;
+                cur.until = Math.min(start + 6500, Math.max(cur.until, start + d0 + 200 + sayGuard(d1)));
+                later(() => showBubble(reply, d1), d0 - at + 200);
+            }, at);
+        }, fade);
     }
-    function showBubble(line, ms) {
+    /** Облачко над фигурой (или под ней). avoid — не показывать, если некуда встать, не задев другое облачко. */
+    function showBubble(line, ms, { avoid = false } = {}) {
         const layer = refs.talk;
         const sq = talkView.engine?.squareOf(line.id);
-        if (!layer || !view.size || !sq) return;
+        if (!layer || !view.size || !sq) return true;
         const el = document.createElement('div');
         el.className = `cs-say ${line.color === 'w' ? 'is-w' : 'is-b'}`;
         el.textContent = line.text;
+        layer.appendChild(el);
+        const w = el.offsetWidth, h = el.offsetHeight + 6;   // + хвостик
         const [x, y] = sqXY(sq);
         const cell = view.size / 8;
-        const below = y === 0;   // верхний ряд — облачко под фигурой, чтобы не залезать на шапку
-        if (below) el.classList.add('is-below');
-        layer.appendChild(el);
-        const w = el.offsetWidth;
         const margin = parseFloat(screen.style.getPropertyValue('--cs-margin')) || 9;
         const cx = (x + 0.5) * cell;
         const left = Math.max(4 - margin, Math.min(view.size + margin - 4 - w, cx - w / 2));
+        const above = { below: false, anchor: (y + 0.1) * cell, top: (y + 0.1) * cell - h, bottom: (y + 0.1) * cell };
+        const under = { below: true, anchor: (y + 0.92) * cell, top: (y + 0.92) * cell, bottom: (y + 0.92) * cell + h };
+        // верхний ряд — только вниз (не залезать на шапку), нижний — только вверх
+        const options = y === 0 ? [under] : y === 7 ? [above] : [above, under];
+        const others = [...layer.querySelectorAll('.cs-say:not(.is-out)')].filter(o => o !== el && o.box).map(o => o.box);
+        const fits = o => others.every(b => left + w + 4 <= b.left || left >= b.right + 4 || o.bottom + 2 <= b.top || o.top >= b.bottom + 2);
+        let spot = options.find(fits);
+        if (!spot) {
+            if (avoid) { el.remove(); return false; }
+            spot = options[0];
+        }
+        el.classList.toggle('is-below', spot.below);
+        el.box = { left, right: left + w, top: spot.top, bottom: spot.bottom };
         el.style.left = `${Math.round(left)}px`;
-        el.style.top = `${Math.round((below ? y + 0.92 : y + 0.1) * cell)}px`;
+        el.style.top = `${Math.round(spot.anchor)}px`;
         el.style.setProperty('--tail', `${Math.round(Math.max(14, Math.min(w - 14, cx - left)))}px`);
         talkView.timers.push(setTimeout(() => hideBubble(el), ms));
+        return true;
     }
     function hideBubble(el) {
         if (!el.isConnected || el.classList.contains('is-out')) return;
         if (REDUCED_MOTION) { el.remove(); return; }
         el.classList.add('is-out');
-        setTimeout(() => el.remove(), 200);
+        setTimeout(() => el.remove(), 170);
     }
+    /** Убирает облачка и отменяет сценку; возвращает, сколько облачков было на экране. */
     function clearTalk({ keepPending = false } = {}) {
         talkView.token++;
         talkView.timers.forEach(clearTimeout);
         talkView.timers = [];
         talkView.current = null;
         if (!keepPending) { talkView.pending = null; talkView.lastEnd = 0; clearTimeout(talkView.pendingTimer); }
-        refs.talk?.querySelectorAll('.cs-say').forEach(hideBubble);
+        const shown = refs.talk ? [...refs.talk.querySelectorAll('.cs-say:not(.is-out)')] : [];
+        shown.forEach(hideBubble);
+        return shown.length;
     }
     /** Только что включили — фигуры здороваются с игроком. */
     function sayHello() {
@@ -2478,7 +2509,7 @@
         }), 180);
         afterChange();
         tickClocks();
-        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), Math.max(outcome.reason === 'checkmate' ? 900 : 450, Math.min(4000, talkHold() + 150)));
+        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), Math.max(outcome.reason === 'checkmate' ? 900 : 450, Math.min(5500, talkHold() + 150)));
     }
 
     /** 'win' | 'loss' | 'draw' | 'aborted' | 'white' | 'black' (вдвоём). */
