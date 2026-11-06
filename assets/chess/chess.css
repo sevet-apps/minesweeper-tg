@@ -351,6 +351,18 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .ca-cap.out { opacity: 0; transform: scale(1.08); filter: blur(6px); }
 @keyframes caCapIn { from { opacity: 0; transform: translateY(26px) scale(.9); filter: blur(10px); } }
 .ca-skip { position: absolute; left: 0; right: 0; bottom: calc(10px + var(--safe-bottom, 0px)); z-index: 2; opacity: 0; pointer-events: none; text-align: center; font: 600 12px/1.2 var(--ui-font, system-ui); color: rgba(255, 255, 255, .5); transition: opacity .4s; }
+/* Говорящие фигуры: облачко над фигурой с хвостиком к ней. У белых — светлое, у чёрных — тёмное.
+   Слой поверх доски без обрезки, чтобы облачко могло выйти на рамку. */
+.cs-talk { position: absolute; inset: var(--m); z-index: 7; pointer-events: none; }
+.cs-say { position: absolute; width: max-content; max-width: calc(var(--cs-size, 320px) * .46); padding: .45em .78em .52em; border-radius: 1.08em; background: #fff; color: #17181c; box-shadow: 0 6px 18px rgba(0, 0, 0, .3), 0 1px 3px rgba(0, 0, 0, .22); font-size: clamp(13px, calc(var(--cs-size, 320px) * .025), 16px); font-weight: 650; line-height: 1.25; text-align: center; overflow-wrap: break-word; transform: translateY(-100%); transform-origin: var(--tail, 50%) 100%; animation: csSayIn .34s cubic-bezier(.34, 1.56, .64, 1) both; }
+.cs-say::after { content: ''; position: absolute; left: calc(var(--tail, 50%) - 6px); bottom: -5px; width: 12px; height: 12px; background: inherit; border-bottom-right-radius: 3px; transform: rotate(45deg); }
+.cs-say.is-b { background: #1d1f24; color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .34), 0 0 0 1px rgba(255, 255, 255, .14); }
+.cs-say.is-below { transform: none; transform-origin: var(--tail, 50%) 0; }
+.cs-say.is-below::after { bottom: auto; top: -5px; border-radius: 3px 0 0 0; }
+.cs-say.is-out { animation: csSayOut .2s ease-in both; }
+@keyframes csSayIn { from { opacity: 0; scale: .45; } 55% { opacity: 1; } to { opacity: 1; scale: 1; } }
+@keyframes csSayOut { to { opacity: 0; scale: .86; } }
+@media (prefers-reduced-motion: reduce) { .cs-say, .cs-say.is-out { animation: none; } }
 /* Кнопка «i» у переключателя и облачко с подробностями: хвостик смотрит на «i», открывается пружинкой. */
 .cs-toggle-row { position: relative; }
 .cs-info { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin: 0 0 0 7px; padding: 0 1px 0 0; border: 0; border-radius: 50%; background: var(--ui-track); color: var(--ui-muted); font: italic 700 13px/1 Georgia, 'Times New Roman', serif; vertical-align: 1px; -webkit-appearance: none; appearance: none; cursor: pointer; transition: transform var(--ui-press) var(--ui-ease), background-color .2s, color .2s; -webkit-tap-highlight-color: transparent; }

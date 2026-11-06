@@ -99,7 +99,7 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, autoFlip: false, action: true, review: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, talk: false, autoFlip: false, action: true, review: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
@@ -310,6 +310,7 @@
                         <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                         <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                     </div>
+                    <div class="cs-talk" data-ref="talk" aria-hidden="true"></div>
                 </div>
                 <div class="cs-player" data-ref="bottomPlayer"></div>
                 </div>
@@ -909,6 +910,109 @@
         ], { duration: settle, easing: 'cubic-bezier(.3,1.35,.55,1)' });
     }
 
+    /* ---------- говорящие фигуры ----------
+       После хода фигура говорит реплику в облачке над собой (кто и что — решает
+       chess-talk.js). Каждую реплику видно хотя бы секунду: если ходы идут
+       быстрее (бот отвечает сразу), следующая сценка ждёт, а из нескольких
+       ждущих остаётся самая важная. Ответ во втором облачке — только если
+       следующий ход его не перебил. */
+    const Talk = window.SparkChessTalk;
+    const SAY_MIN = 1000;
+    const talkView = { engine: null, gameId: null, current: null, pending: null, pendingTimer: 0, timers: [], token: 0, lastEnd: 0 };
+    const talkOn = () => !!Talk && !!settings.talk && !!game && game.mode !== 'puzzle';
+    const sayDuration = text => Math.max(1200, Math.min(2200, 1000 + 28 * text.length));
+    const sceneLength = scene => sayDuration(scene.lines[0].text) + (scene.lines[1] ? 120 + sayDuration(scene.lines[1].text) : 0);
+    /** Сколько ещё идёт сценка последнего хода — окно итогов партии ждёт, пока король договорит. */
+    const talkHold = () => (talkOn() && talkView.lastEnd ? Math.max(0, talkView.lastEnd - performance.now()) : 0);
+    function talkEngine() {
+        if (!talkView.engine || talkView.gameId !== game.id) {
+            talkView.engine = Talk.createTalk();
+            talkView.gameId = game.id;
+        }
+        return talkView.engine;
+    }
+    function talkAfterMove(move) {
+        if (!talkOn()) return;
+        let scene = null;
+        try { scene = talkEngine().onMove(game.chess, move, { lang: lang() }); } catch (_) { scene = null; }
+        if (!scene) return;
+        talkView.lastEnd = performance.now() + 240 + sceneLength(scene);
+        const id = game.id;
+        const go = () => { if (game?.id === id && game.view == null) queueScene(scene); };
+        if (cinema) afterCinema(go, 300); else setTimeout(go, 240);
+    }
+    function queueScene(scene) {
+        if (!talkOn()) return;
+        const shown = talkView.current ? performance.now() - talkView.current.at : Infinity;
+        if (shown < SAY_MIN) {
+            if (!talkView.pending || scene.prio >= talkView.pending.prio) talkView.pending = scene;
+            clearTimeout(talkView.pendingTimer);
+            talkView.pendingTimer = setTimeout(() => {
+                const next = talkView.pending;
+                talkView.pending = null;
+                if (next) queueScene(next);
+            }, SAY_MIN - shown + 20);
+            return;
+        }
+        playScene(scene);
+    }
+    function playScene(scene) {
+        clearTalk({ keepPending: true });
+        const token = talkView.token;
+        const [first, reply] = scene.lines;
+        const d0 = sayDuration(first.text);
+        talkView.current = { at: performance.now() };
+        showBubble(first, d0);
+        if (!reply) return;
+        talkView.timers.push(setTimeout(() => {
+            if (token !== talkView.token) return;
+            talkView.current = { at: performance.now() };
+            showBubble(reply, sayDuration(reply.text));
+        }, d0 + 120));
+    }
+    function showBubble(line, ms) {
+        const layer = refs.talk;
+        const sq = talkView.engine?.squareOf(line.id);
+        if (!layer || !view.size || !sq) return;
+        const el = document.createElement('div');
+        el.className = `cs-say ${line.color === 'w' ? 'is-w' : 'is-b'}`;
+        el.textContent = line.text;
+        const [x, y] = sqXY(sq);
+        const cell = view.size / 8;
+        const below = y === 0;   // верхний ряд — облачко под фигурой, чтобы не залезать на шапку
+        if (below) el.classList.add('is-below');
+        layer.appendChild(el);
+        const w = el.offsetWidth;
+        const margin = parseFloat(screen.style.getPropertyValue('--cs-margin')) || 9;
+        const cx = (x + 0.5) * cell;
+        const left = Math.max(4 - margin, Math.min(view.size + margin - 4 - w, cx - w / 2));
+        el.style.left = `${Math.round(left)}px`;
+        el.style.top = `${Math.round((below ? y + 0.92 : y + 0.1) * cell)}px`;
+        el.style.setProperty('--tail', `${Math.round(Math.max(14, Math.min(w - 14, cx - left)))}px`);
+        talkView.timers.push(setTimeout(() => hideBubble(el), ms));
+    }
+    function hideBubble(el) {
+        if (!el.isConnected || el.classList.contains('is-out')) return;
+        if (REDUCED_MOTION) { el.remove(); return; }
+        el.classList.add('is-out');
+        setTimeout(() => el.remove(), 200);
+    }
+    function clearTalk({ keepPending = false } = {}) {
+        talkView.token++;
+        talkView.timers.forEach(clearTimeout);
+        talkView.timers = [];
+        talkView.current = null;
+        if (!keepPending) { talkView.pending = null; talkView.lastEnd = 0; clearTimeout(talkView.pendingTimer); }
+        refs.talk?.querySelectorAll('.cs-say').forEach(hideBubble);
+    }
+    /** Только что включили — фигуры здороваются с игроком. */
+    function sayHello() {
+        if (!talkOn() || game.view != null) return;
+        let scene = null;
+        try { scene = talkEngine().hello(game.chess, view.orientation, { lang: lang() }); } catch (_) { scene = null; }
+        if (scene) queueScene(scene);
+    }
+
     function controls(color) {
         if (!game || game.over) return false;
         if (game.mode === 'puzzle') return color === game.myColor && !!game.puzzle && !game.puzzle.locked && !game.puzzle.done;
@@ -1055,6 +1159,7 @@
         playtime('note');
         game.hint = null;
         afterChange();
+        talkAfterMove(move);
         if (cinema) startCinema(cinema);
         if (game.mode === 'online' && byUser) {
             game.online.pending = true;
@@ -2231,6 +2336,7 @@
         const prev = game.view == null ? max : game.view;
         if (target === prev) return;
         clearSelection(false);
+        clearTalk();
         game.view = target === max ? null : target;
         clearAnnotations();
         const chess = viewChess();
@@ -2256,6 +2362,7 @@
     function setOrientation(color) {
         if (view.orientation === color) return;
         view.orientation = color;
+        clearTalk();
         buildSquares();
         for (const [sq, el] of view.els) slide(el, sq);
         renderMarks();
@@ -2268,6 +2375,7 @@
         if (mode !== 'puzzle') puzzleToken++;
         cancelCinema();
         cancelBot();
+        clearTalk();
         closeDialog(true);
         hideBanner();
         const chess = new Chess(startFen || undefined);
@@ -2324,6 +2432,7 @@
     function closeScreen() {
         cancelCinema();
         cancelBot();
+        clearTalk();
         hintToken++;
         analysisToken++;
         // Вспомогательные движки освобождают память: на iPhone WebView с
@@ -2369,7 +2478,7 @@
         }), 180);
         afterChange();
         tickClocks();
-        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), outcome.reason === 'checkmate' ? 900 : 450);
+        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), Math.max(outcome.reason === 'checkmate' ? 900 : 450, Math.min(4000, talkHold() + 150)));
     }
 
     /** 'win' | 'loss' | 'draw' | 'aborted' | 'white' | 'black' (вдвоём). */
@@ -2661,6 +2770,7 @@
     }
     function closeDialog(instant = false) {
         if (!refs.sheet) return;
+        if (ui.talkHello) { ui.talkHello = false; setTimeout(sayHello, 420); }
         ui.dialog = null;
         refs.sheet.classList.remove('show');
         refs.scrim.classList.remove('show');
@@ -2766,6 +2876,7 @@
     function showSettings() {
         const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
         if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', null, 'swingDragInfo']);
+        if (Talk) rows.push(['talk', 'talkingPieces', null, 'talkingPiecesInfo']);
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (game?.mode === 'local') rows.push(['autoFlip', 'autoFlip']);
         if (game?.mode === 'bot' || (game?.over && game.mode !== 'puzzle')) rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
@@ -2801,6 +2912,7 @@
                 if (key === 'wiggle') screen.classList.toggle('no-wiggle', !settings.wiggle);
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
+                if (key === 'talk') { if (settings.talk) ui.talkHello = true; else clearTalk(); }
                 if (key === 'review') {
                     if (!settings.review) engines.review?.stop();
                     scheduleReview();
@@ -2951,6 +3063,7 @@
         if (!game || game.over || game.mode === 'online' || !game.moves.length) return;
         cancelCinema();
         cancelBot();
+        clearTalk();
         let undo = 1;
         if (game.mode === 'bot' && game.chess.turn() === game.myColor && game.moves.length >= 2) undo = 2;
         if (game.mode === 'bot' && game.chess.turn() === game.myColor && game.moves.length === 1) undo = 1;
