@@ -8176,11 +8176,10 @@
             // ===== End tournament branch =====
 
             try {
-                // initData нужен только шахматному топу: по нему сервер узнаёт владельца и подписывает ботов,
-                // а если игрока нет в топе-50 — присылает его место отдельной строкой (me=1)
-                const isChessTop = String(category.id).startsWith('chess');
-                const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}${isChessTop ? '&me=1' : ''}`;
-                const lbHeaders = isChessTop && tg.initData ? { 'X-Init-Data': tg.initData } : {};
+                // По initData сервер узнаёт, кто смотрит: если игрока нет в топе-100, присылает его место
+                // отдельной последней строкой (me=1), а владельцу подписывает шахматных ботов.
+                const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}&me=1`;
+                const lbHeaders = tg.initData ? { 'X-Init-Data': tg.initData } : {};
                 const response = await fetch(url, { headers: lbHeaders }); const data = await response.json();
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id); let userVal = Number(userValRaw); let hasStats = true;
@@ -8203,7 +8202,7 @@
                     } catch(e) {}
                 }
                 let myRankRow = displayList.find(u => u.isMe);
-                // Шахматы: ты ниже топа-50 — сервер прислал твоё место (rank); показываем его в нижней плашке, не в списке.
+                // Ты ниже топа — сервер прислал твоё место (rank): показываем его в нижней плашке, не строкой списка.
                 const myOutside = myRankRow && myRankRow.rank > 0 ? myRankRow : null;
                 if (myOutside) displayList.splice(displayList.indexOf(myOutside), 1);
                 if (category.serverAuthoritative) {
@@ -8216,6 +8215,10 @@
                     const serverTime = Number(myRankRow?.score);
                     hasStats = Number.isFinite(serverTime) && serverTime > 0 && serverTime < 9999;
                     userVal = hasStats ? serverTime : 999999;
+                } else if (myOutside) {
+                    // сервер знает твой результат и место — они совпадают между собой, в отличие от локального счётчика
+                    userVal = Number(myOutside.score) || 0;
+                    hasStats = userVal > 0;
                 } else if (hasStats && !myRankRow) {
                     displayList.push({ user_id: user.id.toString(), username: tgName(user), photo_url: user.photo_url, score: userVal, isMe: true });
                     displayList.sort((a, b) => b.score - a.score);
