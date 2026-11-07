@@ -1,0 +1,170 @@
+/* Spark: «сочный» слой оформления в духе карточек знакомства (onboarding.css).
+   Насыщенные градиенты со светом, блик, пружинящие нажатия, появление волной,
+   анимированные эмодзи. Логику не трогает: только вид (assets/ui/juicy.js
+   расставляет классы и индексы). «Упрощённая графика» и reduced-motion
+   выключают всё бесконечное. */
+:root {
+    --jc-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --jc-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* ---------- цвета игр (светлый, средний, глубокий) ---------- */
+.jc-g-saper, #view-games .game-card--minesweeper { --g1: #63b4ff; --g2: #2463d8; --g3: #10235f; }
+.jc-g-checkers, #view-games .game-card--checkers { --g1: #aab1bd; --g2: #4d525c; --g3: #1a1b20; }
+.jc-g-chess, #view-games .game-card--chess { --g1: #b9c5da; --g2: #5b6987; --g3: #232a3d; }
+.jc-g-nardy, #view-games .game-card--nardy { --g1: #f5ab6c; --g2: #a9531b; --g3: #4a1f08; }
+.jc-g-bb, #view-games .game-card--block-blast { --g1: #55f2bd; --g2: #0fa07d; --g3: #093f5e; }
+.jc-g-sudoku, #view-games .game-card--sudoku { --g1: #d7a2ff; --g2: #8b33ff; --g3: #350b8f; }
+.jc-g-tower, #view-games .game-card--tower { --g1: #62f2a6; --g2: #10a66b; --g3: #0a426d; }
+.jc-g-wordle, #view-games .game-card--wordle { --g1: #55f1ff; --g2: #07a6bd; --g3: #094853; }
+.jc-g-monopoly, #view-games .game-card--monopoly { --g1: #ff8585; --g2: #d81c2c; --g3: #540914; }
+.jc-g-referral { --g1: #ffd36b; --g2: #ff9500; --g3: #9a3d00; }
+
+/* ---------- главная: карточки игр ---------- */
+#view-games .game-card[class*="game-card--"] {
+    background: radial-gradient(125% 160% at 0% 0%, var(--g1) 0%, var(--g2) 44%, var(--g3) 100%);
+    border-color: transparent;
+    box-shadow: 0 16px 30px -16px var(--g2), inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 0 0 1px rgba(255, 255, 255, .1);
+    transition: transform .42s var(--jc-spring), box-shadow .3s;
+}
+/* свет из-за иконки и глянец сверху */
+#view-games .game-card[class*="game-card--"]::after {
+    content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+    background:
+        radial-gradient(42% 95% at 13% 50%, rgba(255, 255, 255, .3), transparent 72%),
+        linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 44%);
+}
+/* блик пробегает по карточке, у каждой в своё время */
+#view-games .game-card[class*="game-card--"]::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; z-index: 0; pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .26) 50%, transparent);
+    transform: translateX(0) skewX(-14deg);
+    animation: jcCardShine 8s ease-in-out calc(var(--i, 0) * .65s + 1.4s) infinite;
+}
+@keyframes jcCardShine { 0% { transform: translateX(0) skewX(-14deg); } 16%, 100% { transform: translateX(380%) skewX(-14deg); } }
+#view-games .game-card[class*="game-card--"]:active { transform: scale(.965); }
+#view-games .game-card h3 { font-weight: 800; letter-spacing: -.3px; text-shadow: 0 2px 10px rgba(0, 0, 0, .35); }
+#view-games .game-icon-real img {
+    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .34));
+    transition: transform .5s var(--jc-spring);
+}
+#view-games .game-card:active .game-icon-real img { transform: scale(1.08) rotate(-6deg); }
+@media (hover: hover) and (pointer: fine) {
+    #view-games .game-card[class*="game-card--"]:hover { transform: translateY(-2px); box-shadow: 0 22px 36px -16px var(--g2), inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 0 0 1px rgba(255, 255, 255, .14); }
+    #view-games .game-card:hover .game-icon-real img { transform: scale(1.05) rotate(-4deg); }
+}
+/* «Играть»: стеклянная таблетка с треугольником */
+#view-games .jc-play {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 9px 15px 9px 12px; border-radius: 999px;
+    background: rgba(255, 255, 255, .2); border: 1px solid rgba(255, 255, 255, .34);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .42);
+    color: #fff !important; font-size: 15px; font-weight: 800 !important; letter-spacing: -.1px; line-height: 1;
+    transition: transform .4s var(--jc-spring), background-color .2s;
+}
+#view-games .jc-play svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
+#view-games .game-card:active .jc-play { transform: scale(.93); background: rgba(255, 255, 255, .3); }
+/* искорки у иконки */
+#view-games .game-card > .jc-spark, .jc-spark { position: absolute; z-index: 1; width: var(--s, 14px); height: var(--s, 14px); pointer-events: none; animation: jcTwinkle 2.8s ease-in-out var(--d, 0s) infinite; }
+.jc-spark svg { display: block; width: 100%; height: 100%; fill: #fff; filter: drop-shadow(0 0 5px rgba(255, 255, 255, .95)); }
+@keyframes jcTwinkle { 0%, 100% { opacity: .15; transform: scale(.5) rotate(0deg); } 50% { opacity: .95; transform: scale(1) rotate(45deg); } }
+
+/* ---------- экран «Топы» ---------- */
+#view-leaderboard .card[data-game] {
+    position: relative; overflow: hidden; isolation: isolate; padding: 14px 16px; min-height: 76px;
+    background: linear-gradient(100deg, color-mix(in srgb, var(--g2) 30%, transparent), transparent 64%), var(--glass-bg);
+    transition: transform .42s var(--jc-spring);
+}
+#view-leaderboard .card[data-game]::before {
+    content: ''; position: absolute; left: -6px; top: 50%; z-index: -1; width: 104px; height: 104px; border-radius: 50%;
+    background: var(--g1); opacity: .42; filter: blur(24px); transform: translateY(-50%);
+}
+#view-leaderboard .card[data-game]:active { transform: scale(.965); }
+#view-leaderboard .card[data-game] .game-icon-box { width: 52px; height: 52px; flex: 0 0 52px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .22)); transition: transform .5s var(--jc-spring); }
+#view-leaderboard .card[data-game]:active .game-icon-box { transform: scale(1.08) rotate(-6deg); }
+#view-leaderboard .card[data-game] h3 { font-weight: 800; letter-spacing: -.3px; }
+#view-leaderboard .jc-chev {
+    display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: color-mix(in srgb, var(--g2) 22%, rgba(120, 120, 128, .14)); color: var(--g2) !important;
+}
+[data-theme="dark"] #view-leaderboard .jc-chev { color: var(--g1) !important; }
+#view-leaderboard .jc-chev svg { width: 18px; height: 18px; }
+
+/* таблица топа: медали за 1–3 место и подсветка этих строк */
+.lb-item.rank-1 { background: linear-gradient(100deg, rgba(255, 196, 0, .2), transparent 62%), var(--glass-bg); }
+.lb-item.rank-2 { background: linear-gradient(100deg, rgba(170, 182, 200, .24), transparent 62%), var(--glass-bg); }
+.lb-item.rank-3 { background: linear-gradient(100deg, rgba(214, 128, 60, .2), transparent 62%), var(--glass-bg); }
+.lb-rank-badge.jc-medal {
+    width: 38px !important; height: 38px !important; margin: -8px 2px -8px -6px; padding: 0;
+    background: none !important; box-shadow: none !important; color: transparent !important; font-size: 0 !important; overflow: visible;
+}
+.lb-rank-badge.jc-medal svg { width: 100% !important; height: 100% !important; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .2)); }
+
+/* ---------- заголовки разделов: анимированный эмодзи рядом ---------- */
+.jc-title-emoji { display: inline-block; flex-shrink: 0; width: 36px; height: 36px; margin: -4px auto -4px 8px; pointer-events: none; }
+.jc-title-emoji svg { display: block; }
+
+/* ---------- профиль: переливающееся кольцо вокруг аватарки ---------- */
+@property --jc-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+#user-avatar.avatar {
+    border: 3.5px solid transparent; padding: 3px;
+    background:
+        linear-gradient(var(--bg-color, #f2f2f7), var(--bg-color, #f2f2f7)) padding-box,
+        conic-gradient(from var(--jc-a), #ff5f8f, #ffb347, #ffe259, #4be38f, #3aa6ff, #9b6bff, #ff5f8f) border-box;
+    box-shadow: 0 14px 34px -12px rgba(110, 80, 255, .55);
+    animation: jcRing 7s linear infinite;
+}
+@keyframes jcRing { to { --jc-a: 360deg; } }
+
+/* ---------- появление волной ---------- */
+.jc-enter > .card { animation: jcRise .56s var(--jc-out) calc(var(--i, 0) * 45ms) backwards; }
+.jc-enter > .card .game-icon-real img, .jc-enter > .card .game-icon-box { animation: jcPop .6s var(--jc-spring) calc(var(--i, 0) * 45ms + 90ms) backwards; }
+@keyframes jcRise { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+@keyframes jcPop { from { opacity: 0; transform: scale(.4) rotate(-10deg); } 70% { opacity: 1; } }
+
+/* ---------- нижняя панель: подсветка активной вкладки едет следом ---------- */
+.tab-bar .jc-tab-pill {
+    position: absolute; top: 7px; bottom: 7px; left: 0; z-index: 0; width: var(--w, 93px); border-radius: 28px;
+    transform: translateX(var(--x, 93px));
+    background: color-mix(in srgb, var(--accent, #007aff) 15%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #007aff) 18%, transparent);
+    transition: transform .55s var(--jc-spring), width .4s var(--jc-out);
+    pointer-events: none;
+}
+.tab-bar .tab-item { position: relative; z-index: 1; }
+.tab-item.jc-pop svg { animation: jcTabPop .5s var(--jc-spring); }
+@keyframes jcTabPop { 0% { transform: scale(.7) translateY(2px); } 60% { transform: scale(1.18) translateY(-2px); } 100% { transform: none; } }
+
+/* ---------- главные кнопки: свет сверху, тень, пружина, блик ---------- */
+.btn-main {
+    position: relative; overflow: hidden; isolation: isolate;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 58%);
+    box-shadow: 0 12px 24px -12px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .32);
+    font-weight: 750;
+    transition: transform .4s var(--jc-spring), filter .2s;
+}
+.btn-main::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -45%; width: 38%; z-index: -1; pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .34) 50%, transparent);
+    transform: skewX(-16deg);
+    animation: jcBtnShine 6.5s ease-in-out 1.2s infinite;
+}
+@keyframes jcBtnShine { 0% { transform: translateX(0) skewX(-16deg); } 18%, 100% { transform: translateX(420%) skewX(-16deg); } }
+.btn-main:active { transform: scale(.96); filter: brightness(1.07); }
+.btn-main:disabled, .btn-main[disabled] { box-shadow: none; }
+.btn-main:disabled::after, .btn-main[disabled]::after { display: none; }
+
+/* ---------- бережный режим ---------- */
+body.lite-mode #view-games .game-card[class*="game-card--"]::before,
+body.lite-mode .btn-main::after,
+body.lite-mode .jc-spark { animation: none; display: none; }
+body.lite-mode #user-avatar.avatar { animation: none; }
+body.lite-mode .jc-enter > .card, body.lite-mode .jc-enter > .card .game-icon-real img, body.lite-mode .jc-enter > .card .game-icon-box { animation: none; }
+body.lite-mode #view-games .jc-play { -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) {
+    #view-games .game-card[class*="game-card--"]::before, .btn-main::after, .jc-spark { animation: none; display: none; }
+    .jc-enter > .card, .jc-enter > .card .game-icon-real img, .jc-enter > .card .game-icon-box, .tab-item.jc-pop svg { animation: none; }
+    .tab-bar .jc-tab-pill { transition: none; }
+    #user-avatar.avatar { animation: none; }
+}
