@@ -1,0 +1,111 @@
+/* Spark: слой оформления «сочный, но спокойный» (assets/ui/juicy.js
+   расставляет классы). Яркие цвета игр со светом за иконкой, появление волной
+   с одним бликом, пружинящее нажатие, серая подсветка активной вкладки с
+   ровными отступами, медали за 1–3 место, эмодзи у заголовков. Без постоянных
+   переливов и без стекла. Логику приложения не трогает. */
+:root {
+    --jc-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --jc-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* ---------- цвета игр (светлый, средний, глубокий) ---------- */
+.jc-g-saper, #view-games .game-card--minesweeper { --g1: #63b4ff; --g2: #2463d8; --g3: #10235f; }
+.jc-g-checkers, #view-games .game-card--checkers { --g1: #aab1bd; --g2: #5b616c; --g3: #1a1b20; }
+.jc-g-chess, #view-games .game-card--chess { --g1: #b9c5da; --g2: #5b6987; --g3: #232a3d; }
+.jc-g-nardy, #view-games .game-card--nardy { --g1: #f5ab6c; --g2: #a9531b; --g3: #4a1f08; }
+.jc-g-bb, #view-games .game-card--block-blast { --g1: #55f2bd; --g2: #0f9a78; --g3: #093f5e; }
+.jc-g-sudoku, #view-games .game-card--sudoku { --g1: #d7a2ff; --g2: #8b33ff; --g3: #350b8f; }
+.jc-g-tower, #view-games .game-card--tower { --g1: #62f2a6; --g2: #10a06a; --g3: #0a426d; }
+.jc-g-wordle, #view-games .game-card--wordle { --g1: #55f1ff; --g2: #0799b0; --g3: #094853; }
+.jc-g-monopoly, #view-games .game-card--monopoly { --g1: #ff8585; --g2: #d81c2c; --g3: #540914; }
+.jc-g-referral { --g1: #ffd36b; --g2: #f28c00; --g3: #9a3d00; }
+
+/* ==================== общее ==================== */
+/* нажатие: карточка пружинит, иконка чуть поворачивается */
+#view-games .game-card, #view-leaderboard > .card { transition: transform .42s var(--jc-spring), box-shadow .3s; }
+#view-games .game-card:active, #view-leaderboard > .card:active { transform: scale(.965); }
+#view-games .game-icon-real img, #view-leaderboard .game-icon-box { transition: transform .5s var(--jc-spring); }
+#view-games .game-card:active .game-icon-real img, #view-leaderboard > .card:active .game-icon-box { transform: scale(1.08) rotate(-6deg); }
+@media (hover: hover) and (pointer: fine) {
+    #view-games .game-card:hover .game-icon-real img, #view-leaderboard > .card:hover .game-icon-box { transform: scale(1.05) rotate(-4deg); }
+}
+#view-games .game-card h3, #view-leaderboard > .card h3 { font-weight: 800; letter-spacing: -.3px; }
+
+/* «Играть»: сплошная таблетка с треугольником (без стекла) */
+#view-games .jc-play {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 9px 15px 9px 12px; border-radius: 999px;
+    font-size: 15px; font-weight: 800 !important; letter-spacing: -.1px; line-height: 1;
+    transition: transform .4s var(--jc-spring), filter .2s;
+}
+#view-games .jc-play svg { width: 12px; height: 12px; fill: currentColor; flex-shrink: 0; }
+#view-games .game-card:active .jc-play { transform: scale(.93); filter: brightness(.95); }
+
+/* стрелка в строке топа — в круге */
+#view-leaderboard .jc-chev { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+#view-leaderboard .jc-chev svg { width: 18px; height: 18px; }
+
+/* появление волной */
+.jc-enter > .card { animation: jcRise .56s var(--jc-out) calc(var(--i, 0) * 45ms) backwards; }
+.jc-enter > .card .game-icon-real img, .jc-enter > .card .game-icon-box { animation: jcPop .6s var(--jc-spring) calc(var(--i, 0) * 45ms + 90ms) backwards; }
+@keyframes jcRise { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+@keyframes jcPop { from { opacity: 0; transform: scale(.4) rotate(-10deg); } 70% { opacity: 1; } }
+
+/* нижняя панель: подсветка активной вкладки, одинаковый отступ со всех сторон */
+.tab-bar .jc-tab-pill {
+    position: absolute; top: 7px; bottom: 7px; left: 0; z-index: 0; width: var(--w, 79px); border-radius: 999px;
+    transform: translateX(var(--x, 100px));
+    transition: transform .55s var(--jc-spring), width .4s var(--jc-out);
+    background: rgba(120, 120, 128, .16);
+    pointer-events: none;
+}
+.tab-bar .tab-item { position: relative; z-index: 1; }
+.tab-item.jc-pop svg { animation: jcTabPop .5s var(--jc-spring); }
+@keyframes jcTabPop { 0% { transform: scale(.7) translateY(2px); } 60% { transform: scale(1.18) translateY(-2px); } 100% { transform: none; } }
+
+/* главные кнопки: пружинят при нажатии */
+.btn-main { transition: transform .4s var(--jc-spring), filter .2s; }
+.btn-main:active { transform: scale(.96); filter: brightness(1.07); }
+
+/* топ: медали за 1–3 место */
+.lb-rank-badge.jc-medal {
+    width: 38px !important; height: 38px !important; margin: -8px 2px -8px -6px; padding: 0;
+    background: none !important; box-shadow: none !important; color: transparent !important; font-size: 0 !important; overflow: visible;
+}
+.lb-rank-badge.jc-medal svg { width: 100% !important; height: 100% !important; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .2)); }
+
+/* эмодзи у заголовков разделов: играют один раз при входе */
+.jc-title-emoji { display: inline-block; flex-shrink: 0; width: 36px; height: 36px; margin: -4px auto -4px 8px; pointer-events: none; }
+.jc-title-emoji svg { display: block; }
+
+/* ==================== карточки и строки в цветах игр ====================
+   Блик пробегает один раз — когда карточка появляется. Таблетка «Играть»
+   белая, текст цвета игры. */
+#view-games .game-card[class*="game-card--"] {
+    background: radial-gradient(125% 160% at 0% 0%, color-mix(in srgb, var(--g1) 80%, var(--g2)) 0%, var(--g2) 45%, var(--g3) 100%);
+    border-color: transparent;
+    box-shadow: 0 14px 26px -16px var(--g2), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+#view-games .game-card[class*="game-card--"]::after {
+    content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+    background: radial-gradient(40% 90% at 13% 50%, rgba(255, 255, 255, .22), transparent 72%), linear-gradient(180deg, rgba(255, 255, 255, .12), transparent 44%);
+}
+.jc-enter > .game-card[class*="game-card--"]::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; z-index: 0; pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .24) 50%, transparent);
+    animation: jcShineOnce .9s ease-out calc(var(--i, 0) * 45ms + 250ms) both;
+}
+@keyframes jcShineOnce { from { transform: translateX(0) skewX(-14deg); } to { transform: translateX(380%) skewX(-14deg); } }
+/* сильнее старого «#view-games .game-card > div:last-child { color: белый !important }» */
+#view-games .game-card > div.jc-play:last-child, #view-games .game-card > .jc-play { background: #fff; color: var(--g3) !important; box-shadow: 0 8px 16px -8px rgba(0, 0, 0, .5); }
+#view-leaderboard .card[data-game] { background: linear-gradient(100deg, color-mix(in srgb, var(--g2) 18%, transparent), transparent 60%), var(--glass-bg); }
+#view-leaderboard .jc-chev { background: color-mix(in srgb, var(--g2) 18%, rgba(120, 120, 128, .12)); color: var(--g2); }
+html[data-theme="dark"] #view-leaderboard .jc-chev { color: var(--g1); }
+
+/* ---------- бережный режим ---------- */
+body.lite-mode .jc-enter > .card, body.lite-mode .jc-enter > .card .game-icon-real img, body.lite-mode .jc-enter > .card .game-icon-box,
+body.lite-mode .jc-enter > .game-card::before { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+    .jc-enter > .card, .jc-enter > .card .game-icon-real img, .jc-enter > .card .game-icon-box, .jc-enter > .game-card::before, .tab-item.jc-pop svg { animation: none; }
+    .tab-bar .jc-tab-pill { transition: none; }
+}
