@@ -15,7 +15,8 @@
 
     /* ---------- анимированные эмодзи ---------- */
     const anims = new WeakMap();
-    function emoji(box, name, { loop = false } = {}) {
+    /** still — номер кадра: эмодзи стоит картинкой, без анимации (корона на пьедестале). */
+    function emoji(box, name, { loop = false, still = null } = {}) {
         if (!box || !window.lottie?.loadAnimation) return null;
         let anim = anims.get(box);
         if (!anim) {
@@ -28,13 +29,18 @@
             } catch (_) { return null; }
             anims.set(box, anim);
             // без анимаций — сразу последний кадр, как картинка
-            anim.addEventListener('DOMLoaded', () => { if (lite() || REDUCED) anim.goToAndStop(anim.totalFrames - 1, true); else anim.goToAndPlay(0, true); });
+            anim.__still = still;
+            anim.addEventListener('DOMLoaded', () => {
+                if (still != null) anim.goToAndStop(still, true);
+                else if (lite() || REDUCED) anim.goToAndStop(anim.totalFrames - 1, true);
+                else anim.goToAndPlay(0, true);
+            });
         }
         return anim;
     }
     function replay(box) {
         const anim = anims.get(box);
-        if (!anim || lite() || REDUCED || !anim.isLoaded) return;
+        if (!anim || anim.__still != null || lite() || REDUCED || !anim.isLoaded) return;
         anim.goToAndPlay(0, true);
     }
 
@@ -127,23 +133,74 @@
             emoji(badge, `medal${place}`);
         });
     }
+    /* ---------- пьедестал: первая тройка топа над списком ---------- */
+    const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const hue = text => [...String(text)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+    function podium(list) {
+        const rows = [1, 2, 3].map(n => list.querySelector(`:scope > .lb-item.rank-${n}`));
+        let box = list.previousElementSibling?.classList.contains('jc-podium') ? list.previousElementSibling : null;
+        if (!rows[0]) { box?.remove(); list.classList.remove('jc-has-podium'); return; }
+        if (!box) { box = document.createElement('div'); box.className = 'jc-podium'; list.before(box); }
+        const place = (row, n) => {
+            if (!row) return `<div class="jc-pod jc-pod-${n}" aria-hidden="true"></div>`;
+            const img = row.querySelector('img.lb-avatar');
+            const name = (row.querySelector('.lb-name')?.childNodes[0]?.textContent || row.querySelector('.lb-name')?.textContent || '').trim();
+            const val = row.querySelector('.lb-val')?.textContent.trim() || '';
+            const me = /accent/.test(row.style.border || '');
+            const ava = img ? `<img src="${esc(img.src)}" alt="" referrerpolicy="no-referrer">` : `<span style="--h:${hue(name)}">${esc((name || '?').slice(0, 1).toUpperCase())}</span>`;
+            return `<button type="button" class="jc-pod jc-pod-${n}${me ? ' is-me' : ''}" data-place="${n}">`
+                + `<span class="jc-pod-ava">${ava}${n === 1 ? '<i class="jc-pod-crown" aria-hidden="true"></i>' : ''}</span>`
+                + `<b class="jc-pod-name">${esc(name)}</b><small class="jc-pod-val">${esc(val)}</small>`
+                + `<span class="jc-pod-bar"><em>${n}</em></span></button>`;
+        };
+        box.innerHTML = place(rows[1], 2) + place(rows[0], 1) + place(rows[2], 3);
+        list.classList.add('jc-has-podium');
+        emoji(box.querySelector('.jc-pod-crown'), 'crown', { still: 0 });   // кадр 0 — корона стоит ровно
+        box.querySelectorAll('[data-place]').forEach(btn => { btn.onclick = () => rows[Number(btn.dataset.place) - 1]?.click(); });
+    }
     function watchLists() {
         const list = document.getElementById('lbList');
         if (!list || list.__jcWatch) return;
         list.__jcWatch = true;
         let queued = false;
+        const update = () => { queued = false; medals(list); podium(list); };
         new MutationObserver(() => {
             if (queued) return;
             queued = true;
-            requestAnimationFrame(() => { queued = false; medals(list); });
+            requestAnimationFrame(update);
         }).observe(list, { childList: true });
-        medals(list);
+        update();
+    }
+
+    /* ---------- шторки игр: иконка и цвет игры ---------- */
+    const SHEETS = { modalSaper: ['saper', 'minesweeper'], modalCheckers: ['checkers', 'checkers'], modalChess: ['chess', 'chess'], modalNardy: ['nardy', 'nardy'], modalSudoku: ['sudoku', 'sudoku'] };
+    function decorateSheet(sheet) {
+        const conf = SHEETS[sheet.id];
+        const heading = sheet.querySelector('.ui-mode-panel > .ui-sheet-heading');
+        if (!conf || !heading || heading.querySelector('.jc-sheet-icon')) return;
+        sheet.classList.add('jc-sheet', `jc-g-${conf[0]}`);
+        const icon = document.createElement('img');
+        icon.className = 'jc-sheet-icon';
+        icon.alt = '';
+        icon.src = new URL(`../game-icons/${conf[1]}.png`, BASE).href;
+        heading.prepend(icon);
+    }
+    function watchSheets() {
+        Object.keys(SHEETS).forEach(id => {
+            const sheet = document.getElementById(id);
+            if (!sheet || sheet.__jcWatch) return;
+            sheet.__jcWatch = true;
+            decorateSheet(sheet);
+            // шторка шахмат строится при первом открытии
+            new MutationObserver(() => { if (sheet.classList.contains('visible')) decorateSheet(sheet); }).observe(sheet, { attributes: true, attributeFilter: ['class'] });
+        });
     }
 
     function init() {
         decorate();
         hookTabs();
         watchLists();
+        watchSheets();
         const active = document.querySelector('.tab-item.active');
         requestAnimationFrame(() => {
             movePill(active);
@@ -153,7 +210,7 @@
         });
         window.addEventListener('resize', () => movePill(document.querySelector('.tab-item.active')));
     }
-    window.SparkJuicy = { init, decorate, medals, emoji };
+    window.SparkJuicy = { init, decorate, medals, emoji, podium };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
 })();

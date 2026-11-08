@@ -109,3 +109,50 @@ body.lite-mode .jc-enter > .game-card::before { animation: none; }
     .jc-enter > .card, .jc-enter > .card .game-icon-real img, .jc-enter > .card .game-icon-box, .jc-enter > .game-card::before, .tab-item.jc-pop svg { animation: none; }
     .tab-bar .jc-tab-pill { transition: none; }
 }
+
+/* ==================== волна 2 (макеты для выбора) ==================== */
+/* ---------- пьедестал: первая тройка топа ---------- */
+.jc-podium { position: relative; display: grid; grid-template-columns: 1fr 1.18fr 1fr; align-items: end; gap: 10px; margin: 4px 0 14px; padding: 40px 4px 0; isolation: isolate; }
+.jc-podium::before { content: ''; position: absolute; left: 22%; right: 22%; top: 8%; height: 70%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 200, 40, .32), transparent); filter: blur(10px); }
+.jc-pod { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; animation: jcRise .6s var(--jc-out) backwards; transition: transform .4s var(--jc-spring); }
+.jc-pod:active { transform: scale(.95); }
+.jc-pod-2 { animation-delay: .05s; } .jc-pod-1 { animation-delay: .14s; } .jc-pod-3 { animation-delay: .1s; }
+.jc-pod-ava { position: relative; display: grid; place-items: center; width: 58px; height: 58px; flex-shrink: 0; }
+.jc-pod-ava > img, .jc-pod-ava > span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; color: #fff; font-size: 24px; font-weight: 800; background: linear-gradient(160deg, hsl(var(--h, 210) 80% 62%), hsl(var(--h, 210) 70% 42%)); animation: jcPop .6s var(--jc-spring) backwards; animation-delay: inherit; }
+.jc-pod-1 .jc-pod-ava { width: 78px; height: 78px; }
+.jc-pod-1 .jc-pod-ava > :is(img, span) { box-shadow: 0 0 0 4px #ffd23f, 0 12px 26px -8px rgba(255, 170, 0, .6); }
+.jc-pod-2 .jc-pod-ava > :is(img, span) { box-shadow: 0 0 0 3.5px #dfe5ee, 0 10px 20px -8px rgba(80, 100, 130, .5); }
+.jc-pod-3 .jc-pod-ava > :is(img, span) { box-shadow: 0 0 0 3.5px #f0b27a, 0 10px 20px -8px rgba(160, 80, 20, .5); }
+.jc-pod-crown { position: absolute; left: 50%; top: -31px; width: 44px; height: 44px; margin-left: -22px; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(120, 60, 0, .3)); }
+.jc-pod-name { max-width: 100%; margin-top: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
+.jc-pod-val { margin-top: 1px; font-size: 12.5px; font-weight: 650; color: var(--ui-muted, #8e8e93); font-variant-numeric: tabular-nums; }
+.jc-pod.is-me .jc-pod-name { color: var(--accent, #007aff); }
+.jc-pod-bar { display: flex; justify-content: center; width: 100%; margin-top: 8px; border-radius: 16px 16px 6px 6px; transform-origin: 50% 100%; animation: jcBarRise .7s var(--jc-out) backwards; animation-delay: inherit; }
+.jc-pod-bar em { margin-top: 8px; font-style: normal; font-size: 30px; font-weight: 900; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15), 0 4px 12px rgba(90, 30, 0, .35); }
+.jc-pod-1 .jc-pod-bar { height: 92px; background: linear-gradient(180deg, #fff1a8, #ffd21f 40%, #f5a300); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .7), 0 12px 26px -12px rgba(255, 180, 0, .75); }
+.jc-pod-2 .jc-pod-bar { height: 70px; background: linear-gradient(180deg, #f2f5f9, #c6cfdb 45%, #909db1); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .7); }
+.jc-pod-3 .jc-pod-bar { height: 56px; background: linear-gradient(180deg, #ffd6ad, #e08a45 45%, #a8531a); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .55); }
+@keyframes jcBarRise { from { transform: scaleY(0); } }
+.jc-has-podium > .lb-item.rank-1, .jc-has-podium > .lb-item.rank-2, .jc-has-podium > .lb-item.rank-3 { display: none; }
+
+/* ---------- шторки игр: иконка и цвет игры ---------- */
+.jc-sheet .ui-sheet-heading { justify-content: flex-start; }
+.jc-sheet .ui-sheet-heading h2 { flex: 1; min-width: 0; }
+.jc-sheet-icon { width: 46px; height: 46px; flex-shrink: 0; margin-right: 2px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .25)); animation: jcPop .55s var(--jc-spring) .08s backwards; }
+/* выбор и кнопка — в цвете игры; у «серых» игр (шашки, шахматы) — синие, иначе выглядят неактивными */
+.jc-sheet { --jc-act: var(--g2); }
+.jc-sheet.jc-g-checkers, .jc-sheet.jc-g-chess { --jc-act: var(--accent, #007aff); }
+.jc-sheet .segment-glider { background: var(--jc-act) !important; }
+.jc-sheet .btn-main { background-color: var(--jc-act); box-shadow: 0 12px 22px -12px var(--jc-act); }
+/* мягкий отсвет цвета игры сверху: эллипс плавно растворяется в цвет шторки,
+   без полосы под шапкой; шапка прозрачная, фон получает только когда содержимое прокручено */
+.jc-sheet > .ui-mode-panel {
+    background-image: radial-gradient(130% 260px at 50% -40px,
+        color-mix(in srgb, var(--g2) 26%, transparent) 0%,
+        color-mix(in srgb, var(--g2) 15%, transparent) 38%,
+        color-mix(in srgb, var(--g2) 6%, transparent) 68%,
+        transparent 100%);
+    background-repeat: no-repeat;
+}
+.jc-sheet > .ui-mode-panel > .ui-sheet-heading { background: transparent; box-shadow: none; transition: background-color .2s, box-shadow .2s; }
+.jc-sheet > .ui-mode-panel > .ui-sheet-heading.is-scrolled { background: color-mix(in srgb, var(--g2) 14%, var(--ui-sheet)); box-shadow: 0 1px 0 0 var(--ui-border); }
