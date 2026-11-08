@@ -35,6 +35,26 @@
                 if (['ios', 'android', 'android_x'].indexOf(miniApp.platform) !== -1
                     && miniApp.requestFullscreen) miniApp.requestFullscreen();
             } catch (e) {}
+            /* Только вертикально. Telegram 8.0+ закрепляет текущую ориентацию; на
+               старых клиентах в горизонтальном виде видна плашка «поверни телефон».
+               Если телефон всё-таки повернули и вернули — снова просим полный экран
+               и пересчитываем раскладку, иначе отступы остаются от горизонтального вида. */
+            var mobile = ['ios', 'android', 'android_x'].indexOf(miniApp.platform) !== -1;
+            try {
+                if (mobile && miniApp.lockOrientation && (!miniApp.isVersionAtLeast || miniApp.isVersionAtLeast('8.0'))
+                    && window.innerHeight >= window.innerWidth) miniApp.lockOrientation();
+            } catch (e) {}
+            if (mobile && window.matchMedia) {
+                var portrait = window.matchMedia('(orientation: portrait)');
+                var back = function () {
+                    if (!portrait.matches) return;
+                    try { if (miniApp.requestFullscreen && !miniApp.isFullscreen) miniApp.requestFullscreen(); } catch (e) {}
+                    try { miniApp.expand(); } catch (e) {}
+                    setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 350);
+                };
+                if (portrait.addEventListener) portrait.addEventListener('change', back);
+                else if (portrait.addListener) portrait.addListener(back);
+            }
         })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -207,6 +227,15 @@
         @media (prefers-reduced-motion: reduce) {
             .app-loader { display: none; }
         }
+        /* Игры рассчитаны на вертикальный экран: в горизонтальном — просьба повернуть телефон */
+        .rotate-hint { display: none; }
+        @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+            .rotate-hint { position: fixed; inset: 0; z-index: 2147483645; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; background: var(--bg-color, #000); color: var(--text-color, #fff); font-family: inherit; text-align: center; }
+            .rotate-hint i { display: grid; width: 64px; height: 64px; color: var(--accent, #007aff); animation: rotateHint 1.6s cubic-bezier(.34, 1.56, .64, 1) .2s 3 both; }
+            .rotate-hint svg { width: 100%; height: 100%; }
+            .rotate-hint b { font-size: 19px; font-weight: 800; }
+        }
+        @keyframes rotateHint { 0%, 15% { transform: rotate(-90deg); } 55%, 100% { transform: rotate(0); } }
         
         /* Background Pattern */
         #bgPattern {
@@ -3564,13 +3593,15 @@
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
     <script src="assets/ui/sheets.js?v=2026110803" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
-    <link rel="stylesheet" href="assets/ui/juicy.css?v=2026110803">
-    <script src="assets/ui/juicy.js?v=2026110803" defer></script>
+    <link rel="stylesheet" href="assets/ui/juicy.css?v=2026110804">
+    <link rel="stylesheet" href="assets/ui/guide.css?v=2026110804">
+    <script src="assets/ui/juicy.js?v=2026110804" defer></script>
     <script src="assets/ui/streak-core.js?v=2026110803" defer></script>
     <script src="assets/ui/streak.js?v=2026110803" defer></script>
     <script src="assets/ui/toast.js?v=2026110803" defer></script>
     <script src="assets/ui/result.js?v=2026110803" defer></script>
     <script src="assets/ui/share-card.js?v=2026110803" defer></script>
+    <script src="assets/ui/guide.js?v=2026110804" defer></script>
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
     <script src="assets/block-blast/hand.js?v=20261025"></script>
@@ -3660,6 +3691,7 @@
             else video.addEventListener('canplay', requestPlayback, { once: true });
         })();
     </script>
+    <div class="rotate-hint" id="rotateHint" aria-live="polite"><i aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="5" width="20" height="38" rx="5"/><path d="M22 37h4"/></svg></i><b>Поверни телефон вертикально</b></div>
     <div id="bgPattern"></div>
     
     <div id="view-leaderboard" class="screen">
@@ -6550,7 +6582,7 @@
         function joinChessInvite(code) {
             loadChessApp().then(chess => chess.joinInvite(code)).catch(() => showToast(t('networkError'), 'error'));
         }
-        const NARDY_VERSION = '20261031';
+        const NARDY_VERSION = '20261109';
         let nardyLoading = null;
         const loadNardyFiles = () => loadGameModuleFiles('nardy', 'assets/nardy/', NARDY_VERSION, 'nardy.css',
             ['nardy-core.js', 'nardy-i18n.js', 'nardy-app.js']);
@@ -8458,8 +8490,8 @@
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;sUsedFlag=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
-        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);const key=`saper_best_${sCols}`;Promise.resolve(sSessionReady).then(()=>reportTitleGameEvent('saper_loss',{mode:sCols},activeSessionTokens[key]||''));showResult(t('boom'),t('badLuck'), t('playAgain'), () => { closeResult(); initSaper(); }, { game:'saper', kind:'boom', view:{ screen:'saper-screen', again:()=>initSaper() }, link:{ text:t('menu'), onClick:()=>{ closeResult(); closeGame('saper'); } } });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true,achievementContext:{used_flag:sUsedFlag}});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken,sUsedFlag);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;const isBest=timeSaved&&Math.abs(serverBest-finishedTime)<0.0005;showResult(isBest?t('newRecord'):t('victory'),saveStatus,t('playAgain'),()=>{closeResult();initSaper();},{ game:'saper', kind:isBest?'record':'win', value:finishedTime, format:'time', unit:t('sec'), secondary: isBest&&window.SparkShare ? { html:SparkShare.buttonHtml(), onClick:()=>SparkShare.record({ game:'saper', category:key }) } : null, view:{ screen:'saper-screen', again:()=>initSaper() }, link:{ text:t('menu'), onClick:()=>{closeResult();closeGame('saper');} } });} }
+        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(!sFirst&&sStartTime){sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);document.getElementById('saperTimer').innerText=sTimer.toFixed(3);}if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);const key=`saper_best_${sCols}`;Promise.resolve(sSessionReady).then(()=>reportTitleGameEvent('saper_loss',{mode:sCols},activeSessionTokens[key]||''));showResult(t('boom'),t('badLuck'), t('playAgain'), () => { closeResult(); initSaper(); }, { game:'saper', kind:'boom', view:{ screen:'saper-screen', again:()=>initSaper() }, link:{ text:t('menu'), onClick:()=>{ closeResult(); closeGame('saper'); } } });}
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);document.getElementById('saperTimer').innerText=sTimer.toFixed(3);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true,achievementContext:{used_flag:sUsedFlag}});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken,sUsedFlag);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;const isBest=timeSaved&&Math.abs(serverBest-finishedTime)<0.0005;showResult(isBest?t('newRecord'):t('victory'),saveStatus,t('playAgain'),()=>{closeResult();initSaper();},{ game:'saper', kind:isBest?'record':'win', value:finishedTime, format:'time', unit:t('sec'), secondary: isBest&&window.SparkShare ? { html:SparkShare.buttonHtml(), onClick:()=>SparkShare.record({ game:'saper', category:key }) } : null, view:{ screen:'saper-screen', again:()=>initSaper() }, link:{ text:t('menu'), onClick:()=>{closeResult();closeGame('saper');} } });} }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
@@ -8902,11 +8934,11 @@
             }
             if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText'),btn=document.getElementById('resBtn');m.dataset.game='checkers';
             if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText=t('victory');txt.innerText=t('youWon');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText=t('defeat');txt.innerText=t('noMovesOrPieces'); } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText=t('victory');txt.innerText=`${t('robotDefeated')} · +${{easy:1,medium:2,hard:3}[checkersDifficulty]||2}`;confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText=t('defeat');txt.innerText=t('robotWon'); } } else{ tit.innerText=w==='white'?t('whiteWon'):t('blackWon');txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
-            // единый экран итога: «Ещё раз» (с ботом и вдвоём), «Посмотреть доску», «Меню» — в меню сразу не выкидывает
+            // единый экран итога: «Ещё раз» (с ботом и вдвоём) и «Меню» — в меню сразу не выкидывает
             const ckAgain = isOnlineGame ? null : () => { closeResult(); initCheckers(); };
             const ckMenu = { text: t('menu'), onClick: () => { closeResult(); closeGame('checkers'); } };
             SparkResult.render(m, { game: 'checkers', kind: SparkResult.guessKind(tit.innerText), title: tit.innerText, text: txt.innerText, rematch: true,
-                primary: ckAgain ? { text: t('playAgain'), onClick: ckAgain } : ckMenu, view: { screen: 'checkers-screen', again: ckAgain }, link: ckAgain ? ckMenu : null });
+                primary: ckAgain ? { text: t('playAgain'), onClick: ckAgain } : ckMenu, link: ckAgain ? ckMenu : null });
             setTimeout(()=>{ document.getElementById('modalResult').classList.add('visible'); if (isOnlineGame) showRematchButton(); },500);
         }
         function aiMove(){
@@ -10325,7 +10357,6 @@
                     extraHtml: multHtml + ctaHtml,
                     primary: { text: t('playAgain'), onClick: () => { closeResult(); newGameBB(); } },
                     secondary: window.SparkShare && !isTournament ? { html: SparkShare.buttonHtml(), onClick: () => SparkShare.record({ game: 'bb', category: 'bb_best_score' }) } : null,
-                    view: { screen: 'bb-screen', again: () => { closeResult(); newGameBB(); } },
                     link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
                 });
 
@@ -10376,7 +10407,6 @@
                     stats: [[t('best'), BBVisuals.formatNumber(oldBest)]],
                     extraHtml: multHtml + ctaHtml,
                     primary: { text: t('newGame'), onClick: () => { closeResult(); newGameBB(); } },
-                    view: { screen: 'bb-screen', again: () => { closeResult(); newGameBB(); } },
                     link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
                 });
 
@@ -11006,7 +11036,6 @@
                     stats: [[t('cleanSeries'), combo]],
                     primary: { text: t('playAgain'), onClick: () => twRestartGame() },
                     secondary: window.SparkShare ? { html: SparkShare.buttonHtml(), onClick: () => SparkShare.record({ game: 'tower', category: 'tower_best' }) } : null,
-                    view: { screen: 'tower-screen', again: () => twRestartGame() },
                     link: towerExit,
                 });
                 confetti({ particleCount: 100, spread: 70, origin: { x: 0, y: 0.6 }, angle: 60, shapes: ['circle'], drift: 1, zIndex: 23000 });
@@ -11017,7 +11046,6 @@
                     stats: [[t('best'), twBestScore], [t('cleanSeries'), combo]],
                     badge: isComboRecord ? t('newRecord') : '',
                     primary: { text: t('tryAgainBtn'), onClick: () => twRestartGame() },
-                    view: { screen: 'tower-screen', again: () => twRestartGame() },
                     link: towerExit,
                 });
             }
@@ -12778,13 +12806,13 @@
                 SparkResult.render(content, {
                     game: 'wordle', kind: 'win', title: t('victory'), text: `${t('guessedIn')} ${n} ${attemptsText}`,
                     stats: [[t('totalWins'), String(wordleWins)]],
-                    primary: wordleAgain, link: wordleExit, view: { screen: 'wordle-screen', again: () => { closeWordleModal(); initWordle(); } },
+                    primary: wordleAgain, link: wordleExit,
                 });
             } else {
                 SparkResult.render(content, {
                     game: 'wordle', kind: 'lose', title: t('notGuessed'), text: t('theWord'),
                     extraHtml: `<div class="sr-word">${String(wordleTarget || '').replace(/[^\p{L}]/gu, '')}</div>`,
-                    primary: wordleAgain, link: wordleExit, view: { screen: 'wordle-screen', again: () => { closeWordleModal(); initWordle(); } },
+                    primary: wordleAgain, link: wordleExit,
                 });
             }
             document.getElementById('modalWordleGameOver').classList.add('visible');

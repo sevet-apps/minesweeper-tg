@@ -138,8 +138,8 @@ body.lite-mode .jc-enter > .game-card::before { animation: none; }
 .jc-sheet .ui-sheet-heading h2 { flex: 1; min-width: 0; }
 .jc-sheet-icon { width: 46px; height: 46px; flex-shrink: 0; margin-right: 2px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .25)); animation: jcPop .55s var(--jc-spring) .08s backwards; }
 /* выбор и кнопка — в цвете игры; у «серых» игр (шашки, шахматы) — синие, иначе выглядят неактивными */
-.jc-sheet { --jc-act: var(--g2); }
-.jc-sheet.jc-g-checkers, .jc-sheet.jc-g-chess { --jc-act: var(--accent, #007aff); }
+/* кнопки и выбор — системного голубого цвета во всех играх (просьба владельца); цвет игры остаётся в отсвете */
+.jc-sheet { --jc-act: var(--accent, #007aff); }
 .jc-sheet .segment-glider { background: var(--jc-act) !important; }
 .jc-sheet .btn-main { background-color: var(--jc-act); box-shadow: 0 12px 22px -12px var(--jc-act); }
 /* мягкий отсвет цвета игры сверху: эллипс плавно растворяется в цвет шторки,
@@ -233,8 +233,7 @@ html[data-theme="dark"] .sp-toast { background: #2c2c2e; }
 .sp-toast-text { min-width: 0; padding: 4px 0; }
 
 /* ---------- единый экран итога ---------- */
-.modal.sr { --sr-c: var(--g2, var(--ui-accent, #007aff)); --sr-btn: var(--g2, var(--ui-accent, #007aff)); position: relative; isolation: isolate; max-width: 340px; padding: 20px 20px 16px; border-radius: 30px; overflow-x: hidden; }
-.modal.sr.jc-g-checkers, .modal.sr.jc-g-chess { --sr-btn: var(--ui-accent, #007aff); }
+.modal.sr { --sr-c: var(--g2, var(--ui-accent, #007aff)); --sr-btn: var(--accent, #007aff); position: relative; isolation: isolate; max-width: 340px; padding: 20px 20px 16px; border-radius: 30px; overflow-x: hidden; }
 .modal.sr[data-kind="record"], .modal.sr[data-kind="win"] { --sr-c: #ffb300; }
 .modal.sr[data-kind="lose"], .modal.sr[data-kind="boom"] { --sr-c: #8e8e93; }
 .modal.sr::before { content: ""; position: absolute; left: -25%; right: -25%; top: -150px; height: 300px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, color-mix(in srgb, var(--sr-c) 30%, transparent), transparent); }
@@ -300,13 +299,12 @@ body.lite-mode .st-fire.is-tap, body.lite-mode .st-fire.is-bump, body.lite-mode 
 /* ---------- итог: «Посмотреть поле» и плашка на поле ---------- */
 .sr-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 20px; }
 .sr-dock {
-    --sr-btn: var(--g2, var(--ui-accent, #007aff));
+    --sr-btn: var(--accent, #007aff);
     position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; gap: 8px; padding: 6px;
     border-radius: 999px; background: var(--ui-sheet, #fff); box-shadow: 0 16px 34px -14px rgba(0, 0, 0, .55), 0 0 0 1px var(--ui-border, rgba(0, 0, 0, .06));
     opacity: 0; transform: translate(-50%, 28px) scale(.9); transition: transform .5s var(--jc-spring), opacity .2s;
 }
 html[data-theme="dark"] .sr-dock { background: #2c2c2e; }
-.sr-dock.jc-g-checkers, .sr-dock.jc-g-chess { --sr-btn: var(--ui-accent, #007aff); }
 .sr-dock.is-in { opacity: 1; transform: translate(-50%, 0) scale(1); }
 .sr-dock button { display: flex; align-items: center; gap: 7px; height: 46px; padding: 0 18px; border: 0; border-radius: 999px; font: inherit; font-size: 15.5px; font-weight: 800; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .4s var(--jc-spring); }
 .sr-dock button:active { transform: scale(.94); }

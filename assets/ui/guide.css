@@ -1,0 +1,153 @@
+/* Гайды по играм (assets/ui/guide.js): шторка как в знакомстве, сверху живая
+   сцена в цветах игры, палец с касаниями и «камера» с плавным приближением. */
+.gd-overlay { position: fixed; inset: 0; z-index: 30500; display: flex; align-items: flex-end; justify-content: center; touch-action: pan-y; }
+.gd-overlay::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .58); opacity: 0; transition: opacity .35s ease; }
+.gd-overlay.show::before { opacity: 1; }
+.gd-sheet {
+    --gd-w: min(100vw, 480px);
+    --gd-art: max(220px, min(calc(var(--gd-w) - 32px), 52vh, calc(100vh - 320px)));
+    position: relative; box-sizing: border-box; width: var(--gd-w); max-height: 100%; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+    padding: 16px 16px calc(16px + max(var(--safe-bottom, 0px), env(safe-area-inset-bottom, 0px)));
+    border-radius: 30px 30px 0 0; background: var(--ui-sheet, #1c1c1e); color: var(--ui-text, #fff);
+    box-shadow: 0 -20px 60px rgba(0, 0, 0, .35);
+    transform: translate3d(0, 105%, 0); transition: transform .5s cubic-bezier(.16, 1, .3, 1);
+}
+.gd-overlay.show .gd-sheet { transform: none; }
+.gd-close { position: absolute; right: 26px; top: 26px; z-index: 6; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .3); color: #fff; cursor: pointer; }
+.gd-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.gd-viewport { overflow: hidden; margin: 0 -16px; }
+.gd-track { display: flex; transition: transform .5s cubic-bezier(.22, 1, .36, 1); will-change: transform; }
+.gd-card { flex: 0 0 100%; box-sizing: border-box; padding: 0 16px; text-align: center; }
+.gd-title { margin: 18px 0 0; font-size: clamp(23px, 6.6vw, 27px); line-height: 1.15; font-weight: 850; letter-spacing: -.5px; }
+.gd-text { margin: 9px auto 0; max-width: 400px; min-height: 4.1em; font-size: clamp(15.5px, 4.3vw, 17px); line-height: 1.38; font-weight: 500; color: var(--ui-muted, #8e8e93); }
+.gd-dots { display: flex; justify-content: center; gap: 7px; margin: 14px 0; }
+.gd-dots i { width: 8px; height: 8px; border-radius: 4px; background: var(--ui-border, rgba(128, 128, 128, .35)); transition: width .35s cubic-bezier(.22, 1, .36, 1), background-color .35s; }
+.gd-dots i.on { width: 26px; background: var(--accent, #007aff); }
+/* «Дальше» наполняется, пока читаешь — как в знакомстве */
+.gd-next { position: relative; display: block; width: 100%; height: 56px; overflow: hidden; margin: 0; padding: 0; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--accent, #007aff) 32%, transparent); color: #fff; font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .4s cubic-bezier(.34, 1.56, .64, 1); }
+.gd-next:active { transform: scale(.97); }
+.gd-fill { position: absolute; inset: 0; border-radius: inherit; background: var(--accent, #007aff); transform: scaleX(0); transform-origin: 0 50%; }
+.gd-next.is-filling .gd-fill { animation: gdFill 2s linear forwards; }
+.gd-next.is-ready .gd-fill { transform: none; }
+.gd-next-text { position: relative; }
+@keyframes gdFill { to { transform: scaleX(1); } }
+
+/* ---------- сцена ---------- */
+.gd-art {
+    position: relative; overflow: hidden; height: var(--gd-art); border-radius: 26px; color: #fff; isolation: isolate;
+    background: radial-gradient(130% 100% at 50% 0%, var(--g1, #63b4ff) 0%, var(--g2, #2463d8) 45%, var(--g3, #10235f) 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 14px 34px rgba(0, 0, 0, .22);
+}
+.gd-art::after { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(70% 45% at 50% 0%, rgba(255, 255, 255, .32), transparent 70%); pointer-events: none; }
+.gd-glow { position: absolute; z-index: -1; left: 50%; top: 60%; width: 80%; height: 55%; border-radius: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, .22); filter: blur(40px); }
+.gd-label { position: absolute; left: 0; right: 0; top: 6%; z-index: 3; padding: 0 56px; font-size: clamp(26px, 8.4vw, 38px); line-height: 1.05; font-weight: 900; letter-spacing: -1px; white-space: nowrap; text-shadow: 0 4px 18px rgba(0, 0, 0, .25); pointer-events: none; }
+.gd-card.is-active .gd-label { animation: gdLabelIn .6s cubic-bezier(.22, 1, .36, 1) both; }
+.gd-label { transition: opacity .35s, translate .45s cubic-bezier(.22, 1, .36, 1); }
+.gd-art.is-zoomed .gd-label { opacity: 0; translate: 0 -12px; }
+@keyframes gdLabelIn { from { opacity: 0; transform: translateY(12px) scale(.96); } }
+.gd-cam { position: absolute; inset: 0; transition-property: transform; transition-timing-function: cubic-bezier(.65, 0, .35, 1); }
+.gd-stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15% 14px 4%; box-sizing: border-box; }
+
+/* Касание — «обруч» из матового стекла (по образцу владельца, 60 к/с, ×1,2):
+   рождается средним и бледным → за ~70 мс дорастает до большого → целится →
+   за ~50 мс резко сжимается вокруг кнопки (нажатие) → держится → тает,
+   расширяясь. Ободок постоянной толщины, меняется только диаметр. Размер на
+   экране всегда один: обруч живёт поверх сцены, камера его не увеличивает. */
+@property --gd-d { syntax: "<length>"; inherits: false; initial-value: 60px; }
+@property --gd-p { syntax: "<number>"; inherits: false; initial-value: 0; }
+.gd-touch {
+    --band: 13px;
+    position: absolute; z-index: 8; width: var(--gd-d); height: var(--gd-d); margin: calc(var(--gd-d) / -2) 0 0 calc(var(--gd-d) / -2);
+    border-radius: 50%; pointer-events: none; opacity: 0;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, .24), rgba(140, 170, 235, .1)),
+        radial-gradient(circle closest-side, transparent calc(100% - var(--band)), rgba(238, 243, 255, .62) calc(100% - var(--band) + 1.5px), rgba(205, 218, 248, .5) calc(100% - 2px), rgba(205, 218, 248, 0) 100%);
+    -webkit-backdrop-filter: blur(5px) saturate(1.25); backdrop-filter: blur(5px) saturate(1.25);
+    -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - var(--band) - 1px), #000 calc(100% - var(--band) + 1px), #000 calc(100% - 1.5px), transparent 100%);
+    mask: radial-gradient(circle closest-side, transparent calc(100% - var(--band) - 1px), #000 calc(100% - var(--band) + 1px), #000 calc(100% - 1.5px), transparent 100%);
+    box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .35);
+}
+.gd-touch.is-tap { animation: gdTouch .605s linear both; }
+.gd-touch.is-hold { animation: gdTouchIn .285s linear both; }
+.gd-touch.is-hold.is-out { animation: gdTouchOut .15s cubic-bezier(.2, .6, .3, 1) both; }
+.gd-touch-arc { position: absolute; inset: 0; border-radius: 50%; opacity: 0; background: conic-gradient(rgba(255, 255, 255, .95) calc(var(--gd-p) * 1turn), transparent 0); }
+.gd-touch.is-holding .gd-touch-arc { opacity: 1; animation: gdHold var(--hold, .55s) linear forwards; }
+@keyframes gdTouch {
+    0% { --gd-d: 66px; opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .3, 1); }
+    11.6% { --gd-d: 92px; opacity: .82; }
+    38.8% { --gd-d: 92px; opacity: .9; animation-timing-function: cubic-bezier(.3, .8, .35, 1); }
+    47.1% { --gd-d: 58px; opacity: 1; }
+    75% { --gd-d: 58px; opacity: 1; animation-timing-function: cubic-bezier(.2, .6, .3, 1); }
+    100% { --gd-d: 86px; opacity: 0; }
+}
+@keyframes gdTouchIn {
+    0% { --gd-d: 66px; opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .3, 1); }
+    24.6% { --gd-d: 92px; opacity: .82; }
+    82.4% { --gd-d: 92px; opacity: .9; animation-timing-function: cubic-bezier(.3, .8, .35, 1); }
+    100% { --gd-d: 58px; opacity: 1; }
+}
+@keyframes gdTouchOut { from { --gd-d: 58px; opacity: 1; } to { --gd-d: 86px; opacity: 0; } }
+@keyframes gdHold { from { --gd-p: 0; } to { --gd-p: 1; } }
+/* в миг сжатия кнопка подсвечивается и чуть вдавливается — быстро, как в iOS */
+.gd-pressed { animation: gdPress .3s cubic-bezier(.2, .6, .3, 1); }
+@keyframes gdPress { 0% { filter: brightness(1.45); transform: scale(.93); } 100% { filter: none; transform: none; } }
+
+/* перетаскивание: сжатый обруч едет за пальцем (у касаний его нет) */
+.gd-finger {
+    --d: 58px; --band: 13px;
+    position: absolute; left: 0; top: 0; z-index: 8; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
+    border-radius: 50%; pointer-events: none; opacity: 0; scale: 1.5;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(150, 175, 235, .1)), radial-gradient(circle closest-side, transparent 0 51%, rgba(236, 241, 255, .6) 54%, rgba(208, 220, 248, .52) 90%, rgba(208, 220, 248, 0) 100%);
+    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    -webkit-mask: radial-gradient(circle closest-side, transparent 50%, #000 54%, #000 96%, transparent 100%);
+    mask: radial-gradient(circle closest-side, transparent 50%, #000 54%, #000 96%, transparent 100%);
+    transition-property: transform; transition-timing-function: cubic-bezier(.45, 0, .25, 1);
+}
+.gd-finger.is-on { opacity: 1; scale: 1; transition: transform var(--move, .65s) cubic-bezier(.45, 0, .25, 1), scale .32s cubic-bezier(.3, .7, .4, 1), opacity .12s; }
+.gd-finger.is-on.is-out { opacity: 0; scale: 1.55; transition: scale .18s cubic-bezier(.2, .6, .3, 1), opacity .18s; }
+
+/* медленный наезд камеры, чтобы кадр жил (как в роликах) */
+.gd-stage.is-drifting { animation: gdDrift 9s linear both; }
+@keyframes gdDrift { from { scale: 1; } to { scale: 1.035; } }
+
+/* ---------- сапёр: поле как в игре (тёмная тема) ---------- */
+.gd-saper { --c: min(33px, 8.4vw); display: grid; grid-template-columns: repeat(6, var(--c)); gap: 5px; padding: 10px; border-radius: 16px; background: rgba(28, 28, 30, .88); box-shadow: 0 16px 34px -14px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.gd-cell { position: relative; display: flex; align-items: center; justify-content: center; width: var(--c); height: var(--c); box-sizing: border-box; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .06); background: rgba(255, 255, 255, .12); font-style: normal; transition: background-color .2s; }
+.gd-cell b { font-size: calc(var(--c) * .47); font-weight: 700; line-height: 1; opacity: 0; }
+.gd-cell.is-open { background: rgba(0, 0, 0, .3); animation: gdOpen .32s cubic-bezier(.34, 1.56, .64, 1); }
+.gd-cell.is-open b { opacity: 1; }
+.gd-cell[data-n="1"] b { color: #007aff; } .gd-cell[data-n="2"] b { color: #34c759; } .gd-cell[data-n="3"] b { color: #ff3b30; }
+.gd-flag { width: calc(var(--c) * .53); height: calc(var(--c) * .53); fill: #ff3b30; animation: gdPop .2s ease; }
+.gd-mine { width: calc(var(--c) * .63); height: calc(var(--c) * .63); fill: #ff3b30; animation: gdPop .3s cubic-bezier(.175, .885, .32, 1.275); }
+.gd-cell.is-near { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .8); }
+.gd-cell.is-focus { box-shadow: inset 0 0 0 2.5px #ffd23f, 0 0 14px rgba(255, 210, 63, .6); }
+.gd-cell.is-mine-guess { background: rgba(255, 59, 48, .22); box-shadow: inset 0 0 0 2px #ff3b30, 0 0 16px rgba(255, 59, 48, .5); }
+.gd-saper.is-won .gd-cell.is-open { background: rgba(52, 199, 89, .4); transition-delay: calc(var(--d, 0) * 1ms); }
+.gd-timer { padding: 6px 16px; border-radius: 999px; background: rgba(0, 0, 0, .3); font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.gd-timer.is-done { background: #ffd23f; color: #3a2600; animation: gdPop .5s cubic-bezier(.34, 1.56, .64, 1); }
+.gd-toggle { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 210px; height: 40px; padding: 0; border-radius: 30px; overflow: hidden; background: rgba(118, 118, 128, .32); font-size: 15px; font-weight: 600; }
+.gd-toggle span { position: relative; z-index: 1; display: grid; place-items: center; color: rgba(255, 255, 255, .75); transition: color .25s; }
+.gd-toggle span:nth-of-type(1), .gd-toggle.is-flag span:nth-of-type(2) { color: #fff; font-weight: 700; }
+.gd-toggle.is-flag span:nth-of-type(1) { color: rgba(255, 255, 255, .75); font-weight: 600; }
+.gd-glider { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; border-radius: 30px; background: #007aff; transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+.gd-toggle.is-flag .gd-glider { transform: translateX(100%); }
+.gd-sizes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(78%, 300px); }
+.gd-sizes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 8px; border: 0; border-radius: 18px; background: rgba(255, 255, 255, .16); color: #fff; font: inherit; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); animation: gdRise .5s cubic-bezier(.22, 1, .36, 1) calc(var(--i) * 70ms) backwards; transition: background-color .3s, color .3s, transform .4s cubic-bezier(.34, 1.56, .64, 1); }
+.gd-sizes b { font-size: 22px; font-weight: 900; } .gd-sizes small { font-size: 12.5px; font-weight: 700; opacity: .8; }
+.gd-sizes button.is-on { background: #fff; color: #10235f; transform: scale(1.05); }
+.gd-sizes button.gd-pressed { transform: scale(.94); }
+@keyframes gdOpen { 0% { transform: scale(.7); } 100% { transform: none; } }
+@keyframes gdPop { 0% { transform: scale(.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes gdRise { from { opacity: 0; transform: translateY(14px) scale(.94); } }
+
+/* кнопка «i» в шапке шторки игры */
+.ui-sheet-heading .gd-info { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--ui-track, rgba(120, 120, 128, .16)); color: var(--accent, #007aff); cursor: pointer; transition: transform .4s cubic-bezier(.34, 1.56, .64, 1); }
+.ui-sheet-heading .gd-info:active { transform: scale(.88); }
+.ui-sheet-heading .gd-info svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.ui-sheet-heading .gd-info svg .dot { fill: currentColor; stroke-width: 2.6; }
+
+body.lite-mode .gd-cell.is-open, body.lite-mode .gd-sizes button, body.lite-mode .gd-card.is-active .gd-label { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+    .gd-cell.is-open, .gd-sizes button, .gd-card.is-active .gd-label, .gd-touch, .gd-stage.is-drifting { animation: none; }
+    .gd-sheet, .gd-track { transition: none; }
+}

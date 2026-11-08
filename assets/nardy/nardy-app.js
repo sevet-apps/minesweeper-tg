@@ -98,6 +98,7 @@
         const skin = skinOf();
         screen.dataset.skin = skin.id;
         screen.style.setProperty('--nd-board', `url('${BASE}skins/${skin.id}.jpg${V}')`);
+        screen.style.setProperty('--nd-tray', `url('${BASE}skins/${skin.id}-tray.jpg${V}')`);
         screen.style.setProperty('--nd-ck-w', `url('${BASE}skins/checker-${skin.checkers[0]}.png${V}')`);
         screen.style.setProperty('--nd-ck-b', `url('${BASE}skins/checker-${skin.checkers[1]}.png${V}')`);
         screen.style.setProperty('--nd-slab-w', skin.slab[0]);
@@ -167,10 +168,14 @@
     };
 
     /* ---------- геометрия доски (в ширинах пункта; как в build-nardy-skins.py) ---------- */
-    const G = Object.freeze({ FRAME: 0.32, BAR: 0.8, TRAY: 1.05, LEN: 4.9, MID: 1.3, W: 14.81, H: 11.74, D: 0.94 });
+    /* Лоток для сброшенных шашек — не на доске, а в строках игроков справа:
+       сверху — лоток соперника, снизу — свой. Поэтому доска шире (13.44, было 14.81). */
+    const G = Object.freeze({ FRAME: 0.32, BAR: 0.8, LEN: 4.9, MID: 1.3, W: 13.44, H: 11.74, D: 0.94 });
     const BAR_X = G.FRAME + 6 + G.BAR / 2;
-    const TRAY_X = G.FRAME + 12 + G.BAR + G.FRAME + G.TRAY / 2;
     const FIELD_RIGHT = G.FRAME + 12 + G.BAR;
+    /** Прямоугольники лотков в единицах доски (могут быть за её краем): { top, bottom }. */
+    const trays = { top: null, bottom: null };
+    const TRAY_PAD_X = 0.075, TRAY_PAD_Y = 0.2;   // рамка лотка на картинке, доля ширины и высоты
 
     /* ---------- DOM ---------- */
     let screen = null, sheetEl = null, waitEl = null, refs = {};
@@ -246,6 +251,7 @@
         screen.style.setProperty('--nd-u', `${unit}px`);
         screen.style.setProperty('--nd-bw', `${(unit * G.W).toFixed(1)}px`);
         screen.style.setProperty('--nd-bh', `${(unit * G.H).toFixed(1)}px`);
+        measureTrays();
         if (game) { placeAll(false); renderDice(false); renderTargets(); }
     }
 
@@ -271,9 +277,27 @@
         const y = G.H / 2 + (mine ? 1 : -1) * (0.62 + k * 0.62);
         return { x: BAR_X, y };
     }
+    /** k-я сброшенная шашка стоит «на ребре» в лотке своего игрока, слева направо. */
     function offXY(mine, k) {
-        const y = mine ? G.H - G.FRAME - 0.2 - k * 0.33 : G.FRAME + 0.2 + k * 0.33;
-        return { x: TRAY_X, y };
+        const t = trays[mine ? 'bottom' : 'top'];
+        if (!t) return { x: G.W - G.FRAME / 2, y: mine ? G.H + 0.8 : -0.8 };
+        const step = Math.min(0.26, t.w / 15);
+        return { x: t.x + step * (k + 0.5), y: t.y + t.h / 2 };
+    }
+    /** Где лотки относительно доски: меряем после того, как строки игроков нарисованы. */
+    function measureTrays() {
+        if (!refs.board || !unit) return;
+        const b = refs.board.getBoundingClientRect();
+        for (const [key, row] of [['top', refs.topPlayer], ['bottom', refs.bottomPlayer]]) {
+            const el = row?.querySelector('.nd-tray');
+            if (!el) { trays[key] = null; continue; }
+            const r = el.getBoundingClientRect();
+            trays[key] = {
+                x: (r.left - b.left + r.width * TRAY_PAD_X) / unit, y: (r.top - b.top + r.height * TRAY_PAD_Y) / unit,
+                w: r.width * (1 - 2 * TRAY_PAD_X) / unit, h: r.height * (1 - 2 * TRAY_PAD_Y) / unit,
+                box: { x: (r.left - b.left) / unit, y: (r.top - b.top) / unit, w: r.width / unit, h: r.height / unit },
+            };
+        }
     }
 
     /* ---------- шашки на доске ----------
@@ -510,8 +534,8 @@
             }
             for (const t of ui.targets) {
                 if (t.to === 0) {
-                    const mine = color === viewColor();
-                    parts.push(`<i class="nd-tgt-off${mine ? '' : ' is-top'}" data-to="0" style="--x:${(TRAY_X * unit).toFixed(1)}px"></i>`);
+                    const box = trays[color === viewColor() ? 'bottom' : 'top']?.box;
+                    if (box) parts.push(`<i class="nd-tgt-off" data-to="0" style="left:${(box.x * unit).toFixed(1)}px;top:${(box.y * unit).toFixed(1)}px;width:${(box.w * unit).toFixed(1)}px;height:${(box.h * unit).toFixed(1)}px"></i>`);
                     continue;
                 }
                 const idx = core.absIndex(game.variant, color, t.to);
@@ -543,7 +567,9 @@
     function hitTest(pt) {
         const color = mover();
         if (!color) return null;
-        if (pt.x > FIELD_RIGHT + G.FRAME * 0.4) return 0;
+        const tray = trays[color === viewColor() ? 'bottom' : 'top']?.box;
+        if (tray && pt.x > tray.x - 0.3 && pt.x < tray.x + tray.w + 0.3 && pt.y > tray.y - 0.3 && pt.y < tray.y + tray.h + 0.3) return 0;
+        if (pt.x < 0 || pt.x > G.W || pt.y < 0 || pt.y > G.H) return null;
         if (Math.abs(pt.x - BAR_X) < G.BAR / 2) return 25;
         const x = pt.x - G.FRAME;
         let c;
@@ -621,6 +647,13 @@
             else { placeAll(true); renderTargets(); }
         };
         board.addEventListener('pointerup', finish);
+        refs.main.addEventListener('pointerdown', event => {
+            const trayEl = event.target.closest('.nd-tray');
+            if (!trayEl || !humanTurn() || ui.sel == null) return;
+            const mine = trayEl.dataset.tray === mover();
+            const target = mine && ui.targets.find(t => t.to === 0);
+            if (target) { event.preventDefault(); playPath(target.path); }
+        });
         board.addEventListener('pointercancel', event => { if (ui.drag?.id === event.pointerId) { ui.drag.checker?.el.classList.remove('is-drag'); ui.drag = null; placeAll(true); } });
     }
 
@@ -961,8 +994,10 @@
                     <div class="nd-pname">${flag}<span>${esc(playerName(color))}</span>${rating}${strikes}</div>
                     <div class="nd-pmeta"><span class="nd-pip" title="${esc(tr('pips'))}">${core.pips(state, color)}</span><span class="nd-offn">${esc(tr('off'))} ${state.off[color]}/15</span></div>
                 </div>
-                <div class="nd-clock" data-clock="${color}" hidden></div>`;
+                <div class="nd-clock" data-clock="${color}" hidden></div>
+                <div class="nd-tray" data-tray="${color}" aria-label="${esc(tr('off'))} ${state.off[color]}/15"></div>`;
         }
+        measureTrays();
         tickTimer();
     }
     function renderStatus() {

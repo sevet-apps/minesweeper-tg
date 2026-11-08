@@ -317,6 +317,8 @@
 
     function init() {
         decorate();
+        // надпись «поверни телефон» — на языке приложения
+        try { const hint = document.querySelector('#rotateHint b'); if (hint && currentLang && currentLang !== 'ru') hint.textContent = 'Rotate your phone to portrait'; } catch (_) {}   // eslint-disable-line no-undef
         hookTabs();
         watchLists();
         watchSheets();
