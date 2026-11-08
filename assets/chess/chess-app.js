@@ -3409,6 +3409,9 @@
         if (pzTheme) { haptic('light'); startPuzzle('theme', { theme: Number(pzTheme.dataset.pzTheme), button: pzTheme }); return; }
         const join = event.target.closest('[data-join]');
         if (join) { joinRoom(join.dataset.join); return; }
+        // вся строка комнаты — большая кнопка «играть»
+        const roomRow = event.target.closest('.ck-room[data-code]:not(.is-leaving)');
+        if (roomRow) { joinRoom(roomRow.dataset.code); return; }
         const histFilter = event.target.closest('[data-hist-filter]');
         if (histFilter) { prefs.histFilter = histFilter.dataset.histFilter; savePrefs(); histShown = HIST_PAGE; renderHistory(); haptic('select'); return; }
         const hist = event.target.closest('[data-hist]');
@@ -3500,8 +3503,9 @@
             ? `<img class="ck-room-ava" src="${esc(room.avatar)}" alt="" referrerpolicy="no-referrer">`
             : `<span class="ck-room-ava">${esc((name || '?').slice(0, 1).toUpperCase())}</span>`;
         const tc = core.timeControl(room.tc);
+        // контроль времени и его вид («блиц») — в одной плашке, подпись под именем не переносится
         return `${avatar}<div class="ck-room-text"><b>${flagHtml(room.lang)}${esc(name)}</b><small>${esc(tr('rating'))} ${esc(room.rating || core.START_RATING)}</small></div>
-            <span class="cs-room-tc">${esc(tc ? tc.id : room.tc)}</span>
+            <span class="cs-room-tc"><b>${esc(tc ? tc.id : room.tc)}</b>${tc ? `<small>${esc(tr(tc.cat))}</small>` : ''}</span>
             <button class="ck-room-join" type="button" data-join="${esc(room.code)}">${esc(tr('join'))}</button>`;
     }
     /** Список обновляется раз в 5 с, но строки не пересоздаются: те же комнаты

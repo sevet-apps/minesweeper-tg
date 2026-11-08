@@ -61,7 +61,7 @@
             ['modalSaper',null], ['modalSudoku',null], ['modalCheckers',null], ['modalChess','closeChessSheet'], ['modalChessWait','cancelChessWait',true], ['modalNardy','closeNardySheet'], ['modalNardyWait','cancelNardyWait',true],
             ['modalResult','closeResult',true], ['modalLoading',null,true], ['modalWaitOpponent','cancelOnlineWait',true],
             ['settingsSheet','closeSettingsSheet'], ['languageSheet','closeLanguageSheet'],  ['referralConditionsSheet','hideReferralConditions'],
-            ['titleDetailOverlay','closeTitleDetail'], ['titleChoiceOverlay','closeTitleChoiceMenu'],
+            ['titleDetailOverlay','closeTitleDetail'], ['titleChoiceOverlay','closeTitleChoiceMenu'], ['streakSheet','closeStreakSheet'], ['shareSheet','closeShareSheet'],
             ['privacyScreen','closePrivacyPolicy',true], ['titleLibraryOverlay','closeTitleLibrary',true]
         ];
         const sheets = definitions.map(([id, handler, fullScreen]) => {

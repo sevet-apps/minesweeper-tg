@@ -3562,10 +3562,15 @@
     <link rel="stylesheet" href="assets/block-blast/picker.css?v=20261026">
     <link rel="stylesheet" href="assets/ui/tokens.css">
     <link rel="stylesheet" href="assets/ui/app.css?v=20261024">
-    <script src="assets/ui/sheets.js?v=20261026" defer></script>
+    <script src="assets/ui/sheets.js?v=2026110803" defer></script>
     <link rel="stylesheet" href="assets/ui/liquid-glass.css?v=20261004">
-    <link rel="stylesheet" href="assets/ui/juicy.css?v=20261108b">
-    <script src="assets/ui/juicy.js?v=20261108b" defer></script>
+    <link rel="stylesheet" href="assets/ui/juicy.css?v=2026110803">
+    <script src="assets/ui/juicy.js?v=2026110803" defer></script>
+    <script src="assets/ui/streak-core.js?v=2026110803" defer></script>
+    <script src="assets/ui/streak.js?v=2026110803" defer></script>
+    <script src="assets/ui/toast.js?v=2026110803" defer></script>
+    <script src="assets/ui/result.js?v=2026110803" defer></script>
+    <script src="assets/ui/share-card.js?v=2026110803" defer></script>
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
     <script src="assets/block-blast/hand.js?v=20261025"></script>
@@ -3599,6 +3604,10 @@
                     video.removeAttribute('src');
                     video.load();
                 } catch (e) {}
+                /* Главная проявляется волной ровно в тот кадр, когда уходит
+                   заставка: подписчики события ставят анимацию до отрисовки. */
+                window.__sparkLoaderDone = true;
+                try { window.dispatchEvent(new Event('spark:loader-done')); } catch (e) {}
                 root.remove();
                 var miniApp = window.Telegram && window.Telegram.WebApp;
                 var color = miniApp && miniApp.colorScheme === 'dark' ? '#000000' : '#f2f2f7';
@@ -3828,6 +3837,7 @@
         <img src="" class="lb-avatar" id="stickyAvatar">
         <div class="lb-info"><div class="lb-name" id="stickyName">Name</div></div>
         <div class="lb-val" id="stickyVal">0</div>
+        <button class="lb-share" id="stickyShare" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12.5v5A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-5"/></svg></button>
     </div>
 
     <div id="view-games" class="screen active"> 
@@ -4687,6 +4697,8 @@
     
     <!-- Toast notification -->
     <div class="toast" id="toast"></div>
+    <div class="modal-overlay ui-mode-sheet st-sheet" id="streakSheet"><div class="modal ui-mode-panel"></div></div>
+    <div class="modal-overlay ui-mode-sheet sh-sheet" id="shareSheet"><div class="modal ui-mode-panel"></div></div>
     
     <!-- Subscription Required Modal -->
 
@@ -6487,29 +6499,38 @@
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
 
-        // --- Шахматы: модуль грузится при первом открытии ---
-        const CHESS_VERSION = '20261112';
-        let chessLoading = null;
-        function loadChessApp() {
-            if (window.SparkChess?.init) return window.SparkChess.init();
-            if (chessLoading) return chessLoading;
-            const base = 'assets/chess/';
-            const css = document.createElement('link');
-            css.rel = 'stylesheet';
-            css.href = `${base}chess.css?v=${CHESS_VERSION}`;
-            document.head.appendChild(css);
-            const script = file => new Promise((resolve, reject) => {
+        // --- Модули шахмат и нард ---
+        // Файлы качаются параллельно (порядок выполнения сохраняет async=false) и заранее —
+        // в тихую минуту после заставки, поэтому шторка открывается сразу, без ожидания сети.
+        const gameModuleFiles = new Map();
+        function loadGameModuleFiles(name, base, version, css, files) {
+            if (gameModuleFiles.has(name)) return gameModuleFiles.get(name);
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `${base}${css}?v=${version}`;
+            const cssReady = new Promise(resolve => { link.onload = resolve; link.onerror = resolve; });
+            document.head.appendChild(link);
+            const scripts = files.map(file => new Promise((resolve, reject) => {
                 const el = document.createElement('script');
-                el.src = `${base}${file}?v=${CHESS_VERSION}`;
+                el.src = `${base}${file}?v=${version}`;
+                el.async = false;
                 el.onload = resolve;
-                el.onerror = () => reject(new Error(`Chess: ${file}`));
+                el.onerror = () => reject(new Error(`${name}: ${file}`));
                 document.head.appendChild(el);
-            });
-            chessLoading = script('chess-core.js')
-                .then(() => script('chess-i18n.js'))
-                .then(() => script('chess-swing.js'))
-                .then(() => script('chess-talk.js'))
-                .then(() => script('chess-app.js'))
+            }));
+            const ready = Promise.all([...scripts, cssReady]);
+            ready.catch(() => gameModuleFiles.delete(name));
+            gameModuleFiles.set(name, ready);
+            return ready;
+        }
+        const CHESS_VERSION = '20261113';
+        let chessLoading = null;
+        const loadChessFiles = () => loadGameModuleFiles('chess', 'assets/chess/', CHESS_VERSION, 'chess.css',
+            ['chess-core.js', 'chess-i18n.js', 'chess-swing.js', 'chess-talk.js', 'chess-app.js']);
+        function loadChessApp() {
+            if (window.SparkChess?.init && gameModuleFiles.has('chess')) return gameModuleFiles.get('chess').then(() => window.SparkChess.init());
+            if (chessLoading) return chessLoading;
+            chessLoading = loadChessFiles()
                 .then(() => window.SparkChess.init())
                 .catch(error => { chessLoading = null; throw error; });
             return chessLoading;
@@ -6529,31 +6550,35 @@
         function joinChessInvite(code) {
             loadChessApp().then(chess => chess.joinInvite(code)).catch(() => showToast(t('networkError'), 'error'));
         }
-        // --- Нарды: модуль грузится при первом открытии ---
         const NARDY_VERSION = '20261031';
         let nardyLoading = null;
+        const loadNardyFiles = () => loadGameModuleFiles('nardy', 'assets/nardy/', NARDY_VERSION, 'nardy.css',
+            ['nardy-core.js', 'nardy-i18n.js', 'nardy-app.js']);
         function loadNardyApp() {
-            if (window.SparkNardy?.init) return window.SparkNardy.init();
+            if (window.SparkNardy?.init && gameModuleFiles.has('nardy')) return gameModuleFiles.get('nardy').then(() => window.SparkNardy.init());
             if (nardyLoading) return nardyLoading;
-            const base = 'assets/nardy/';
-            const css = document.createElement('link');
-            css.rel = 'stylesheet';
-            css.href = `${base}nardy.css?v=${NARDY_VERSION}`;
-            document.head.appendChild(css);
-            const script = file => new Promise((resolve, reject) => {
-                const el = document.createElement('script');
-                el.src = `${base}${file}?v=${NARDY_VERSION}`;
-                el.onload = resolve;
-                el.onerror = () => reject(new Error(`Nardy: ${file}`));
-                document.head.appendChild(el);
-            });
-            nardyLoading = script('nardy-core.js')
-                .then(() => script('nardy-i18n.js'))
-                .then(() => script('nardy-app.js'))
+            nardyLoading = loadNardyFiles()
                 .then(() => window.SparkNardy.init())
                 .catch(error => { nardyLoading = null; throw error; });
             return nardyLoading;
         }
+        // Заранее: файлы модулей и движок шахматной доски — в простое после заставки.
+        let gameModulesPrefetched = false;
+        function prefetchGameModules() {
+            if (gameModulesPrefetched) return;
+            gameModulesPrefetched = true;
+            const idle = window.requestIdleCallback || (fn => setTimeout(fn, 200));
+            idle(() => {
+                loadChessFiles().catch(() => {});
+                loadNardyFiles().catch(() => {});
+                const pre = document.createElement('link');
+                pre.rel = 'modulepreload';
+                pre.href = 'assets/chess/vendor/chess.js';
+                document.head.appendChild(pre);
+            }, { timeout: 2500 });
+        }
+        window.addEventListener('spark:loader-done', () => setTimeout(prefetchGameModules, 600), { once: true });
+        setTimeout(prefetchGameModules, document.getElementById('appLoader') ? 9000 : 1500);
         function openNardy(tab) {
             if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
             loadNardyApp().then(nardy => nardy.openSheet(tab)).catch(() => showToast(t('networkError'), 'error'));
@@ -6763,6 +6788,7 @@
         }
         function noteGamePlaytimeAction(game = null) {
             if (!activePlaytime || document.hidden || (game && activePlaytime.game !== game)) return;
+            window.SparkStreak?.touch();
             const now = Date.now();
             if (activePlaytime.lastActionAt) {
                 activePlaytime.pendingMs += Math.max(0, Math.min(
@@ -7612,6 +7638,7 @@
         
         // type: 'success' (галочка), 'welcome' (рука), 'error' (крестик)
         function showToast(message, type = 'success') {
+            if (window.SparkToast) { window.SparkToast.show(message, type); return; }
             const toast = document.getElementById('toast');
             
             // Если уже показывается — просто обновим таймер, не трогая анимацию
@@ -7871,6 +7898,7 @@
 
         function openLeaderboardDetail(game) {
             currentLbGame = game;
+            prefetchTops(game);
             const selectorWrapper = document.querySelector('.lb-selector-wrapper');
             const bbSegment = document.getElementById('bbLbSegment');
             const tr = translations[currentLang] || translations.ru;
@@ -8038,14 +8066,77 @@
         }
         let lbObserver = null;
         let tournamentCupAnim = null;
-        async function loadLeaderboardData(category) {
+        // ====== Топы: кэш и заблаговременная загрузка ======
+        // Списки качаются, пока идёт заставка; при открытии топ рисуется сразу,
+        // а свежие данные подтягиваются тихо. Аватарки первых строк — тоже заранее.
+        const topsCache = new Map();
+        const topsKey = (game, cat) => `${game}|${cat}`;
+        const topsImages = [];
+        const topsImageSeen = new Set();
+        function preloadTopAvatars(list, count = 12) {
+            (list || []).slice(0, count).forEach(row => {
+                const url = row && row.photo_url;
+                if (typeof url !== 'string' || !/^https:\/\//i.test(url) || topsImageSeen.has(url)) return;
+                topsImageSeen.add(url);
+                const img = new Image();
+                img.referrerPolicy = 'no-referrer';
+                img.decoding = 'async';
+                img.src = url;
+                topsImages.push(img);
+            });
+        }
+        function fetchTops(game, catId) {
+            const key = topsKey(game, catId);
+            const entry = topsCache.get(key);
+            if (entry?.pending) return entry.pending;
+            const headers = tg.initData ? { 'X-Init-Data': tg.initData } : {};
+            const pending = fetch(`${API_BASE_URL}/leaderboard?game=${game}&category=${catId}&me=1`, { headers })
+                .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+                .then(data => {
+                    if (!Array.isArray(data)) throw new Error('Leaderboard format');
+                    topsCache.set(key, { data, at: Date.now() });
+                    preloadTopAvatars(data);
+                    return data;
+                })
+                .catch(error => { if (entry?.data) topsCache.set(key, { data: entry.data, at: entry.at }); else topsCache.delete(key); throw error; });
+            topsCache.set(key, { ...(entry || {}), pending });
+            return pending;
+        }
+        function refreshTops(game, category, shown) {
+            fetchTops(game, category.id).then(fresh => {
+                if (JSON.stringify(fresh) === JSON.stringify(shown)) return;
+                const open = document.getElementById('view-leaderboard-detail').classList.contains('active');
+                if (open && currentLbGame === game && currentLbCat === category) loadLeaderboardData(category, { fromRefresh: true });
+            }).catch(() => {});
+        }
+        function topsCategories() {
+            return { saper: SAPER_CATS, checkers: CHECKERS_CATS, bb: BB_CATS, sudoku: SUDOKU_CATS, tower: TOWER_CATS, wordle: WORDLE_CATS, chess: CHESS_CATS, nardy: NARDY_CATS, monopoly: MONOPOLY_CATS };
+        }
+        /** Без игры — первый раздел каждого топа (под заставкой); с игрой — все её разделы. */
+        function prefetchTops(game = null) {
+            const all = topsCategories();
+            if (game) {
+                (all[game] || []).forEach(cat => { if (!topsCache.has(topsKey(game, cat.id))) fetchTops(game, cat.id).catch(() => {}); });
+                return;
+            }
+            Object.entries(all).forEach(([name, cats], i) => setTimeout(() => {
+                if (cats[0] && !topsCache.has(topsKey(name, cats[0].id))) fetchTops(name, cats[0].id).catch(() => {});
+            }, i * 120));
+        }
+        setTimeout(() => prefetchTops(), 700);
+        function topsSkeleton() {
+            return Array.from({ length: 8 }, (_, i) => `<div class="lb-item lb-skel" aria-hidden="true" style="--i:${i}"><i></i><i></i><b></b></div>`).join('');
+        }
+        const LB_SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12.5v5A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-5"/></svg>';
+
+        async function loadLeaderboardData(category, opts = {}) {
             currentLbCat = category;
             // BB segment relevance: only useful for bb_best_score
             const bbSegment = document.getElementById('bbLbSegment');
             if (bbSegment) {
                 bbSegment.style.display = (BB_TOURNAMENT_ENABLED && currentLbGame === 'bb' && category.id === 'bb_best_score') ? '' : 'none';
             }
-            document.getElementById('lbCurrentCat').innerText = t(category.nameKey); const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#8e8e93;">...</div>'; stickyEl.classList.remove('visible');
+            document.getElementById('lbCurrentCat').innerText = t(category.nameKey); const listEl = document.getElementById('lbList'); const stickyEl = document.getElementById('lbStickyUser'); if (!opts.fromRefresh) listEl.innerHTML = topsCache.get(topsKey(currentLbGame, category.id))?.data ? '' : topsSkeleton(); stickyEl.classList.remove('visible');
             // Tournament card — only for BB best score, AND only when BB tournament UI is enabled
             const tCard = document.getElementById('tournamentCard');
             if (tCard) {
@@ -8180,9 +8271,12 @@
             try {
                 // По initData сервер узнаёт, кто смотрит: если игрока нет в топе-100, присылает его место
                 // отдельной последней строкой (me=1), а владельцу подписывает шахматных ботов.
-                const url = `${API_BASE_URL}/leaderboard?game=${currentLbGame}&category=${category.id}&me=1`;
-                const lbHeaders = tg.initData ? { 'X-Init-Data': tg.initData } : {};
-                const response = await fetch(url, { headers: lbHeaders }); const data = await response.json();
+                // Из кэша — сразу; устаревший кэш тихо обновляется и перерисовывается, только если что-то поменялось.
+                const lbGame = currentLbGame;
+                const cachedTop = topsCache.get(topsKey(lbGame, category.id));
+                const data = cachedTop?.data || await fetchTops(lbGame, category.id);
+                if (currentLbCat !== category || currentLbGame !== lbGame) return;
+                if (cachedTop?.data && !opts.fromRefresh && Date.now() - cachedTop.at > 15000) refreshTops(lbGame, category, data);
                 const user = tg.initDataUnsafe.user || { id: 0, first_name: 'Guest' };
                 const userValRaw = localStorage.getItem(category.id); let userVal = Number(userValRaw); let hasStats = true;
                 if (isNaN(userVal) || userValRaw === '--' || userValRaw === null) { userVal = category.isTime ? 999999 : 0; hasStats = false; } else { if (category.isTime && userVal >= 9999) hasStats = false; if (!category.isTime && userVal === 0) hasStats = false; }
@@ -8235,13 +8329,17 @@
                 document.getElementById('stickyName').innerText = tgName(user) + " " + t('you');
                 if(user.photo_url) document.getElementById('stickyAvatar').src = user.photo_url; else document.getElementById('stickyAvatar').style.background = '#ddd';
                 if(hasStats && myRank > 0) { document.getElementById('stickyRank').innerText = myRank; document.getElementById('stickyVal').innerText = category.isTime ? formatSaperSeconds(userVal) : BBVisuals.formatNumber(userVal); } else { document.getElementById('stickyRank').innerText = "- -"; document.getElementById('stickyVal').innerText = t('noData'); }
+                const stickyShare = document.getElementById('stickyShare');
+                if (stickyShare) { stickyShare.hidden = !(hasStats && myRank > 0 && window.SparkShare); stickyShare.onclick = () => SparkShare.record({ game: currentLbGame, category: category.id }); if (window.SparkShare) stickyShare.setAttribute('aria-label', SparkShare.label()); }
                 if(hasStats && meInList) { lbObserver = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) stickyEl.classList.remove('visible'); else if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }); }, { threshold: 0.1 }); } else { if(document.getElementById('view-leaderboard-detail').classList.contains('active')) stickyEl.classList.add('visible'); }
                 finalDisplayList.forEach((u, index) => {
                     const rank = index + 1; let medal = ''; if(rank <= 3) medal = `<div class="lb-rank-badge">${rank}</div>`;
                     let displayVal = BBVisuals.formatNumber(u.score); if(category.isTime) displayVal = formatSaperSeconds(u.score);
                     const item = document.createElement('div'); item.className = `lb-item rank-${rank}`; if(u.isMe) { item.style.border = '1px solid var(--accent)'; if(lbObserver) lbObserver.observe(item); }
                     let avatarHtml = avatarImgHtml(u.photo_url, 'lb-avatar');
-                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${escapeHtml(u.username)} ${u.isMe ? t('you') : ''}${u.isLive ? '<span class="lb-live-badge">LIVE</span>' : ''}</div></div><div class="lb-val">${escapeHtml(displayVal)}</div>`;
+                    const canShare = u.isMe && hasStats && window.SparkShare;
+                    item.innerHTML = `<div class="lb-rank">${rank}</div>${medal}${avatarHtml}<div class="lb-info"><div class="lb-name" style="${u.isMe ? 'color:var(--accent)' : ''}">${escapeHtml(u.username)} ${u.isMe ? t('you') : ''}${u.isLive ? '<span class="lb-live-badge">LIVE</span>' : ''}</div></div><div class="lb-val">${escapeHtml(displayVal)}</div>${canShare ? `<button class="lb-share" type="button" aria-label="${escapeHtml(SparkShare.label())}">${LB_SHARE_ICON}</button>` : ''}`;
+                    item.querySelector('.lb-share')?.addEventListener('click', event => { event.stopPropagation(); SparkShare.record({ game: currentLbGame, category: category.id }); });
                     item.querySelector('.lb-live-badge')?.addEventListener('click', event => { event.stopPropagation(); openBBSpectator(String(u.user_id), String(u.username || '')); });
                     listEl.appendChild(item);
                 });
@@ -8360,8 +8458,8 @@
         function onSaperFlag(r,c){const cell=sGrid[r][c];if(sOver||cell.revealed)return;if(!cell.flagged&&sFlags>0){cell.flagged=true;sUsedFlag=true;cell.el.innerHTML=ICON_FLAG;sFlags--;}else if(cell.flagged){cell.flagged=false;cell.el.innerHTML='';sFlags++;}document.getElementById('saperFlags').innerText=sFlags;}
         function placeMinesSafe(exR,exC){let placed=0;while(placed<sMines){let rr=Math.floor(Math.random()*sRows),cc=Math.floor(Math.random()*sCols);if(Math.abs(rr-exR)<=1&&Math.abs(cc-exC)<=1)continue;if(!sGrid[rr][cc].isMine){sGrid[rr][cc].isMine=true;placed++;}}for(let r=0;r<sRows;r++)for(let c=0;c<sCols;c++){if(sGrid[r][c].isMine)continue;let cnt=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols&&sGrid[r+i][c+j].isMine)cnt++;sGrid[r][c].neighbor=cnt;}}
         function revealSaper(r,c){const cell=sGrid[r][c];if(cell.revealed||cell.flagged)return;cell.revealed=true;cell.el.classList.add('revealed');if(cell.neighbor>0){cell.el.innerText=cell.neighbor;cell.el.classList.add('c-'+cell.neighbor);}else{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(r+i>=0&&r+i<sRows&&c+j>=0&&c+j<sCols)revealSaper(r+i,c+j);}}
-        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);const key=`saper_best_${sCols}`;Promise.resolve(sSessionReady).then(()=>reportTitleGameEvent('saper_loss',{mode:sCols},activeSessionTokens[key]||''));showResult(t('boom'),t('badLuck'), t('close'), () => { closeResult(); closeGame('saper'); });}
-        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true,achievementContext:{used_flag:sUsedFlag}});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken,sUsedFlag);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`\n${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`\n${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;showResult(t('victory'),`${t('time')}: ${sTimer.toFixed(3)} ${t('seconds')}${saveStatus}`,t('cool'),()=>{closeResult();closeGame('saper');});} }
+        function loseSaper(cell){sOver=true;clearInterval(sTimerInt);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error');cell.el.style.background='var(--danger)';sGrid.forEach(r=>r.forEach(c=>{if(c.isMine)c.el.innerHTML=ICON_MINE;}));let tot=parseInt(localStorage.getItem('saper_total')||0)+1;saveStatToCloud('saper_total',tot);const key=`saper_best_${sCols}`;Promise.resolve(sSessionReady).then(()=>reportTitleGameEvent('saper_loss',{mode:sCols},activeSessionTokens[key]||''));showResult(t('boom'),t('badLuck'), t('playAgain'), () => { closeResult(); initSaper(); }, { game:'saper', kind:'boom', view:{ screen:'saper-screen', again:()=>initSaper() }, link:{ text:t('menu'), onClick:()=>{ closeResult(); closeGame('saper'); } } });}
+        async function checkSaperWin(){ let rev=0;sGrid.forEach(r=>r.forEach(c=>{if(c.revealed)rev++})); if(rev===sRows*sCols-sMines){ sOver=true;clearInterval(sTimerInt);sTimer=Math.max(sTimer,(Date.now()-sStartTime)/1000);if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); let tot=parseInt(localStorage.getItem('saper_total')||0)+1; saveStatToCloud('saper_total',tot); const key=`saper_best_${sCols}`;const finishedTime=Number(sTimer.toFixed(3));await sSessionReady;const sessionToken=activeSessionTokens[key]||'';const timeResult=await sendStatToBackend(key,finishedTime,{sessionToken,returnFailure:true,achievementContext:{used_flag:sUsedFlag}});const serverBest=Number(timeResult?.best_score);const timeSaved=Number.isFinite(serverBest)&&serverBest>0&&serverBest<9999;let retryQueued=false;if(timeSaved){saveStatToCloud(key,serverBest);clearPendingSaperRecord(key);}else if(timeResult?.retryable){retryQueued=queuePendingSaperRecord(key,finishedTime,sessionToken,sUsedFlag);}let w=parseInt(localStorage.getItem('saper_wins')||0)+1;saveStatToCloud('saper_wins',w);sendStatToBackend('saper_wins',w);const saveStatus=timeSaved?'':retryQueued?`${t('recordSaveFailed')}\n${t('recordSaveRetry')}`:`${t('recordSaveRejected')}\n${t('recordSaveRejectedText')}`;const isBest=timeSaved&&Math.abs(serverBest-finishedTime)<0.0005;showResult(isBest?t('newRecord'):t('victory'),saveStatus,t('playAgain'),()=>{closeResult();initSaper();},{ game:'saper', kind:isBest?'record':'win', value:finishedTime, format:'time', unit:t('sec'), secondary: isBest&&window.SparkShare ? { html:SparkShare.buttonHtml(), onClick:()=>SparkShare.record({ game:'saper', category:key }) } : null, view:{ screen:'saper-screen', again:()=>initSaper() }, link:{ text:t('menu'), onClick:()=>{closeResult();closeGame('saper');} } });} }
 
         /* --- CHECKERS --- */
         const BOARD_SIZE=8; let board=[], turn='white', selectedPiece=null, isPvE=false, forcedPiece=null;
@@ -8802,9 +8900,13 @@
                     Promise.resolve(checkersPointsReady).then(()=>sendStatToBackend('checkers_points',points,{statDelta:award}));
                 }
             }
-            if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText'),btn=document.getElementById('resBtn');
+            if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); const m=document.getElementById('modalResultContent'),tit=document.getElementById('resTitle'),txt=document.getElementById('resText'),btn=document.getElementById('resBtn');m.dataset.game='checkers';
             if (isOnlineGame) { if (w === onlineMyColor) { tit.innerText=t('victory');txt.innerText=t('youWon');confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); } else { tit.innerText=t('defeat');txt.innerText=t('noMovesOrPieces'); } socket.emit('game_over', { roomCode: onlineRoomCode, winner: w }); } else if(isPvE){ if(w==='white'){ tit.innerText=t('victory');txt.innerText=`${t('robotDefeated')} · +${{easy:1,medium:2,hard:3}[checkersDifficulty]||2}`;confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); }else{ tit.innerText=t('defeat');txt.innerText=t('robotWon'); } } else{ tit.innerText=w==='white'?t('whiteWon'):t('blackWon');txt.innerText="";if(w==='white')confetti({particleCount:150,spread:70,origin:{y:1},zIndex:2147483647});else{confetti({particleCount:150,spread:70,origin:{y:0},zIndex:2147483647});m.classList.add('rotate-180');} }
-            btn.innerText=t('close'); btn.onclick=()=>{ closeResult(); closeGame('checkers'); };
+            // единый экран итога: «Ещё раз» (с ботом и вдвоём), «Посмотреть доску», «Меню» — в меню сразу не выкидывает
+            const ckAgain = isOnlineGame ? null : () => { closeResult(); initCheckers(); };
+            const ckMenu = { text: t('menu'), onClick: () => { closeResult(); closeGame('checkers'); } };
+            SparkResult.render(m, { game: 'checkers', kind: SparkResult.guessKind(tit.innerText), title: tit.innerText, text: txt.innerText, rematch: true,
+                primary: ckAgain ? { text: t('playAgain'), onClick: ckAgain } : ckMenu, view: { screen: 'checkers-screen', again: ckAgain }, link: ckAgain ? ckMenu : null });
             setTimeout(()=>{ document.getElementById('modalResult').classList.add('visible'); if (isOnlineGame) showRematchButton(); },500);
         }
         function aiMove(){
@@ -10205,11 +10307,7 @@
                 if (!BBVisuals.reduced()) confetti({ particleCount: 36, spread: 70, origin: { y: 0.6 }, zIndex: 22000, disableForReducedMotion: true });
 
                 const titleKey = isTournament ? 'bbTournamentNewBest' : 'newRecord';
-                modal.innerHTML = `
-                    <div id="bbRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div>
-                    <h2 style="margin:0 0 10px 0; font-size:24px;">${t(titleKey) || t('newRecord')}</h2>
-                    <div style="font-size:48px; font-weight:800; color:var(--accent); margin:10px 0;" id="recCounter">0</div>
-                    ${showMultAnim ? `
+                const multHtml = showMultAnim ? `
                         <div id="bbMultLine" style="display:none; margin:6px 0 4px 0;">
                             <span style="font-size:14px; color:#8e8e93;">×</span>
                             <span id="bbMultValue" style="font-size:22px; font-weight:800; color:#ffa500;">${multiplier}</span>
@@ -10218,13 +10316,18 @@
                             <div style="font-size:13px; color:#8e8e93; margin-bottom:2px;">${t('bbFinalScore')}</div>
                             <div id="bbFinalCounter" style="font-size:36px; font-weight:800; color:#ffa500;">0</div>
                         </div>
-                    ` : ''}
-                    ${ctaHtml}
-                    <button class="btn-main" style="margin-top:14px;" onclick="closeResult(); newGameBB();">${t('playAgain')}</button>
-                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`;
-                if (typeof lottie !== 'undefined') {
-                    lottie.loadAnimation({ container: document.getElementById('bbRecordLottie'), renderer: 'svg', loop: true, autoplay: true, path: 'top.json' });
-                }
+                    ` : '';
+                // единый экран итога (assets/ui/result.js); число докручивает игра сама — ниже
+                SparkResult.render(modal, {
+                    game: 'bb', kind: 'record', title: t(titleKey) || t('newRecord'),
+                    value: oldBest, valueId: 'recCounter', animate: false,
+                    stats: oldBest > 0 ? [[t('best'), BBVisuals.formatNumber(oldBest)]] : [],
+                    extraHtml: multHtml + ctaHtml,
+                    primary: { text: t('playAgain'), onClick: () => { closeResult(); newGameBB(); } },
+                    secondary: window.SparkShare && !isTournament ? { html: SparkShare.buttonHtml(), onClick: () => SparkShare.record({ game: 'bb', category: 'bb_best_score' }) } : null,
+                    view: { screen: 'bb-screen', again: () => { closeResult(); newGameBB(); } },
+                    link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
+                });
 
                 // 1) Count up the raw score
                 const counter = document.getElementById('recCounter');
@@ -10255,11 +10358,7 @@
                     await animateNumber(document.getElementById('bbFinalCounter'), score, finalScore, 800);
                 });
             } else {
-                modal.innerHTML = `
-                    <h2 style="margin:0 0 5px 0;">${saveFailed ? t('recordSaveFailed') : t('recordNotBeat')}</h2>
-                    <p style="color:#8e8e93; margin:0 0 20px 0;">${saveFailed ? t('recordSaveRetry') : t('tryAgain')}</p>
-                    <div style="font-size:32px; font-weight:700;" id="bbScoreNum">${BBVisuals.formatNumber(score)}</div>
-                    ${showMultAnim ? `
+                const multHtml = showMultAnim ? `
                         <div id="bbMultLine" style="display:none; margin:8px 0 4px 0;">
                             <span style="font-size:14px; color:#8e8e93;">×</span>
                             <span style="font-size:22px; font-weight:800; color:#ffa500;">${multiplier}</span>
@@ -10268,11 +10367,18 @@
                             <div style="font-size:13px; color:#8e8e93;">${t('bbFinalScore')}</div>
                             <div id="bbFinalCounter" style="font-size:30px; font-weight:800; color:#ffa500;">${BBVisuals.formatNumber(score)}</div>
                         </div>
-                    ` : ''}
-                    <div style="font-size:14px; color:#8e8e93; margin: 14px 0 0;">${t('best')}: ${BBVisuals.formatNumber(oldBest)}</div>
-                    ${ctaHtml}
-                    <button class="btn-main" style="margin-top:14px;" onclick="closeResult(); newGameBB();">${t('newGame')}</button>
-                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="closeResult(); closeGame('bb');">${t('exit')}</button>`;
+                    ` : '';
+                SparkResult.render(modal, {
+                    game: 'bb', kind: 'lose',
+                    title: saveFailed ? t('recordSaveFailed') : t('recordNotBeat'),
+                    text: saveFailed ? t('recordSaveRetry') : t('tryAgain'),
+                    value: score, valueId: 'bbScoreNum',
+                    stats: [[t('best'), BBVisuals.formatNumber(oldBest)]],
+                    extraHtml: multHtml + ctaHtml,
+                    primary: { text: t('newGame'), onClick: () => { closeResult(); newGameBB(); } },
+                    view: { screen: 'bb-screen', again: () => { closeResult(); newGameBB(); } },
+                    link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
+                });
 
                 if (showMultAnim) {
                     setTimeout(async () => {
@@ -10432,7 +10538,26 @@
                 closeBBSpectator();
             }
         });
-        function showResult(title, text, btnText="Закрыть", action=null) { const rematchButton = document.getElementById('resRematchBtn'); if (rematchButton) rematchButton.hidden = true; document.getElementById('resTitle').innerText=title; document.getElementById('resText').innerText=text; const btn=document.getElementById('resBtn'); btn.innerText=btnText; btn.onclick=action?action:closeResult; document.getElementById('modalResult').classList.add('visible'); }
+        /** Итог партии — единый экран (assets/ui/result.js). opts: game, kind, value, format, unit, badge, stats, secondary, link. */
+        function showResult(title, text, btnText="Закрыть", action=null, opts={}) {
+            const content = document.getElementById('modalResultContent');
+            const rematchButton = document.getElementById('resRematchBtn');
+            if (rematchButton) rematchButton.hidden = true;
+            SparkResult.render(content, { kind: opts.kind || SparkResult.guessKind(title), title, text, rematch: true, ...opts, primary: { text: btnText, onClick: action || closeResult } });
+            document.getElementById('modalResult').classList.add('visible');
+        }
+        // Запасной экран итога: если assets/ui/result.js не загрузился, окно всё равно откроется.
+        if (!window.SparkResult) window.SparkResult = { shim: true, guessKind: () => 'info', render(container, o = {}) {
+            const rematch = container.querySelector('#resRematchBtn');
+            container.innerHTML = `<h2 id="resTitle"></h2><p id="resText"></p>`;
+            container.querySelector('#resTitle').textContent = o.title || '';
+            container.querySelector('#resText').textContent = [o.text, o.value != null ? BBVisuals.formatNumber(o.value) : ''].filter(Boolean).join('\n');
+            if (rematch) container.appendChild(rematch);
+            for (const b of [o.secondary, o.primary, o.link].filter(Boolean)) {
+                const el = document.createElement('button'); el.className = b === o.primary ? 'btn-main' : 'btn-secondary';
+                el.style.marginTop = '10px'; el.textContent = b.text || ''; if (b === o.primary) el.id = 'resBtn'; el.onclick = b.onClick; container.appendChild(el);
+            }
+        } };
 
         /* --- SUDOKU LOGIC --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1; let sudoSessionReady = null; let sudokuResultSaving = false;
@@ -10453,8 +10578,8 @@
         function activateDigit(num, btn) { if (btn.classList.contains('disabled')) return; if (activeDigit === num) { activeDigit = null; btn.classList.remove('active-digit'); highlightSameNumbers(null); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); return; } activeDigit = num; document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active-digit')); btn.classList.add('active-digit'); highlightSameNumbers(num); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
         function highlightSameNumbers(num) { const cells = document.querySelectorAll('.sudo-cell'); cells.forEach(c => c.classList.remove('same-num')); if (num === null) return; cells.forEach(cell => { if (parseInt(cell.innerText) === num) cell.classList.add('same-num'); }); }
         function checkNumberCompletion() { for(let i=1; i<=9; i++) { let count = 0; for(let j=0; j<81; j++) if(sudoBoard[j] === i) count++; const btn = document.getElementById(`nb${i}`); if(count >= 9) { btn.classList.add('disabled'); btn.classList.remove('active-digit'); if(activeDigit === i) { activeDigit = null; highlightSameNumbers(null); } } else { btn.classList.remove('disabled'); } } }
-        function onCellClick(idx, cell) { if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; reportGameMove('sudoku_wins'); const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); Promise.resolve(sudoSessionReady).then(() => reportTitleGameEvent('sudoku_loss', {}, activeSessionTokens.sudoku_wins || '')); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('close'), () => { closeResult(); closeGame('sudoku'); }), 500); } } }
-        async function checkSudokuWin() { if (sudoFilled === 81 && !sudokuResultSaving) { sudokuResultSaving=true; confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); const points = currentSudoMode; const optimisticWins = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', optimisticWins); localStorage.removeItem('sudo_state'); showResult(t('victory'), `${t('sudokuSolved')} (+${points})`, t('cool'), () => { closeResult(); closeGame('sudoku'); }); await sudoSessionReady; const achievementContext = { mistakes: 3 - sudoLives }; let result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points, achievementContext }); if (!result) { await new Promise(resolve => setTimeout(resolve, 600)); result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points, achievementContext }); } if (!result) console.error('Sudoku result could not be synchronized'); } }
+        function onCellClick(idx, cell) { if (sudoLives <= 0 || sudoFilled >= 81) return; if (activeDigit === null) return; if (sudoBoard[idx] !== 0) return; reportGameMove('sudoku_wins'); const correctVal = sudoSolution[idx]; if (activeDigit === correctVal) { cell.innerText = activeDigit; cell.classList.add('user-val', 'correct', 'same-num'); sudoBoard[idx] = activeDigit; sudoFilled++; if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('success'); cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 300 }); checkNumberCompletion(); saveSudokuState(); checkSudokuWin(); } else { cell.innerHTML = `<span class="shake-digit">${activeDigit}</span>`; cell.classList.add('error'); if(vibrationEnabled) tg.HapticFeedback.notificationOccurred('error'); sudoLives--; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; document.getElementById('sudokuLives').style.color = "var(--danger)"; setTimeout(() => { cell.innerHTML = ''; cell.classList.remove('error'); }, 400); saveSudokuState(); if (sudoLives <= 0) { localStorage.removeItem('sudo_state'); Promise.resolve(sudoSessionReady).then(() => reportTitleGameEvent('sudoku_loss', {}, activeSessionTokens.sudoku_wins || '')); setTimeout(() => showResult(t('defeat'), t('tooManyErrors'), t('playAgain'), () => { closeResult(); closeGame('sudoku'); document.getElementById('modalSudoku').classList.add('visible'); }, { game:'sudoku', kind:'lose', view:{ screen:'sudoku-screen', again:()=>{ closeGame('sudoku'); document.getElementById('modalSudoku').classList.add('visible'); } }, link:{ text:t('menu'), onClick:()=>{ closeResult(); closeGame('sudoku'); } } }), 500); } } }
+        async function checkSudokuWin() { if (sudoFilled === 81 && !sudokuResultSaving) { sudokuResultSaving=true; confetti({particleCount:150,spread:70,origin:{y:0.6},zIndex:2147483647}); const points = currentSudoMode; const optimisticWins = parseInt(localStorage.getItem('sudoku_wins')||0) + points; saveStatToCloud('sudoku_wins', optimisticWins); localStorage.removeItem('sudo_state'); showResult(t('victory'), t('sudokuSolved'), t('playAgain'), () => { closeResult(); closeGame('sudoku'); document.getElementById('modalSudoku').classList.add('visible'); }, { game:'sudoku', kind:'win', stats:[[t('numWins'), `+${points}`]], view:{ screen:'sudoku-screen', again:()=>{ closeGame('sudoku'); document.getElementById('modalSudoku').classList.add('visible'); } }, link:{ text:t('menu'), onClick:()=>{ closeResult(); closeGame('sudoku'); } } }); await sudoSessionReady; const achievementContext = { mistakes: 3 - sudoLives }; let result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points, achievementContext }); if (!result) { await new Promise(resolve => setTimeout(resolve, 600)); result = await sendStatToBackend('sudoku_wins', optimisticWins, { statDelta: points, achievementContext }); } if (!result) console.error('Sudoku result could not be synchronized'); } }
         function saveSudokuState() { if(sudoFilled === 81 || sudoLives <= 0) return; const state = { board: sudoBoard, sol: sudoSolution, lives: sudoLives, mode: currentSudoMode, sessionToken: activeSessionTokens.sudoku_wins || null }; localStorage.setItem('sudo_state', JSON.stringify(state)); }
         function restoreSudokuState() { const data = JSON.parse(localStorage.getItem('sudo_state')); if(!data) { generateSudoku(40); return; } sudoBoard = data.board; sudoSolution = data.sol; sudoLives = data.lives; currentSudoMode = data.mode; if (data.sessionToken) activeSessionTokens.sudoku_wins = data.sessionToken; document.getElementById('sudokuLives').innerText = `${3-sudoLives}/3`; if(sudoLives < 3) document.getElementById('sudokuLives').style.color = "var(--danger)"; renderSudoku(); checkNumberCompletion(); }
 
@@ -10873,39 +10998,30 @@
 
             const modal = document.getElementById('towerGameOverContent');
             const overlay = document.getElementById('modalTowerGameOver');
-            
-            let html = '';
+            const combo = `${twMaxComboThisGame}${isComboRecord ? ' 🔥' : ''}`;
+            const towerExit = { text: t('exit'), onClick: () => twExitGame() };
             if(isScoreRecord && twScore > 0) {
-                html = `<div id="towerRecordLottie" style="width:80px;height:80px;margin:0 auto 10px;"></div><h2 style="margin:0 0 5px 0;">${t('newRecord')}</h2>
-                <div style="font-size:14px; color:#8e8e93; margin-bottom:10px;">${t('hugeTower')}</div>
-                <div style="font-size:56px; font-weight:700; color:var(--accent); line-height:1;">${twScore}</div>
-                <div style="font-size:14px; color:#8e8e93; margin-top:10px;">${t('cleanSeries')}: ${twMaxComboThisGame}${isComboRecord ? ' 🔥' : ''}</div>
-                <button class="btn-main" onclick="twRestartGame()">${t('playAgain')}</button>`;
-                
+                SparkResult.render(modal, {
+                    game: 'tower', kind: 'record', title: t('newRecord'), text: t('hugeTower'), value: twScore,
+                    stats: [[t('cleanSeries'), combo]],
+                    primary: { text: t('playAgain'), onClick: () => twRestartGame() },
+                    secondary: window.SparkShare ? { html: SparkShare.buttonHtml(), onClick: () => SparkShare.record({ game: 'tower', category: 'tower_best' }) } : null,
+                    view: { screen: 'tower-screen', again: () => twRestartGame() },
+                    link: towerExit,
+                });
                 confetti({ particleCount: 100, spread: 70, origin: { x: 0, y: 0.6 }, angle: 60, shapes: ['circle'], drift: 1, zIndex: 23000 });
                 confetti({ particleCount: 100, spread: 70, origin: { x: 1, y: 0.6 }, angle: 120, shapes: ['circle'], drift: -1, zIndex: 23000 });
             } else {
-                html = `<h2 style="margin:0 0 5px 0;">${t('towerFell')}</h2>
-                <div style="font-size:14px; color:#8e8e93; margin-bottom:10px;">${t('best')}: ${twBestScore}</div>
-                <div style="font-size:48px; font-weight:700; margin-bottom:5px;">${twScore}</div>
-                <div style="font-size:14px; color:#8e8e93;">${t('cleanSeries')}: ${twMaxComboThisGame}${isComboRecord ? ` 🔥 ${t('newRecord')}` : ''}</div>
-                <button class="btn-main" onclick="twRestartGame()">${t('tryAgainBtn')}</button>`;
-            }
-            html += `<button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="twExitGame()">${t('exit')}</button>`;
-            
-            modal.innerHTML = html;
-            
-            // Initialize Lottie for record
-            if(isScoreRecord && twScore > 0) {
-                lottie.loadAnimation({
-                    container: document.getElementById('towerRecordLottie'),
-                    renderer: 'svg',
-                    loop: true,
-                    autoplay: true,
-                    path: 'top.json'
+                SparkResult.render(modal, {
+                    game: 'tower', kind: 'lose', title: t('towerFell'), value: twScore,
+                    stats: [[t('best'), twBestScore], [t('cleanSeries'), combo]],
+                    badge: isComboRecord ? t('newRecord') : '',
+                    primary: { text: t('tryAgainBtn'), onClick: () => twRestartGame() },
+                    view: { screen: 'tower-screen', again: () => twRestartGame() },
+                    link: towerExit,
                 });
             }
-            
+
             overlay.classList.add('visible');
             twGameOverRevealPending = false;
         }
@@ -12656,25 +12772,20 @@
             // Clear saved game on game over
             localStorage.removeItem('wordle_saved_game');
             
+            const wordleAgain = { text: t('playAgain'), onClick: () => { closeWordleModal(); initWordle(); } };
+            const wordleExit = { text: t('exit'), onClick: () => { closeWordleModal(); closeGame('wordle'); } };
             if (won) {
-                content.innerHTML = `
-                    <h2 style="margin:0 0 10px; font-size:28px; font-weight:800;">${t('victory')}</h2>
-                    <p style="font-size:17px; color:#8e8e93; margin:0 0 20px;">${t('guessedIn')} ${n} ${attemptsText}</p>
-                    <div style="background:var(--glass-bg); border-radius:16px; padding:20px; margin-bottom:25px; border:1px solid var(--glass-border);">
-                        <div style="font-size:13px; color:#8e8e93; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">${t('totalWins')}</div>
-                        <div style="font-size:40px; font-weight:800; color:var(--success);">${wordleWins}</div>
-                    </div>
-                    <button class="btn-main" onclick="closeWordleModal(); initWordle();">${t('playAgain')}</button>
-                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; cursor:pointer;" onclick="closeWordleModal(); closeGame('wordle');">${t('exit')}</button>
-                `;
+                SparkResult.render(content, {
+                    game: 'wordle', kind: 'win', title: t('victory'), text: `${t('guessedIn')} ${n} ${attemptsText}`,
+                    stats: [[t('totalWins'), String(wordleWins)]],
+                    primary: wordleAgain, link: wordleExit, view: { screen: 'wordle-screen', again: () => { closeWordleModal(); initWordle(); } },
+                });
             } else {
-                content.innerHTML = `
-                    <h2 style="margin:0 0 15px; font-size:28px; font-weight:800;">${t('notGuessed')}</h2>
-                    <div style="font-size:13px; color:#8e8e93; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">${t('theWord')}</div>
-                    <div style="font-size:42px; font-weight:800; color:var(--accent); margin-bottom:30px; text-transform:uppercase; letter-spacing:6px;">${wordleTarget}</div>
-                    <button class="btn-main" onclick="closeWordleModal(); initWordle();">${t('playAgain')}</button>
-                    <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; cursor:pointer;" onclick="closeWordleModal(); closeGame('wordle');">${t('exit')}</button>
-                `;
+                SparkResult.render(content, {
+                    game: 'wordle', kind: 'lose', title: t('notGuessed'), text: t('theWord'),
+                    extraHtml: `<div class="sr-word">${String(wordleTarget || '').replace(/[^\p{L}]/gu, '')}</div>`,
+                    primary: wordleAgain, link: wordleExit, view: { screen: 'wordle-screen', again: () => { closeWordleModal(); initWordle(); } },
+                });
             }
             document.getElementById('modalWordleGameOver').classList.add('visible');
         }

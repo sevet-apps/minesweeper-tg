@@ -770,3 +770,22 @@ body.desktop #modalChess.is-full .ui-mode-panel > .ui-sheet-heading { padding-to
 #modalChess .cs-history-more { width: 100%; margin-top: 10px; }
 #modalChess .cs-history-more[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .cs-hist { animation: none; } #modalChess .ui-mode-panel { transition-duration: 0ms !important; } }
+
+/* Открытые комнаты: без маленького окошка со своей прокруткой — список растёт
+   вместе со шторкой (она прокручивается сама и разворачивается на весь экран).
+   Строки крупнее, вся строка — кнопка входа. */
+#modalChess .ck-rooms { max-height: none; overflow: visible; gap: 10px; padding-bottom: 6px; }
+#modalChess .ck-room { min-height: 70px; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 20px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), background-color .2s; }
+#modalChess .ck-room:active { transform: scale(.975); }
+#modalChess .ck-room-ava { width: 46px; height: 46px; font-size: 18px; }
+#modalChess .ck-room-text b { font-size: 16px; }
+#modalChess .ck-room-text small { margin-top: 2px; font-size: 13px; }
+#modalChess .cs-room-tc { padding: 6px 10px; border-radius: 10px; font-size: 14px; }
+#modalChess .ck-room-join { padding: 11px 18px; font-size: 15px; }
+#modalChess .ck-empty { padding: 22px 16px; }
+#modalChess .ck-room.is-leaving { min-height: 0; }
+#modalChess .ck-room-text { flex: 1; }
+#modalChess .cs-room-tc { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 6px 8px 5px; border-radius: 12px; line-height: 1.1; }
+#modalChess .cs-room-tc b { font-size: 15px; font-weight: 850; }
+#modalChess .cs-room-tc small { margin-top: 1px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; text-transform: lowercase; opacity: .8; }
+#modalChess .ck-room-join { margin-left: 0; }
