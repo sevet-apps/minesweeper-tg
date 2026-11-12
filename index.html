@@ -6555,10 +6555,10 @@
             gameModuleFiles.set(name, ready);
             return ready;
         }
-        const CHESS_VERSION = '20261114';
+        const CHESS_VERSION = '20261113';
         let chessLoading = null;
         const loadChessFiles = () => loadGameModuleFiles('chess', 'assets/chess/', CHESS_VERSION, 'chess.css',
-            ['chess-core.js', 'chess-i18n.js', 'chess-feel.js', 'chess-sfx.js', 'chess-talk.js', 'chess-app.js']);
+            ['chess-core.js', 'chess-i18n.js', 'chess-swing.js', 'chess-talk.js', 'chess-app.js']);
         function loadChessApp() {
             if (window.SparkChess?.init && gameModuleFiles.has('chess')) return gameModuleFiles.get('chess').then(() => window.SparkChess.init());
             if (chessLoading) return chessLoading;

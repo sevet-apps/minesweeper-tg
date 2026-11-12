@@ -20,8 +20,8 @@
     const HISTORY_CACHE_KEY = 'chess_history_cache';  // последний список партий с сервера
     const PIECE_NAMES = 'KQRBNP';
     const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    // Тактильная система: физика фигур, морфинг, звуки материала (chess-feel.js, chess-sfx.js).
-    const Feel = window.SparkChessFeel;
+    // Раскачка фигуры при перетаскивании — только на компьютере с мышью.
+    const Swing = window.SparkChessSwing;
     const FINE_POINTER = !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
     let Chess = null;
@@ -107,9 +107,7 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, feelStyle: 'glass', feelLevel: 'balanced', talk: false, autoFlip: false, action: true, review: true, botLabel: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
-    if (!Feel?.STYLES.includes(settings.feelStyle)) settings.feelStyle = 'glass';
-    if (!Feel?.LEVELS.includes(settings.feelLevel)) settings.feelLevel = 'balanced';
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, talk: false, autoFlip: false, action: true, review: true, botLabel: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     // Владельцу сервер дописывает к нику бота « (бот)»; в настройках он может эту приписку спрятать.
@@ -182,8 +180,7 @@
                 .catch(() => {})));
             return this.loading;
         },
-        /** when — через сколько секунд (точно по часам звука: совпадает с касанием фигуры). */
-        play(name, volume = 1, when = 0) {
+        play(name, volume = 1) {
             if (!settings.sound || !this.ctx || !this.buffers[name]) return;
             try {
                 if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
@@ -193,25 +190,17 @@
                 source.playbackRate.value = name.startsWith('move') ? 0.96 + Math.random() * 0.08 : 1;
                 gain.gain.value = volume;
                 source.connect(gain).connect(this.ctx.destination);
-                source.start(this.ctx.currentTime + Math.max(0, when));
+                source.start();
             } catch (_) {}
         },
     };
-    /** Синтезированные звуки материала (chess-sfx.js) — в характере выбранного стиля. */
-    const Sfx = window.SparkChessSfx?.createSfx(() => Sound.ctx) || null;
-    function sfx(name, { when = 0, gain = 1, arg } = {}) {
-        if (!settings.sound || !Sfx || !Sound.ctx) return;
-        Sfx.play(name, { style: settings.feelStyle, level: feelLevel(), when, gain, arg });
-    }
 
-    /** Звук хода — в момент касания клетки (at, мс). Шах звучит своим резонансом. */
-    function playMoveSound(move, inCheck, at = 0) {
-        const w = at / 1000;
-        const lv = feelLevel();
-        if (move.flags.includes('k') || move.flags.includes('q')) { Sound.play('castle', 1, w); Sound.play('move2', 0.9, w + 0.11); }
-        else if (move.captured) { Sound.play('capture', 1, w); sfx('capture', { when: w, gain: lv === 'minimal' ? 0.6 : 1 }); }
-        else { Sound.play(Math.random() < 0.5 ? 'move' : 'move2', 1, w); if (lv !== 'minimal') sfx('place', { when: w }); }
-        if (inCheck) sfx('check', { when: w + 0.05 });
+    function playMoveSound(move, inCheck) {
+        if (move.promotion) { Sound.play('move'); setTimeout(() => Sound.play('promote', 0.8), 90); }
+        else if (move.flags.includes('k') || move.flags.includes('q')) { Sound.play('castle'); setTimeout(() => Sound.play('move2', 0.9), 110); }
+        else if (move.captured) Sound.play('capture');
+        else Sound.play(Math.random() < 0.5 ? 'move' : 'move2');
+        if (inCheck) setTimeout(() => Sound.play('check', 0.75), 70);
     }
 
     /* ---------- Stockfish в Web Worker ---------- */
@@ -365,19 +354,13 @@
                     <div class="cs-coords cs-ranks left" data-ref="ranksLeft" aria-hidden="true"></div>
                     <div class="cs-coords cs-ranks right" data-ref="ranksRight" aria-hidden="true"></div>
                     <div class="cs-board" data-ref="board">
-                        <div class="cs-cam" data-ref="cam">
-                            <div class="cs-squares" data-ref="squares"></div>
-                            <div class="cs-tension" data-ref="tension" aria-hidden="true"></div>
-                            <svg class="cs-threads" data-ref="threads" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
-                            <div class="cs-layer" data-ref="marks"></div>
-                            <div class="cs-layer cs-fx" data-ref="fx" aria-hidden="true"></div>
-                            <div class="cs-pieces" data-ref="pieces"></div>
-                            <div class="cs-badges" data-ref="badges"></div>
-                            <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
-                            <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
-                        </div>
+                        <div class="cs-squares" data-ref="squares"></div>
+                        <div class="cs-layer" data-ref="marks"></div>
+                        <div class="cs-pieces" data-ref="pieces"></div>
+                        <div class="cs-badges" data-ref="badges"></div>
+                        <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
                     </div>
-                    <div class="cs-pills" data-ref="pills" aria-hidden="true"></div>
                     <div class="cs-talk" data-ref="talk" aria-hidden="true"></div>
                 </div>
                 <div class="cs-player" data-ref="bottomPlayer"></div>
@@ -400,7 +383,7 @@
             <div class="cs-sheet" data-ref="sheet" role="dialog" aria-modal="true"></div>`;
         refs = {};
         screen.querySelectorAll('[data-ref]').forEach(el => { refs[el.dataset.ref] = el; });
-        applyFeel();
+        screen.classList.toggle('no-wiggle', !settings.wiggle);
         screen.addEventListener('click', onScreenClick);
         refs.scrim.addEventListener('click', () => { if (ui.dialog?.dismissable !== false) closeDialog(); });
         bindBoard();
@@ -498,116 +481,43 @@
         refs.frame.classList.toggle('no-coords', !settings.coords);
     }
 
-    /* ---------- тактильная система: стиль, интенсивность, темп ----------
-       Стиль (стекло / упругость) и интенсивность (минимум / баланс / максимум)
-       выбирает игрок. Темп партии смягчает частые эффекты: в пуле и блице они
-       короче, при очереди быстрых ходов и на последних секундах — ещё короче. */
-    const liteMode = () => !!document.body?.classList.contains('lite-mode');
-    const feelLevel = () => (REDUCED_MOTION || liteMode() ? 'minimal' : settings.feelLevel);
-    let lastMoveAt = 0;
-    function feel() {
-        if (!Feel) return null;
-        const cat = game?.tc?.cat || 'none';
-        const rush = performance.now() - lastMoveAt < 900;
-        let lowTime = false;
-        if (game && (game.clock || game.online?.clock)) {
-            const values = clockValues();
-            const mine = game.myColor || game.chess.turn();
-            lowTime = !!values && values[mine] < 10000;
-        }
-        return Feel.profile(settings.feelStyle, feelLevel(), Feel.tempoFor(cat, { rush, lowTime }));
-    }
-    function applyFeel() {
-        if (!screen) return;
-        const P = Feel?.profile(settings.feelStyle, feelLevel(), 1);
-        screen.dataset.feel = settings.feelStyle;
-        screen.dataset.level = feelLevel();
-        if (!P) return;
-        screen.style.setProperty('--cs-lift-y', `${(P.liftY * 0.6).toFixed(2)}%`);
-        screen.style.setProperty('--cs-lift-s', String(1 + (P.liftScale - 1) * 0.6));
-        screen.style.setProperty('--cs-cp', String(P.clockPulse));
-    }
-    const later = (fn, ms) => (ms > 4 ? setTimeout(fn, ms) : fn());
-
     /* ---------- фигуры ---------- */
     function createPiece(code, sq) {
         const el = document.createElement('div');
         el.className = 'cs-pc';
         el.dataset.code = code;
-        el.innerHTML = `<i style="--img:url('${pieceUrl(code)}')"></i>`;
+        el.innerHTML = `<i style="background-image:url('${pieceUrl(code)}')"></i>`;
         el.style.transform = sqTf(sq);
         refs.pieces.appendChild(el);
         return el;
     }
     function setPieceCode(el, code, animate) {
         el.dataset.code = code;
-        el.firstChild.style.setProperty('--img', `url('${pieceUrl(code)}')`);
+        el.firstChild.style.backgroundImage = `url('${pieceUrl(code)}')`;
         if (animate && !REDUCED_MOTION) { el.classList.remove('promoted'); void el.offsetWidth; el.classList.add('promoted'); }
     }
     function removePiece(el, animate, delay = 0) {
         if (!animate || REDUCED_MOTION) { el.remove(); return; }
-        later(() => { el.classList.add('vanish'); setTimeout(() => el.remove(), 300); }, delay);
+        setTimeout(() => { el.classList.add('vanish'); setTimeout(() => el.remove(), 260); }, delay);
     }
-    /** Где фигура сейчас (в клетках) — по её transform. */
-    function pieceXY(el) {
-        const m = (el.style.transform || '').match(/-?[\d.]+/g);
-        return m && m.length >= 2 ? [Number(m[0]) / 100, Number(m[1]) / 100] : [0, 0];
-    }
-    /** Поза выбранной (приподнятой) фигуры — как в CSS (.cs-pc.selected). */
-    const liftedPose = P => `translateY(${(P.liftY * 0.6).toFixed(2)}%) scale(${(1 + (P.liftScale - 1) * 0.6).toFixed(4)})`;
-
-    /** Фигура едет на клетку sq и садится в неё: магнитное «доезжание»,
-        короткая упругая посадка, сжатие и рябь по клетке. Возвращает момент
-        касания (мс от сейчас) — в него звучит ход и приходит вибрация. */
-    function slide(el, sq, { dropped = false, delay = 0, speed = 0, effects = true, rest = 'none' } = {}) {
-        const to = sqXY(sq);
-        const from = pieceXY(el);
-        const face = el.firstChild;
-        const pose = face.style.transform;
-        face.style.transform = '';
-        el.style.transform = tf(to[0], to[1]);
+    function slide(el, sq, { dropped = false, delay = 0 } = {}) {
+        const to = sqTf(sq);
+        const from = el.style.transform || to;
+        el.style.transform = to;
         el.getAnimations?.().forEach(a => a.cancel());
-        face.getAnimations?.().forEach(a => a.cancel());
-        el.classList.remove('moving');
-        const P = feel();
-        const same = Math.abs(from[0] - to[0]) < 1e-3 && Math.abs(from[1] - to[1]) < 1e-3;
-        if (REDUCED_MOTION || !el.animate || !P || (same && !pose)) return delay;
-        const path = Feel.travelFrames(from, to, P, { dropped, speed });
+        if (REDUCED_MOTION || from === to || !el.animate) return 0;
+        const [x0, y0] = (from.match(/-?[\d.]+/g) || [0, 0]).map(Number);
+        const [x1, y1] = sqXY(sq);
+        const distance = Math.hypot(x1 - x0 / 100, y1 - y0 / 100);
+        const duration = dropped ? 110 : Math.round(Math.min(360, 170 + 55 * Math.sqrt(distance)));
         el.classList.add('moving');
-        const anim = el.animate(path.frames.map(f => ({ offset: f.offset, transform: tf(f.x, f.y) })), { duration: path.total, delay, easing: 'linear', fill: 'backwards' });
+        const anim = el.animate([{ transform: from }, { transform: to }], { duration, delay, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'backwards' });
+        if (!dropped) {
+            const lift = el.dataset.code[1] === 'N' ? 1.16 : 1.1;
+            el.firstChild.animate([{ transform: 'scale(1)' }, { transform: `scale(${lift})`, offset: 0.45 }, { transform: 'scale(1)' }], { duration, delay, easing: 'ease-in-out' });
+        }
         anim.onfinish = anim.oncancel = () => el.classList.remove('moving');
-        // лицо фигуры: из руки (или с подъёмом в полёте) — к посадке со сжатием и «усадкой»
-        const c = path.contact;
-        const squash = effects ? Feel.squashFrames(P, dropped ? 0.8 + Math.min(0.6, speed / 25) : 1) : null;
-        const settle = squash ? P.squashMs : (effects ? 130 * P.tempo : 90);
-        const total = c + settle;
-        const kf = [{ offset: 0, transform: pose || 'none' }];
-        if (!pose && !dropped && path.dist > 0.2 && c > 60) {
-            const lean = (to[0] - from[0] >= 0 ? 1 : -1) * P.lean;
-            kf.push({ offset: 0.42 * c / total, transform: `rotate(${lean.toFixed(2)}deg) scale(${P.hop})` });
-        }
-        const seat = effects && rest === 'none' ? P.seat : 1;
-        const steps = squash || [{ offset: 0, sx: 1, sy: 1 }, { offset: 1, sx: 1, sy: 1 }];
-        for (const f of steps) {
-            const k = 1 + (seat - 1) * Math.pow(1 - f.offset, 2);
-            kf.push({ offset: Math.min(1, (c + f.offset * settle) / total), transform: f.offset >= 1 ? rest : `scale(${(f.sx * k).toFixed(4)}, ${(f.sy * k).toFixed(4)})` });
-        }
-        face.animate(kf, { duration: total, delay, easing: 'linear' });
-        if (effects && !same) later(() => ripple(sq, dropped ? 1 : 0.8), delay + c);
-        return delay + c;
-    }
-
-    /** Рябь по поверхности клетки в момент посадки. */
-    function ripple(sq, power = 1) {
-        const P = feel();
-        if (!sq || !refs.fx || !P || P.ripple * power < 0.02 || REDUCED_MOTION) return;
-        const el = document.createElement('div');
-        el.className = 'cs-ripple';
-        el.style.transform = sqTf(sq);
-        el.style.setProperty('--a', (P.ripple * power).toFixed(3));
-        el.style.setProperty('--t', `${Math.round(560 * Math.max(0.6, P.tempo))}ms`);
-        refs.fx.appendChild(el);
-        setTimeout(() => el.remove(), 900);
+        return duration + delay;
     }
 
     function positionMap(chess) {
@@ -639,8 +549,7 @@
                 const el = current.get(best);
                 current.delete(best);
                 next.set(sq, el);
-                if (animate) slide(el, sq, { effects: false });
-                else { el.getAnimations?.().forEach(a => a.cancel()); el.style.transform = sqTf(sq); }
+                if (animate) slide(el, sq); else { el.getAnimations?.().forEach(a => a.cancel()); el.style.transform = sqTf(sq); }
             } else {
                 const el = createPiece(code, sq);
                 next.set(sq, el);
@@ -652,15 +561,13 @@
     }
 
     function rebuildPieces(chess) {
+        preloadShapes();
         refs.pieces.innerHTML = '';
         view.els = new Map();
         for (const [sq, code] of positionMap(chess)) view.els.set(sq, createPiece(code, sq));
     }
-    const squareOf = el => { for (const [sq, item] of view.els) if (item === el) return sq; return null; };
 
-    /** Живой ход: фигура едет и садится, взятая уходит в момент касания,
-        ладья в рокировке едет следом, пешка на последней горизонтали
-        перетекает в новую фигуру. Возвращает момент касания (мс). */
+    /** Живой ход: фигура едет, взятая растворяется, ладья в рокировке едет следом. */
     function animateMove(move, { dropped = false } = {}) {
         const els = view.els;
         const el = els.get(move.from);
@@ -669,12 +576,14 @@
         let captureSq = null;
         if (move.flags.includes('e')) captureSq = move.to[0] + move.from[1];
         else if (move.captured) captureSq = move.to;
-        const victim = captureSq ? els.get(captureSq) : null;
-        if (victim && victim !== el) els.delete(captureSq);
+        let duration = 0;
+        if (captureSq) {
+            const victim = els.get(captureSq);
+            if (victim && victim !== el) { els.delete(captureSq); removePiece(victim, true, dropped ? 0 : 110); }
+        }
         els.delete(move.from);
         els.set(move.to, el);
-        const contact = slide(el, move.to, { dropped, speed: dropped ? ui.dropSpeed || 0 : 0 });
-        if (victim && victim !== el) removePiece(victim, true, Math.max(0, contact - 25));
+        duration = slide(el, move.to, { dropped });
         if (move.flags.includes('k') || move.flags.includes('q')) {
             const rank = move.from[1];
             const [rf, rt] = move.flags.includes('k') ? [`h${rank}`, `f${rank}`] : [`a${rank}`, `d${rank}`];
@@ -684,94 +593,9 @@
         if (move.promotion) {
             const code = move.color + move.promotion.toUpperCase();
             el.dataset.code = code;
-            later(() => morphPiece(el, move.color + 'P', code), contact);
+            setTimeout(() => setPieceCode(el, code, true), Math.max(0, duration - 40));
         }
-        return contact;
-    }
-
-    /* ---------- превращение: пешка перетекает в новую фигуру ----------
-       Силуэты фигур рисуются в маску 96×96 и превращаются в поле расстояний
-       (SDF). Смесь двух полей даёт промежуточную форму: края пешки плавно
-       вытекают в зубцы ладьи или корону ферзя. Стекло перетекает с бегущим
-       бликом, упругость чуть перелетает форму и возвращается. */
-    const SDF_N = 96;
-    const sdfCache = new Map();
-    function pieceSdf(code) {
-        if (sdfCache.has(code) || !Feel) return sdfCache.get(code);
-        const job = (async () => {
-            const text = await (await fetch(pieceUrl(code))).text();
-            const svg = text.replace(/<svg\b/, `<svg width="${SDF_N}" height="${SDF_N}" preserveAspectRatio="none"`);
-            const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-            try {
-                const img = new Image();
-                img.src = url;
-                await img.decode();
-                const canvas = document.createElement('canvas');
-                canvas.width = canvas.height = SDF_N;
-                const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                ctx.drawImage(img, 0, 0, SDF_N, SDF_N);
-                const rgba = ctx.getImageData(0, 0, SDF_N, SDF_N).data;
-                const alpha = new Uint8Array(SDF_N * SDF_N);
-                for (let i = 0; i < alpha.length; i++) alpha[i] = rgba[i * 4 + 3];
-                const value = { sdf: Feel.silhouetteSdf(alpha, SDF_N), look: Feel.svgLook(text) };
-                sdfCache.set(code, value);
-                return value;
-            } finally { URL.revokeObjectURL(url); }
-        })();
-        job.catch(() => sdfCache.delete(code));
-        sdfCache.set(code, job);
-        return job;
-    }
-    /** Силуэты для превращения считаем заранее, в простое. */
-    let morphPreloaded = false;
-    function preloadMorph() {
-        if (!Feel || REDUCED_MOTION || morphPreloaded) return;
-        morphPreloaded = true;
-        const idle = window.requestIdleCallback ? fn => window.requestIdleCallback(fn, { timeout: 1500 }) : fn => setTimeout(fn, 300);
-        const codes = ['wP', 'bP', 'wQ', 'bQ', 'wR', 'bR', 'wN', 'bN', 'wB', 'bB'];
-        const next = () => { const code = codes.shift(); if (!code) return; Promise.resolve(pieceSdf(code)).catch(() => {}).finally(() => idle(next)); };
-        idle(next);
-    }
-    function morphPiece(el, fromCode, toCode) {
-        if (!el.isConnected) return;
-        const P = feel();
-        const a = sdfCache.get(fromCode), b = sdfCache.get(toCode);
-        if (!P || REDUCED_MOTION || !a?.sdf || !b?.sdf) { sfx('promote', { arg: 0.35 }); setPieceCode(el, el.dataset.code, true); return; }
-        // редкое событие: темп укорачивает его меньше, чем частые
-        const dur = Math.round(P.morphMs * (0.55 + 0.45 * P.tempo));
-        sfx('promote', { arg: dur / 1000 });
-        haptic('medium');
-        el.querySelector('.cs-morph')?.remove();
-        const size = Math.max(48, Math.min(220, Math.round(view.size / 8 * Math.min(2.5, window.devicePixelRatio || 1))));
-        const canvas = document.createElement('canvas');
-        canvas.className = 'cs-morph';
-        canvas.width = canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        const img = ctx.createImageData(size, size);
-        el.appendChild(canvas);
-        el.classList.add('morphing');
-        const t0 = performance.now();
-        const glass = P.style === 'glass';
-        const frame = now => {
-            if (!canvas.isConnected) { el.classList.remove('morphing'); return; }
-            const u = Math.min(1, (now - t0) / dur);
-            const k = Feel.morphCurve(u, P);
-            Feel.paintSdf(img, size, Feel.mixSdf(a.sdf, b.sdf, k, P.bulge), SDF_N, Feel.mixLook(a.look, b.look, Feel.clamp(k)), glass ? { sheen: -0.35 + 1.7 * u } : {});
-            ctx.putImageData(img, 0, 0);
-            if (!glass) {
-                // упругая форма: вытягивается вверх, приседает и выпрямляется
-                const q = Math.sin(u * Math.PI * 2.2) * Math.pow(1 - u, 1.4) * (0.05 + 0.03 * P.li);
-                canvas.style.transform = `scale(${(1 - q * 0.6).toFixed(4)}, ${(1 + q).toFixed(4)})`;
-            }
-            if (u < 1) { requestAnimationFrame(frame); return; }
-            setPieceCode(el, el.dataset.code);
-            el.classList.remove('morphing');
-            const fade = canvas.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, fill: 'forwards' });
-            fade.onfinish = () => canvas.remove();
-            el.firstChild.animate([{ transform: `scale(${(P.seat + 0.025).toFixed(3)})` }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.2,.9,.3,1)' });
-            ripple(squareOf(el), 1.3);
-        };
-        requestAnimationFrame(frame);
+        return duration;
     }
 
     /* ---------- подсветка ---------- */
@@ -788,10 +612,6 @@
         return ply > 0 ? game.moves[ply - 1] : null;
     }
 
-    /** Подсветка клеток. Метки живут между перерисовками: новые проступают из
-        доски (с задержкой по расстоянию от фигуры — волной), ушедшие плавно
-        тают, а не пропадают разом. Клетка под фигурой в руке «загорается». */
-    const markEls = new Map();
     function renderMarks() {
         if (!refs.marks) return;
         const list = [];
@@ -814,120 +634,13 @@
                 if (seen.has(m.to)) continue;
                 seen.add(m.to);
                 const capture = !!(m.captured || chess.get(m.to));
-                list.push([m.to, `${capture ? 'cap' : 'dot'}${ui.preMode ? ' is-pre' : ''}`, m.to === ui.hover]);
+                list.push([m.to, `${capture ? 'cap' : 'dot'}${ui.preMode ? ' is-pre' : ''}`]);
             }
         }
         if (ui.hover) list.push([ui.hover, 'hover']);
-        const P = feel();
-        const origin = ui.selected ? sqXY(ui.selected) : null;
-        const keep = new Set();
-        for (const [sq, cls, hot] of list) {
-            const key = `${view.orientation}${sq}|${cls}`;
-            keep.add(key);
-            let el = markEls.get(key);
-            if (!el) {
-                el = document.createElement('div');
-                el.className = `cs-mark ${cls}`;
-                el.style.transform = sqTf(sq);
-                if (origin && /^(dot|cap)/.test(cls)) {
-                    const [x, y] = sqXY(sq);
-                    el.style.setProperty('--d', `${Math.round(Math.hypot(x - origin[0], y - origin[1]) * (P?.stagger || 0))}ms`);
-                }
-                refs.marks.appendChild(el);
-                markEls.set(key, el);
-            }
-            if (hot != null) el.classList.toggle('is-hot', !!hot);
-        }
-        for (const [key, el] of markEls) {
-            if (keep.has(key)) continue;
-            markEls.delete(key);
-            if (REDUCED_MOTION || /\b(hover|last)\b/.test(el.className)) { el.remove(); continue; }
-            el.classList.add('is-out');
-            setTimeout(() => el.remove(), 240);
-        }
-        renderThreads();
+        refs.marks.innerHTML = list.map(([sq, cls]) => `<div class="cs-mark ${cls}" style="transform:${sqTf(sq)}"></div>`).join('');
         renderArrow(hint || reviewArrow());
         renderBadge();
-        renderPills();
-    }
-    function resetMarks() {
-        markEls.clear();
-        if (refs.marks) refs.marks.innerHTML = '';
-        threadKey = '';
-        if (refs.threads) refs.threads.innerHTML = '';
-        if (refs.fx) refs.fx.innerHTML = '';
-        if (refs.pills) refs.pills.innerHTML = '';
-    }
-
-    /* ---------- нити к доступным клеткам ----------
-       Тонкие линии от выбранной фигуры к самым дальним клеткам каждого
-       направления: у упругости — эластичные нити, которые вытягиваются с
-       небольшим перелётом, у стекла (на максимуме) — тонкие лучи света.
-       При отмене выбора нити втягиваются обратно в фигуру. */
-    const SVGNS = 'http://www.w3.org/2000/svg';
-    let threadKey = '';
-    function threadEnds(from, targets) {
-        const [x0, y0] = sqXY(from);
-        const best = new Map();
-        for (const m of targets) {
-            const [x1, y1] = sqXY(m.to);
-            const dx = x1 - x0, dy = y1 - y0;
-            if (!dx && !dy) continue;
-            const knight = Math.abs(dx) * Math.abs(dy) === 2;
-            const dir = knight ? `n${dx},${dy}` : `${Math.sign(dx)},${Math.sign(dy)}`;
-            const d = Math.hypot(dx, dy);
-            if (!best.has(dir) || best.get(dir).d < d) best.set(dir, { x: x1, y: y1, d });
-        }
-        return { x0, y0, ends: [...best.values()] };
-    }
-    function retractThreads(g) {
-        g.classList.add('is-out');
-        if (!g.animate || REDUCED_MOTION) { g.remove(); return; }
-        const anim = g.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0.04)', opacity: 0.2 }], { duration: 190, easing: 'cubic-bezier(.55,0,.8,.3)', fill: 'forwards' });
-        anim.onfinish = () => g.remove();
-    }
-    function renderThreads() {
-        const svg = refs.threads;
-        if (!svg) return;
-        const P = feel();
-        const on = !!(ui.selected && settings.showMoves && P?.threads && !REDUCED_MOTION && game?.view == null && ui.targets.length);
-        const key = on ? `${view.orientation}|${ui.selected}|${ui.preMode}|${ui.targets.map(m => m.to).join('')}` : '';
-        if (key === threadKey) return;
-        threadKey = key;
-        svg.querySelectorAll('g.cs-th:not(.is-out)').forEach(retractThreads);
-        if (!on) return;
-        const { x0, y0, ends } = threadEnds(ui.selected, ui.targets);
-        const cx = x0 + 0.5, cy = y0 + 0.5;
-        const g = document.createElementNS(SVGNS, 'g');
-        g.setAttribute('class', `cs-th is-${P.style}${ui.preMode ? ' is-pre' : ''}`);
-        g.style.transformOrigin = `${cx}px ${cy}px`;
-        for (const e of ends) {
-            const ex = e.x + 0.5, ey = e.y + 0.5;
-            const path = document.createElementNS(SVGNS, 'path');
-            if (P.style === 'elastic') {
-                // нить чуть провисает: контрольная точка сдвинута поперёк, к «низу» экрана
-                const len = Math.hypot(ex - cx, ey - cy);
-                const nx = -(ey - cy) / len, ny = (ex - cx) / len;
-                const sag = Math.min(0.22, 0.07 * Math.sqrt(len)) * (ny >= 0 ? 1 : -1);
-                path.setAttribute('d', `M${cx} ${cy}Q${((cx + ex) / 2 + nx * sag).toFixed(3)} ${((cy + ey) / 2 + ny * sag).toFixed(3)} ${ex} ${ey}`);
-            } else {
-                path.setAttribute('d', `M${cx} ${cy}L${ex} ${ey}`);
-            }
-            g.appendChild(path);
-        }
-        svg.appendChild(g);
-        if (!g.animate) return;
-        const t = P.tempo;
-        if (P.style === 'elastic') {
-            g.animate([
-                { transform: 'scale(0)', opacity: 0 },
-                { transform: 'scale(1.07)', opacity: 1, offset: 0.55 },
-                { transform: 'scale(0.985)', offset: 0.8 },
-                { transform: 'scale(1)', opacity: 1 },
-            ], { duration: Math.round(460 * t), easing: 'cubic-bezier(.25,.8,.35,1)' });
-        } else {
-            g.animate([{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: Math.round(320 * t), easing: 'cubic-bezier(.2,.85,.3,1)' });
-        }
     }
 
     function findKing(chess, color) {
@@ -1054,7 +767,6 @@
         clearAnnotations();
         if (game.view != null) { goLive(); return; }
         if (ui.promo) return;
-        if (ui.drag) cancelDrag(true);
         const chess = game.chess;
         const piece = chess.get(sq);
         // ход на подсвеченную клетку
@@ -1069,7 +781,16 @@
             select(sq);
             const el = view.els.get(sq);
             if (el) {
-                ui.drag = { sq, el, x: event.clientX, y: event.clientY, px: event.clientX, py: event.clientY, active: false, wasSelected, pointerId: event.pointerId, touch: event.pointerType === 'touch' };
+                ui.drag = { sq, el, x: event.clientX, y: event.clientY, active: false, wasSelected, pointerId: event.pointerId };
+                if (swingOn(event)) {
+                    // где взяли: от этого зависит, как фигура повиснет и раскачается
+                    const box = el.getBoundingClientRect();
+                    const gx = (event.clientX - box.left) / box.width, gy = (event.clientY - box.top) / box.height;
+                    const shape = pieceShape(el.dataset.code);
+                    // поднять можно только саму фигуру; пустое место клетки её лишь выбирает
+                    if (!shape.hit(gx, gy)) ui.drag.noLift = true;
+                    else Object.assign(ui.drag, { grabX: gx, grabY: gy, swing: Swing.createSwing(shape, gx, gy) });
+                }
                 try { refs.board.setPointerCapture(event.pointerId); } catch (_) {}
             }
             return;
@@ -1088,100 +809,24 @@
         const drag = ui.drag;
         if (!drag) { hoverGrab(event); return; }
         if (event.pointerId !== drag.pointerId) return;
-        drag.px = event.clientX;
-        drag.py = event.clientY;
         if (!drag.active) {
-            if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
-            startDrag(drag);
+            if (drag.noLift || Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
+            drag.active = true;
+            drag.el.classList.remove('selected');
+            drag.el.classList.add('dragging');
+            if (drag.swing) startSwing(drag);
         }
-        aimDrag(drag);
-    }
-
-    /** Палец (с подъёмом на тач-экране, чтобы фигура не пряталась под ним) → клетка под фигурой. */
-    function dragPoint(drag) {
         const rect = refs.board.getBoundingClientRect();
         const cell = rect.width / 8;
-        const lift = drag.touch ? cell * 0.45 : 0;
-        return { rect, cell, x: drag.px, y: drag.py - lift };
-    }
-
-    /** Фигуру подняли: она становится телом на пружине за пальцем. */
-    function startDrag(drag) {
-        const P = feel();
-        drag.active = true;
-        drag.P = P;
-        drag.el.classList.remove('selected');
-        drag.el.classList.add('dragging');
-        refs.board.classList.add('is-dragging');
-        setGrabCursor('grabbing');
-        const face = drag.el.firstChild;
-        face.getAnimations?.().forEach(a => a.cancel());
-        drag.el.getAnimations?.().forEach(a => a.cancel());
-        drag.targets = [];
-        const seen = new Set();
-        for (const m of ui.targets) if (!seen.has(m.to)) { seen.add(m.to); const [x, y] = sqXY(m.to); drag.targets.push([x, y, m.to]); }
-        drag.model = Feel ? Feel.createDrag(pieceXY(drag.el), P) : null;
-        // отпечаток на клетке, откуда взяли фигуру
-        if (refs.fx && P && !REDUCED_MOTION) {
-            const imp = document.createElement('div');
-            imp.className = 'cs-imprint';
-            imp.style.transform = sqTf(drag.sq);
-            imp.style.setProperty('--img', `url('${pieceUrl(drag.el.dataset.code)}')`);
-            refs.fx.appendChild(imp);
-            drag.imprint = imp;
-        }
-        // упругость: резинка от клетки до фигуры
-        if (P?.style === 'elastic' && refs.threads && !REDUCED_MOTION) {
-            const band = document.createElementNS(SVGNS, 'path');
-            band.setAttribute('class', 'cs-band');
-            refs.threads.appendChild(band);
-            drag.band = band;
-        }
-        if (!drag.model) return;
-        let last = performance.now();
-        const frame = now => {
-            if (ui.drag !== drag || !drag.active) return;
-            drag.model.step((now - last) / 1000);
-            last = now;
-            renderDrag(drag);
-            drag.raf = requestAnimationFrame(frame);
-        };
-        drag.raf = requestAnimationFrame(frame);
-    }
-
-    function renderDrag(drag) {
-        const m = drag.model;
-        drag.el.style.transform = tf(m.x, m.y);
-        const face = drag.el.firstChild;
-        face.style.transform = Feel.dragFace(m, drag.P);
-        // блик стекла скользит по фигуре вслед за наклоном
-        if (drag.P.style === 'glass') face.style.setProperty('--sheen', `${(50 - m.tilt * 9 - m.vx * 0.6).toFixed(1)}%`);
-        if (drag.band) {
-            const [ox, oy] = sqXY(drag.sq);
-            const ax = ox + 0.5, ay = oy + 0.5, bx = m.x + 0.5, by = m.y + 0.62;
-            const len = Math.hypot(bx - ax, by - ay);
-            const w = Math.max(0.02, 0.11 / (1 + len * 0.9));
-            drag.band.setAttribute('d', `M${ax.toFixed(3)} ${ay.toFixed(3)}L${bx.toFixed(3)} ${by.toFixed(3)}`);
-            drag.band.style.strokeWidth = w.toFixed(3);
-            drag.band.style.opacity = Math.max(0, Math.min(0.42, len * 0.6)).toFixed(3);
-        }
-    }
-
-    /** Куда тянется фигура: магнит доступной клетки мягко затягивает её к центру. */
-    function aimDrag(drag) {
-        const { rect, cell, x, y } = dragPoint(drag);
-        const px = Math.max(-0.4, Math.min(7.4, (x - rect.left) / cell - 0.5));
-        const py = Math.max(-0.6, Math.min(7.4, (y - rect.top) / cell - 0.5));
-        let caught = null;
-        if (drag.model) caught = drag.model.aim(px, py, drag.targets);
-        else drag.el.style.transform = tf(px, py);
-        const over = pointSq({ clientX: x, clientY: y });
-        const hover = over && ui.targets.some(m => m.to === over) ? over : (caught && caught !== drag.sq ? caught : null);
-        if (hover !== ui.hover) {
-            ui.hover = hover;
-            renderMarks();
-            if (hover) { haptic('select'); if (feelLevel() !== 'minimal') sfx('catch', { gain: 0.9 }); }
-        }
+        const lift = event.pointerType === 'touch' ? cell * 0.45 : 0;
+        // с раскачкой фигура висит на той точке, за которую её взяли; без неё — центром под пальцем
+        const px = (event.clientX - rect.left) / cell - (drag.swing ? drag.grabX : 0.5);
+        const py = (event.clientY - rect.top - lift) / cell - (drag.swing ? drag.grabY : 0.5);
+        if (drag.swing) { drag.cx = (event.clientX - rect.left) / cell; drag.cy = (event.clientY - rect.top) / cell; }
+        drag.el.style.transform = tf(Math.max(-0.4, Math.min(7.4, px)), Math.max(-0.6, Math.min(7.4, py)));
+        const over = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
+        const hover = over && ui.targets.some(m => m.to === over) ? over : null;
+        if (hover !== ui.hover) { ui.hover = hover; renderMarks(); if (hover) haptic('select'); }
     }
 
     function onPointerUp(event) {
@@ -1200,41 +845,17 @@
             if (drag.wasSelected) clearSelection();
             return;
         }
-        drag.px = event.clientX;
-        drag.py = event.clientY;
-        const { x, y } = dragPoint(drag);
-        const over = pointSq({ clientX: x, clientY: y });
-        const caught = drag.model?.caught;
-        const target = over && over !== drag.sq && ui.targets.some(m => m.to === over) ? over
-            : caught && caught !== drag.sq && ui.targets.some(m => m.to === caught) ? caught : null;
-        ui.dropSpeed = drag.model ? Math.hypot(drag.model.vx, drag.model.vy) : 0;
-        endDrag(drag, target);
+        settleSwing(drag);
+        drag.el.classList.remove('dragging');
+        const lift = event.pointerType === 'touch' ? refs.board.getBoundingClientRect().width / 8 * 0.45 : 0;
+        const target = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
         ui.hover = null;
-        if (target) {
+        if (target && target !== drag.sq && ui.targets.some(m => m.to === target)) {
             userMove(drag.sq, target, { dropped: true });
         } else {
-            // мимо: фигура возвращается на свою клетку и остаётся выбранной
-            const keep = ui.selected === drag.sq;
-            slide(drag.el, drag.sq, { dropped: true, effects: false, rest: keep && drag.P ? liftedPose(drag.P) : 'none' });
-            if (keep) drag.el.classList.add('selected');
+            slide(drag.el, drag.sq, { dropped: true });
+            if (ui.selected === drag.sq) drag.el.classList.add('selected');
             renderMarks();
-        }
-    }
-
-    /** Фигуру отпустили: убираем отпечаток и резинку (резинка втягивается). */
-    function endDrag(drag, target) {
-        cancelAnimationFrame(drag.raf);
-        drag.active = false;
-        drag.el.classList.remove('dragging');
-        refs.board.classList.remove('is-dragging');
-        setGrabCursor('');
-        const imp = drag.imprint;
-        if (imp) { imp.classList.add('is-out'); setTimeout(() => imp.remove(), 260); }
-        const band = drag.band;
-        if (band) {
-            if (band.animate && target) band.animate([{ opacity: band.style.opacity || 0.3 }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).onfinish = () => band.remove();
-            else if (band.animate) band.animate([{ opacity: band.style.opacity || 0.3, strokeWidth: band.style.strokeWidth }, { opacity: 0, strokeWidth: 0.12 }], { duration: 220, easing: 'ease-out', fill: 'forwards' }).onfinish = () => band.remove();
-            else band.remove();
         }
     }
 
@@ -1242,25 +863,103 @@
         const drag = ui.drag;
         ui.drag = null;
         ui.hover = null;
-        if (!drag) return;
-        const wasActive = drag.active;
-        if (wasActive) endDrag(drag, null);
-        if (wasActive && restore && drag.el.isConnected) slide(drag.el, drag.sq, { dropped: true, effects: false });
-        else if (wasActive) drag.el.firstChild.style.transform = '';
+        if (drag) settleSwing(drag);
+        if (drag?.active && restore) { drag.el.classList.remove('dragging'); slide(drag.el, drag.sq, { dropped: true }); }
     }
 
-    /** Курсор «рука» над фигурой, которую можно взять мышью. */
+    /* ---------- раскачка фигуры под мышью (chess-swing.js) ---------- */
+    function swingOn(event) {
+        return !!Swing && FINE_POINTER && event.pointerType === 'mouse' && settings.swing !== false && !REDUCED_MOTION;
+    }
+    /* Силуэт каждой фигуры: по нему видно, попали ли в саму фигуру, и считаются её центр тяжести
+       и момент инерции. Картинка рисуется на холст 64×64 один раз. */
+    const SHAPE_SIZE = 64;
+    const shapes = new Map();
+    function preloadShapes() {
+        if (!Swing || !FINE_POINTER || shapes.size) return;
+        for (const color of 'wb') for (const name of PIECE_NAMES) loadShape(color + name);
+    }
+    function pieceShape(code) {
+        const shape = shapes.get(code);
+        if (shape && shape !== 'loading') return shape;
+        if (!shape) loadShape(code);
+        return Swing.FALLBACK;
+    }
+    async function loadShape(code) {
+        shapes.set(code, 'loading');
+        try {
+            // у SVG фигур нет своих размеров — задаём их, чтобы все браузеры рисовали одинаково
+            const svg = (await (await fetch(pieceUrl(code))).text()).replace(/<svg\b/, `<svg width="${SHAPE_SIZE}" height="${SHAPE_SIZE}" preserveAspectRatio="none"`);
+            const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+            const img = new Image();
+            img.src = url;
+            await img.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = SHAPE_SIZE;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, SHAPE_SIZE, SHAPE_SIZE);
+            URL.revokeObjectURL(url);
+            const rgba = ctx.getImageData(0, 0, SHAPE_SIZE, SHAPE_SIZE).data;
+            const alpha = new Uint8Array(SHAPE_SIZE * SHAPE_SIZE);
+            for (let i = 0; i < alpha.length; i++) alpha[i] = rgba[i * 4 + 3];
+            const shape = Swing.analyzeShape(alpha, SHAPE_SIZE);
+            // пустой или странный силуэт (браузер не нарисовал SVG) — остаёмся на усреднённой фигуре
+            if (shape.area < 0.05 || shape.area > 0.9) throw new Error('shape');
+            shapes.set(code, shape);
+        } catch (_) {
+            shapes.set(code, Swing.FALLBACK);
+        }
+    }
+    /** Курсор «рука» только над самой фигурой, которую можно взять. */
     function hoverGrab(event) {
-        if (!FINE_POINTER || event.pointerType !== 'mouse' || !game || game.view != null || ui.promo) { setGrabCursor(''); return; }
+        if (!swingOn(event) || !game || game.view != null || ui.promo) { setGrabCursor(''); return; }
         const sq = pointSq(event);
         const piece = sq && game.chess.get(sq);
-        setGrabCursor(piece && view.els.get(sq) && canSelect(piece.color) ? 'grab' : '');
+        const el = sq && view.els.get(sq);
+        if (!piece || !el || !canSelect(piece.color)) { setGrabCursor(''); return; }
+        const box = el.getBoundingClientRect();
+        setGrabCursor(pieceShape(el.dataset.code).hit((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height) ? 'grab' : '');
     }
     function setGrabCursor(kind) {
         refs.board.classList.toggle('is-grab', kind === 'grab');
         refs.board.classList.toggle('is-grabbing', kind === 'grabbing');
     }
-
+    function startSwing(drag) {
+        setGrabCursor('grabbing');
+        const face = drag.el.firstChild;
+        face.style.transformOrigin = `${(drag.grabX * 100).toFixed(1)}% ${(drag.grabY * 100).toFixed(1)}%`;
+        let last = null;
+        const frame = time => {
+            // фигуру отпустили, взяли или забрали ходом соперника — возвращаем её прямо
+            if (ui.drag !== drag || !drag.active) { settleSwing(drag); return; }
+            if (last != null && drag.cx != null) {
+                const angle = drag.swing.step(drag.cx, drag.cy, (time - last) / 1000);
+                face.style.transform = `rotate(${(angle * 180 / Math.PI).toFixed(2)}deg) scale(1.24)`;
+            }
+            last = time;
+            drag.raf = requestAnimationFrame(frame);
+        };
+        drag.raf = requestAnimationFrame(frame);
+    }
+    function settleSwing(drag) {
+        if (!drag?.swing || drag.settled) return;
+        drag.settled = true;
+        cancelAnimationFrame(drag.raf);
+        setGrabCursor('');
+        const face = drag.el.firstChild;
+        const origin = face.style.transformOrigin;
+        const from = face.style.transform;
+        face.style.transform = '';
+        face.style.transformOrigin = '';
+        if (!from || !face.animate) return;
+        // докручиваем до прямого положения коротким путём, с лёгким покачиванием
+        const deg = Swing.settleAngle(drag.swing.angle) * 180 / Math.PI;
+        const settle = Math.min(380, 200 + Math.abs(deg) * 1.2);
+        face.animate([
+            { transform: `rotate(${deg.toFixed(2)}deg) scale(1.24)`, transformOrigin: origin },
+            { transform: 'rotate(0deg) scale(1)', transformOrigin: origin },
+        ], { duration: settle, easing: 'cubic-bezier(.3,1.35,.55,1)' });
+    }
 
     /* ---------- говорящие фигуры ----------
        После хода фигура говорит реплику в облачке над собой (кто и что — решает
@@ -1420,22 +1119,8 @@
         ui.selected = sq;
         ui.targets = ui.preMode ? premoveTargets(sq) : game.chess.moves({ square: sq, verbose: true });
         const el = view.els.get(sq);
-        if (el) {
-            el.classList.add('selected');
-            // касание: фигуру чуть вдавили — и приподняли с поверхности
-            const P = feel();
-            const face = el.firstChild;
-            if (P && face.animate && !REDUCED_MOTION && !el.classList.contains('moving')) {
-                face.getAnimations().forEach(a => a.cancel());
-                face.animate([
-                    { transform: 'none' },
-                    { transform: `scale(${P.press})`, offset: 0.3 },
-                    { transform: liftedPose(P) },
-                ], { duration: Math.round((P.style === 'elastic' ? 230 : 170) * Math.max(0.7, P.tempo)), easing: P.style === 'elastic' ? 'cubic-bezier(.3,1.5,.5,1)' : 'cubic-bezier(.25,.9,.3,1)' });
-            }
-        }
+        if (el) { el.classList.remove('selected'); void el.offsetWidth; el.classList.add('selected'); }
         haptic('select');
-        sfx('pick', { gain: ui.preMode ? 0.6 : 1 });
         renderMarks();
     }
 
@@ -1492,171 +1177,39 @@
         playMove({ from, to }, { byUser: true, dropped });
     }
 
-    /** Выбор фигуры для превращения: стеклянная капсула выезжает из клетки
-        горизонтально; наклоняется за курсором или пальцем (с бликом), фигура
-        под пальцем приподнимается, соседние — чуть меньше, как магнит. Можно
-        нажать на фигуру или провести пальцем и отпустить на нужной. */
     function askPromotion(from, to, dropped) {
         const color = game.chess.turn();
         const [x, y] = sqXY(to);
-        const below = y <= 3;   // клетка превращения вверху — меню под ней, внизу — над ней
+        const down = y === 0;
         const el = view.els.get(from);
-        if (el && dropped) slide(el, to, { dropped: true, effects: false });
-        const P = feel();
-        const kinds = ['q', 'r', 'b', 'n'];
+        if (el && dropped) el.style.transform = sqTf(to);
         const promo = document.createElement('div');
         promo.className = 'cs-promo';
-        promo.innerHTML = `<div class="cs-promo-bar ${below ? 'is-below' : 'is-above'}"><div class="cs-promo-tilt"><i class="cs-promo-tail" aria-hidden="true"></i><div class="cs-promo-glass"></div><div class="cs-promo-row"><i class="cs-promo-hl" aria-hidden="true"></i>${kinds.map(k => `<button type="button" data-promo="${k}" aria-label="${esc(tr(`piece${k.toUpperCase()}`))}"><i style="background-image:url('${pieceUrl(color + k.toUpperCase())}')"></i></button>`).join('')}</div></div></div>`;
-        const bar = promo.firstChild;
-        const tilt = bar.firstChild;
-        // кольцо вокруг пешки, которая ждёт превращения
-        const halo = document.createElement('div');
-        halo.className = 'cs-promo-halo';
-        halo.style.transform = tf(x, y);
-        promo.insertBefore(halo, bar);
-        const buttons = [...bar.querySelectorAll('[data-promo]')];
-        // ширина — четыре клетки и поля; капсула над файлом пешки, но не за краем доски
-        const W = 4 * 12.5 + 4;
-        const cx = (x + 0.5) * 12.5;
-        const left = Math.max(1.2, Math.min(98.8 - W, cx - W / 2));
-        bar.style.left = `${left}%`;
-        bar.style.width = `${W}%`;
-        bar.style[below ? 'top' : 'bottom'] = `${(below ? y + 1 : 8 - y) * 12.5 + 1.4}%`;
-        bar.style.setProperty('--tail', `${((cx - left) / W * 100).toFixed(2)}%`);
-        bar.style.transformOrigin = `${((cx - left) / W * 100).toFixed(2)}% ${below ? '-10%' : '110%'}`;
+        const col = document.createElement('div');
+        col.className = 'cs-promo-col';
+        col.style.left = `${x * 12.5}%`;
+        col.style[down ? 'top' : 'bottom'] = '0';
+        col.style.transformOrigin = down ? 'top' : 'bottom';
+        const kinds = down ? ['q', 'n', 'r', 'b'] : ['b', 'r', 'n', 'q'];
+        col.innerHTML = kinds.map(k => `<button type="button" data-promo="${k}" aria-label="${k}"><i style="background-image:url('${pieceUrl(color + k.toUpperCase())}')"></i></button>`).join('');
+        promo.appendChild(col);
         refs.board.appendChild(promo);
+        requestAnimationFrame(() => promo.classList.add('show'));
         ui.promo = { el: promo, from, to };
         clearSelection();
-        haptic('light');
-        if (bar.animate && !REDUCED_MOTION) {
-            bar.animate([
-                { transform: 'scale(0.3, 0.5)', opacity: 0, filter: 'blur(6px)' },
-                { transform: P?.style === 'elastic' ? 'scale(1.06, 0.96)' : 'scale(1.015)', opacity: 1, filter: 'blur(0)', offset: 0.6 },
-                { transform: 'none', opacity: 1, filter: 'blur(0)' },
-            ], { duration: P?.style === 'elastic' ? 420 : 340, easing: 'cubic-bezier(.2,.9,.3,1)' });
-            buttons.forEach((b, i) => b.firstChild.animate([
-                { transform: 'translateY(40%) scale(.4)', opacity: 0 },
-                { transform: 'none', opacity: 1 },
-            ], { duration: 360, delay: 40 + Math.abs(i - (cx - left) / W * 4 + 0.5) * 35, easing: 'cubic-bezier(.3,1.45,.5,1)', fill: 'backwards' }));
-        }
-        requestAnimationFrame(() => promo.classList.add('show'));
-
-        // наклон и «док»: пружины, чтобы движение было мягким, но точным
-        const hl = bar.querySelector('.cs-promo-hl');
-        // плашка выбора: сначала под ферзём, дальше пружиной едет под фигуру у пальца
-        const st = { rx: { x: 0, v: 0 }, ry: { x: 0, v: 0 }, tx: 0, ty: 0, px: null, slot: 0, hl: { x: 0, v: 0 }, scales: buttons.map(() => ({ x: 1, v: 0 })), raf: 0, last: 0 };
-        const springy = P?.style === 'elastic';
-        const step = now => {
-            const dt = Math.min(0.05, (now - (st.last || now)) / 1000 || 0.016);
-            st.last = now;
-            const w = springy ? 18 : 22, z = springy ? 0.55 : 0.85;
-            Feel?.spring(st.rx, st.tx, w, z, dt);
-            Feel?.spring(st.ry, st.ty, w, z, dt);
-            tilt.style.transform = `perspective(560px) rotateX(${(-st.ry.x * 9).toFixed(2)}deg) rotateY(${(st.rx.x * 12).toFixed(2)}deg)`;
-            tilt.style.setProperty('--hx', `${(50 + st.rx.x * 38).toFixed(1)}%`);
-            tilt.style.setProperty('--hy', `${(50 + st.ry.x * 60).toFixed(1)}%`);
-            const box = bar.getBoundingClientRect();
-            const cell = box.width / (W / 12.5);
-            let moving = Math.abs(st.rx.v) + Math.abs(st.ry.v) + Math.abs(st.rx.x - st.tx) + Math.abs(st.ry.x - st.ty) > 0.002;
-            if (st.px != null) {
-                const row = bar.querySelector('.cs-promo-row').getBoundingClientRect();
-                const slot = Math.max(0, Math.min(3, Math.floor((st.px + box.left - row.left) / (row.width / 4))));
-                if (slot !== st.slot) {
-                    st.slot = slot;
-                    haptic('select');
-                    if (feelLevel() !== 'minimal') sfx('catch', { gain: 0.8 });
-                    hl.classList.remove('pop'); void hl.offsetWidth; hl.classList.add('pop');
-                    // выбранная фигура выпрыгивает: толчок пружине её масштаба
-                    st.scales[slot].v += springy ? 3.2 : 2.2;
-                }
-            }
-            Feel?.spring(st.hl, st.slot, springy ? 26 : 32, springy ? 0.55 : 0.82, dt);
-            // плашка тянется в сторону движения, как капля, и собирается на месте
-            const stretch = Math.min(springy ? 0.5 : 0.32, Math.abs(st.hl.v) * (springy ? 0.075 : 0.05));
-            hl.style.transform = `translateX(${(st.hl.x * 100).toFixed(2)}%) scale(${(1 + stretch).toFixed(3)}, ${(1 - stretch * 0.22).toFixed(3)})`;
-            hl.classList.toggle('is-first', st.hl.x < 0.5);
-            hl.classList.toggle('is-last', st.hl.x > 2.5);
-            if (Math.abs(st.hl.v) > 0.002 || Math.abs(st.hl.x - st.slot) > 0.002) moving = true;
-            buttons.forEach((b, i) => {
-                const r = b.getBoundingClientRect();
-                const d = st.px == null ? 9 : (st.px - (r.left + r.width / 2 - box.left)) / cell;
-                const want = 1 + (springy ? 0.16 : 0.11) * Math.exp(-d * d * 1.6) + (i === st.slot ? 0.1 : -0.02);
-                Feel?.spring(st.scales[i], want, springy ? 24 : 30, springy ? 0.5 : 0.8, dt);
-                const s = st.scales[i].x;
-                b.firstChild.style.transform = `translateY(${(-(s - 1) * 40).toFixed(2)}%) scale(${s.toFixed(4)})`;
-                b.classList.toggle('is-sel', i === st.slot);
-                if (Math.abs(st.scales[i].v) > 0.002 || Math.abs(s - want) > 0.002) moving = true;
-            });
-            st.raf = moving && promo.isConnected ? requestAnimationFrame(step) : 0;
-        };
-        const kick = () => { if (!st.raf) { st.last = 0; st.raf = requestAnimationFrame(step); } };
-        const aim = event => {
-            const box = bar.getBoundingClientRect();
-            st.tx = Math.max(-1.2, Math.min(1.2, ((event.clientX - box.left) / box.width) * 2 - 1));
-            st.ty = Math.max(-1.6, Math.min(1.6, ((event.clientY - box.top) / box.height) * 2 - 1));
-            const inside = event.clientY > box.top - box.height * 0.6 && event.clientY < box.bottom + box.height * 0.6;
-            st.px = inside ? event.clientX - box.left : null;
-            kick();
-        };
-        let pressed = null;
-        // попадание считаем по ровной (не наклонённой) капсуле: наклон не должен уводить фигуру из-под пальца
-        const buttonAt = event => {
-            const box = bar.getBoundingClientRect();
-            const padX = box.width * 0.03, padY = box.height * 0.35;
-            if (event.clientX < box.left - padX || event.clientX > box.right + padX || event.clientY < box.top - padY || event.clientY > box.bottom + padY) return null;
-            return buttons[Math.max(0, Math.min(3, Math.floor((event.clientX - box.left) / box.width * 4)))];
-        };
-        const close = () => {
-            ui.promo = null;
-            promo.style.pointerEvents = 'none';
-            promo.classList.remove('show');
-            if (!bar.animate || REDUCED_MOTION) { promo.remove(); return; }
-            bar.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(0.6, 0.4)', opacity: 0, filter: 'blur(4px)' }], { duration: 170, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' }).onfinish = () => promo.remove();
-        };
-        const pick = kind => {
-            const pending = ui.promo;
-            if (!pending) return;
-            const b = buttons.find(item => item.dataset.promo === kind);
-            b?.classList.add('is-picked');
-            close();
-            playMove({ from: pending.from, to: pending.to, promotion: kind }, { byUser: true, dropped: true });
-        };
-        const cancel = () => {
-            if (!ui.promo) return;
-            close();
-            if (el && dropped) slide(el, from, { dropped: true, effects: false });
-        };
-        promo.addEventListener('pointermove', event => {
-            aim(event);
-            if (pressed && pressed !== 'outside') {
-                const b = buttonAt(event);
-                buttons.forEach(item => item.classList.toggle('is-pressed', item === b));
-                if (b && b !== pressed) { pressed = b; haptic('select'); }
-            }
-        });
-        promo.addEventListener('pointerleave', () => { st.tx = st.ty = 0; st.px = null; kick(); });
         promo.addEventListener('pointerdown', event => {
             event.stopPropagation();
-            event.preventDefault();
-            aim(event);
-            pressed = buttonAt(event) || 'outside';
-            if (pressed !== 'outside') { pressed.classList.add('is-pressed'); haptic('select'); }
-            try { promo.setPointerCapture(event.pointerId); } catch (_) {}
+            const button = event.target.closest('[data-promo]');
+            const pending = ui.promo;
+            ui.promo = null;
+            promo.remove();
+            if (button && pending) {
+                playMove({ from: pending.from, to: pending.to, promotion: button.dataset.promo }, { byUser: true, dropped: true });
+            } else if (el) {
+                slide(el, from, { dropped: true });
+            }
         });
-        promo.addEventListener('pointerup', event => {
-            event.stopPropagation();
-            const b = buttonAt(event);
-            buttons.forEach(item => item.classList.remove('is-pressed'));
-            const was = pressed;
-            pressed = null;
-            if (b) pick(b.dataset.promo);
-            else if (was === 'outside') cancel();
-            else if (event.pointerType !== 'mouse') { st.tx = st.ty = 0; st.px = null; kick(); }
-        });
-        promo.addEventListener('pointercancel', () => { pressed = null; buttons.forEach(item => item.classList.remove('is-pressed')); st.tx = st.ty = 0; st.px = null; kick(); });
-        kick();
     }
-
 
     /* ---------- ход ---------- */
     function playMove(raw, { byUser = false, dropped = false, quiet = false } = {}) {
@@ -1671,37 +1224,19 @@
         const capturedSq = move.flags.includes('e') ? move.to[0] + move.from[1] : move.to;
         const keepSelection = !byUser && ui.selected && ui.selected !== capturedSq && ui.selected !== move.from;
         if (!keepSelection) clearSelection(false);
-        if (!byUser && ui.drag && (ui.drag.sq === capturedSq || ui.drag.sq === move.from)) cancelDrag(false);
+        if (!byUser && ui.drag && (ui.drag.sq === capturedSq || ui.drag.sq === move.from)) ui.drag = null;
         clearAnnotations(false);
-        let contact = 0;
-        // мат: ход разыгрывается заново в фильме на доске — фигура пока остаётся на своей клетке
-        const mated = game.chess.isCheckmate() && game.mode !== 'puzzle';
-        let replay = null;
         if (game.view != null) { game.view = null; refs.board.classList.remove('is-review'); syncPieces(positionMap(game.chess), { animate: true }); }
-        else if (mated && mateReplayOk(move) && (replay = stageMateMove(move))) contact = 0;
-        else contact = animateMove(move, { dropped });
-        lastMoveAt = performance.now();
-        game.contactAt = lastMoveAt + contact;
+        else animateMove(move, { dropped });
         if (keepSelection) refreshSelection();
         if (game.clock) pressOfflineClock(move.color);
         const check = game.chess.inCheck();
-        const cinema = before && !mated ? planCinema(move, before) : null;
+        const cinema = before ? planCinema(move, before) : null;
         if (cinema) quiet = true;
-        if (mated) {
-            // фильм начинается сразу после хода (без перетаскивания — после касания клетки)
-            cancelMateShow();
-            const id = game.id;
-            game.mateShow = new Promise(resolve => later(() => {
-                if (game?.id !== id) { resolve(); return; }
-                playMateShow({ replay, move }).then(resolve);
-            }, replay ? 0 : contact + 40));
-            if (replay) quiet = true;
-        }
         if (!quiet) {
-            // звук, вибрация и реакция доски — в один момент: когда фигура коснулась клетки
-            playMoveSound(move, check, contact);
-            later(() => haptic(move.captured ? 'medium' : 'light'), contact);
-            if (check && !game.chess.isCheckmate()) checkFx(findKing(game.chess, game.chess.turn()), contact);
+            playMoveSound(move, check);
+            haptic(move.captured ? 'medium' : 'light');
+            if (check) setTimeout(() => haptic('warning'), 80);
         }
         playtime('note');
         game.hint = null;
@@ -1736,54 +1271,6 @@
         const legal = game.chess.moves({ square: pm.from, verbose: true }).some(m => m.to === pm.to);
         if (legal) setTimeout(() => { if (canMoveNow()) playMove(pm, { byUser: true }); }, 60);
         else renderMarks();
-    }
-
-    /** Шах как физическое событие: король вздрагивает, от его клетки уходит
-        импульс, доска на миг «напрягается» — пространство чуть темнеет к краям,
-        и внимание стягивается к королю. Без вспышек: коротко и благородно. */
-    function checkFx(kingSq, at = 0) {
-        const P = feel();
-        later(() => { haptic('heavy'); setTimeout(() => haptic('warning'), 90); }, at);
-        if (!P || !kingSq || REDUCED_MOTION || !refs.fx) return;
-        later(() => {
-            if (!game || game.view != null) return;
-            const [kx, ky] = sqXY(kingSq);
-            const el = view.els.get(kingSq);
-            const face = el?.firstChild;
-            if (face?.animate && !el.classList.contains('dragging')) {
-                // вздрагивание: затухающие колебания; упругий король ещё и приседает
-                const n = 9, amp = P.shudder * 100, frames = [];
-                for (let i = 0; i <= n; i++) {
-                    const u = i / n, decay = Math.pow(1 - u, 1.6);
-                    const dx = i === n ? 0 : amp * decay * Math.sin(u * Math.PI * 7);
-                    const sq = P.style === 'elastic' ? 1 - 0.06 * P.amp * decay * Math.max(0, Math.cos(u * Math.PI * 3.5)) : 1;
-                    frames.push({ offset: u, transform: i === n ? 'none' : `translateX(${dx.toFixed(2)}%) scale(${(2 - sq).toFixed(4)}, ${sq.toFixed(4)})` });
-                }
-                face.animate(frames, { duration: Math.round(P.shudderMs), easing: 'linear' });
-            }
-            // импульс вокруг клетки короля
-            const pulse = document.createElement('div');
-            pulse.className = 'cs-pulse';
-            pulse.style.transform = sqTf(kingSq);
-            pulse.style.setProperty('--t', `${Math.round(620 * Math.max(0.7, P.tempo))}ms`);
-            refs.fx.appendChild(pulse);
-            setTimeout(() => pulse.remove(), 900);
-            // напряжение: края доски темнеют, у короля — тихий красный
-            const tension = refs.tension;
-            if (tension?.animate && P.tension > 0.01) {
-                const X = ((kx + 0.5) * 12.5).toFixed(2), Y = ((ky + 0.5) * 12.5).toFixed(2);
-                tension.style.background = `radial-gradient(circle at ${X}% ${Y}%, rgba(255, 45, 60, ${(P.tension * 0.55).toFixed(3)}) 0, rgba(255, 45, 60, 0) 11%, rgba(14, 4, 10, 0) 16%, rgba(14, 4, 10, ${(P.tension * 0.6).toFixed(3)}) 38%, rgba(10, 2, 8, ${P.tension.toFixed(3)}) 75%)`;
-                tension.getAnimations().forEach(a => a.cancel());
-                const hold = P.li === 2 ? 1150 : 820;
-                tension.animate([{ opacity: 0 }, { opacity: 1, offset: 0.14 }, { opacity: 1, offset: 0.4 }, { opacity: 0 }], { duration: Math.round(hold * Math.max(0.7, P.tempo)), easing: 'ease-out' });
-            }
-            // доска чуть «сжимается» к королю и отпускает
-            if (refs.cam?.animate && P.press2 > 0) {
-                // сжатие к королю: сдвиг компенсирует масштаб, точка отсчёта камеры не меняется
-                const k = 1 - P.press2, ox = ((kx + 0.5) / 8) * (1 - k) * 100, oy = ((ky + 0.5) / 8) * (1 - k) * 100;
-                refs.cam.animate([{ transform: 'none' }, { transform: `translate(${ox.toFixed(3)}%, ${oy.toFixed(3)}%) scale(${k.toFixed(4)})`, offset: 0.25 }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.4,1)' });
-            }
-        }, at);
     }
 
     function afterChange() {
@@ -2739,74 +2226,19 @@
         const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
         return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
     }
-    /** Живые часы. Переход хода — импульс: нажатые часы чуть вдавливаются и
-        успокаиваются, у соперника часы «просыпаются». Меняющиеся цифры секунд
-        мягко прокручиваются (десятые — нет: их надо читать мгновенно).
-        Прибавка времени всплывает «+2», последние секунды бьются сердцем. */
-    function renderClockText(el, text, roll) {
-        const chars = [...text];
-        let spans = el._spans;
-        if (!spans || spans.length !== chars.length) {
-            el.innerHTML = chars.map(ch => `<span class="cs-cd${/\d/.test(ch) ? '' : ' cs-cd-sep'}">${ch}</span>`).join('');
-            el._spans = [...el.children];
-            el._text = text;
-            return;
-        }
-        const dot = text.indexOf('.');
-        chars.forEach((ch, i) => {
-            if (el._text[i] === ch) return;
-            const span = spans[i];
-            span.textContent = ch;
-            if (roll && (dot < 0 || i < dot)) { span.classList.remove('roll'); void span.offsetWidth; span.classList.add('roll'); }
-        });
-        el._text = text;
-    }
-    function clockFx(el, kind) {
-        if (REDUCED_MOTION) return;
-        el.classList.remove('is-wake', 'is-press', 'beat');
-        void el.offsetWidth;
-        el.classList.add(kind);
-    }
-    function incrementFx(el, ms) {
-        if (REDUCED_MOTION || feelLevel() === 'minimal') return;
-        const chip = document.createElement('span');
-        chip.className = 'cs-inc';
-        chip.textContent = `+${Math.round(ms / 1000)}`;
-        el.parentElement?.appendChild(chip);
-        setTimeout(() => chip.remove(), 1100);
-    }
     function tickClocks() {
         if (!game || !refs.topPlayer) return;
         const values = clockValues();
-        const P = feel();
         for (const [slot, color] of [['topPlayer', other(view.orientation)], ['bottomPlayer', view.orientation]]) {
             const el = refs[slot].querySelector('.cs-clock');
             if (!el) continue;
             if (!values) { el.hidden = true; continue; }
             el.hidden = false;
             const left = values[color];
-            const running = values.running === color;
-            const same = el.dataset.color === color && el._game === game.id;
-            if (!same) { el.dataset.color = color; el._game = game.id; el._running = running; el._left = left; el._spans = null; }
-            renderClockText(el, formatClock(left), same && running && !!P?.digitRoll);
-            if (same && el._running !== running) {
-                clockFx(el, running ? 'is-wake' : 'is-press');
-                if (running) sfx('clock', { gain: controls(other(color)) ? 1 : 0.7 });
-            }
-            if (same && !running && left - el._left > 400 && game.tc?.inc) incrementFx(el, left - el._left);
-            el._running = running;
-            el.classList.toggle('is-running', running);
-            el.classList.toggle('is-live', running && !!P?.clockLive);
-            const low = running && left < Math.min(20000, (game.tcBase || 60000) * 0.1 + 1);
+            el.textContent = formatClock(left);
+            el.classList.toggle('is-running', values.running === color);
+            const low = values.running === color && left < Math.min(20000, (game.tcBase || 60000) * 0.1 + 1);
             el.classList.toggle('is-low', low);
-            // последние секунды: удар сердца на каждую секунду, тихий тик на максимуме
-            const sec = Math.ceil(left / 1000);
-            if (low && same && el._sec !== sec && !game.over) {
-                clockFx(el, 'beat');
-                if (controls(color) && game.mode !== 'local' && sec <= 10 && P && (P.li === 2 || (P.li === 1 && sec <= 5))) { sfx('tick', { gain: 0.8 }); if (P.li === 2) haptic('soft'); }
-            }
-            el._sec = sec;
-            el._left = left;
             if (low && controls(color) && !lowTimeWarned && game.mode !== 'local') { lowTimeWarned = true; Sound.play('lowtime'); haptic('warning'); }
         }
         updateFirstMoveNotice();
@@ -2815,7 +2247,6 @@
             if (flagged) finishGame(core.timeoutOutcome(game.chess, flagged));
         }
     }
-
     function startClockLoop() {
         clearInterval(clockTimer);
         clockTimer = setInterval(tickClocks, 100);
@@ -2872,16 +2303,13 @@
             if (adv > 0) capHtml += `<b>+${adv}</b>`;
             const turn = !game.over && chess.turn() === color;
             const el = refs[slot];
-            // часы живут между перерисовками: их анимации и цифры не сбрасываются
-            let clock = el.querySelector('.cs-clock');
-            if (!clock) { clock = document.createElement('div'); clock.className = 'cs-clock'; clock.hidden = true; }
             el.innerHTML = `
                 <div class="cs-ava${turn ? ' is-turn' : ''}${info.away ? ' is-away' : ''}">${avatar}</div>
                 <div class="cs-pinfo">
                     <div class="cs-pname">${flagHtml(info.lang)}<span>${esc(info.name)}</span>${info.sub ? `<small>${esc(info.sub)}</small>` : ''}</div>
                     <div class="cs-captured">${capHtml}</div>
-                </div>`;
-            el.appendChild(clock);
+                </div>
+                <div class="cs-clock" hidden></div>`;
         }
         tickClocks();
     }
@@ -3000,7 +2428,6 @@
         const target = Math.max(0, Math.min(max, ply));
         const prev = game.view == null ? max : game.view;
         if (target === prev) return;
-        cancelMateShow();
         clearSelection(false);
         clearTalk();
         game.view = target === max ? null : target;
@@ -3008,7 +2435,8 @@
         const chess = viewChess();
         if (Math.abs(target - prev) === 1 && target > prev) {
             const m = game.moves[target - 1];
-            playMoveSound(m, chess.inCheck(), animateMove(m));
+            animateMove(m);
+            playMoveSound(m, chess.inCheck());
         } else {
             syncPieces(positionMap(chess), { animate: true });
             Sound.play('move', 0.6);
@@ -3029,7 +2457,7 @@
         view.orientation = color;
         clearTalk();
         buildSquares();
-        for (const [sq, el] of view.els) slide(el, sq, { effects: false });
+        for (const [sq, el] of view.els) slide(el, sq);
         renderMarks();
         renderNotes();
         renderPlayers();
@@ -3062,7 +2490,6 @@
         if (archive) {
             game.archive = archive;
             game.over = { result: archive.result, reason: archive.reason || null, rated: !!archive.rated };
-            if (game.over.reason === 'checkmate') game.matePills = true;
         }
         if (game.clock && clock) {
             game.clock.left.w = Number(clock.w) || tc.base;
@@ -3074,11 +2501,8 @@
         ui.notes = { arrows: [], circles: [] };
         ui.drawMode = false;
         if (refs.notes) refs.notes.innerHTML = '';
-        cancelMateShow();
-        resetMarks();
         buildSquares();
         rebuildPieces(chess);
-        preloadMorph();
         refs.board.classList.remove('is-review', 'is-over');
         if (archive) refs.board.classList.add('is-over');
         clearSelection(false);
@@ -3105,7 +2529,6 @@
     }
 
     function closeScreen() {
-        cancelMateShow();
         cancelCinema();
         cancelBot();
         clearTalk();
@@ -3136,363 +2559,6 @@
         engines.bot?.stop();
     }
 
-    /* ---------- мат: короткий фильм на доске (вид сверху) ----------
-       Как в наших роликах: камера плавно подъезжает к королю, лишний план
-       уходит в тень и теряет цвет, ключевые фигуры остаются насыщенными.
-       Линия атаки загорается клетка за клеткой, вокруг короля по очереди
-       краснеют клетки, куда ему не уйти, король дрожит — и на удар доска
-       вздрагивает, камера отъезжает, над королями всплывают пилюли:
-       зелёная у победителя, красная у проигравшего. Тап — сразу к концу. */
-    let mateShow = null;
-    const CROWN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8.2 7.6 12l4.4-6.6 4.4 6.6 4.1-3.8-1.6 9.3H5.1z" fill="currentColor"/><rect x="5.2" y="18.6" width="13.6" height="2.2" rx="1.1" fill="currentColor"/></svg>';
-    const MATE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 3.5 7.8 20.5M16.2 3.5l-1.8 17M4.5 9h16M3.5 15h16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
-
-    function cancelMateShow() {
-        if (!mateShow) return;
-        const show = mateShow;
-        mateShow = null;
-        show.cancel();
-    }
-    /** Пилюли над королями после мата: живут, пока на доске итоговая позиция. */
-    function renderPills() {
-        const layer = refs.pills;
-        if (!layer) return;
-        const on = !!(game?.over?.reason === 'checkmate' && game.view == null && game.matePills);
-        const key = on ? `${view.orientation}|${game.id}` : '';
-        if (layer.dataset.key === key) return;
-        layer.dataset.key = key;
-        layer.innerHTML = '';
-        if (!on) return;
-        const loser = game.chess.turn();
-        const animate = game.matePills === 'anim';
-        game.matePills = true;
-        const add = (color, good, delay) => {
-            const sq = findKing(game.chess, color);
-            if (!sq) return;
-            const at = document.createElement('div');
-            at.className = 'cs-pill-at';
-            at.style.transform = sqTf(sq);
-            at.innerHTML = `<div class="cs-pill ${good ? 'is-win' : 'is-lose'}${animate ? ' is-new' : ''}" style="--d:${delay}ms"><i>${good ? CROWN_SVG : MATE_SVG}</i><span>${esc(tr(good ? 'pillWin' : 'pillMate'))}</span></div>`;
-            layer.appendChild(at);
-            if (animate) setTimeout(() => sfx('pill', { arg: good }), delay + 60);
-        };
-        add(loser, false, 0);
-        add(other(loser), true, animate ? 260 : 0);
-    }
-
-    function matePlan(move) {
-        const chess = game.chess;
-        const loser = chess.turn();
-        const king = findKing(chess, loser);
-        if (!king) return null;
-        let checkers = [];
-        try { checkers = chess.attackers(king, other(loser)); } catch (_) { checkers = []; }
-        const [kx, ky] = sqXY(king);
-        // линии шаха: от каждой атакующей фигуры к королю (у коня и пешки линии нет — волна идёт сразу в короля)
-        const lanes = checkers.map(sq => {
-            const [x, y] = sqXY(sq);
-            const p = chess.get(sq);
-            const line = [];
-            if (p && p.type !== 'n' && p.type !== 'p') {
-                const dx = Math.sign(kx - x), dy = Math.sign(ky - y);
-                for (let cx = x + dx, cy = y + dy; cx !== kx || cy !== ky; cx += dx, cy += dy) line.push(xySq(cx, cy));
-            }
-            return { from: sq, line };
-        });
-        // главная линия — от фигуры, которая только что пошла (если шах дала она)
-        lanes.sort((a, b) => (b.from === move?.to) - (a.from === move?.to));
-        // клетки вокруг короля, куда ему не уйти — по кругу
-        const cage = [];
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            if (!dx && !dy) continue;
-            const x = kx + dx, y = ky + dy;
-            if (x < 0 || x > 7 || y < 0 || y > 7) continue;
-            const sq = xySq(x, y);
-            const p = chess.get(sq);
-            if (p && p.color === loser) continue;
-            cage.push(sq);
-        }
-        // клетки линии шаха уже горят — второй раз их не красим
-        const onLine = new Set(lanes.flatMap(l => l.line));
-        for (let i = cage.length - 1; i >= 0; i--) if (onLine.has(cage[i])) cage.splice(i, 1);
-        // волна идёт от клетки удара: ближние к ней клетки краснеют раньше
-        const origin = sqXY(move?.to || checkers[0] || king);
-        const dist = sq => { const [x, y] = sqXY(sq); return Math.hypot(x - origin[0], y - origin[1]); };
-        cage.sort((a, b) => dist(a) - dist(b));
-        const keys = new Set([king, ...checkers, move?.to].filter(Boolean));
-        return { loser, king, checkers, lanes, cage, keys, dist };
-    }
-
-    /** Камера: точка f (в долях доски) — в центр, с зумом z, не показывая края за доской. */
-    function camAt(f, z) {
-        const tx = Math.min(0, Math.max(1 - z, 0.5 - z * f[0]));
-        const ty = Math.min(0, Math.max(1 - z, 0.5 - z * f[1]));
-        return `translate(${(tx * 100).toFixed(3)}%, ${(ty * 100).toFixed(3)}%) scale(${z.toFixed(4)})`;
-    }
-
-    /** Можно ли разыграть матующий ход заново в сцене (рокировку и превращение оставляем обычными). */
-    const mateReplayOk = move => !!move && !move.flags.includes('k') && !move.flags.includes('q') && game.mode !== 'puzzle'
-        && feelLevel() !== 'minimal' && !REDUCED_MOTION && !document.hidden && !!refs.fx;
-    /** Матующий ход в логике уже сделан, а на доске фигура пока стоит на исходной клетке: дальше её ведёт сцена. */
-    function stageMateMove(move) {
-        const els = view.els;
-        const el = els.get(move.from);
-        if (!el) return null;
-        const capSq = move.flags.includes('e') ? move.to[0] + move.from[1] : (move.captured ? move.to : null);
-        const victim = capSq ? els.get(capSq) : null;
-        if (victim && victim !== el) els.delete(capSq);
-        els.delete(move.from);
-        els.set(move.to, el);
-        el.getAnimations?.().forEach(a => a.cancel());
-        el.firstChild.getAnimations?.().forEach(a => a.cancel());
-        el.classList.remove('selected', 'dragging', 'moving');
-        el.firstChild.style.transform = '';
-        el.style.transform = sqTf(move.from);
-        if (move.promotion) el.dataset.code = move.color + move.promotion.toUpperCase();
-        return { move, el, victim: victim && victim !== el ? victim : null };
-    }
-
-    /** Фильм мата. replay — матующая фигура ещё на своей клетке и пролетит ход в сцене. */
-    function playMateShow({ replay = null, move = null } = {}) {
-        cancelMateShow();
-        const plan = matePlan(move || replay?.move);
-        const P = Feel?.profile(settings.feelStyle, feelLevel(), 1);
-        if (!plan || !P || !refs.fx) { if (game) { game.matePills = 'anim'; renderPills(); } return Promise.resolve(); }
-        const full = P.li >= 1 && !REDUCED_MOTION;
-        const rich = P.li === 2;
-        const T = rich ? 1.1 : 1;
-        const t = ms => Math.round(ms * T);
-        const gid = game.id;
-        const timers = [], nodes = [], anims = [];
-        let finished = false;
-        let landed = !replay;
-        let resolveShow;
-        const done = new Promise(resolve => { resolveShow = resolve; });
-        const at = (ms, fn) => timers.push(setTimeout(() => { if (!finished && game?.id === gid) fn(); }, ms));
-        const node = (cls, sq, parent = refs.fx) => {
-            const el = document.createElement('div');
-            el.className = cls;
-            if (sq) el.style.transform = sqTf(sq);
-            parent.appendChild(el);
-            nodes.push(el);
-            return el;
-        };
-        const play = (el, frames, opts) => { if (!el?.animate) return null; const a = el.animate(frames, opts); anims.push(a); return a; };
-        const cam = refs.cam;
-        cam.getAnimations().forEach(a => a.cancel());
-        const pieces = [...view.els.entries()];
-        const mv = replay?.move || move;
-        const atkSq = mv?.to;
-        const kingEl = view.els.get(plan.king);
-        const atkEl = replay?.el || (atkSq ? view.els.get(atkSq) : null);
-
-        // кадр: откуда и куда шла фигура, король и клетка вокруг него
-        const pts = [plan.king, ...plan.checkers, ...plan.cage, ...(replay ? [mv.from, mv.to] : [])].map(sqXY);
-        const minX = Math.min(...pts.map(p => p[0])), maxX = Math.max(...pts.map(p => p[0]));
-        const minY = Math.min(...pts.map(p => p[1])), maxY = Math.max(...pts.map(p => p[1]));
-        const span = Math.max(maxX - minX, maxY - minY) + 1;
-        const zoom = Math.max(1.18, Math.min(rich ? 1.9 : 1.75, 8 / (span + 1.6)));
-        const focus = [((minX + maxX) / 2 + 0.5) / 8, ((minY + maxY) / 2 + 0.5) / 8];
-        const shot = camAt(focus, zoom);
-
-        const finish = () => {
-            if (finished) return;
-            finished = true;
-            timers.forEach(clearTimeout);
-            if (game?.id === gid) { game.matePills = game.matePills === true ? true : 'anim'; renderPills(); }
-            resolveShow();
-        };
-        const cleanup = () => {
-            anims.forEach(a => { try { a.cancel(); } catch (_) {} });
-            cam.style.transform = '';
-            cam.classList.remove('is-mate');
-            refs.board.classList.remove('is-mate-show');
-            refs.squares.classList.remove('is-drained');
-            for (const [, el] of pieces) el.classList.remove('is-dim', 'is-key', 'is-hero', 'is-doomed');
-            if (replay && !landed) {
-                replay.victim?.remove();
-                replay.el.style.transform = sqTf(mv.to);
-                setPieceCode(replay.el, replay.el.dataset.code);
-            }
-            if (atkEl) atkEl.style.zIndex = '';
-            nodes.forEach(el => el.remove());
-            refs.board.removeEventListener('pointerdown', skip, true);
-        };
-        // тап по доске — сразу к итогу
-        const skip = event => { event.stopPropagation(); event.preventDefault(); if (mateShow === show) { mateShow = null; cleanup(); finish(); } };
-        const show = { cancel() { cleanup(); finish(); } };
-        mateShow = show;
-        refs.board.addEventListener('pointerdown', skip, true);
-        refs.board.classList.add('is-mate-show');
-
-        // 1. мгновенно после хода: доска гаснет, цвет уходит, камера едет к королю
-        let landAt = 0;
-        if (full) {
-            cam.classList.add('is-mate');
-            refs.squares.classList.add('is-drained');
-            const dim = node('cs-mate-dim');
-            play(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: t(320), easing: 'ease-out', fill: 'forwards' });
-            for (const [sq, el] of pieces) {
-                if (el === atkEl) el.classList.add('is-key', 'is-hero');
-                else if (sq === plan.king) el.classList.add('is-key', 'is-doomed');
-                else if (plan.keys.has(sq)) el.classList.add('is-key');
-                else el.classList.add('is-dim');
-            }
-            play(cam, [{ transform: 'none' }, { transform: shot }], { duration: t(950), easing: 'cubic-bezier(.45,.05,.25,1)', fill: 'forwards' });
-        }
-        // 2. сцена: матующая фигура поднимается со своей клетки и летит, оставляя шлейф, под ней крутится неоновый ромб
-        if (replay && full && atkEl) {
-            const from = sqXY(mv.from), to = sqXY(mv.to);
-            const lift = t(200), fly = t(Math.min(720, 420 + 70 * Math.hypot(to[0] - from[0], to[1] - from[1])));
-            landAt = lift + fly;
-            const face = atkEl.firstChild;
-            const n = 24, path = [], lean = (to[0] >= from[0] ? 1 : -1) * (atkEl.dataset.code[1] === 'N' ? 12 : 6);
-            const eio = u => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
-            for (let i = 0; i <= n; i++) {
-                const u = i / n, e = eio(u);
-                path.push({ offset: u, transform: tf(from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e) });
-            }
-            atkEl.style.zIndex = 12;
-            play(atkEl, path, { duration: fly, delay: lift, easing: 'linear', fill: 'both' });
-            play(face, [
-                { transform: 'none' },
-                { transform: 'translateY(-13%) scale(1.3)', offset: lift / (lift + fly) },
-                { transform: `translateY(-13%) rotate(${lean}deg) scale(1.42)`, offset: (lift + fly * 0.5) / (lift + fly) },
-                { transform: 'translateY(-6%) scale(1.3)', offset: (lift + fly * 0.92) / (lift + fly) },
-                { transform: 'scale(1.16, 0.84)' },
-            ], { duration: lift + fly, easing: 'linear', fill: 'forwards' });
-            // шлейф: три полупрозрачных отражения той же фигуры чуть позади
-            for (let i = 1; i <= 3; i++) {
-                const ghost = node('cs-mate-ghost', mv.from, refs.pieces);
-                ghost.style.setProperty('--img', atkEl.firstChild.style.getPropertyValue('--img'));
-                ghost.style.opacity = '0';
-                play(ghost, path.map(f => ({ offset: f.offset, transform: `${f.transform} translateY(-13%) scale(1.3)`, opacity: f.offset > 0.04 && f.offset < 0.96 ? 0.34 - i * 0.09 : 0 })), { duration: fly, delay: lift + i * t(34), easing: 'linear', fill: 'both' });
-            }
-            // неоновый ромб под фигурой
-            const diamond = node('cs-mate-diamond', mv.from);
-            play(diamond, path.map(f => {
-                const u = f.offset;
-                return { offset: u, opacity: u < 0.12 ? u / 0.12 : u > 0.9 ? (1 - u) / 0.1 * 0.9 : 1, transform: `${f.transform} rotate(${45 + 225 * (1 - Math.pow(1 - u, 3))}deg) scale(${(0.7 + 0.45 * Math.min(1, u * 2)).toFixed(3)})` };
-            }), { duration: fly, delay: lift, easing: 'linear', fill: 'both' });
-            at(lift, () => sfx('pick'));
-        } else if (replay && atkEl) {
-            landAt = slide(atkEl, mv.to, {});
-        }
-
-        // 3. удар посадки: вспышка клетки, ударная волна, звук хода и вибрация
-        const land = () => {
-            if (replay) {
-                landed = true;
-                replay.el.style.transform = sqTf(mv.to);
-                replay.victim && removePiece(replay.victim, true, 0);
-                playMoveSound(mv, false, 0);
-                haptic(mv.captured ? 'heavy' : 'medium');
-                if (mv.promotion && atkEl) morphPiece(atkEl, mv.color + 'P', atkEl.dataset.code);
-            }
-            if (!full) return;
-            if (atkEl) play(atkEl.firstChild, [{ transform: 'scale(1.16, 0.84)' }, { transform: 'scale(0.96, 1.06)', offset: 0.45 }, { transform: 'none' }], { duration: t(320), easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' });
-            node('cs-mate-sq is-impact', mv?.to || plan.checkers[0]);
-            const ring = node('cs-mate-shock is-green', mv?.to || plan.checkers[0]);
-            ring.style.setProperty('--t', `${t(620)}ms`);
-            play(cam, [{ transform: shot }, { transform: camAt(focus, zoom * 1.03) }, { transform: shot }], { duration: 240, easing: 'ease-out', fill: 'forwards' });
-        };
-        at(landAt, land);
-
-        // 4. от клетки удара красные клетки бегут волной по линии мата к королю
-        const step = full ? t(75) : 25;
-        const lane0 = landAt + (full ? t(90) : 0);
-        let laneEnd = lane0;
-        plan.lanes.forEach((lane, li) => {
-            const start = lane0 + li * t(140);
-            const from = node('cs-mate-sq is-from', lane.from);
-            from.style.setProperty('--d', `${start}ms`);
-            lane.line.forEach((sq, i) => {
-                const el = node('cs-mate-sq is-lane', sq);
-                const d = start + (i + 1) * step;
-                el.style.setProperty('--d', `${d}ms`);
-                laneEnd = Math.max(laneEnd, d);
-            });
-            laneEnd = Math.max(laneEnd, start + (lane.line.length + 1) * step);
-        });
-        // король загорается красным в конце линии
-        const kingGlow = node('cs-mate-sq is-king', plan.king);
-        kingGlow.style.setProperty('--d', `${laneEnd}ms`);
-        // 5. клетки вокруг короля краснеют по одной, король дрожит всё сильнее
-        const cage0 = laneEnd + (full ? t(160) : 30);
-        const cageStep = full ? t(105) : 25;
-        plan.cage.forEach((sq, i) => {
-            const el = node('cs-mate-sq is-cage', sq);
-            el.style.setProperty('--d', `${cage0 + i * cageStep}ms`);
-        });
-        const hit = cage0 + plan.cage.length * cageStep + (full ? t(260) : 60);
-        // по всем красным клеткам снова и снова бегут волны света — от клетки удара наружу
-        const period = t(1000);
-        for (const el of refs.fx.querySelectorAll('.cs-mate-sq.is-lane, .cs-mate-sq.is-cage')) {
-            const [x, y] = pieceXY(el);
-            const sq = xySq(Math.round(x), Math.round(y));
-            el.style.setProperty('--w', `${period}ms`);
-            el.style.setProperty('--wd', `${Math.round(Math.max(laneEnd, cage0) + plan.dist(sq) * t(85))}ms`);
-        }
-        if (kingEl?.firstChild.animate && !REDUCED_MOTION) {
-            const frames = [];
-            const len = Math.max(240, hit - laneEnd), n = Math.round(len / 30);
-            for (let i = 0; i <= n; i++) {
-                const u = i / n, a = (0.3 + 1.7 * u * u) * (full ? 1 : 0.5);
-                frames.push({ offset: u, transform: i === n ? 'none' : `translate(${(a * 2.6 * Math.sin(i * 2.7)).toFixed(2)}%, ${(a * 0.9 * Math.sin(i * 3.9 + 1)).toFixed(2)}%) rotate(${(a * 1.8 * Math.sin(i * 2.2 + 0.4)).toFixed(2)}deg)` });
-            }
-            play(kingEl.firstChild, frames, { duration: len, delay: laneEnd, easing: 'linear' });
-        }
-        // 6. мат: удар, красная волна от короля, король оседает
-        at(hit, () => {
-            sfx('mate');
-            haptic('heavy');
-            setTimeout(() => haptic('rigid'), 120);
-            const shock = node('cs-mate-shock', plan.king);
-            shock.style.setProperty('--t', `${t(760)}ms`);
-            if (kingEl?.firstChild.animate) play(kingEl.firstChild, [
-                { transform: 'none' }, { transform: 'scale(1.1, 0.84)', offset: 0.16 }, { transform: 'rotate(-8deg) scale(0.97)', offset: 0.5 }, { transform: 'rotate(-5deg) scale(0.98)' },
-            ], { duration: t(560), easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' });
-            if (full) {
-                const flash = node('cs-mate-flash');
-                const [kx, ky] = sqXY(plan.king);
-                flash.style.setProperty('--x', `${((kx + 0.5) * 12.5).toFixed(2)}%`);
-                flash.style.setProperty('--y', `${((ky + 0.5) * 12.5).toFixed(2)}%`);
-                play(cam, [{ transform: shot }, { transform: camAt(focus, zoom * 1.045) }, { transform: shot }], { duration: 300, easing: 'ease-out', fill: 'forwards' });
-            }
-        });
-        // 7. камера отъезжает к целой доске, свет возвращается, над королями — пилюли
-        const back = hit + (full ? t(480) : 160);
-        at(back, () => {
-            if (full) {
-                play(cam, [{ transform: shot }, { transform: 'none' }], { duration: t(900), easing: 'cubic-bezier(.5,0,.25,1)', fill: 'forwards' });
-                for (const el of refs.fx.querySelectorAll('.cs-mate-dim')) play(el, [{ opacity: 1 }, { opacity: 0 }], { duration: t(900), fill: 'forwards' });
-                refs.squares.classList.remove('is-drained');
-                for (const [, el] of pieces) el.classList.remove('is-dim');
-            }
-            for (const el of refs.fx.querySelectorAll('.cs-mate-sq.is-lane, .cs-mate-sq.is-from, .cs-mate-sq.is-impact')) el.classList.add('is-out');
-        });
-        const pillsAt = back + (full ? t(560) : 80);
-        at(pillsAt, () => { game.matePills = 'anim'; renderPills(); });
-        at(pillsAt + t(800), () => { for (const el of refs.fx.querySelectorAll('.cs-mate-sq')) el.classList.add('is-out'); });
-        at(pillsAt + t(650), () => {
-            if (mateShow === show) mateShow = null;
-            refs.board.removeEventListener('pointerdown', skip, true);
-            finish();
-            setTimeout(() => {
-                if (mateShow) return;
-                anims.forEach(a => { try { a.cancel(); } catch (_) {} });
-                cam.style.transform = '';
-                cam.classList.remove('is-mate');
-                refs.board.classList.remove('is-mate-show');
-                for (const [, el] of pieces) el.classList.remove('is-key', 'is-hero', 'is-doomed');
-                if (atkEl) atkEl.style.zIndex = '';
-                nodes.forEach(el => el.remove());
-            }, t(700));
-        });
-        return done;
-    }
-
-
     function finishGame(outcome, { rated = false } = {}) {
         if (!game || game.over) return;
         cancelBot();
@@ -3505,27 +2571,14 @@
         recordStats(outcome);
         archiveFinished(outcome);
         const result = myResult(outcome);
-        const fanfare = () => {
+        setTimeout(() => afterCinema(() => {
             if (result === 'win' || result === 'white' || result === 'black') { Sound.play('win'); haptic('success'); celebrate(); }
             else if (result === 'loss') { Sound.play('lose'); haptic('error'); }
             else { Sound.play('draw'); haptic('warning'); }
-        };
-        const id = game.id;
-        const stillOver = () => game?.id === id && game.over?.reason === outcome.reason;
+        }), 180);
         afterChange();
         tickClocks();
-        if (outcome.reason === 'checkmate' && game.mateShow) {
-            // мат: фильм на доске уже идёт с момента хода — итог после него
-            game.mateShow.then(() => {
-                if (!stillOver()) return;
-                fanfare();
-                setTimeout(() => { if (stillOver()) showResult(); }, Math.max(650, Math.min(5500, talkHold() + 150)));
-            });
-            return;
-        }
-        if (outcome.reason === 'checkmate') game.matePills = true;
-        setTimeout(() => afterCinema(fanfare), 180);
-        setTimeout(() => afterCinema(() => { if (stillOver()) { renderPills(); showResult(); } }, 350), Math.max(outcome.reason === 'checkmate' ? 900 : 450, Math.min(5500, talkHold() + 150)));
+        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), Math.max(outcome.reason === 'checkmate' ? 900 : 450, Math.min(5500, talkHold() + 150)));
     }
 
     /** 'win' | 'loss' | 'draw' | 'aborted' | 'white' | 'black' (вдвоём). */
@@ -3924,7 +2977,8 @@
     }
 
     function showSettings() {
-        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves']];
+        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
+        if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', null, 'swingDragInfo']);
         if (Talk) rows.push(['talk', 'talkingPieces', null, 'talkingPiecesInfo']);
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (isOwner()) rows.push(['botLabel', 'botLabel', 'botLabelHint']);
@@ -3932,7 +2986,6 @@
         if (game?.mode === 'bot' || (game?.over && game.mode !== 'puzzle')) rows.splice(isOwner() ? 1 : 0, 0, ['review', 'moveReview', 'moveReviewHint']);
         openDialog('settings', `
             <h2>${esc(tr('settings'))}</h2>
-            ${Feel ? feelSettingsHtml() : ''}
             <div class="cs-settings" style="margin-top:12px">
                 ${rows.map(([key, label, sub, info]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}${info ? `<button type="button" class="cs-info" data-info="${info}" aria-expanded="false" aria-label="${esc(tr('moreInfo'))}">i</button>` : ''}${sub ? `<small class="cs-switch-sub">${esc(tr(sub))}</small>` : ''}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button>${info ? `<div class="cs-bubble" data-bubble="${info}" role="tooltip" hidden>${esc(tr(info))}</div>` : ''}</div>`).join('')}
             </div>
@@ -3943,7 +2996,6 @@
                 <button type="button" class="cs-btn" data-dlg="close">${esc(tr('backToGame'))}</button>
             </div>`);
         refs.sheet.querySelector('[data-dlg="pgn"]')?.addEventListener('click', copyPgn);
-        bindFeelSettings();
         refs.sheet.querySelector('.cs-skins').addEventListener('click', onSkinClick);
         refs.sheet.querySelectorAll('.cs-info').forEach(btn => { btn.onclick = event => { event.stopPropagation(); toggleBubble(btn); }; });
         refs.sheet.addEventListener('click', closeBubblesOutside);
@@ -3961,6 +3013,7 @@
                 haptic('select');
                 if (key === 'coords') { refs.frame.classList.toggle('no-coords', !settings.coords); layout(); }
                 if (key === 'showMoves') renderMarks();
+                if (key === 'wiggle') screen.classList.toggle('no-wiggle', !settings.wiggle);
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
                 if (key === 'talk') { if (settings.talk) ui.talkHello = true; else clearTalk(); }
@@ -3979,44 +3032,6 @@
             };
         });
         refs.sheet.querySelector('[data-dlg="close"]').onclick = () => closeDialog();
-    }
-
-    /** Ощущения: физический стиль и интенсивность — два переключателя-сегмента. */
-    function feelSettingsHtml() {
-        const seg = (key, values, labels) => `<div class="cs-seg" data-seg="${key}" style="--n:${values.length};--i:${Math.max(0, values.indexOf(settings[key]))}" role="radiogroup">
-            <i class="cs-seg-glider" aria-hidden="true"></i>
-            ${values.map((v, i) => `<button type="button" data-v="${v}" role="radio" aria-checked="${settings[key] === v}" class="${settings[key] === v ? 'is-on' : ''}">${esc(tr(labels[i]))}</button>`).join('')}
-        </div>`;
-        return `<p class="cs-settings-label">${esc(tr('feelTitle'))}</p>
-            <div class="cs-feel">
-                ${seg('feelStyle', Feel.STYLES, ['styleGlass', 'styleElastic'])}
-                ${seg('feelLevel', Feel.LEVELS, ['levelMinimal', 'levelBalanced', 'levelImmersive'])}
-                <p class="cs-feel-note" data-ref="feelNote">${esc(feelNote())}</p>
-            </div>`;
-    }
-    const feelNote = () => `${tr(settings.feelStyle === 'elastic' ? 'feelElasticHint' : 'feelGlassHint')} · ${tr(`feel_${settings.feelLevel}`)}`;
-    function bindFeelSettings() {
-        refs.sheet.querySelectorAll('.cs-seg').forEach(seg => {
-            seg.addEventListener('click', event => {
-                const btn = event.target.closest('button[data-v]');
-                if (!btn) return;
-                const key = seg.dataset.seg;
-                if (settings[key] === btn.dataset.v) return;
-                settings[key] = btn.dataset.v;
-                saveSettings();
-                applyFeel();
-                const buttons = [...seg.querySelectorAll('button[data-v]')];
-                seg.style.setProperty('--i', String(buttons.indexOf(btn)));
-                buttons.forEach(b => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', String(b === btn)); });
-                const note = refs.sheet.querySelector('[data-ref="feelNote"]');
-                if (note) note.textContent = feelNote();
-                haptic('select');
-                Sound.unlock();
-                sfx('pick');
-                threadKey = '';
-                renderMarks();
-            });
-        });
     }
 
     function skinTiles() {

@@ -69,11 +69,11 @@
 .cs-captured i { width: 17px; height: 17px; margin-right: -6px; background: center / contain no-repeat; flex-shrink: 0; }
 .cs-captured i.cs-gap { margin-left: 8px; }
 .cs-captured b { margin-left: 10px; font-size: 12px; font-weight: 700; color: var(--ui-muted); }
-.cs-player { position: relative; }
-.cs-clock { position: relative; overflow: hidden; flex-shrink: 0; min-width: 84px; padding: 8px 12px; border-radius: 12px; background: var(--cs-clock); color: var(--cs-clock-text); font-size: 21px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .3px; transition: background-color .25s, color .25s, transform .25s var(--ui-spring); }
+.cs-clock { flex-shrink: 0; min-width: 84px; padding: 8px 12px; border-radius: 12px; background: var(--cs-clock); color: var(--cs-clock-text); font-size: 21px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .3px; transition: background-color .25s, color .25s, transform .25s var(--ui-spring); }
 .cs-clock.is-running { background: var(--cs-clock-active); color: var(--cs-clock-active-text); }
-.cs-clock.is-low { background: #ff3b30; color: #fff; }
+.cs-clock.is-low { background: #ff3b30; color: #fff; animation: csLowPulse 1s ease-in-out infinite; }
 .cs-clock[hidden] { display: none; }
+@keyframes csLowPulse { 50% { transform: scale(1.05); } }
 
 /* ---------- доска ---------- */
 .cs-board-wrap { --m: var(--cs-margin, 16px); position: relative; width: var(--cs-outer, 92vw); height: var(--cs-outer, 92vw); flex-shrink: 0; border-radius: calc(var(--m) + 4px); background: var(--cs-frame); box-shadow: var(--cs-board-shadow); }
@@ -99,19 +99,16 @@
 .cs-board-wrap.no-coords .cs-coords { display: none; }
 
 .cs-layer { position: absolute; inset: 0; pointer-events: none; }
-.cs-mark { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; z-index: 1; }
-.cs-mark.dot, .cs-mark.cap { z-index: 2; }
+.cs-mark { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; }
 .cs-mark.last { background: var(--cs-last); }
 .cs-mark.sel { background: var(--cs-selected); }
 .cs-mark.pre { background: var(--cs-premove); }
 .cs-mark.hover { box-shadow: inset 0 0 0 3px rgba(28, 34, 44, .22); border-radius: 2px; }
-.cs-mark.check { background: radial-gradient(circle at 50% 55%, rgba(255, 59, 48, .9) 0%, rgba(255, 59, 48, .45) 38%, rgba(255, 59, 48, 0) 70%); animation: csCheckIn .35s ease-out both, csCheck 2.4s ease-in-out .35s infinite; }
-@keyframes csCheck { 50% { opacity: .72; } }
-@keyframes csCheckIn { from { opacity: 0; scale: .6; } }
-#chess-screen[data-level="minimal"] .cs-mark.check { animation: csCheckIn .25s ease-out both; }
+.cs-mark.check { background: radial-gradient(circle at 50% 55%, rgba(255, 59, 48, .9) 0%, rgba(255, 59, 48, .45) 38%, rgba(255, 59, 48, 0) 70%); animation: csCheck 1.4s ease-in-out infinite; }
+@keyframes csCheck { 50% { opacity: .65; } }
 .cs-mark.hint { background: rgba(48, 195, 90, .3); box-shadow: inset 0 0 0 3px rgba(48, 195, 90, .75); }
-.cs-mark.dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 28%; height: 28%; margin: -14% 0 0 -14%; border-radius: 50%; background: var(--cs-dot); animation: csDotIn .24s var(--ui-spring) var(--d, 0ms) backwards; transition: transform .22s var(--ui-spring), opacity .2s; }
-.cs-mark.cap::after { content: ''; position: absolute; inset: 4%; border-radius: 50%; box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .009) var(--cs-dot); animation: csDotIn .24s var(--ui-spring) var(--d, 0ms) backwards; transition: transform .22s var(--ui-spring); }
+.cs-mark.dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 28%; height: 28%; margin: -14% 0 0 -14%; border-radius: 50%; background: var(--cs-dot); animation: csDotIn .22s var(--ui-spring) both; }
+.cs-mark.cap::after { content: ''; position: absolute; inset: 4%; border-radius: 50%; box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .009) var(--cs-dot); animation: csDotIn .22s var(--ui-spring) both; }
 .cs-mark.dot.is-pre::after, .cs-mark.cap.is-pre::after { background-color: transparent; }
 .cs-mark.dot.is-pre::after { background: rgba(175, 82, 222, .35); }
 .cs-mark.cap.is-pre::after { box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .009) rgba(175, 82, 222, .45); }
@@ -119,20 +116,20 @@
 
 .cs-pieces { position: absolute; inset: 0; pointer-events: none; }
 .cs-pc { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; will-change: transform; z-index: 2; }
-.cs-pc > i { position: absolute; inset: 0; background: center / 100% 100% no-repeat; background-image: var(--img); transform-origin: 50% 88%; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 calc(var(--cs-size, 92vw) * .004) calc(var(--cs-size, 92vw) * .0035) rgba(20, 24, 32, .2)); transition: transform .2s cubic-bezier(.25, .9, .3, 1), filter .2s; }
+.cs-pc > i { position: absolute; inset: 0; background: center / 100% 100% no-repeat; transform-origin: 50% 88%; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 calc(var(--cs-size, 92vw) * .004) calc(var(--cs-size, 92vw) * .0035) rgba(20, 24, 32, .2)); transition: transform .18s var(--ui-spring); }
 .cs-pc.moving { z-index: 6; }
 .cs-pc.selected { z-index: 4; }
-/* Выбранная фигура приподнята с поверхности: чуть крупнее, тень шире и мягче. */
-.cs-pc.selected > i { transform: translateY(var(--cs-lift-y, -3%)) scale(var(--cs-lift-s, 1.06)); filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 calc(var(--cs-size, 92vw) * .009) calc(var(--cs-size, 92vw) * .008) rgba(20, 24, 32, .26)); }
-#chess-screen[data-feel="elastic"] .cs-pc > i { transition: transform .36s cubic-bezier(.3, 1.55, .5, 1), filter .2s; }
+.cs-pc.selected > i { animation: csWiggle .3s ease-in-out infinite; }
+/* Тряску можно выключить в настройках: тогда выбранная фигура просто чуть приподнята. */
+#chess-screen.no-wiggle .cs-pc.selected > i { animation: none; transform: scale(1.08); }
+@keyframes csWiggle {
+    0%, 100% { transform: rotate(-5deg) scale(1.08); }
+    50% { transform: rotate(5deg) scale(1.08); }
+}
 .cs-pc.dragging { z-index: 10; }
-.cs-pc.dragging > i { animation: none; transform-origin: 50% 58%; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 calc(var(--cs-size, 92vw) * .016) calc(var(--cs-size, 92vw) * .013) rgba(20, 24, 32, .3)); transition: none; }
-.cs-pc.vanish > i { animation: csVanish .26s ease-in forwards; }
+.cs-pc.dragging > i { animation: none; transform: scale(1.24); filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 calc(var(--cs-size, 92vw) * .014) calc(var(--cs-size, 92vw) * .012) rgba(20, 24, 32, .3)); transition: none; }
+.cs-pc.vanish > i { animation: csVanish .24s ease-in forwards; }
 @keyframes csVanish { to { transform: scale(.4); opacity: 0; } }
-#chess-screen[data-feel="glass"] .cs-pc.vanish > i { animation: csVanishGlass .28s cubic-bezier(.4, 0, .7, .4) forwards; }
-@keyframes csVanishGlass { 30% { transform: scale(1.04); opacity: .9; } to { transform: scale(.78); opacity: 0; filter: blur(3px); } }
-#chess-screen[data-feel="elastic"] .cs-pc.vanish > i { animation: csVanishElastic .3s cubic-bezier(.4, 0, .6, 1) forwards; }
-@keyframes csVanishElastic { 35% { transform: scale(1.16, .7); opacity: 1; } to { transform: scale(.25, .4); opacity: 0; } }
 .cs-pc.appear > i { animation: csAppear .34s var(--ui-spring) both; }
 @keyframes csAppear { from { transform: scale(.3); opacity: 0; } }
 .cs-pc.promoted > i { animation: csPromote .5s var(--ui-spring) both; }
@@ -188,6 +185,13 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
 .cs-banner button { flex-shrink: 0; padding: 9px 13px; border: 0; border-radius: 12px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; background: var(--ui-track); color: var(--ui-text); }
 .cs-banner button.is-primary { background: var(--ui-accent); color: #fff; }
 
+.cs-promo { position: absolute; inset: 0; z-index: 12; background: rgba(20, 24, 32, .38); opacity: 0; transition: opacity .18s; touch-action: none; }
+.cs-promo.show { opacity: 1; }
+.cs-promo-col { position: absolute; width: 12.5%; display: flex; flex-direction: column; border-radius: 999px; background: var(--ui-surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .3); overflow: hidden; animation: csPromoIn .3s var(--ui-spring) both; }
+.cs-promo-col button { position: relative; display: block; width: 100%; height: 0; padding: 100% 0 0; margin: 0; border: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.cs-promo-col button i { position: absolute; inset: 8%; display: block; background: center / contain no-repeat; transition: transform .15s; }
+.cs-promo-col button:active i { transform: scale(.88); }
+@keyframes csPromoIn { from { transform: scaleY(.4); opacity: 0; } }
 
 /* Диалог и итог партии — свои шторки внутри экрана. */
 .cs-sheet-scrim { position: absolute; inset: 0; z-index: 40; background: var(--ui-scrim); opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s; }
@@ -305,7 +309,7 @@ body.android-opt #chess-screen[data-skin] .cs-pc > i, body.lite-mode #chess-scre
     .cs-main { gap: 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .cs-clock.is-low, .cs-mark.check, .cs-mark::after { animation: none; }
+    .cs-pc.selected > i, .cs-clock.is-low, .cs-mark.check { animation: none; }
 }
 
 /* ---------- экшен-режим: кат-сцены поверх партии ---------- */
@@ -785,205 +789,3 @@ body.desktop #modalChess.is-full .ui-mode-panel > .ui-sheet-heading { padding-to
 #modalChess .cs-room-tc b { font-size: 15px; font-weight: 850; }
 #modalChess .cs-room-tc small { margin-top: 1px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; text-transform: lowercase; opacity: .8; }
 #modalChess .ck-room-join { margin-left: 0; }
-
-/* ---------- тактильная система: стекло и упругость ----------
-   Стиль — data-feel на экране партии (glass | elastic), интенсивность —
-   data-level (minimal | balanced | immersive). Анимации короткие и только
-   по transform и opacity: доска остаётся отзывчивой даже в пуле. */
-.cs-cam { position: absolute; inset: 0; transform-origin: 0 0; }
-.cs-tension { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; }
-.cs-fx { z-index: 2; }
-.cs-threads { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.cs-th { transform-box: view-box; fill: none; stroke-linecap: round; }
-.cs-th path { transition: opacity .2s; }
-.cs-th.is-elastic path { stroke: var(--cs-dot); stroke-width: .042; opacity: .62; }
-.cs-th.is-glass path { stroke: var(--cs-thread, rgba(90, 120, 170, .32)); stroke-width: .026; }
-[data-theme="dark"] .cs-th.is-glass path { --cs-thread: rgba(60, 80, 120, .34); }
-.cs-th.is-pre path { stroke: rgba(175, 82, 222, .42); }
-.cs-board.is-dragging .cs-th path { opacity: .22; }
-.cs-band { fill: none; stroke: var(--cs-dot); stroke-linecap: round; }
-
-/* Метки ходов уходят плавно, а не пропадают разом. */
-.cs-mark.is-out { animation: csMarkOut .2s ease-in forwards; }
-.cs-mark.dot.is-out::after, .cs-mark.cap.is-out::after { transform: scale(.3); }
-@keyframes csMarkOut { to { opacity: 0; } }
-/* Клетка под фигурой в руке «притягивает»: точка растёт в лунку. */
-.cs-mark.dot.is-hot::after { transform: scale(1.5); }
-.cs-mark.cap.is-hot::after { transform: scale(1.06); }
-.cs-mark.hover { box-shadow: inset 0 0 0 3px rgba(28, 34, 44, .2); border-radius: 3px; animation: csHoverIn .16s ease-out both; }
-@keyframes csHoverIn { from { opacity: 0; } }
-/* Стекло: точки — гладкие бусины, проступают из поверхности волной от фигуры. */
-#chess-screen[data-feel="glass"] .cs-mark.dot::after { background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 48%), var(--cs-dot); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), 0 1px 2px rgba(10, 14, 20, .14); animation: csBeadIn .3s cubic-bezier(.2, .85, .3, 1) var(--d, 0ms) backwards; }
-#chess-screen[data-feel="glass"] .cs-mark.cap::after { animation: csBeadIn .3s cubic-bezier(.2, .85, .3, 1) var(--d, 0ms) backwards; }
-#chess-screen[data-feel="glass"] .cs-mark.hover { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .42), inset 0 0 calc(var(--cs-size, 92vw) * .03) rgba(20, 30, 50, .16); background: rgba(255, 255, 255, .12); }
-@keyframes csBeadIn { from { transform: scale(.3); opacity: 0; } 70% { opacity: 1; } }
-/* Упругость: точки выпрыгивают с перелётом и встают на место. */
-#chess-screen[data-feel="elastic"] .cs-mark.dot::after, #chess-screen[data-feel="elastic"] .cs-mark.cap::after { animation: csDotPop .4s cubic-bezier(.3, 1, .5, 1) var(--d, 0ms) backwards; transition: transform .32s cubic-bezier(.3, 1.6, .5, 1); }
-#chess-screen[data-feel="elastic"] .cs-mark.hover { box-shadow: inset 0 0 0 3px var(--cs-dot); border-radius: 18%; animation: csWellIn .3s cubic-bezier(.3, 1.6, .5, 1) both; }
-@keyframes csDotPop { 0% { transform: scale(0); } 55% { transform: scale(1.24); } 78% { transform: scale(.93); } 100% { transform: scale(1); } }
-@keyframes csWellIn { from { scale: .7; opacity: 0; } }
-#chess-screen[data-level="minimal"] .cs-mark.dot::after, #chess-screen[data-level="minimal"] .cs-mark.cap::after { animation-duration: .18s; animation-delay: 0ms; }
-
-/* Отпечаток на клетке, откуда подняли фигуру. */
-.cs-imprint { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; background: center / 100% 100% no-repeat; background-image: var(--img); opacity: .2; animation: csImprintIn .18s ease-out both; }
-#chess-screen[data-feel="glass"] .cs-imprint { opacity: .26; filter: blur(.6px) brightness(1.15) saturate(.4); }
-#chess-screen[data-feel="elastic"] .cs-imprint { opacity: .14; transform-origin: 50% 88%; }
-.cs-imprint.is-out { animation: csImprintOut .24s ease-in forwards; }
-@keyframes csImprintIn { from { opacity: 0; } }
-@keyframes csImprintOut { to { opacity: 0; } }
-
-/* Стеклянный блик скользит по поднятой фигуре. */
-#chess-screen[data-feel="glass"] .cs-pc.selected > i::after, #chess-screen[data-feel="glass"] .cs-pc.dragging > i::after {
-    content: ''; position: absolute; inset: 0; pointer-events: none;
-    -webkit-mask: var(--img) center / 100% 100% no-repeat; mask: var(--img) center / 100% 100% no-repeat;
-    background: linear-gradient(112deg, transparent calc(var(--sheen, 46%) - 20%), rgba(255, 255, 255, .5) var(--sheen, 46%), transparent calc(var(--sheen, 46%) + 20%));
-    animation: csSheenIn .3s ease-out both;
-}
-#chess-screen[data-feel="glass"][data-level="minimal"] .cs-pc > i::after { display: none; }
-@keyframes csSheenIn { from { opacity: 0; } }
-body.android-opt .cs-pc > i::after, body.lite-mode .cs-pc > i::after { display: none; }
-
-/* Морфинг превращения: холст поверх клетки, сама фигура пока скрыта. */
-.cs-morph { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform-origin: 50% 88%; filter: drop-shadow(0 calc(var(--cs-size, 92vw) * .004) calc(var(--cs-size, 92vw) * .0035) rgba(20, 24, 32, .2)); }
-.cs-pc.morphing > i { opacity: 0; }
-
-/* Рябь по клетке от посадки фигуры. */
-.cs-ripple { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; }
-.cs-ripple::before { content: ''; position: absolute; inset: 10%; border-radius: 50%; animation: csRipple var(--t, 560ms) cubic-bezier(.15, .7, .3, 1) forwards; }
-#chess-screen[data-feel="glass"] .cs-ripple::before { box-shadow: 0 0 0 calc(var(--cs-size, 92vw) * .0035) rgba(255, 255, 255, calc(var(--a) * 3.2)), 0 0 0 calc(var(--cs-size, 92vw) * .007) rgba(20, 30, 50, calc(var(--a) * .9)), inset 0 0 calc(var(--cs-size, 92vw) * .02) rgba(255, 255, 255, calc(var(--a) * 2)); }
-#chess-screen[data-feel="elastic"] .cs-ripple::before { background: radial-gradient(circle, transparent 46%, rgba(20, 26, 36, calc(var(--a) * 1.3)) 60%, transparent 72%); }
-#chess-screen[data-feel="elastic"] .cs-ripple::after { content: ''; position: absolute; inset: 10%; border-radius: 50%; background: radial-gradient(circle, transparent 50%, rgba(20, 26, 36, calc(var(--a) * .7)) 62%, transparent 72%); animation: csRipple var(--t, 560ms) cubic-bezier(.15, .7, .3, 1) 90ms both; }
-@keyframes csRipple { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.45); opacity: 0; } }
-
-/* Шах: импульс от клетки короля. */
-.cs-pulse { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; }
-.cs-pulse::before { content: ''; position: absolute; inset: 0; border-radius: 24%; box-shadow: 0 0 0 calc(var(--cs-size, 92vw) * .006) rgba(255, 59, 48, .7), 0 0 calc(var(--cs-size, 92vw) * .03) rgba(255, 59, 48, .4), inset 0 0 calc(var(--cs-size, 92vw) * .02) rgba(255, 59, 48, .35); animation: csPulse var(--t, 620ms) cubic-bezier(.15, .7, .3, 1) forwards; }
-#chess-screen[data-feel="elastic"] .cs-pulse::before { animation-timing-function: cubic-bezier(.2, 1.2, .4, 1); }
-@keyframes csPulse { from { transform: scale(.82); opacity: .95; } to { transform: scale(2.2); opacity: 0; border-radius: 50%; } }
-
-/* ---------- превращение: горизонтальная стеклянная капсула ---------- */
-.cs-promo { position: absolute; inset: 0; z-index: 12; background: rgba(10, 12, 18, .24); opacity: 0; transition: opacity .2s; touch-action: none; }
-.cs-promo.show { opacity: 1; }
-.cs-promo-bar { position: absolute; height: 15.5%; }
-.cs-promo-halo { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; }
-.cs-promo-halo::before { content: ''; position: absolute; inset: 4%; border-radius: 50%; border: calc(var(--cs-size, 320px) * .005) solid rgba(120, 225, 215, .55); box-shadow: 0 0 calc(var(--cs-size, 320px) * .025) rgba(90, 220, 205, .45), inset 0 0 calc(var(--cs-size, 320px) * .02) rgba(90, 220, 205, .3); animation: csHaloIn .4s cubic-bezier(.3, 1.4, .5, 1) both, csHalo 1.6s ease-in-out .4s infinite; }
-@keyframes csHaloIn { from { opacity: 0; scale: .5; } }
-@keyframes csHalo { 50% { scale: 1.06; opacity: .75; } }
-.cs-promo-tilt { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; filter: drop-shadow(0 calc(var(--cs-size, 320px) * .03) calc(var(--cs-size, 320px) * .035) rgba(0, 0, 0, .45)) drop-shadow(0 2px 3px rgba(0, 0, 0, .3)); }
-/* Капсула и стрелка — одна форма одного цвета: стрелка вырастает из капсулы к пешке. */
-.cs-promo-glass { position: absolute; inset: 0; border-radius: calc(var(--cs-size, 320px) * .034); overflow: hidden; background: rgb(30, 39, 44); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
-/* Блик бежит за курсором или пальцем. */
-.cs-promo-glass::after { content: ''; position: absolute; inset: 0; background: radial-gradient(110% 150% at var(--hx, 50%) var(--hy, 10%), rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 55%); pointer-events: none; }
-.cs-promo-tail { position: absolute; left: var(--tail, 50%); width: calc(var(--cs-size, 320px) * .074); height: calc(var(--cs-size, 320px) * .074); margin-left: calc(var(--cs-size, 320px) * -.037); background: rgb(30, 39, 44); border-radius: calc(var(--cs-size, 320px) * .008); transform: rotate(45deg); }
-.cs-promo-bar.is-below .cs-promo-tail { top: calc(var(--cs-size, 320px) * -.03); }
-.cs-promo-bar.is-above .cs-promo-tail { bottom: calc(var(--cs-size, 320px) * -.03); }
-.cs-promo-row { position: absolute; inset: 0; display: flex; align-items: center; transform: translateZ(14px); }
-/* Плашка выбранной фигуры: тёмно-красная, пружиной переезжает под фигуру у пальца. */
-.cs-promo-hl { position: absolute; left: 0; top: 0; bottom: 0; width: 25%; border-radius: calc(var(--cs-size, 320px) * .02); background: linear-gradient(180deg, rgba(122, 34, 44, .95), rgba(92, 24, 34, .95)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 calc(var(--cs-size, 320px) * .03) rgba(255, 90, 100, .18); will-change: transform; transition: border-radius .15s; }
-.cs-promo-hl.pop { animation: csHlPop .34s ease-out; }
-@keyframes csHlPop { 0% { filter: brightness(1.7) saturate(1.2); } 100% { filter: none; } }
-.cs-promo-row button i { opacity: .82; transition: filter .15s, opacity .2s; }
-.cs-promo-row button.is-sel i { opacity: 1; }
-.cs-promo-hl.is-first { border-radius: calc(var(--cs-size, 320px) * .034) calc(var(--cs-size, 320px) * .02) calc(var(--cs-size, 320px) * .02) calc(var(--cs-size, 320px) * .034); }
-.cs-promo-hl.is-last { border-radius: calc(var(--cs-size, 320px) * .02) calc(var(--cs-size, 320px) * .034) calc(var(--cs-size, 320px) * .034) calc(var(--cs-size, 320px) * .02); }
-.cs-promo-row button { position: relative; flex: 1; height: 100%; margin: 0; padding: 0; border: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.cs-promo-row button i { position: absolute; left: 50%; top: 50%; width: calc(var(--cs-size, 320px) * .118); height: calc(var(--cs-size, 320px) * .118); margin: calc(var(--cs-size, 320px) * -.059) 0 0 calc(var(--cs-size, 320px) * -.059); background: center / contain no-repeat; transform-origin: 50% 80%; filter: drop-shadow(0 calc(var(--cs-size, 92vw) * .006) calc(var(--cs-size, 92vw) * .006) rgba(10, 14, 22, .28)); transition: filter .15s; }
-.cs-promo-row button.is-pressed i { filter: brightness(.9) drop-shadow(0 calc(var(--cs-size, 92vw) * .002) calc(var(--cs-size, 92vw) * .003) rgba(10, 14, 22, .3)); }
-.cs-promo-row button.is-picked i { animation: csPicked .26s cubic-bezier(.3, 1.4, .5, 1) forwards; }
-@keyframes csPicked { 50% { transform: scale(1.32); } to { transform: scale(1.1); opacity: 0; } }
-
-/* ---------- живые часы ---------- */
-.cs-cd { display: inline-block; }
-.cs-cd-sep { margin: 0 .02em; }
-.cs-cd.roll { animation: csRoll .2s cubic-bezier(.2, .9, .3, 1); }
-#chess-screen[data-feel="elastic"] .cs-cd.roll { animation: csRollElastic .32s cubic-bezier(.3, 1.5, .5, 1); }
-@keyframes csRoll { from { transform: translateY(40%); opacity: .25; } }
-@keyframes csRollElastic { from { transform: translateY(55%) scaleY(.8); opacity: .3; } }
-.cs-clock.is-wake { animation: csWake .44s cubic-bezier(.3, 1.4, .5, 1); }
-#chess-screen[data-feel="elastic"] .cs-clock.is-wake { animation: csWakeElastic .56s cubic-bezier(.3, 1.2, .5, 1); }
-.cs-clock.is-press { animation: csPress .34s cubic-bezier(.2, .8, .3, 1); }
-.cs-clock.beat { animation: csBeat .5s cubic-bezier(.2, .8, .3, 1); }
-@keyframes csWake { 0% { transform: scale(calc(1 - var(--cs-cp, .03))); } 45% { transform: scale(calc(1 + var(--cs-cp, .03))); } 100% { transform: none; } }
-@keyframes csWakeElastic { 0% { transform: scale(calc(1 - var(--cs-cp, .04)), calc(1 + var(--cs-cp, .04))); } 40% { transform: scale(calc(1 + var(--cs-cp, .04)), calc(1 - var(--cs-cp, .04) * .8)); } 70% { transform: scale(calc(1 - var(--cs-cp, .04) * .4)); } 100% { transform: none; } }
-@keyframes csPress { 30% { transform: scale(calc(1 - var(--cs-cp, .03) * .9)); } }
-@keyframes csBeat { 14% { transform: scale(calc(1 + var(--cs-cp, .03) * 1.4)); } }
-#chess-screen[data-feel="glass"] .cs-clock { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 0 0 1px rgba(255, 255, 255, .12), 0 3px 10px rgba(10, 14, 22, .08); }
-[data-theme="dark"] #chess-screen[data-feel="glass"] .cs-clock { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 0 0 1px rgba(255, 255, 255, .05), 0 3px 10px rgba(0, 0, 0, .25); }
-#chess-screen[data-feel="glass"] .cs-clock.is-running { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .14), 0 8px 20px rgba(10, 14, 22, .22); }
-/* Максимум: по активным часам раз в пару секунд проходит мягкий свет. */
-.cs-clock.is-live::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .22) 50%, transparent 65%); transform: translateX(-120%); animation: csClockLive 2.6s ease-in-out .4s infinite; }
-@keyframes csClockLive { 55%, 100% { transform: translateX(120%); } }
-.cs-inc { position: absolute; right: 8px; top: -6px; z-index: 2; padding: 2px 6px; border-radius: 999px; background: #34c759; color: #fff; font-size: 12px; font-weight: 800; line-height: 1.2; pointer-events: none; box-shadow: 0 4px 10px rgba(52, 199, 89, .35); animation: csInc 1.05s cubic-bezier(.2, .8, .3, 1) forwards; }
-@keyframes csInc { 0% { opacity: 0; transform: translateY(8px) scale(.6); } 22% { opacity: 1; transform: none; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-12px); } }
-@media (prefers-reduced-motion: reduce) { .cs-clock, .cs-cd.roll, .cs-clock::after, .cs-inc { animation: none !important; } }
-body.lite-mode .cs-clock.is-live::after { display: none; }
-
-/* ---------- мат: пилюли над королями и фильм на доске ---------- */
-.cs-pills { position: absolute; inset: var(--m); z-index: 8; pointer-events: none; }
-.cs-board.is-mate-show .cs-badges { opacity: 0; }
-.cs-board .cs-badges { transition: opacity .3s; }
-.cs-pill-at { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; }
-.cs-pill { position: absolute; left: 50%; bottom: 84%; display: inline-flex; align-items: center; gap: .32em; padding: .36em .78em .36em .56em; border-radius: 999px; color: #fff; font: 800 clamp(11px, calc(var(--cs-size, 320px) * .032), 16px)/1 var(--ui-font, system-ui); letter-spacing: .01em; white-space: nowrap; transform: translateX(-50%); overflow: hidden; }
-.cs-pill i { display: block; width: 1.18em; height: 1.18em; flex-shrink: 0; }
-.cs-pill i svg { display: block; width: 100%; height: 100%; }
-.cs-pill.is-win { background: linear-gradient(180deg, #5ee88a 0%, #24b552 55%, #1a9a44 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), inset 0 -1px 0 rgba(0, 0, 0, .16), 0 0 0 1.5px rgba(255, 255, 255, .92), 0 8px 18px rgba(26, 154, 68, .5); text-shadow: 0 1px 1px rgba(0, 70, 25, .35); }
-.cs-pill.is-lose { background: linear-gradient(180deg, #ff7a70 0%, #ef3434 55%, #d61f27 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .18), 0 0 0 1.5px rgba(255, 255, 255, .92), 0 8px 18px rgba(214, 31, 39, .5); text-shadow: 0 1px 1px rgba(90, 0, 0, .35); }
-.cs-pill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .55) 48%, transparent 66%); transform: translateX(-130%); pointer-events: none; }
-.cs-pill.is-new { animation: csPillIn .66s cubic-bezier(.3, 1.45, .5, 1) var(--d, 0ms) both; }
-.cs-pill.is-new::after { animation: csPillShine .9s ease-in-out calc(var(--d, 0ms) + .38s) both; }
-.cs-pill.is-new i { animation: csPillIcon .6s cubic-bezier(.3, 1.6, .5, 1) calc(var(--d, 0ms) + .16s) both; }
-@keyframes csPillIn { 0% { opacity: 0; transform: translate(-50%, 70%) scale(.3); filter: blur(5px); } 50% { opacity: 1; filter: blur(0); transform: translate(-50%, -10%) scale(1.08); } 100% { opacity: 1; transform: translateX(-50%); } }
-@keyframes csPillShine { to { transform: translateX(130%); } }
-@keyframes csPillIcon { from { transform: scale(0) rotate(-40deg); } }
-
-.cs-board.is-mate-show { cursor: pointer; }
-/* Сцена мата: доска гаснет и теряет цвет, лишние фигуры уходят в тень, ключевые — насыщенные, в неоне. */
-.cs-squares { transition: filter .35s ease; }
-.cs-squares.is-drained { filter: saturate(.18) brightness(.62) contrast(1.05); }
-.cs-cam.is-mate .cs-pc > i { transition: filter .45s ease, transform .2s; }
-.cs-pc.is-dim > i { filter: saturate(.15) brightness(.42) !important; }
-.cs-pc.is-key > i { filter: saturate(1.35) brightness(1.08) drop-shadow(0 calc(var(--cs-size, 92vw) * .006) calc(var(--cs-size, 92vw) * .006) rgba(0, 0, 0, .5)) !important; }
-.cs-pc.is-hero > i { filter: saturate(1.4) brightness(1.1) drop-shadow(0 0 calc(var(--cs-size, 92vw) * .016) rgba(80, 255, 110, .95)) drop-shadow(0 0 calc(var(--cs-size, 92vw) * .04) rgba(60, 230, 90, .6)) drop-shadow(0 calc(var(--cs-size, 92vw) * .014) calc(var(--cs-size, 92vw) * .012) rgba(0, 0, 0, .5)) !important; }
-.cs-pc.is-doomed > i { filter: saturate(1.3) drop-shadow(0 0 calc(var(--cs-size, 92vw) * .014) rgba(255, 50, 70, .95)) drop-shadow(0 0 calc(var(--cs-size, 92vw) * .036) rgba(255, 30, 55, .55)) !important; }
-.cs-mate-dim { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 120% at 50% 45%, rgba(5, 8, 6, .5), rgba(3, 4, 4, .72)); }
-.cs-mate-ghost { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; z-index: 11; background: center / 100% 100% no-repeat; background-image: var(--img); filter: drop-shadow(0 0 calc(var(--cs-size, 92vw) * .012) rgba(80, 255, 110, .9)); }
-.cs-mate-diamond { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; }
-.cs-mate-diamond::before { content: ''; position: absolute; inset: 6%; border-radius: 12%; background: rgba(60, 235, 120, .22); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .006) rgba(110, 255, 150, .95), 0 0 calc(var(--cs-size, 92vw) * .05) rgba(60, 235, 110, .75), inset 0 0 calc(var(--cs-size, 92vw) * .03) rgba(110, 255, 150, .5); }
-.cs-mate-sq { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; border-radius: 3px; animation: csMateSq .42s cubic-bezier(.2, .9, .3, 1) var(--d, 0ms) both; }
-/* Клетка удара: белая вспышка, остывающая в зелёный неон. */
-.cs-mate-sq.is-impact { animation: csImpact .9s cubic-bezier(.2, .8, .3, 1) both; }
-@keyframes csImpact {
-    0% { background: rgba(255, 255, 255, .95); box-shadow: 0 0 calc(var(--cs-size, 92vw) * .09) calc(var(--cs-size, 92vw) * .03) rgba(200, 255, 210, .95); }
-    35% { background: rgba(80, 225, 70, .7); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .006) rgba(190, 255, 190, .95), 0 0 calc(var(--cs-size, 92vw) * .06) calc(var(--cs-size, 92vw) * .016) rgba(80, 225, 70, .7); }
-    100% { background: rgba(80, 225, 70, .5); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .004) rgba(160, 255, 160, .8), 0 0 calc(var(--cs-size, 92vw) * .04) calc(var(--cs-size, 92vw) * .01) rgba(80, 225, 70, .5); }
-}
-.cs-mate-sq.is-from { background: rgba(80, 225, 70, .5); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .004) rgba(160, 255, 160, .8), 0 0 calc(var(--cs-size, 92vw) * .045) calc(var(--cs-size, 92vw) * .01) rgba(80, 225, 70, .55); }
-/* Линия мата: клетки вспыхивают по очереди от фигуры к королю, по ним бегут волны света. */
-.cs-mate-sq.is-lane { background: rgba(255, 45, 60, .5); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .005) rgba(255, 150, 160, .9), 0 0 calc(var(--cs-size, 92vw) * .05) calc(var(--cs-size, 92vw) * .012) rgba(255, 45, 60, .55); animation: csLaneIn .5s cubic-bezier(.2, .9, .3, 1) var(--d, 0ms) both, csLaneWave var(--w, 1000ms) ease-out var(--wd, 1s) infinite; }
-@keyframes csLaneIn { 0% { opacity: 0; scale: 1.3; background: rgba(255, 255, 255, .9); box-shadow: 0 0 calc(var(--cs-size, 92vw) * .08) calc(var(--cs-size, 92vw) * .025) rgba(255, 90, 100, .95); } 30% { opacity: 1; } }
-@keyframes csLaneWave { 0% { background: rgba(255, 120, 130, .85); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .008) rgba(255, 230, 232, .95), 0 0 calc(var(--cs-size, 92vw) * .075) calc(var(--cs-size, 92vw) * .022) rgba(255, 45, 60, .85); } 45%, 100% { background: rgba(255, 45, 60, .5); } }
-.cs-mate-sq.is-king { background: radial-gradient(circle, rgba(255, 70, 85, .55) 0%, rgba(255, 30, 50, .75) 70%, rgba(220, 10, 35, .9) 100%); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .006) rgba(255, 200, 205, .95), 0 0 calc(var(--cs-size, 92vw) * .07) calc(var(--cs-size, 92vw) * .02) rgba(255, 35, 55, .75); animation: csLaneIn .5s cubic-bezier(.2, .9, .3, 1) var(--d, 0ms) both, csKingPulse .55s ease-in-out calc(var(--d, 0ms) + .5s) infinite alternate; }
-@keyframes csKingPulse { to { box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .006) rgba(255, 220, 222, 1), 0 0 calc(var(--cs-size, 92vw) * .1) calc(var(--cs-size, 92vw) * .03) rgba(255, 35, 55, .95); } }
-/* Клетки, куда королю не уйти: яркая кромка оседает в дышащий красный. */
-.cs-mate-sq.is-cage { background: radial-gradient(circle, rgba(255, 110, 120, .38) 0%, rgba(255, 40, 60, .55) 62%, rgba(225, 18, 42, .78) 100%); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .005) rgba(255, 205, 210, .9), 0 0 calc(var(--cs-size, 92vw) * .05) calc(var(--cs-size, 92vw) * .01) rgba(255, 35, 55, .55); animation: csCageIn .5s cubic-bezier(.2, .9, .3, 1) var(--d, 0ms) both, csCageWave var(--w, 1000ms) ease-out var(--wd, 1s) infinite; }
-@keyframes csCageWave { 0% { background: radial-gradient(circle, rgba(255, 190, 196, .75) 0%, rgba(255, 70, 85, .8) 62%, rgba(240, 30, 50, .9) 100%); box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .008) rgba(255, 235, 237, .95), 0 0 calc(var(--cs-size, 92vw) * .075) calc(var(--cs-size, 92vw) * .022) rgba(255, 45, 60, .85); } 45%, 100% { } }
-.cs-mate-sq.is-out { animation: csMateOut .5s ease forwards !important; }
-@keyframes csMateSq { from { opacity: 0; scale: 1.3; } }
-@keyframes csCageIn { 0% { opacity: 0; scale: 1.35; box-shadow: inset 0 0 0 calc(var(--cs-size, 92vw) * .014) #fff, 0 0 calc(var(--cs-size, 92vw) * .08) rgba(255, 60, 80, .9); } }
-@keyframes csMateOut { to { opacity: 0; } }
-.cs-mate-shock { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; pointer-events: none; }
-.cs-mate-shock::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: calc(var(--cs-size, 92vw) * .012) solid rgba(255, 70, 85, .95); box-shadow: 0 0 calc(var(--cs-size, 92vw) * .045) rgba(255, 40, 60, .8), inset 0 0 calc(var(--cs-size, 92vw) * .03) rgba(255, 40, 60, .6); animation: csShock var(--t, 700ms) cubic-bezier(.1, .7, .3, 1) forwards; }
-.cs-mate-shock.is-green::before { border-color: rgba(150, 255, 160, .95); box-shadow: 0 0 calc(var(--cs-size, 92vw) * .045) rgba(80, 225, 70, .8), inset 0 0 calc(var(--cs-size, 92vw) * .03) rgba(80, 225, 70, .6); }
-@keyframes csShock { from { transform: scale(.5); opacity: 1; } to { transform: scale(4.4); opacity: 0; border-width: 1px; } }
-/* Удар мата: красная волна света от короля по всей доске. */
-.cs-mate-flash { position: absolute; inset: 0; pointer-events: none; z-index: 3; background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255, 70, 85, .55) 0%, rgba(255, 30, 50, .25) 22%, rgba(255, 20, 40, 0) 60%); mix-blend-mode: screen; animation: csFlash .7s ease-out forwards; }
-@keyframes csFlash { from { opacity: 1; } to { opacity: 0; } }
-
-/* ---------- настройки: стиль и интенсивность ---------- */
-.cs-feel { display: flex; flex-direction: column; gap: 8px; }
-.cs-seg { position: relative; display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); padding: 4px; border-radius: 15px; background: var(--ui-track); }
-.cs-seg button { position: relative; z-index: 1; min-width: 0; height: 38px; margin: 0; padding: 0 6px; border: 0; border-radius: 11px; background: transparent; color: var(--ui-muted); font: inherit; font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; -webkit-appearance: none; appearance: none; transition: color .2s; -webkit-tap-highlight-color: transparent; }
-.cs-seg button.is-on { color: var(--ui-text); }
-.cs-seg-glider { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n, 2)); border-radius: 11px; background: var(--ui-surface); box-shadow: 0 2px 8px rgba(0, 0, 0, .1), inset 0 1px 0 rgba(255, 255, 255, .6); transform: translateX(calc(100% * var(--i, 0))); transition: transform .4s cubic-bezier(.3, 1.3, .5, 1); }
-[data-theme="dark"] .cs-seg-glider { background: #545458; box-shadow: 0 2px 8px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .12); }
-.cs-sheet p.cs-feel-note { margin: 2px 4px 0; font-size: 13px; line-height: 1.35; text-align: left; }
