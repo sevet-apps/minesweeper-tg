@@ -3596,6 +3596,7 @@
     <link rel="stylesheet" href="assets/ui/juicy.css?v=2026110804">
     <link rel="stylesheet" href="assets/ui/guide.css?v=2026110804">
     <script src="assets/ui/juicy.js?v=2026110804" defer></script>
+    <script src="assets/ui/tactile.js?v=2026111401" defer></script>
     <script src="assets/ui/streak-core.js?v=2026110803" defer></script>
     <script src="assets/ui/streak.js?v=2026110803" defer></script>
     <script src="assets/ui/toast.js?v=2026110803" defer></script>
@@ -6555,10 +6556,10 @@
             gameModuleFiles.set(name, ready);
             return ready;
         }
-        const CHESS_VERSION = '20261113';
+        const CHESS_VERSION = '20261114';
         let chessLoading = null;
         const loadChessFiles = () => loadGameModuleFiles('chess', 'assets/chess/', CHESS_VERSION, 'chess.css',
-            ['chess-core.js', 'chess-i18n.js', 'chess-swing.js', 'chess-talk.js', 'chess-app.js']);
+            ['chess-core.js', 'chess-i18n.js', 'chess-motion.js', 'chess-fx.js', 'chess-talk.js', 'chess-app.js']);
         function loadChessApp() {
             if (window.SparkChess?.init && gameModuleFiles.has('chess')) return gameModuleFiles.get('chess').then(() => window.SparkChess.init());
             if (chessLoading) return chessLoading;

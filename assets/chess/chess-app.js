@@ -20,8 +20,8 @@
     const HISTORY_CACHE_KEY = 'chess_history_cache';  // последний список партий с сервера
     const PIECE_NAMES = 'KQRBNP';
     const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    // Раскачка фигуры при перетаскивании — только на компьютере с мышью.
-    const Swing = window.SparkChessSwing;
+    // Физика «магнитной эластичной» доски (chess-motion.js) и эффекты поверх партии (chess-fx.js).
+    const Motion = window.SparkChessMotion;
     const FINE_POINTER = !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
     let Chess = null;
@@ -37,7 +37,8 @@
     /** Экшен-режим пока в тесте: только у владельца. */
     const actionOn = () => !!settings.action && isOwner() && game?.mode !== 'puzzle';
     const myName = () => (typeof tgName === 'function' ? tgName(me()) : (me()?.first_name || tr('you')));
-    const pieceUrl = code => `${BASE}pieces/${code}.svg`;
+    /** Картинка фигуры из выбранного набора; классический лежит в корне pieces/. */
+    const pieceUrl = (code, set = pieceSet()) => (set === 'classic' ? `${BASE}pieces/${code}.svg` : `${BASE}pieces/${set}/${code}.svg${VERSION ? `?v=${VERSION}` : ''}`);
     const FLAG_LANGS = ['ru', 'en', 'zh', 'es', 'pt', 'id', 'fr', 'ja', 'de', 'ko', 'tr', 'vi'];
     /** Круглый флаг языка игрока, как в настройках языка приложения. */
     const flagHtml = code => (FLAG_LANGS.includes(code) ? `<i class="cs-flag" style="background-image:url('${BASE}../flags/${code}.svg?v=20261022')"></i>` : '');
@@ -107,7 +108,7 @@
     };
 
     /* ---------- настройки ---------- */
-    const settings = Object.assign({ sound: true, coords: true, showMoves: true, wiggle: true, swing: true, talk: false, autoFlip: false, action: true, review: true, botLabel: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
+    const settings = Object.assign({ sound: true, coords: true, showMoves: true, talk: false, autoFlip: false, action: true, pieces: 'classic', review: true, botLabel: true, skin: 'classic' }, readJson(SETTINGS_KEY, {}));
     const prefs = Object.assign({ tab: 'bot', level: 3, color: 'w', botTc: 'none', localTc: 'none', onlineTc: core.DEFAULT_ONLINE_TC }, readJson(PREFS_KEY, {}));
     const saveSettings = () => writeJson(SETTINGS_KEY, settings);
     // Владельцу сервер дописывает к нику бота « (бот)»; в настройках он может эту приписку спрятать.
@@ -115,12 +116,18 @@
     const nick = name => (name && settings.botLabel === false && isOwner() ? String(name).replace(BOT_LABEL_RE, '') : name);
     const savePrefs = () => writeJson(PREFS_KEY, prefs);
 
+    /* ---------- наборы фигур ----------
+       Набор выбирают в настройках партии; его видит только сам игрок. */
+    const PIECE_SETS = Object.freeze(['classic', 'soft', 'line', 'geo', 'glitter']);
+    function pieceSet() { return PIECE_SETS.includes(settings.pieces) ? settings.pieces : 'classic'; }
+
     /* ---------- скины доски ----------
        Базовые доступны всем; премиальные открываются лучшим рейтингом (peak)
        в своём режиме — после проигрышей доска не пропадает. Скин видит только
        тот, кто его выбрал: у соперника на экране своя доска. */
     const SKINS = Object.freeze([
         { id: 'classic' }, { id: 'slate' }, { id: 'sage' }, { id: 'wood', tex: true },
+        { id: 'stardust', glitter: true }, { id: 'rosegold', glitter: true },
         { id: 'ice', unlock: { cat: 'bullet', elo: 1300 } },
         { id: 'rosewood', unlock: { cat: 'rapid', elo: 1400 }, tex: true },
         { id: 'emerald', unlock: { cat: 'blitz', elo: 1500 }, tex: true },
@@ -144,6 +151,20 @@
         const sm = small ? '-sm' : '';
         return `--cs-light-tex:url('${BASE}boards/${skin.id}-light${sm}.jpg${v}');--cs-dark-tex:url('${BASE}boards/${skin.id}-dark${sm}.jpg${v}');--cs-tex-size:800% 800%;`;
     }
+    /** Плитка с искрами (SVG в адресе data:): ею мерцают блёстки на доске и на фигурах. */
+    function sparkleTile(seed, color) {
+        let s = seed >>> 0;
+        const rnd = () => { s = (s + 0x6D2B79F5) | 0; let v = Math.imul(s ^ (s >>> 15), 1 | s); v = (v + Math.imul(v ^ (v >>> 7), 61 | v)) ^ v; return ((v ^ (v >>> 14)) >>> 0) / 4294967296; };
+        const n = v => v.toFixed(1);
+        let body = '';
+        for (let i = 0; i < 9; i++) {
+            // четырёхлучевая звёздочка: редкие крупные, чаще мелкие
+            const x = 7 + rnd() * 86, y = 7 + rnd() * 86, r = 1.5 + rnd() * rnd() * 6.6, k = r * 0.19;
+            body += `<path d='M${n(x)} ${n(y - r)}L${n(x + k)} ${n(y - k)}L${n(x + r)} ${n(y)}L${n(x + k)} ${n(y + k)}L${n(x)} ${n(y + r)}L${n(x - k)} ${n(y + k)}L${n(x - r)} ${n(y)}L${n(x - k)} ${n(y - k)}Z' opacity='${(0.55 + rnd() * 0.45).toFixed(2)}'/>`;
+        }
+        for (let i = 0; i < 16; i++) body += `<circle cx='${n(rnd() * 100)}' cy='${n(rnd() * 100)}' r='${(0.45 + rnd() * 0.85).toFixed(2)}' opacity='${(0.35 + rnd() * 0.5).toFixed(2)}'/>`;
+        return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='${color}'>${body}</svg>`)}")`;
+    }
     function applySkin() {
         if (!screen) return;
         const skin = SKINS.find(item => item.id === settings.skin) || SKINS[0];
@@ -151,6 +172,9 @@
         // Пока профиль не загружен, премиальную доску не снимаем — проверим, когда придут данные.
         const current = ok || !ratingCache ? skin : SKINS[0];
         if (current.id === 'classic') delete screen.dataset.skin; else screen.dataset.skin = current.id;
+        // доски с блёстками: мерцающий слой над клетками и искры там, где села фигура
+        if (current.glitter) { screen.dataset.glitter = current.id; if (refs.glitter) refs.glitter.dataset.on = '1'; }
+        else { delete screen.dataset.glitter; if (refs.glitter) delete refs.glitter.dataset.on; }
         for (const name of ['--cs-light-tex', '--cs-dark-tex', '--cs-tex-size']) screen.style.removeProperty(name);
         if (current.tex) for (const part of texVars(current, false).split(';').filter(Boolean)) {
             const i = part.indexOf(':');
@@ -159,9 +183,13 @@
     }
 
     /* ---------- звук (Web Audio: без задержек и с наложением) ---------- */
+    // Новые звуки ждут одобрения владельца (review/«Звуки шахмат»): пока false — их файлы даже не загружаются.
+    const NEW_SOUNDS = false;
     const Sound = {
         ctx: null, buffers: {}, loading: null,
         names: ['move', 'move2', 'capture', 'castle', 'check', 'promote', 'start', 'win', 'lose', 'draw', 'lowtime', 'notify'],
+        // звуки тактильной доски: короткие и тихие, ложатся поверх записи хода
+        extra: ['pick', 'back', 'ui_tick', 'promo_open', 'morph', 'curtain', 'setup', 'tick', 'mate_rise', 'mate_hit', 'mate_tick', 'mate_fall', 'mate_out', 'pill', 'pill_win'],
         unlock() {
             try {
                 const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -173,34 +201,38 @@
         },
         load() {
             if (this.loading || !this.ctx) return this.loading;
-            this.loading = Promise.all(this.names.map(name => fetch(`${BASE}sounds/${name}.mp3${VERSION ? `?v=${VERSION}` : ''}`)
+            this.loading = Promise.all([...this.names, ...(NEW_SOUNDS ? this.extra : [])].map(name => fetch(`${BASE}sounds/${name}.mp3${VERSION ? `?v=${VERSION}` : ''}`)
                 .then(r => r.arrayBuffer())
                 .then(data => new Promise((resolve, reject) => this.ctx.decodeAudioData(data, resolve, reject)))
                 .then(buffer => { this.buffers[name] = buffer; })
                 .catch(() => {})));
             return this.loading;
         },
-        play(name, volume = 1) {
+        /** delay — через сколько мс сыграть (звук ложится на момент касания клетки), rate — высота. */
+        play(name, volume = 1, delay = 0, rate = null) {
+            if (settings.sound) this.tap?.(name, volume, delay, rate);   // для записи демо со звуком (см. _debug.tapSound)
             if (!settings.sound || !this.ctx || !this.buffers[name]) return;
             try {
                 if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
                 const source = this.ctx.createBufferSource();
                 const gain = this.ctx.createGain();
                 source.buffer = this.buffers[name];
-                source.playbackRate.value = name.startsWith('move') ? 0.96 + Math.random() * 0.08 : 1;
+                source.playbackRate.value = rate || (name.startsWith('move') ? 0.96 + Math.random() * 0.08 : 1);
                 gain.gain.value = volume;
                 source.connect(gain).connect(this.ctx.destination);
-                source.start();
+                source.start(delay > 0 ? this.ctx.currentTime + delay / 1000 : 0);
             } catch (_) {}
         },
     };
 
-    function playMoveSound(move, inCheck) {
-        if (move.promotion) { Sound.play('move'); setTimeout(() => Sound.play('promote', 0.8), 90); }
-        else if (move.flags.includes('k') || move.flags.includes('q')) { Sound.play('castle'); setTimeout(() => Sound.play('move2', 0.9), 110); }
-        else if (move.captured) Sound.play('capture');
-        else Sound.play(Math.random() < 0.5 ? 'move' : 'move2');
-        if (inCheck) setTimeout(() => Sound.play('check', 0.75), 70);
+    /** at — через сколько мс фигура коснётся клетки: звук, вибрация и посадка — одно событие. */
+    function playMoveSound(move, inCheck, at = 0) {
+        at = Math.max(0, at - 22);   // в записи хода удар звучит через ~25 мс после начала файла
+        if (move.promotion) { Sound.play('move', 1, at); Sound.play('promote', 0.8, at + 90); }
+        else if (move.flags.includes('k') || move.flags.includes('q')) { Sound.play('castle', 1, at); Sound.play('move2', 0.9, at + 110); }
+        else if (move.captured) Sound.play('capture', 1, at);
+        else Sound.play(Math.random() < 0.5 ? 'move' : 'move2', 1, at);
+        if (inCheck) Sound.play('check', 0.75, at + 70);
     }
 
     /* ---------- Stockfish в Web Worker ---------- */
@@ -324,6 +356,7 @@
 
     /* ---------- DOM ---------- */
     let screen, sheetEl, waitEl, refs = {};
+    let fx = null;   // эффекты доски (chess-fx.js)
     const view = { orientation: 'w', els: new Map(), size: 0 };
     const ui = { selected: null, targets: [], preMode: false, drag: null, hover: null, promo: null, banner: null, dialog: null };
     let game = null;
@@ -354,13 +387,22 @@
                     <div class="cs-coords cs-ranks left" data-ref="ranksLeft" aria-hidden="true"></div>
                     <div class="cs-coords cs-ranks right" data-ref="ranksRight" aria-hidden="true"></div>
                     <div class="cs-board" data-ref="board">
-                        <div class="cs-squares" data-ref="squares"></div>
-                        <div class="cs-layer" data-ref="marks"></div>
-                        <div class="cs-pieces" data-ref="pieces"></div>
-                        <div class="cs-badges" data-ref="badges"></div>
-                        <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
-                        <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        <div class="cs-cam" data-ref="cam">
+                            <div class="cs-squares" data-ref="squares"></div>
+                            <div class="cs-glitter" data-ref="glitter" aria-hidden="true"><i></i><i></i><i></i></div>
+                            <div class="cs-layer" data-ref="marks"></div>
+                            <div class="cs-tension" data-ref="tension"></div>
+                            <div class="cs-film-dim"></div>
+                            <svg class="cs-threads" data-ref="threads" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
+                            <div class="cs-fx" data-ref="fx"></div>
+                            <div class="cs-pieces" data-ref="pieces"></div>
+                            <div class="cs-badges" data-ref="badges"></div>
+                            <svg class="cs-arrows cs-notes" data-ref="notes" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
+                            <svg class="cs-arrows" data-ref="arrows" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true"></svg>
+                            <div class="cs-fx cs-fx-top" data-ref="fxTop"></div>
+                        </div>
                     </div>
+                    <div class="cs-over" data-ref="over"></div>
                     <div class="cs-talk" data-ref="talk" aria-hidden="true"></div>
                 </div>
                 <div class="cs-player" data-ref="bottomPlayer"></div>
@@ -383,10 +425,17 @@
             <div class="cs-sheet" data-ref="sheet" role="dialog" aria-modal="true"></div>`;
         refs = {};
         screen.querySelectorAll('[data-ref]').forEach(el => { refs[el.dataset.ref] = el; });
-        screen.classList.toggle('no-wiggle', !settings.wiggle);
+        // искры блёсток: белые и золотые плитки, по две разных — слои мерцают вразнобой
+        for (const [name, seed, color] of [['--gl-a', 11, '#ffffff'], ['--gl-b', 47, '#ffffff'], ['--gl-ga', 23, '#ffe7a8'], ['--gl-gb', 71, '#fff4d6']]) screen.style.setProperty(name, sparkleTile(seed, color));
+        if (pieceSet() !== 'classic') screen.dataset.pieces = pieceSet();
+        fx = window.SparkChessFx?.create({
+            refs: () => refs, view, sqXY, tf, haptic, tempo, reduced: REDUCED_MOTION,
+            sound: (name, volume, delay, rate) => Sound.play(name, volume, delay, rate),
+        }) || null;
         screen.addEventListener('click', onScreenClick);
         refs.scrim.addEventListener('click', () => { if (ui.dialog?.dismissable !== false) closeDialog(); });
         bindBoard();
+        bindScrub();
         window.addEventListener('resize', () => { if (screen.classList.contains('visible')) layout(); });
         document.addEventListener('keydown', onKey);
         document.addEventListener('visibilitychange', () => {
@@ -486,38 +535,76 @@
         const el = document.createElement('div');
         el.className = 'cs-pc';
         el.dataset.code = code;
-        el.innerHTML = `<i style="background-image:url('${pieceUrl(code)}')"></i>`;
+        el.innerHTML = '<i></i>';
+        el.style.setProperty('--tw', (Math.random() * 3).toFixed(2));   // у каждой фигуры блёстки мерцают в своём ритме
+        paintPiece(el);
         el.style.transform = sqTf(sq);
         refs.pieces.appendChild(el);
         return el;
     }
-    function setPieceCode(el, code, animate) {
+    /** Картинка фигуры из текущего набора; она же — маска для искр набора «Блёстки». */
+    function paintPiece(el) {
+        const image = `url('${pieceUrl(el.dataset.code)}')`;
+        el.firstChild.style.backgroundImage = image;
+        el.style.setProperty('--pc', image);
+    }
+    /** Набор фигур сменили в настройках: перекрашиваем доску и всё, где фигуры нарисованы. */
+    function applyPieces() {
+        if (!screen) return;
+        const set = pieceSet();
+        if (set === 'classic') delete screen.dataset.pieces; else screen.dataset.pieces = set;
+        for (const el of view.els.values()) paintPiece(el);
+        if (game) { renderPlayers(); renderMoveList(); renderCoach(); }
+    }
+    /** Меняет фигуру на клетке; fromCode — из какой она перетекает (превращение пешки). */
+    function setPieceCode(el, code, animate, fromCode = null) {
         el.dataset.code = code;
-        el.firstChild.style.backgroundImage = `url('${pieceUrl(code)}')`;
-        if (animate && !REDUCED_MOTION) { el.classList.remove('promoted'); void el.offsetWidth; el.classList.add('promoted'); }
+        const swap = () => paintPiece(el);
+        if (animate && fromCode && fx && !REDUCED_MOTION) { Sound.play('morph', 0.55); fx.morph(el, pieceUrl(fromCode), pieceUrl(code), swap); }
+        else swap();
     }
-    function removePiece(el, animate, delay = 0) {
+    /** kick — направление удара: взятую фигуру выбивает в эту сторону. */
+    function removePiece(el, animate, delay = 0, kick = null) {
         if (!animate || REDUCED_MOTION) { el.remove(); return; }
-        setTimeout(() => { el.classList.add('vanish'); setTimeout(() => el.remove(), 260); }, delay);
+        if (kick) { el.style.setProperty('--kx', kick[0].toFixed(2)); el.style.setProperty('--ky', kick[1].toFixed(2)); }
+        setTimeout(() => { el.classList.add('vanish'); setTimeout(() => el.remove(), 230); }, delay);
     }
-    function slide(el, sq, { dropped = false, delay = 0 } = {}) {
-        const to = sqTf(sq);
+    /** Темп партии для анимаций: в пуле и блице всё короче, а когда времени совсем мало — ещё короче. */
+    function tempo() {
+        if (!game) return 1;
+        const values = game.clock || game.online?.clock ? clockValues() : null;
+        return Motion.tempoFor(game.tc?.cat || 'none', { lowTime: !!values && !game.over && Math.min(values.w, values.b) < 15000 });
+    }
+    const SELECTED_FACE = 'translateY(-7%) scale(1.09)';
+    /** Ведёт фигуру на клетку. Обычный ход — пружина: разгон, торможение у клетки, лёгкий перелёт
+        и возврат; сама фигура приподнимается, наклоняется по ходу и упруго садится. Отпущенную из
+        руки (dropped, drag — её скорость и поза) клетка защёлкивает магнитом. plain — без позы
+        (переворот доски), rest — поза в конце (фигура остаётся выбранной).
+        Возвращает { duration, contact }: contact — когда фигура коснётся клетки, мс. */
+    function slide(el, sq, { dropped = false, delay = 0, drag = null, power = 1, plain = false, rest = null } = {}) {
+        const [x1, y1] = sqXY(sq);
+        const to = tf(x1, y1);
         const from = el.style.transform || to;
+        const face = el.firstChild;
         el.style.transform = to;
         el.getAnimations?.().forEach(a => a.cancel());
-        if (REDUCED_MOTION || from === to || !el.animate) return 0;
-        const [x0, y0] = (from.match(/-?[\d.]+/g) || [0, 0]).map(Number);
-        const [x1, y1] = sqXY(sq);
-        const distance = Math.hypot(x1 - x0 / 100, y1 - y0 / 100);
-        const duration = dropped ? 110 : Math.round(Math.min(360, 170 + 55 * Math.sqrt(distance)));
+        face.getAnimations?.().forEach(a => a.cancel());
+        if (REDUCED_MOTION || from === to || !el.animate) return { duration: 0, contact: 0 };
+        const [x0, y0] = (from.match(/-?[\d.]+/g) || [0, 0]).map(v => Number(v) / 100);
+        const k = tempo();
+        const path = Motion.flight([x0, y0], [x1, y1], { tempo: k, dropped, vx: drag?.vx || 0, vy: drag?.vy || 0 });
         el.classList.add('moving');
-        const anim = el.animate([{ transform: from }, { transform: to }], { duration, delay, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'backwards' });
-        if (!dropped) {
-            const lift = el.dataset.code[1] === 'N' ? 1.16 : 1.1;
-            el.firstChild.animate([{ transform: 'scale(1)' }, { transform: `scale(${lift})`, offset: 0.45 }, { transform: 'scale(1)' }], { duration, delay, easing: 'ease-in-out' });
-        }
+        const anim = el.animate(path.frames.map(f => ({ offset: f.offset, transform: tf(f.x, f.y) })), { duration: path.duration, delay, easing: 'linear', fill: 'backwards' });
         anim.onfinish = anim.oncancel = () => el.classList.remove('moving');
-        return duration + delay;
+        if (rest) {
+            face.animate([{ transform: drag?.face || rest }, { transform: rest }], { duration: Math.round(260 * k), easing: 'cubic-bezier(.3, 1.4, .5, 1)' });
+        } else if (!plain) {
+            const pose = dropped
+                ? Motion.landFace({ from: drag?.face || SELECTED_FACE, contact: path.contact, power, tempo: k })
+                : Motion.flightFace({ contact: path.contact, duration: path.duration, dx: x1 - x0, dist: path.dist, knight: el.dataset.code[1] === 'N', power, tempo: k });
+            face.animate(pose.frames, { duration: pose.duration, delay, easing: 'linear', fill: 'backwards' });
+        }
+        return { duration: path.duration + delay, contact: path.contact + delay };
     }
 
     function positionMap(chess) {
@@ -561,41 +648,47 @@
     }
 
     function rebuildPieces(chess) {
-        preloadShapes();
         refs.pieces.innerHTML = '';
         view.els = new Map();
         for (const [sq, code] of positionMap(chess)) view.els.set(sq, createPiece(code, sq));
     }
 
-    /** Живой ход: фигура едет, взятая растворяется, ладья в рокировке едет следом. */
-    function animateMove(move, { dropped = false } = {}) {
+    /** Живой ход: фигура летит и садится, взятую выбивает в момент касания, ладья в рокировке
+        едет следом, пешка на последней горизонтали перетекает в новую фигуру.
+        Возвращает { duration, contact } — как slide(). */
+    function animateMove(move, { dropped = false, drag = null } = {}) {
         const els = view.els;
         const el = els.get(move.from);
-        if (!el) return 0;
+        if (!el) return { duration: 0, contact: 0 };
         el.classList.remove('selected', 'dragging');
         let captureSq = null;
         if (move.flags.includes('e')) captureSq = move.to[0] + move.from[1];
         else if (move.captured) captureSq = move.to;
-        let duration = 0;
-        if (captureSq) {
-            const victim = els.get(captureSq);
-            if (victim && victim !== el) { els.delete(captureSq); removePiece(victim, true, dropped ? 0 : 110); }
-        }
+        const victim = captureSq ? els.get(captureSq) : null;
+        if (victim && victim !== el) els.delete(captureSq);
         els.delete(move.from);
         els.set(move.to, el);
-        duration = slide(el, move.to, { dropped });
+        const fly = slide(el, move.to, { dropped, drag, power: move.captured ? 1.45 : 1 });
+        if (victim && victim !== el) {
+            const [x0, y0] = sqXY(move.from), [x1, y1] = sqXY(move.to);
+            const d = Math.hypot(x1 - x0, y1 - y0) || 1;
+            removePiece(victim, true, Math.max(0, fly.contact - 30), [(x1 - x0) / d, (y1 - y0) / d]);
+        }
         if (move.flags.includes('k') || move.flags.includes('q')) {
             const rank = move.from[1];
             const [rf, rt] = move.flags.includes('k') ? [`h${rank}`, `f${rank}`] : [`a${rank}`, `d${rank}`];
             const rook = els.get(rf);
-            if (rook) { els.delete(rf); els.set(rt, rook); slide(rook, rt, { delay: 70 }); }
+            if (rook) { els.delete(rf); els.set(rt, rook); slide(rook, rt, { delay: Math.round(70 * tempo()) }); }
         }
         if (move.promotion) {
             const code = move.color + move.promotion.toUpperCase();
+            const pawn = `${move.color}P`;
             el.dataset.code = code;
-            setTimeout(() => setPieceCode(el, code, true), Math.max(0, duration - 40));
+            setTimeout(() => { if (el.isConnected && el.dataset.code === code) setPieceCode(el, code, true, pawn); }, Math.max(0, fly.contact - 20));
         }
-        return duration;
+        // отклик поверхности — в момент касания
+        if (fx) setTimeout(() => { if (view.els.get(move.to) === el) fx.ripple(move.to, { strong: !!move.captured }); }, fly.contact);
+        return fly;
     }
 
     /* ---------- подсветка ---------- */
@@ -612,6 +705,14 @@
         return ply > 0 ? game.moves[ply - 1] : null;
     }
 
+    /* Метки живут между перерисовками: новые появляются, ушедшие гаснут, остальные не мигают. */
+    const marksView = { els: new Map(), threads: '' };
+    function resetMarks() {
+        marksView.els.clear();
+        marksView.threads = '';
+        if (refs.marks) refs.marks.innerHTML = '';
+        if (refs.threads) refs.threads.innerHTML = '';
+    }
     function renderMarks() {
         if (!refs.marks) return;
         const list = [];
@@ -620,7 +721,7 @@
         if (last) { list.push([last.from, 'last']); list.push([last.to, 'last']); }
         if (game?.premove && game.view == null) { list.push([game.premove.from, 'pre']); list.push([game.premove.to, 'pre']); }
         if (ui.selected) list.push([ui.selected, ui.preMode ? 'pre' : 'sel']);
-        if (chess?.inCheck()) {
+        if (chess?.inCheck() && !(ui.checkHold && game.view == null && ui.checkHold === game.moves.length)) {
             const king = findKing(chess, chess.turn());
             if (king) list.push([king, 'check']);
         }
@@ -630,17 +731,81 @@
         if (pzFrom && !hint) list.push([pzFrom, 'hint']);
         if (ui.selected && settings.showMoves) {
             const seen = new Set();
+            const [x0, y0] = sqXY(ui.selected);
+            const k = tempo();
             for (const m of ui.targets) {
                 if (seen.has(m.to)) continue;
                 seen.add(m.to);
                 const capture = !!(m.captured || chess.get(m.to));
-                list.push([m.to, `${capture ? 'cap' : 'dot'}${ui.preMode ? ' is-pre' : ''}`]);
+                // точки выскакивают по очереди: ближние к фигуре — первыми
+                const [x, y] = sqXY(m.to);
+                const ring = Math.max(Math.abs(x - x0), Math.abs(y - y0));
+                list.push([m.to, `${capture ? 'cap' : 'dot'}${ui.preMode ? ' is-pre' : ''}`, Math.round((ring - 1) * 17 * k)]);
             }
         }
-        if (ui.hover) list.push([ui.hover, 'hover']);
-        refs.marks.innerHTML = list.map(([sq, cls]) => `<div class="cs-mark ${cls}" style="transform:${sqTf(sq)}"></div>`).join('');
+        const want = new Map();
+        for (const [sq, cls, delay] of list) want.set(`${sq}|${cls}`, { sq, cls, delay: delay || 0 });
+        for (const [key, el] of marksView.els) {
+            if (want.has(key)) continue;
+            marksView.els.delete(key);
+            if (REDUCED_MOTION) { el.remove(); continue; }
+            el.classList.add('is-out');
+            setTimeout(() => el.remove(), 170);
+        }
+        for (const [key, item] of want) {
+            let el = marksView.els.get(key);
+            if (!el) {
+                el = document.createElement('div');
+                el.className = `cs-mark ${item.cls}`;
+                el.innerHTML = '<i></i>';
+                if (item.delay) el.style.setProperty('--d', `${item.delay}ms`);
+                refs.marks.appendChild(el);
+                marksView.els.set(key, el);
+            }
+            el.style.transform = sqTf(item.sq);
+            // магнит поймал фигуру над клеткой — её метка раскрывается навстречу
+            el.classList.toggle('is-catch', ui.hover === item.sq && /^(dot|cap)/.test(item.cls));
+        }
+        renderThreads();
         renderArrow(hint || reviewArrow());
         renderBadge();
+    }
+
+    /** Упругие нити: по одной на каждый луч фигуры, до самой дальней клетки в этом направлении
+        (у коня лучей нет — у него только точки). */
+    function renderThreads() {
+        const svg = refs.threads;
+        if (!svg) return;
+        const on = !!ui.selected && settings.showMoves && ui.targets.length > 0 && !REDUCED_MOTION;
+        const key = on ? `${view.orientation}|${ui.selected}|${ui.preMode ? 1 : 0}|${ui.targets.map(m => m.to).join('')}` : '';
+        if (key === marksView.threads) return;
+        marksView.threads = key;
+        for (const old of [...svg.children]) {
+            if (old.classList.contains('is-out')) continue;
+            old.classList.add('is-out');
+            setTimeout(() => old.remove(), 180);
+        }
+        if (!on) return;
+        const [x0, y0] = sqXY(ui.selected);
+        const rays = new Map();
+        for (const m of ui.targets) {
+            const [x, y] = sqXY(m.to);
+            const dx = x - x0, dy = y - y0;
+            if (dx !== 0 && dy !== 0 && Math.abs(dx) !== Math.abs(dy)) continue;   // конь: только точки
+            const dir = `${Math.sign(dx)},${Math.sign(dy)}`;
+            const len = Math.hypot(dx, dy);
+            if (!rays.has(dir) || rays.get(dir).len < len) rays.set(dir, { x, y, len });
+        }
+        const k = tempo();
+        for (const ray of rays.values()) {
+            const ux = (ray.x - x0) / ray.len, uy = (ray.y - y0) / ray.len;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('d', `M${(x0 + 0.5 + ux * 0.36).toFixed(3)} ${(y0 + 0.5 + uy * 0.36).toFixed(3)}L${(ray.x + 0.5 - ux * 0.2).toFixed(3)} ${(ray.y + 0.5 - uy * 0.2).toFixed(3)}`);
+            line.setAttribute('pathLength', '1');
+            line.setAttribute('class', `cs-thread${ui.preMode ? ' is-pre' : ''}`);
+            line.style.animationDuration = `${Math.round((150 + ray.len * 36) * k)}ms`;
+            svg.appendChild(line);
+        }
     }
 
     function findKing(chess, color) {
@@ -781,16 +946,7 @@
             select(sq);
             const el = view.els.get(sq);
             if (el) {
-                ui.drag = { sq, el, x: event.clientX, y: event.clientY, active: false, wasSelected, pointerId: event.pointerId };
-                if (swingOn(event)) {
-                    // где взяли: от этого зависит, как фигура повиснет и раскачается
-                    const box = el.getBoundingClientRect();
-                    const gx = (event.clientX - box.left) / box.width, gy = (event.clientY - box.top) / box.height;
-                    const shape = pieceShape(el.dataset.code);
-                    // поднять можно только саму фигуру; пустое место клетки её лишь выбирает
-                    if (!shape.hit(gx, gy)) ui.drag.noLift = true;
-                    else Object.assign(ui.drag, { grabX: gx, grabY: gy, swing: Swing.createSwing(shape, gx, gy) });
-                }
+                ui.drag = { sq, el, x: event.clientX, y: event.clientY, active: false, wasSelected, pointerId: event.pointerId, touch: event.pointerType !== 'mouse' };
                 try { refs.board.setPointerCapture(event.pointerId); } catch (_) {}
             }
             return;
@@ -810,23 +966,10 @@
         if (!drag) { hoverGrab(event); return; }
         if (event.pointerId !== drag.pointerId) return;
         if (!drag.active) {
-            if (drag.noLift || Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
-            drag.active = true;
-            drag.el.classList.remove('selected');
-            drag.el.classList.add('dragging');
-            if (drag.swing) startSwing(drag);
+            if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
+            startDrag(drag);
         }
-        const rect = refs.board.getBoundingClientRect();
-        const cell = rect.width / 8;
-        const lift = event.pointerType === 'touch' ? cell * 0.45 : 0;
-        // с раскачкой фигура висит на той точке, за которую её взяли; без неё — центром под пальцем
-        const px = (event.clientX - rect.left) / cell - (drag.swing ? drag.grabX : 0.5);
-        const py = (event.clientY - rect.top - lift) / cell - (drag.swing ? drag.grabY : 0.5);
-        if (drag.swing) { drag.cx = (event.clientX - rect.left) / cell; drag.cy = (event.clientY - rect.top) / cell; }
-        drag.el.style.transform = tf(Math.max(-0.4, Math.min(7.4, px)), Math.max(-0.6, Math.min(7.4, py)));
-        const over = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
-        const hover = over && ui.targets.some(m => m.to === over) ? over : null;
-        if (hover !== ui.hover) { ui.hover = hover; renderMarks(); if (hover) haptic('select'); }
+        aimDrag(drag, event);
     }
 
     function onPointerUp(event) {
@@ -845,16 +988,18 @@
             if (drag.wasSelected) clearSelection();
             return;
         }
-        settleSwing(drag);
-        drag.el.classList.remove('dragging');
-        const lift = event.pointerType === 'touch' ? refs.board.getBoundingClientRect().width / 8 * 0.45 : 0;
+        const release = endDrag(drag);
+        const lift = drag.touch ? refs.board.getBoundingClientRect().width / 8 * 0.45 : 0;
         const target = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
         ui.hover = null;
         if (target && target !== drag.sq && ui.targets.some(m => m.to === target)) {
-            userMove(drag.sq, target, { dropped: true });
+            userMove(drag.sq, target, { dropped: true, drag: release });
         } else {
-            slide(drag.el, drag.sq, { dropped: true });
-            if (ui.selected === drag.sq) drag.el.classList.add('selected');
+            // передумал: фигура возвращается на свою клетку и остаётся выбранной
+            const keep = ui.selected === drag.sq;
+            slide(drag.el, drag.sq, { dropped: true, drag: release, rest: keep ? SELECTED_FACE : null });
+            if (keep) drag.el.classList.add('selected');
+            Sound.play('back', 0.6);
             renderMarks();
         }
     }
@@ -863,102 +1008,72 @@
         const drag = ui.drag;
         ui.drag = null;
         ui.hover = null;
-        if (drag) settleSwing(drag);
-        if (drag?.active && restore) { drag.el.classList.remove('dragging'); slide(drag.el, drag.sq, { dropped: true }); }
+        if (!drag?.active) return;
+        const release = endDrag(drag);
+        if (restore) slide(drag.el, drag.sq, { dropped: true, drag: release });
     }
 
-    /* ---------- раскачка фигуры под мышью (chess-swing.js) ---------- */
-    function swingOn(event) {
-        return !!Swing && FINE_POINTER && event.pointerType === 'mouse' && settings.swing !== false && !REDUCED_MOTION;
+    /* ---------- фигура в руке: пружина за пальцем и магнит клеток (chess-motion.js) ---------- */
+    function startDrag(drag) {
+        drag.active = true;
+        const [x, y] = sqXY(drag.sq);
+        const scale = drag.touch ? Motion.FEEL.liftTouch : Motion.FEEL.liftMouse;
+        // фигура уже приподнята выбором — подъём продолжается с этой высоты, без рывка
+        drag.model = Motion.createDrag([x + 0.5, y + 0.5], { touch: drag.touch, tempo: tempo(), lift: (1.09 - 1) / (scale - 1) });
+        drag.targets = [...new Set(ui.targets.map(m => m.to))].map(to => { const [tx, ty] = sqXY(to); return [tx + 0.5, ty + 0.5, to]; });
+        const face = drag.el.firstChild;
+        drag.el.getAnimations?.().forEach(a => a.cancel());
+        face.getAnimations?.().forEach(a => a.cancel());
+        drag.el.classList.remove('selected');
+        drag.el.classList.add('dragging');
+        setGrabCursor('grabbing');
+        let last = null;
+        const frame = time => {
+            if (ui.drag !== drag) return;
+            drag.model.step(last == null ? 1 / 60 : (time - last) / 1000);
+            last = time;
+            drag.el.style.transform = tf(drag.model.x - 0.5, drag.model.y - 0.5);
+            face.style.transform = drag.model.face();
+            drag.raf = requestAnimationFrame(frame);
+        };
+        face.style.transform = drag.model.face();
+        drag.raf = requestAnimationFrame(frame);
     }
-    /* Силуэт каждой фигуры: по нему видно, попали ли в саму фигуру, и считаются её центр тяжести
-       и момент инерции. Картинка рисуется на холст 64×64 один раз. */
-    const SHAPE_SIZE = 64;
-    const shapes = new Map();
-    function preloadShapes() {
-        if (!Swing || !FINE_POINTER || shapes.size) return;
-        for (const color of 'wb') for (const name of PIECE_NAMES) loadShape(color + name);
+    function aimDrag(drag, event) {
+        const rect = refs.board.getBoundingClientRect();
+        const cell = rect.width / 8;
+        // под пальцем фигуру не видно — на телефоне она держится чуть выше него
+        const lift = drag.touch ? cell * 0.45 : 0;
+        const px = Math.max(0.1, Math.min(7.9, (event.clientX - rect.left) / cell));
+        const py = Math.max(-0.1, Math.min(7.9, (event.clientY - rect.top - lift) / cell));
+        drag.model.aim(px, py, drag.targets);
+        const over = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
+        const hover = over && ui.targets.some(m => m.to === over) ? over : null;
+        if (hover !== ui.hover) { ui.hover = hover; renderMarks(); if (hover) haptic('select'); }
     }
-    function pieceShape(code) {
-        const shape = shapes.get(code);
-        if (shape && shape !== 'loading') return shape;
-        if (!shape) loadShape(code);
-        return Swing.FALLBACK;
+    /** Фигуру отпустили (или её забрал ход соперника): с какой скоростью и в какой позе. */
+    function endDrag(drag) {
+        cancelAnimationFrame(drag.raf);
+        setGrabCursor('');
+        const face = drag.el.firstChild;
+        const release = { vx: drag.model?.vx || 0, vy: drag.model?.vy || 0, face: face.style.transform || SELECTED_FACE };
+        face.style.transition = 'none';
+        face.style.transform = '';
+        drag.el.classList.remove('dragging');
+        void face.offsetWidth;
+        face.style.transition = '';
+        return release;
     }
-    async function loadShape(code) {
-        shapes.set(code, 'loading');
-        try {
-            // у SVG фигур нет своих размеров — задаём их, чтобы все браузеры рисовали одинаково
-            const svg = (await (await fetch(pieceUrl(code))).text()).replace(/<svg\b/, `<svg width="${SHAPE_SIZE}" height="${SHAPE_SIZE}" preserveAspectRatio="none"`);
-            const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-            const img = new Image();
-            img.src = url;
-            await img.decode();
-            const canvas = document.createElement('canvas');
-            canvas.width = canvas.height = SHAPE_SIZE;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(img, 0, 0, SHAPE_SIZE, SHAPE_SIZE);
-            URL.revokeObjectURL(url);
-            const rgba = ctx.getImageData(0, 0, SHAPE_SIZE, SHAPE_SIZE).data;
-            const alpha = new Uint8Array(SHAPE_SIZE * SHAPE_SIZE);
-            for (let i = 0; i < alpha.length; i++) alpha[i] = rgba[i * 4 + 3];
-            const shape = Swing.analyzeShape(alpha, SHAPE_SIZE);
-            // пустой или странный силуэт (браузер не нарисовал SVG) — остаёмся на усреднённой фигуре
-            if (shape.area < 0.05 || shape.area > 0.9) throw new Error('shape');
-            shapes.set(code, shape);
-        } catch (_) {
-            shapes.set(code, Swing.FALLBACK);
-        }
-    }
-    /** Курсор «рука» только над самой фигурой, которую можно взять. */
+    /** Курсор «рука» над фигурой, которую можно взять мышью. */
     function hoverGrab(event) {
-        if (!swingOn(event) || !game || game.view != null || ui.promo) { setGrabCursor(''); return; }
+        if (event.pointerType !== 'mouse' || !game || game.view != null || ui.promo) { setGrabCursor(''); return; }
         const sq = pointSq(event);
         const piece = sq && game.chess.get(sq);
-        const el = sq && view.els.get(sq);
-        if (!piece || !el || !canSelect(piece.color)) { setGrabCursor(''); return; }
-        const box = el.getBoundingClientRect();
-        setGrabCursor(pieceShape(el.dataset.code).hit((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height) ? 'grab' : '');
+        setGrabCursor(piece && canSelect(piece.color) ? 'grab' : '');
     }
     function setGrabCursor(kind) {
         refs.board.classList.toggle('is-grab', kind === 'grab');
         refs.board.classList.toggle('is-grabbing', kind === 'grabbing');
-    }
-    function startSwing(drag) {
-        setGrabCursor('grabbing');
-        const face = drag.el.firstChild;
-        face.style.transformOrigin = `${(drag.grabX * 100).toFixed(1)}% ${(drag.grabY * 100).toFixed(1)}%`;
-        let last = null;
-        const frame = time => {
-            // фигуру отпустили, взяли или забрали ходом соперника — возвращаем её прямо
-            if (ui.drag !== drag || !drag.active) { settleSwing(drag); return; }
-            if (last != null && drag.cx != null) {
-                const angle = drag.swing.step(drag.cx, drag.cy, (time - last) / 1000);
-                face.style.transform = `rotate(${(angle * 180 / Math.PI).toFixed(2)}deg) scale(1.24)`;
-            }
-            last = time;
-            drag.raf = requestAnimationFrame(frame);
-        };
-        drag.raf = requestAnimationFrame(frame);
-    }
-    function settleSwing(drag) {
-        if (!drag?.swing || drag.settled) return;
-        drag.settled = true;
-        cancelAnimationFrame(drag.raf);
-        setGrabCursor('');
-        const face = drag.el.firstChild;
-        const origin = face.style.transformOrigin;
-        const from = face.style.transform;
-        face.style.transform = '';
-        face.style.transformOrigin = '';
-        if (!from || !face.animate) return;
-        // докручиваем до прямого положения коротким путём, с лёгким покачиванием
-        const deg = Swing.settleAngle(drag.swing.angle) * 180 / Math.PI;
-        const settle = Math.min(380, 200 + Math.abs(deg) * 1.2);
-        face.animate([
-            { transform: `rotate(${deg.toFixed(2)}deg) scale(1.24)`, transformOrigin: origin },
-            { transform: 'rotate(0deg) scale(1)', transformOrigin: origin },
-        ], { duration: settle, easing: 'cubic-bezier(.3,1.35,.55,1)' });
     }
 
     /* ---------- говорящие фигуры ----------
@@ -1119,7 +1234,7 @@
         ui.selected = sq;
         ui.targets = ui.preMode ? premoveTargets(sq) : game.chess.moves({ square: sq, verbose: true });
         const el = view.els.get(sq);
-        if (el) { el.classList.remove('selected'); void el.offsetWidth; el.classList.add('selected'); }
+        if (el && !el.classList.contains('selected')) { el.classList.add('selected'); Sound.play('pick', 0.7); }
         haptic('select');
         renderMarks();
     }
@@ -1134,6 +1249,8 @@
         ui.preMode = !(canMoveNow() && piece.color === game.chess.turn());
         ui.targets = ui.preMode ? premoveTargets(sq) : game.chess.moves({ square: sq, verbose: true });
         if (ui.hover && !ui.targets.some(m => m.to === ui.hover)) ui.hover = null;
+        // фигуру как раз несут: магнит тянет уже к новым клеткам
+        if (ui.drag?.active) ui.drag.targets = [...new Set(ui.targets.map(m => m.to))].map(to => { const [tx, ty] = sqXY(to); return [tx + 0.5, ty + 0.5, to]; });
         const el = view.els.get(sq);
         if (el && !el.classList.contains('dragging')) el.classList.add('selected');
     }
@@ -1161,58 +1278,51 @@
         renderMarks();
     }
 
-    function userMove(from, to, { dropped = false } = {}) {
+    function userMove(from, to, { dropped = false, drag = null } = {}) {
         if (ui.preMode) {
             const piece = game.chess.get(from);
             const promotion = piece?.type === 'p' && (to[1] === '8' || to[1] === '1') ? 'q' : undefined;
             game.premove = { from, to, promotion };
-            if (dropped) { const el = view.els.get(from); if (el) slide(el, from, { dropped: true }); }
+            if (dropped) { const el = view.els.get(from); if (el) slide(el, from, { dropped: true, drag }); }
             clearSelection();
             haptic('light');
             return;
         }
         const options = game.chess.moves({ square: from, verbose: true }).filter(m => m.to === to);
         if (!options.length) return;
-        if (options.some(m => m.promotion)) { askPromotion(from, to, dropped); return; }
-        playMove({ from, to }, { byUser: true, dropped });
+        if (options.some(m => m.promotion)) { askPromotion(from, to, dropped, drag); return; }
+        playMove({ from, to }, { byUser: true, dropped, drag });
     }
 
-    function askPromotion(from, to, dropped) {
+    /** Пешка дошла до конца: она встаёт на клетку превращения, над ней раскрывается капсула выбора
+        (chess-fx.js), а после выбора пешка перетекает в новую фигуру. */
+    function askPromotion(from, to, dropped, drag = null) {
         const color = game.chess.turn();
-        const [x, y] = sqXY(to);
-        const down = y === 0;
         const el = view.els.get(from);
-        if (el && dropped) el.style.transform = sqTf(to);
-        const promo = document.createElement('div');
-        promo.className = 'cs-promo';
-        const col = document.createElement('div');
-        col.className = 'cs-promo-col';
-        col.style.left = `${x * 12.5}%`;
-        col.style[down ? 'top' : 'bottom'] = '0';
-        col.style.transformOrigin = down ? 'top' : 'bottom';
-        const kinds = down ? ['q', 'n', 'r', 'b'] : ['b', 'r', 'n', 'q'];
-        col.innerHTML = kinds.map(k => `<button type="button" data-promo="${k}" aria-label="${k}"><i style="background-image:url('${pieceUrl(color + k.toUpperCase())}')"></i></button>`).join('');
-        promo.appendChild(col);
-        refs.board.appendChild(promo);
-        requestAnimationFrame(() => promo.classList.add('show'));
-        ui.promo = { el: promo, from, to };
+        const kinds = window.SparkChessFx?.PROMO_KINDS || ['q', 'r', 'b', 'n'];
         clearSelection();
-        promo.addEventListener('pointerdown', event => {
-            event.stopPropagation();
-            const button = event.target.closest('[data-promo]');
-            const pending = ui.promo;
+        if (!fx) { playMove({ from, to, promotion: 'q' }, { byUser: true, dropped, drag }); return; }
+        if (el) { el.classList.remove('selected', 'dragging'); slide(el, to, { dropped, drag }); }
+        const urls = kinds.map(k => pieceUrl(color + k.toUpperCase()));
+        fx.prepareMorph([pieceUrl(`${color}P`), ...urls]);
+        const pending = ui.promo = { from, to };
+        fx.openPromo({ sq: to, color, urls }).then(kind => {
+            if (ui.promo !== pending) return;
             ui.promo = null;
-            promo.remove();
-            if (button && pending) {
-                playMove({ from: pending.from, to: pending.to, promotion: button.dataset.promo }, { byUser: true, dropped: true });
-            } else if (el) {
-                slide(el, from, { dropped: true });
-            }
+            if (kind) playMove({ from, to, promotion: kind }, { byUser: true, dropped: true });
+            else if (el?.isConnected) { slide(el, from); Sound.play('back', 0.6); }
         });
+    }
+    /** Закрывает капсулу превращения без выбора (выход, конец партии). */
+    function dropPromotion() {
+        if (!ui.promo) return false;
+        ui.promo = null;
+        fx?.closePromo(null);
+        return true;
     }
 
     /* ---------- ход ---------- */
-    function playMove(raw, { byUser = false, dropped = false, quiet = false } = {}) {
+    function playMove(raw, { byUser = false, dropped = false, drag = null, quiet = false } = {}) {
         if (!game || game.over) return null;
         if (!byUser) cancelCinema();   // ход соперника прерывает кат-сцену
         const before = byUser && actionOn() && game.view == null ? { fen: game.chess.fen(), board: positionMap(game.chess) } : null;
@@ -1226,17 +1336,32 @@
         if (!keepSelection) clearSelection(false);
         if (!byUser && ui.drag && (ui.drag.sq === capturedSq || ui.drag.sq === move.from)) ui.drag = null;
         clearAnnotations(false);
-        if (game.view != null) { game.view = null; refs.board.classList.remove('is-review'); syncPieces(positionMap(game.chess), { animate: true }); }
-        else animateMove(move, { dropped });
+        let fly = { duration: 0, contact: 0 };
+        if (game.view != null) { game.view = null; refs.board.classList.remove('is-review'); syncPieces(positionMap(game.chess), { animate: true }); renderEndState(); }
+        else fly = animateMove(move, { dropped, drag });
         if (keepSelection) refreshSelection();
         if (game.clock) pressOfflineClock(move.color);
         const check = game.chess.inCheck();
+        const mate = check && game.chess.isCheckmate();
+        if (check && fly.contact > 40) {
+            // шах «случается», когда фигура коснулась клетки: до этого король не краснеет
+            const ply = ui.checkHold = game.moves.length;
+            setTimeout(() => { if (ui.checkHold === ply) { ui.checkHold = 0; renderMarks(); } }, fly.contact);
+        } else ui.checkHold = 0;
         const cinema = before ? planCinema(move, before) : null;
         if (cinema) quiet = true;
         if (!quiet) {
-            playMoveSound(move, check);
-            haptic(move.captured ? 'medium' : 'light');
-            if (check) setTimeout(() => haptic('warning'), 80);
+            // звук и вибрация — в момент, когда фигура касается клетки
+            playMoveSound(move, check, fly.contact);
+            const g = game;
+            setTimeout(() => { if (game === g) haptic(move.captured ? 'medium' : 'light'); }, fly.contact);
+            if (check) setTimeout(() => { if (game === g) haptic('warning'); }, fly.contact + 80);
+        }
+        if (check && !cinema) {
+            const g = game, ply = game.moves.length;
+            const kingSq = findKing(game.chess, game.chess.turn());
+            if (mate && game.mode !== 'puzzle') startMateFilm(move, fly.contact);
+            else setTimeout(() => { if (game === g && g.moves.length === ply && g.view == null) fx?.check(kingSq, view.els.get(kingSq)); }, fly.contact + 30);
         }
         playtime('note');
         game.hint = null;
@@ -1314,6 +1439,7 @@
         const spent = performance.now() - started;
         if (spent < minDelay) await sleep(minDelay - spent);
         if (cinema) { await waitCinema(); await sleep(260); }
+        while (fx?.introOn && token === botToken) await sleep(90);   // первый ход бота — когда шторки разошлись
         if (token !== botToken || !game || game.over || game.chess.fen() !== fen) return;
         game.botBusy = false;
         if (!playMove(choice)) { const any = legal[0]; if (any) playMove(any); }
@@ -1493,7 +1619,7 @@
         const myColor = new Chess(fen).turn() === 'w' ? 'b' : 'w';   // первый ход — соперника
         puzzleStartedAt = Date.now();
         puzzleToken++;
-        if (ui.promo) { ui.promo.el.remove(); ui.promo = null; }
+        dropPromotion();
         hideBanner();
         closeSheet();
         // партия раньше экрана: при открытии экрана режим уже «задача» (экшен-режим не грузится)
@@ -1777,6 +1903,7 @@
         miss: qSvg('<path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>'),
         blunder: qSvg(qQuest(7) + qQuest(17), 0.78),
     };
+    Q_GLYPH.turn = qSvg('<path d="M3.6 16.8 9 11l4 3.400 7-8.200" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.800 5.800h5.600v5.600" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>');
     const qBadge = cls => `<span class="cs-q q-${cls}">${Q_GLYPH[cls]}</span>`;
     const reviewOn = () => !!game && settings.review !== false && (game.mode === 'bot'
         || ((game.mode === 'online' || game.mode === 'local') && !!game.over && game.over.result !== 'aborted' && game.moves.length > 0));
@@ -1964,8 +2091,10 @@
             </div>
             ${graphHtml(ply)}`;
     }
-    /** График шансов белых по ходам: белая часть — перевес белых. Нажатие — к ходу. */
-    function graphHtml(current = null) {
+    /** График шансов белых по ходам: белая часть — перевес белых, плавная кривая через оценки.
+        В отчёте после партии он рисуется слева направо (fresh), нажатие ведёт к ходу; под доской
+        при разборе по нему листают партию пальцем (см. «листание по графику»). */
+    function graphHtml(current = null, fresh = false) {
         const review = game?.review;
         if (!review || !game.moves.length) return '';
         const fens = reviewFens(game);
@@ -1977,16 +2106,112 @@
             if (w != null) points.push([i / n * 100, 100 - w]);
         });
         if (points.length < 2) return '';
-        const path = `M${points[0][0].toFixed(2)},100 ${points.map(([x, y]) => `L${x.toFixed(2)},${y.toFixed(2)}`).join(' ')} L${points[points.length - 1][0].toFixed(2)},100 Z`;
+        const fit = y => Math.max(0, Math.min(100, y));
+        const p = v => v.toFixed(2);
+        let line = `M${p(points[0][0])},${p(points[0][1])}`;
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+            line += ` C${p(p1[0] + (p2[0] - p0[0]) / 6)},${p(fit(p1[1] + (p2[1] - p0[1]) / 6))} ${p(p2[0] - (p3[0] - p1[0]) / 6)},${p(fit(p2[1] - (p3[1] - p1[1]) / 6))} ${p(p2[0])},${p(p2[1])}`;
+        }
+        const area = `${line} L${p(points[points.length - 1][0])},100 L${p(points[0][0])},100 Z`;
         const dots = review.marks.map((mark, i) => {
             if (!mark || !GRAPH_DOTS.has(mark.cls)) return '';
             const ev = review.evals[i + 1];
             const w = ev?.fen === fens[i + 1] ? winFor(ev, 'w') : null;
-            return w == null ? '' : `<i class="cs-gdot q-${mark.cls}" style="left:${((i + 1) / n * 100).toFixed(2)}%;top:${Math.min(93, Math.max(7, 100 - w)).toFixed(2)}%" title="${esc(tr(`q_${mark.cls}`))}"></i>`;
+            const x = Math.min(98.6, Math.max(1.4, (i + 1) / n * 100));
+            return w == null ? '' : `<i class="cs-gdot q-${mark.cls}" style="left:${x.toFixed(2)}%;top:${Math.min(93, Math.max(7, 100 - w)).toFixed(2)}%;--gx:${Math.round(x)}" title="${esc(tr(`q_${mark.cls}`))}"></i>`;
         }).join('');
         const cur = current == null ? '' : `<i class="cs-gcur" style="left:${(current / n * 100).toFixed(2)}%"></i>`;
-        return `<div class="cs-graph" data-plies="${n}" role="img" aria-label="${esc(tr('gameReview'))}">
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"/><line x1="0" y1="50" x2="100" y2="50"/></svg>${cur}${dots}</div>`;
+        return `<div class="cs-graph${fresh ? ' is-fresh' : ''}" data-plies="${n}" role="img" aria-label="${esc(tr('gameReview'))}">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="cs-garea" d="${area}"/><line x1="0" y1="50" x2="100" y2="50"/><path class="cs-gline" d="${line}"/></svg>${cur}${dots}</div>`;
+    }
+
+    /* ---------- листание по графику ----------
+       Под доской при разборе график — это ещё и ползунок партии: ведёшь по нему пальцем,
+       и доска идёт следом ход за ходом. Яркие ходы и ошибки слегка «примагничивают» палец. */
+    let scrub = null;
+    function graphPly(clientX) {
+        const graph = refs.coach?.querySelector('.cs-graph');
+        if (!graph || !game) return null;
+        const box = graph.getBoundingClientRect();
+        const n = Number(graph.dataset.plies) || 1;
+        const u = Math.max(0, Math.min(1, (clientX - box.left) / box.width));
+        let snap = null;
+        (game.review?.marks || []).forEach((mark, i) => {
+            if (!mark || !GRAPH_DOTS.has(mark.cls)) return;
+            const d = Math.abs((i + 1) / n - u);
+            if (d < 0.024 && (!snap || d < snap.d)) snap = { d, ply: i + 1 };
+        });
+        return snap ? snap.ply : Math.round(u * n);
+    }
+    function scrubTo(clientX) {
+        const ply = graphPly(clientX);
+        if (ply == null || !scrub || ply === scrub.ply) return;
+        scrub.ply = ply;
+        setView(ply, { scrub: true });
+    }
+    function bindScrub() {
+        const box = refs.coach;
+        box.addEventListener('pointerdown', event => {
+            if (!event.target.closest('.cs-graph') || !game || event.button > 0) return;
+            scrub = { id: event.pointerId, ply: null };
+            try { box.setPointerCapture(event.pointerId); } catch (_) {}
+            event.preventDefault();
+            scrubTo(event.clientX);
+        });
+        box.addEventListener('pointermove', event => { if (scrub && event.pointerId === scrub.id) scrubTo(event.clientX); });
+        const end = event => {
+            if (!scrub || event.pointerId !== scrub.id) return;
+            scrub = null;
+            try { box.releasePointerCapture(event.pointerId); } catch (_) {}
+        };
+        box.addEventListener('pointerup', end);
+        box.addEventListener('pointercancel', end);
+    }
+
+    /** Ключевые моменты партии для отчёта: лучший ход, перелом (самый большой скачок шансов) и главная ошибка. */
+    function momentsHtml() {
+        const review = game?.review;
+        if (!review || !game.moves.length) return '';
+        const fens = reviewFens(game);
+        let turn = null, best = null, worst = null;
+        for (let i = 1; i < fens.length; i++) {
+            const before = review.evals[i - 1], after = review.evals[i];
+            if (before?.fen !== fens[i - 1] || after?.fen !== fens[i]) continue;
+            const swing = Math.abs(winFor(after, 'w') - winFor(before, 'w'));
+            if (swing >= 18 && (!turn || swing > turn.swing)) turn = { swing, ply: i };
+        }
+        review.marks.forEach((mark, i) => {
+            if (!mark) return;
+            if (mark.cls === 'brilliant' && best?.cls !== 'brilliant') best = { cls: mark.cls, ply: i + 1 };
+            else if (mark.cls === 'great' && !best) best = { cls: mark.cls, ply: i + 1 };
+            if ((mark.cls === 'blunder' || mark.cls === 'miss' || mark.cls === 'mistake') && (!worst || (mark.loss || 0) > worst.loss)) worst = { cls: mark.cls, ply: i + 1, loss: mark.loss || 0 };
+        });
+        const items = [];
+        if (best) items.push({ ply: best.ply, cls: best.cls, label: tr(`q_${best.cls}`) });
+        if (turn && turn.ply !== best?.ply && turn.ply !== worst?.ply) items.push({ ply: turn.ply, cls: 'turn', label: tr('momentTurn') });
+        if (worst) items.push({ ply: worst.ply, cls: worst.cls, label: tr(`q_${worst.cls}`) });
+        if (!items.length) return '';
+        items.sort((x, y) => x.ply - y.ply);
+        return `<p class="cs-moments-title">${esc(tr('keyMoments'))}</p><div class="cs-moments">${items.map((item, i) => {
+            const move = game.moves[item.ply - 1];
+            return `<button type="button" class="cs-moment q-${item.cls}" data-moment="${item.ply}" style="--i:${i}">${qBadge(item.cls)}<span><b>${esc(item.label)}</b><small>${moveNumber(item.ply - 1)}${move.color === 'b' ? '…' : '.'} ${figurine(move)}</small></span></button>`;
+        }).join('')}</div>`;
+    }
+    /** Цифры точности в отчёте «набегают» от нуля, когда отчёт открывают впервые. */
+    function countUp(root) {
+        if (REDUCED_MOTION) return;
+        root.querySelectorAll('[data-count]').forEach(el => {
+            const to = Number(el.dataset.count);
+            if (!Number.isFinite(to)) return;
+            const t0 = performance.now(), ms = 900;
+            const frame = now => {
+                const u = Math.min(1, (now - t0) / ms), k = 1 - Math.pow(1 - u, 3);
+                el.textContent = (to * k).toFixed(1);
+                if (u < 1 && el.isConnected) requestAnimationFrame(frame);
+            };
+            requestAnimationFrame(frame);
+        });
     }
     /** Значки классов у фигур: в партии — у двух последних ходов (свой и бота),
         при просмотре — у показанного хода. Значки не пересоздаются, чтобы не мигать. */
@@ -2021,7 +2246,7 @@
         }
     }
     /** Отчёт после партии: точность и сколько ходов каждого класса у обеих сторон. */
-    function reportHtml() {
+    function reportHtml(fresh = false) {
         const review = game?.review;
         if (!reviewOn() || !review || !game.moves.length) return '';
         const mine = game.myColor || 'w', bot = other(mine);
@@ -2029,17 +2254,19 @@
         const accuracy = color => core.gameAccuracy(game.moves.map((m, i) => (m.color === color ? review.marks[i]?.acc : null)).filter(v => v != null));
         const count = (color, cls) => game.moves.filter((m, i) => m.color === color && review.marks[i]?.cls === cls).length;
         const fmt = value => (value == null ? '—' : value.toFixed(1));
+        const num = value => (value == null ? '<b>—</b>' : `<b${fresh ? ` data-count="${value.toFixed(1)}"` : ''}>${fresh ? '0.0' : value.toFixed(1)}</b>`);
         const rows = core.MOVE_CLASSES.map(cls => {
             const a = count(mine, cls), b = count(bot, cls);
             return `<div class="cs-rep-row q-${cls}${a || b ? '' : ' is-zero'}"><b${a ? '' : ' class="is-zero"'}>${a}</b><span>${qBadge(cls)}${esc(tr(`q_${cls}`))}</span><b${b ? '' : ' class="is-zero"'}>${b}</b></div>`;
         }).join('');
         return `
             <div class="cs-rep-head">
-                <div><small>${esc(playerInfo(mine).name)}</small><b>${fmt(accuracy(mine))}</b></div>
+                <div><small>${esc(playerInfo(mine).name)}</small>${num(accuracy(mine))}</div>
                 <span>${esc(tr('accuracy'))}</span>
-                <div><small>${esc(playerInfo(bot).name)}</small><b>${fmt(accuracy(bot))}</b></div>
+                <div><small>${esc(playerInfo(bot).name)}</small>${num(accuracy(bot))}</div>
             </div>
-            ${graphHtml()}
+            ${graphHtml(null, fresh)}
+            ${momentsHtml()}
             ${done < game.moves.length ? `<p class="cs-rep-progress">${esc(tr('analysing', { done, total: game.moves.length }))}</p>` : ''}
             <div class="cs-rep-rows">${rows}</div>`;
     }
@@ -2114,6 +2341,7 @@
     function planCinema(move, before) {
         if (REDUCED_MOTION || !Action.director || document.hidden || !screen.classList.contains('visible')) return null;
         const mate = game.chess.isCheckmate();
+        if (mate) return null;   // мат показывает фильм сверху (startMateFilm), а не 3D-сцена
         const capture = !!move.captured;
         const promo = !!move.promotion;
         const best = isBestMove(before.fen, move);
@@ -2189,8 +2417,95 @@
     function cancelCinema() {
         if (!cinema) return;
         const id = cinema.id;
-        Action.director?.skip();
+        if (cinema.film) fx?.stopMate(); else Action.director?.skip();
         endCinema(id);
+    }
+
+    /* ---------- фильм мата (вид сверху, chess-fx.js) ----------
+       Идёт сразу после матующего хода у всех игроков; итог партии ждёт его конца
+       так же, как ждёт кат-сцену. Нажатие на доску проматывает фильм. */
+    /** Анатомия мата: кто шахует и по каким клеткам, и какие клетки вокруг короля под боем. */
+    function mateAnatomy(move) {
+        const chess = game.chess;
+        const loser = chess.turn(), winner = other(loser);
+        const kingSq = findKing(chess, loser);
+        const checkers = kingSq ? chess.attackers(kingSq, winner) : [];
+        if (!checkers.length) return null;
+        const file = sq => sq.charCodeAt(0) - 97, rank = sq => Number(sq[1]) - 1;
+        const name = (f, r) => String.fromCharCode(97 + f) + (r + 1);
+        const lines = {};
+        for (const sq of checkers) {
+            const df = file(kingSq) - file(sq), dr = rank(kingSq) - rank(sq);
+            const cells = [];
+            if (df === 0 || dr === 0 || Math.abs(df) === Math.abs(dr)) {
+                const n = Math.max(Math.abs(df), Math.abs(dr));
+                for (let i = 1; i < n; i++) cells.push(name(file(sq) + Math.sign(df) * i, rank(sq) + Math.sign(dr) * i));
+            }
+            lines[sq] = cells;
+        }
+        // без короля на доске: клетка «за королём» на линии шаха тоже под боем
+        const bare = new Chess(chess.fen());
+        bare.remove(kingSq);
+        const cage = [];
+        for (let df = -1; df <= 1; df++) {
+            for (let dr = -1; dr <= 1; dr++) {
+                const f = file(kingSq) + df, r = rank(kingSq) + dr;
+                if ((!df && !dr) || f < 0 || f > 7 || r < 0 || r > 7) continue;
+                const sq = name(f, r);
+                const piece = chess.get(sq);
+                if (piece && piece.color === loser) continue;   // своя фигура — стена, её не подсвечиваем
+                const by = bare.attackers(sq, winner);
+                if (by.length) cage.push({ sq, by: by.find(a => !checkers.includes(a)) || by[0] });
+            }
+        }
+        // клетки загораются по кругу
+        const [kx, ky] = sqXY(kingSq);
+        const angle = sq => { const [x, y] = sqXY(sq); return Math.atan2(y - ky, x - kx); };
+        cage.sort((a, b) => angle(a.sq) - angle(b.sq));
+        return { move: { from: move.from, to: move.to }, kingSq, checkers, lines, cage };
+    }
+    function startMateFilm(move, delay) {
+        if (!fx || REDUCED_MOTION || document.hidden || !screen.classList.contains('visible')) return;
+        let spec = null;
+        try { spec = mateAnatomy(move); } catch (_) { spec = null; }
+        if (!spec) return;
+        cancelCinema();
+        const id = ++cinemaId;
+        cinema = { id, game, clockColor: null, waiters: [], film: true };
+        setTimeout(() => {
+            if (!cinema || cinema.id !== id) return;
+            if (game !== cinema.game || game.view != null) { endCinema(id); return; }
+            clearSelection();
+            spec.els = view.els;
+            fx.playMate(spec).then(() => endCinema(id), () => endCinema(id));
+        }, delay + 110);
+    }
+
+    /* ---------- итог на доске: пилюли над королями, поверженный король ---------- */
+    function endPills() {
+        const over = game?.over;
+        if (!over || over.result === 'aborted' || game.mode === 'puzzle') return [];
+        const wk = findKing(game.chess, 'w'), bk = findKing(game.chess, 'b');
+        if (over.result === 'draw') return [bk, wk].filter(Boolean).map(sq => ({ sq, tone: 'draw', icon: 'draw', text: tr('pillDraw') }));
+        const winner = over.result === 'white' ? 'w' : 'b';
+        const how = { checkmate: 'mate', timeout: 'time', noFirstMove: 'time', abandon: 'left' }[over.reason] || 'resign';
+        const text = how === 'mate' ? tr('pillMate') : how === 'time' ? tr('pillTime') : how === 'left' ? tr('pillLeft') : tr('pillResign');
+        return [
+            { sq: winner === 'w' ? bk : wk, tone: 'loss', icon: how, text },
+            { sq: winner === 'w' ? wk : bk, tone: 'win', icon: 'win', text: tr('pillWin') },
+        ].filter(item => item.sq);
+    }
+    /** Показывает итог на доске, когда на ней финальная позиция; при листании ходов — убирает. */
+    function renderEndState(animate = false) {
+        if (!fx || !refs.over) return;
+        const live = !!game?.over && game.view == null && !cinema?.film;
+        const fallen = live && game.over.reason === 'checkmate' ? findKing(game.chess, game.chess.turn()) : null;
+        for (const [sq, el] of view.els) el.classList.toggle('is-fallen', sq === fallen);
+        const pills = live ? endPills() : [];
+        const key = pills.length ? `${game.id}|${view.orientation}|${lang()}|${pills.map(item => item.sq + item.icon).join('')}` : '';
+        if (key === ui.endKey && !animate) return;
+        ui.endKey = key;
+        if (pills.length) fx.showPills(pills, { animate }); else fx.clearPills();
     }
     function waitCinema() {
         return cinema ? new Promise(resolve => cinema.waiters.push(resolve)) : Promise.resolve();
@@ -2226,19 +2541,66 @@
         const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
         return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
     }
+    /* Живые часы: элемент часов один на всю партию (панель игрока перерисовывается, часы — нет),
+       цифры меняются перекатом, переход хода — импульс от одних часов к другим, прибавка
+       всплывает рядом, а в последние секунды часы бьются в такт. */
+    const clockEls = {};
+    function clockEl(slot) {
+        if (!clockEls[slot]) {
+            const el = clockEls[slot] = document.createElement('div');
+            el.className = 'cs-clock';
+            el.hidden = true;
+            el.innerHTML = '<span class="cs-clock-digits"></span>';
+        }
+        return clockEls[slot];
+    }
+    /** Показывает время; roll: 1 — цифры перекатываются вниз (время идёт), -1 — вверх (прибавка), 0 — без анимации. */
+    function setClockText(el, text, roll) {
+        if (el.csText === text) return;
+        const box = el.firstChild;
+        const prev = el.csText || '';
+        el.csText = text;
+        if (!roll || REDUCED_MOTION || prev.length !== text.length) {
+            box.innerHTML = [...text].map(ch => (/\d/.test(ch) ? `<span class="cs-cd"><b>${ch}</b></span>` : `<span class="cs-cs">${ch}</span>`)).join('');
+            return;
+        }
+        const tenths = text.includes('.') ? text.length - 1 : -1;
+        [...text].forEach((ch, i) => {
+            if (ch === prev[i]) return;
+            const cell = box.children[i];
+            if (!cell) return;
+            if (!cell.classList.contains('cs-cd') || i === tenths) { cell.firstChild ? (cell.firstChild.textContent = ch) : (cell.textContent = ch); return; }
+            cell.innerHTML = `<b class="is-out${roll < 0 ? ' is-up' : ''}">${prev[i]}</b><b class="is-in${roll < 0 ? ' is-up' : ''}">${ch}</b>`;
+            // после переката в ячейке остаётся одна цифра: старая не «оживёт» при перерисовке
+            const fresh = cell.lastChild;
+            setTimeout(() => { if (cell.lastChild === fresh) cell.innerHTML = `<b>${ch}</b>`; }, 320);
+        });
+    }
     function tickClocks() {
         if (!game || !refs.topPlayer) return;
         const values = clockValues();
         for (const [slot, color] of [['topPlayer', other(view.orientation)], ['bottomPlayer', view.orientation]]) {
             const el = refs[slot].querySelector('.cs-clock');
             if (!el) continue;
-            if (!values) { el.hidden = true; continue; }
+            if (!values) { el.hidden = true; el.csColor = null; continue; }
             el.hidden = false;
             const left = values[color];
-            el.textContent = formatClock(left);
-            el.classList.toggle('is-running', values.running === color);
-            const low = values.running === color && left < Math.min(20000, (game.tcBase || 60000) * 0.1 + 1);
+            const running = values.running === color;
+            const same = el.csGame === game.id && el.csColor === color;   // те же часы, что в прошлый раз
+            const gained = same && el.csLeft != null ? left - el.csLeft : 0;
+            setClockText(el, formatClock(left), same ? (gained > 400 ? -1 : 1) : 0);
+            if (gained > 400 && game.moves.length && !REDUCED_MOTION) clockBonus(el, gained);
+            if (same && running !== el.csRunning && !game.over && !REDUCED_MOTION) clockImpulse(el, running);
+            el.classList.toggle('is-running', running);
+            const low = running && left < Math.min(20000, (game.tcBase || 60000) * 0.1 + 1);
             el.classList.toggle('is-low', low);
+            // последние секунды: часы вздрагивают на каждой секунде
+            const sec = Math.ceil(left / 1000);
+            if (low && same && el.csSec != null && sec !== el.csSec && !REDUCED_MOTION) {
+                el.animate?.({ scale: ['1.06', '1'] }, { duration: 320, easing: 'cubic-bezier(.3, 1.4, .5, 1)' });
+                if (left < 10500 && controls(color) && game.mode !== 'local') Sound.play('tick', 0.5);
+            }
+            Object.assign(el, { csGame: game.id, csColor: color, csLeft: left, csRunning: running, csSec: sec });
             if (low && controls(color) && !lowTimeWarned && game.mode !== 'local') { lowTimeWarned = true; Sound.play('lowtime'); haptic('warning'); }
         }
         updateFirstMoveNotice();
@@ -2246,6 +2608,23 @@
             const flagged = core.clockFlagged(game.clock, Date.now());
             if (flagged) finishGame(core.timeoutOutcome(game.chess, flagged));
         }
+    }
+    /** Переход хода: остановленные часы «нажимаются», пущенные — оживают чуть позже, будто приняли толчок. */
+    function clockImpulse(el, running) {
+        if (!el.animate) return;
+        if (running) el.animate({ scale: ['.95', '1.055', '1'], offset: [0, 0.5, 1] }, { duration: 420, delay: 70, easing: 'cubic-bezier(.3, .8, .4, 1)', fill: 'backwards' });
+        else el.animate({ scale: ['1', '.945', '1'], offset: [0, 0.38, 1] }, { duration: 300, easing: 'cubic-bezier(.3, .8, .4, 1)' });
+    }
+    /** Прибавка за ход всплывает рядом с часами: «+2». */
+    function clockBonus(el, ms) {
+        const sec = Math.round(ms / 1000);
+        if (sec < 1) return;
+        el.querySelector('.cs-clock-plus')?.remove();
+        const chip = document.createElement('span');
+        chip.className = 'cs-clock-plus';
+        chip.textContent = `+${sec}`;
+        el.appendChild(chip);
+        setTimeout(() => chip.remove(), 900);
     }
     function startClockLoop() {
         clearInterval(clockTimer);
@@ -2303,13 +2682,19 @@
             if (adv > 0) capHtml += `<b>+${adv}</b>`;
             const turn = !game.over && chess.turn() === color;
             const el = refs[slot];
-            el.innerHTML = `
+            // часы остаются в документе: перерисовывается только блок с именем (иначе их анимации начинались бы заново)
+            let body = el.firstElementChild;
+            if (!body?.classList.contains('cs-pbody')) {
+                el.innerHTML = '<div class="cs-pbody"></div>';
+                body = el.firstElementChild;
+                el.appendChild(clockEl(slot));
+            }
+            body.innerHTML = `
                 <div class="cs-ava${turn ? ' is-turn' : ''}${info.away ? ' is-away' : ''}">${avatar}</div>
                 <div class="cs-pinfo">
                     <div class="cs-pname">${flagHtml(info.lang)}<span>${esc(info.name)}</span>${info.sub ? `<small>${esc(info.sub)}</small>` : ''}</div>
                     <div class="cs-captured">${capHtml}</div>
-                </div>
-                <div class="cs-clock" hidden></div>`;
+                </div>`;
         }
         tickClocks();
     }
@@ -2422,21 +2807,26 @@
     }
 
     /* ---------- просмотр партии ---------- */
-    function setView(ply) {
+    function setView(ply, { scrub: scrubbing = false } = {}) {
         if (!game) return;
         const max = game.moves.length;
         const target = Math.max(0, Math.min(max, ply));
         const prev = game.view == null ? max : game.view;
         if (target === prev) return;
+        if (cinema?.film) cancelCinema();
         clearSelection(false);
         clearTalk();
         game.view = target === max ? null : target;
         clearAnnotations();
         const chess = viewChess();
-        if (Math.abs(target - prev) === 1 && target > prev) {
+        if (scrubbing) {
+            // листание по графику: тихий тик вместо звука каждого хода
+            syncPieces(positionMap(chess), { animate: true });
+            Sound.play('ui_tick', 0.4);
+        } else if (Math.abs(target - prev) === 1 && target > prev) {
             const m = game.moves[target - 1];
-            animateMove(m);
-            playMoveSound(m, chess.inCheck());
+            const fly = animateMove(m);
+            playMoveSound(m, chess.inCheck(), fly.contact);
         } else {
             syncPieces(positionMap(chess), { animate: true });
             Sound.play('move', 0.6);
@@ -2449,6 +2839,7 @@
         renderPlayers();
         renderStatus();
         renderCoach();
+        renderEndState();
     }
     function goLive() { if (game?.view != null) setView(game.moves.length); }
 
@@ -2457,10 +2848,12 @@
         view.orientation = color;
         clearTalk();
         buildSquares();
-        for (const [sq, el] of view.els) slide(el, sq);
+        if (cinema?.film) cancelCinema();
+        for (const [sq, el] of view.els) slide(el, sq, { plain: true });
         renderMarks();
         renderNotes();
         renderPlayers();
+        renderEndState();
     }
 
     /* ---------- начало и конец партии ---------- */
@@ -2471,6 +2864,11 @@
         clearTalk();
         closeDialog(true);
         hideBanner();
+        dropPromotion();
+        fx?.stopIntro();
+        fx?.clearPills();
+        ui.endKey = '';
+        resetMarks();
         const chess = new Chess(startFen || undefined);
         const played = [];
         for (const san of moves) {
@@ -2507,11 +2905,46 @@
         if (archive) refs.board.classList.add('is-over');
         clearSelection(false);
         afterChange();
+        renderEndState();
         startClockLoop();
         if (archive) return game;
         if (mode === 'bot' && chess.turn() !== game.myColor) setTimeout(botMove, 500);
         if (mode !== 'online') saveOffline();
+        // новая партия начинается со шторок противостояния; продолженная — сразу с доски
+        if (!played.length && mode !== 'puzzle') startIntro();
         return game;
+    }
+
+    /** Шторки начала партии: соперники по разные стороны, затем доска и фигуры. */
+    function startIntro() {
+        if (!fx || REDUCED_MOTION || document.hidden) return;
+        const g = game;
+        const side = color => {
+            const info = playerInfo(color);
+            const safe = info.avatar && /^https:\/\//i.test(info.avatar) ? info.avatar : null;
+            return {
+                color, name: esc(info.name), sub: esc(info.sub || ''),
+                avatar: safe ? `<img src="${esc(safe)}" alt="" referrerpolicy="no-referrer">` : `<i style="background-image:url('${pieceUrl(color + (info.bot ? 'N' : 'K'))}')"></i>`,
+            };
+        };
+        const chip = game.tc ? `${esc(tr(game.tc.cat))} · ${esc(game.tc.id)}` : esc(tr('noTime'));
+        fx.playIntro({
+            top: side(other(view.orientation)), bottom: side(view.orientation), chip,
+            onOpen: fast => {
+                if (game !== g) return;
+                // шторки открывают пустую доску — и на неё волной от центра встают фигуры
+                const wait = fast ? 40 : Math.round(230 * Math.max(0.72, Math.min(1, tempo())));
+                Sound.play('curtain', 0.7);
+                Sound.play('start', 0.8, 60);
+                Sound.play('setup', 0.8, wait + 40);
+                haptic('light');
+                fx.pieceWave(view.els, { fast, wait });
+            },
+        });
+    }
+    /** Звук начала партии: если идут шторки, он прозвучит, когда они разойдутся. */
+    function playStart(volume = 1) {
+        if (!fx?.introOn) Sound.play('start', volume);
     }
 
     function openScreen() {
@@ -2541,7 +2974,10 @@
         clockTimer = null;
         closeDialog(true);
         hideBanner();
-        if (ui.promo) { ui.promo.el.remove(); ui.promo = null; }
+        dropPromotion();
+        fx?.stopIntro();
+        fx?.clearPills();
+        ui.endKey = '';
         cancelDrag(false);
         screen.classList.remove('visible');
         playtime('stop');
@@ -2565,20 +3001,30 @@
         if (game.clock) core.clockStop(game.clock, Date.now());
         game.over = { ...outcome, rated };
         game.premove = null;
+        if (dropPromotion()) syncPieces(positionMap(game.chess), { animate: true });
         clearSelection(false);
         refs.board.classList.add('is-over');
         if (game.mode !== 'online') localStorage.removeItem(SAVE_KEY);
         recordStats(outcome);
         archiveFinished(outcome);
         const result = myResult(outcome);
+        const g = game, over = game.over;
+        const still = () => game === g && g.over === over;
+        // Итог ждёт конца фильма мата: сначала пилюли над королями, затем звук и шторка.
         setTimeout(() => afterCinema(() => {
-            if (result === 'win' || result === 'white' || result === 'black') { Sound.play('win'); haptic('success'); celebrate(); }
-            else if (result === 'loss') { Sound.play('lose'); haptic('error'); }
-            else { Sound.play('draw'); haptic('warning'); }
+            if (!still()) return;
+            renderEndState(true);
+            setTimeout(() => {
+                if (!still()) return;
+                if (result === 'win' || result === 'white' || result === 'black') { Sound.play('win'); haptic('success'); celebrate(); }
+                else if (result === 'loss') { Sound.play('lose'); haptic('error'); }
+                else { Sound.play('draw'); haptic('warning'); }
+            }, outcome.result === 'aborted' ? 0 : 240);
         }), 180);
         afterChange();
         tickClocks();
-        setTimeout(() => afterCinema(() => { if (game?.over === outcome || game?.over?.reason === outcome.reason) showResult(); }, 350), Math.max(outcome.reason === 'checkmate' ? 900 : 450, Math.min(5500, talkHold() + 150)));
+        const filmed = !!cinema?.film;
+        setTimeout(() => afterCinema(() => { if (still()) showResult(); }, filmed ? 1500 : 350), Math.max(outcome.reason === 'checkmate' || outcome.result === 'aborted' ? 900 : 1250, Math.min(5500, talkHold() + 150)));
     }
 
     /** 'win' | 'loss' | 'draw' | 'aborted' | 'white' | 'black' (вдвоём). */
@@ -2647,7 +3093,7 @@
         closeSheet();
         openScreen();
         newGame({ mode: saved.mode, myColor: saved.myColor || 'w', level: saved.level || 3, tcId: saved.tc, moves: saved.moves, clock: saved.clock, orientation: saved.orientation });
-        Sound.play('start', 0.7);
+        playStart(0.7);
     }
 
     /* ---------- онлайн ---------- */
@@ -2676,7 +3122,7 @@
         openScreen();
         newGame({ mode: 'online', myColor: color, tcId: state.tc, moves: (state.moves || []).map(m => m.san), online, orientation: keepOrientation });
         if (state.drawOffer && state.drawOffer !== (color === 'w' ? 'white' : 'black')) showDrawOffer();
-        if (!resumed) { Sound.play('start'); haptic('success'); }
+        if (!resumed) { playStart(); haptic('success'); }
     }
 
     function bindSocket() {
@@ -2891,6 +3337,8 @@
     function showResult() {
         if (!game?.over) return;
         const outcome = game.over;
+        const fresh = !game.reportSeen;   // первый показ: график рисуется, цифры набегают
+        game.reportSeen = true;
         const r = myResult(outcome);
         const icon = r === 'win' ? ICON.trophy : r === 'loss' ? ICON.broken : r === 'aborted' ? ICON.abort : r === 'draw' ? ICON.handshake : ICON.trophy;
         const iconClass = r === 'win' || r === 'white' || r === 'black' ? 'win' : r === 'loss' ? 'loss' : 'draw';
@@ -2903,7 +3351,7 @@
             <div class="cs-result-icon ${iconClass}">${icon}</div>
             <h2>${esc(resultTitle(outcome))}</h2>
             <p data-ref="resultReason">${esc(reasonText(outcome))}</p>
-            ${reviewOn() ? `<div class="cs-report" data-ref="report">${reportHtml()}</div>` : ''}
+            ${reviewOn() ? `<div class="cs-report" data-ref="report">${reportHtml(fresh)}</div>` : ''}
             <div class="cs-rating-chip" data-ref="resultRating" hidden></div>
             <p data-ref="resultNote" hidden></p>
             <div class="cs-sheet-actions">
@@ -2912,6 +3360,7 @@
                 <button type="button" class="cs-btn" data-dlg="menu">${esc(tr('menu'))}</button>
             </div>`);
         const sheet = refs.sheet;
+        if (fresh) countUp(sheet);
         sheet.querySelector('[data-dlg="review"]').onclick = () => { closeDialog(); if (reviewOn()) openReview(game.view ?? 1); };
         if (reviewOn() && !game.coach) { game.coach = true; renderCoach(); renderMarks(); }
         sheet.querySelector('[data-dlg="menu"]').onclick = () => { closeDialog(true); closeScreen(); openSheet(); };
@@ -2977,8 +3426,7 @@
     }
 
     function showSettings() {
-        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves'], ['wiggle', 'wiggle']];
-        if (FINE_POINTER && Swing) rows.push(['swing', 'swingDrag', null, 'swingDragInfo']);
+        const rows = [['sound', 'sound'], ['coords', 'coordinates'], ['showMoves', 'showMoves']];
         if (Talk) rows.push(['talk', 'talkingPieces', null, 'talkingPiecesInfo']);
         if (isOwner()) rows.unshift(['action', 'actionMode', 'actionModeHint']);
         if (isOwner()) rows.push(['botLabel', 'botLabel', 'botLabelHint']);
@@ -2989,6 +3437,8 @@
             <div class="cs-settings" style="margin-top:12px">
                 ${rows.map(([key, label, sub, info]) => `<div class="cs-toggle-row"><span>${esc(tr(label))}${info ? `<button type="button" class="cs-info" data-info="${info}" aria-expanded="false" aria-label="${esc(tr('moreInfo'))}">i</button>` : ''}${sub ? `<small class="cs-switch-sub">${esc(tr(sub))}</small>` : ''}</span><button type="button" class="cs-switch${settings[key] ? ' on' : ''}" data-setting="${key}" role="switch" aria-checked="${!!settings[key]}" aria-label="${esc(tr(label))}"></button>${info ? `<div class="cs-bubble" data-bubble="${info}" role="tooltip" hidden>${esc(tr(info))}</div>` : ''}</div>`).join('')}
             </div>
+            <p class="cs-settings-label">${esc(tr('pieces'))}</p>
+            <div class="cs-skins cs-sets" data-ref="sets">${setTiles()}</div>
             <p class="cs-settings-label">${esc(tr('board'))}</p>
             <div class="cs-skins" data-ref="skins">${skinTiles()}</div>
             <div class="cs-sheet-actions">
@@ -2996,11 +3446,12 @@
                 <button type="button" class="cs-btn" data-dlg="close">${esc(tr('backToGame'))}</button>
             </div>`);
         refs.sheet.querySelector('[data-dlg="pgn"]')?.addEventListener('click', copyPgn);
-        refs.sheet.querySelector('.cs-skins').addEventListener('click', onSkinClick);
+        refs.sheet.querySelector('[data-ref="skins"]').addEventListener('click', onSkinClick);
+        refs.sheet.querySelector('[data-ref="sets"]').addEventListener('click', onSetClick);
         refs.sheet.querySelectorAll('.cs-info').forEach(btn => { btn.onclick = event => { event.stopPropagation(); toggleBubble(btn); }; });
         refs.sheet.addEventListener('click', closeBubblesOutside);
         fetchProfile().then(() => {
-            const grid = refs.sheet.querySelector('.cs-skins');
+            const grid = refs.sheet.querySelector('[data-ref="skins"]');
             if (grid && ui.dialog?.kind === 'settings') grid.innerHTML = skinTiles();
         });
         refs.sheet.querySelectorAll('[data-setting]').forEach(btn => {
@@ -3013,7 +3464,6 @@
                 haptic('select');
                 if (key === 'coords') { refs.frame.classList.toggle('no-coords', !settings.coords); layout(); }
                 if (key === 'showMoves') renderMarks();
-                if (key === 'wiggle') screen.classList.toggle('no-wiggle', !settings.wiggle);
                 if (key === 'sound' && settings.sound) { Sound.unlock(); Sound.play('move'); }
                 if (key === 'autoFlip' && settings.autoFlip && game) setOrientation(game.chess.turn());
                 if (key === 'talk') { if (settings.talk) ui.talkHello = true; else clearTalk(); }
@@ -3034,6 +3484,33 @@
         refs.sheet.querySelector('[data-dlg="close"]').onclick = () => closeDialog();
     }
 
+    /** Плитки наборов фигур: по четыре фигуры каждого цвета на клетках текущей доски. */
+    function setTiles() {
+        const current = pieceSet();
+        const cells = Array.from({ length: 8 }, (_, i) => `<span class="${(i + Math.floor(i / 4)) % 2 ? 'd' : ''}" style="--x:${i % 4};--y:${Math.floor(i / 4)}"></span>`).join('');
+        return PIECE_SETS.map(set => {
+            const pieces = ['bK', 'bQ', 'bN', 'bR', 'wR', 'wN', 'wQ', 'wK'].map((code, i) => `<i class="cs-set-piece ${code[0]}" style="left:${(i % 4) * 25}%;top:${i < 4 ? 0 : 50}%;background-image:url('${pieceUrl(code, set)}')"></i>`).join('');
+            return `<button type="button" class="cs-skin cs-set${set === current ? ' is-active' : ''}" data-set-pick="${set}" aria-pressed="${set === current}">
+                <span class="cs-skin-board"><span class="cs-skin-grid"><span class="cs-skin-cells">${cells}</span>${pieces}</span></span>
+                <b>${esc(tr(`set_${set}`))}</b></button>`;
+        }).join('');
+    }
+    function onSetClick(event) {
+        const tile = event.target.closest('[data-set-pick]');
+        if (!tile || !PIECE_SETS.includes(tile.dataset.setPick)) return;
+        settings.pieces = tile.dataset.setPick;
+        saveSettings();
+        applyPieces();
+        haptic('select');
+        tile.parentElement.querySelectorAll('.cs-set').forEach(el => {
+            const on = el === tile;
+            el.classList.toggle('is-active', on);
+            el.setAttribute('aria-pressed', String(on));
+        });
+        // превью досок показывают фигуры выбранного набора
+        const grid = refs.sheet.querySelector('[data-ref="skins"]');
+        if (grid) grid.innerHTML = skinTiles();
+    }
     function skinTiles() {
         const profile = ratingCache?.data || null;
         return SKINS.map(skin => {
@@ -3107,7 +3584,10 @@
     function onScreenClick(event) {
         const mv = event.target.closest('.cs-mv');
         if (mv) { setView(Number(mv.dataset.ply)); return; }
+        const moment = event.target.closest('[data-moment]');
+        if (moment && game) { if (ui.dialog) closeDialog(); openReview(Number(moment.dataset.moment)); return; }
         const graph = event.target.closest('.cs-graph');
+        if (graph?.closest('.cs-coach')) return;   // под доской график листают пальцем (bindScrub)
         if (graph && game) {
             const box = graph.getBoundingClientRect();
             const ply = Math.round(Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)) * Number(graph.dataset.plies));
@@ -3149,7 +3629,7 @@
     }
 
     function requestLeave() {
-        if (ui.promo) { ui.promo.el.remove(); ui.promo = null; syncPieces(positionMap(game.chess), { animate: true }); return; }
+        if (dropPromotion()) { syncPieces(positionMap(game.chess), { animate: true }); return; }
         if (ui.dialog) { closeDialog(); return; }
         if (!game) { closeScreen(); return; }
         if (game.mode === 'puzzle') { puzzleRun = null; hideBanner(); closeScreen(); openSheet('puzzles'); return; }
@@ -3214,7 +3694,7 @@
         if (game.mode === 'online') { emit('chess_rematch', { roomCode: game.online.roomCode }); return; }
         const color = prefs.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : (game.mode === 'bot' && prefs.color === game.myColor ? game.myColor : prefs.color);
         newGame({ mode: game.mode, myColor: color, level: game.level, tcId: game.tc?.id || 'none' });
-        Sound.play('start', 0.8);
+        playStart(0.8);
     }
 
     /* ---------- шторка выбора режима ---------- */
@@ -3466,7 +3946,7 @@
         closeSheet();
         openScreen();
         newGame({ mode, myColor: mode === 'bot' ? color : 'w', level: prefs.level, tcId });
-        Sound.play('start', 0.8);
+        playStart(0.8);
         haptic('light');
         if (mode === 'bot') engine('bot');   // прогреваем движок, пока игрок думает
     }
@@ -3996,6 +4476,16 @@
         handleStart(data) { if (data && data.roomCode) handleStart(data); },
         // для отладки и тестов
         _state: () => ({ game, view, ui }),
+        _debug: {
+            start(options) { closeSheet(); openScreen(); return newGame(options); },
+            move: (raw, options) => playMove(raw, options),
+            finish: outcome => finishGame(outcome),
+            fx: () => fx,
+            set(key, value) { settings[key] = value; applySkin(); applyPieces(); },
+            settings: () => showSettings(),
+            result: () => showResult(),
+            tapSound(fn) { Sound.tap = fn; },
+        },
     };
     window.SparkChess = api;
 })();
