@@ -183,8 +183,8 @@
     }
 
     /* ---------- звук (Web Audio: без задержек и с наложением) ---------- */
-    // Новые звуки ждут одобрения владельца (review/«Звуки шахмат»): пока false — их файлы даже не загружаются.
-    const NEW_SOUNDS = false;
+    // Новые звуки тактильной доски; false — их файлы даже не загружаются.
+    const NEW_SOUNDS = true;
     const Sound = {
         ctx: null, buffers: {}, loading: null,
         names: ['move', 'move2', 'capture', 'castle', 'check', 'promote', 'start', 'win', 'lose', 'draw', 'lowtime', 'notify'],
