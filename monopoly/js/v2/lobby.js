@@ -6,6 +6,8 @@
    ============================================================ */
 (function (global) {
     'use strict';
+    const safeText = global.SparkSafeHTML.escape;
+    const safeImage = global.SparkSafeHTML.image;
 
     const $ = s => document.querySelector(s);
     const TG = global.Telegram && global.Telegram.WebApp;
@@ -80,8 +82,8 @@
     function ava(p, size) {
         const st = size ? `style="width:${size}px;height:${size}px"` : '';
         return p.avatar
-            ? `<div class="lb-ava" ${st}><img src="${p.avatar}" alt="" loading="lazy"></div>`
-            : `<div class="lb-ava" ${st}><span>${p.initials || (p.name || '?').slice(0, 1).toUpperCase()}</span></div>`;
+            ? `<div class="lb-ava" ${st}><img src="${safeImage(p.avatar)}" alt="" loading="lazy"></div>`
+            : `<div class="lb-ava" ${st}><span>${safeText(p.initials || (p.name || '?').slice(0, 1).toUpperCase())}</span></div>`;
     }
 
     /* ---------- «незнающая уточка» для пустого списка ---------- */
@@ -123,7 +125,7 @@
             <button class="lb-room" data-room="${r.roomId}">
                 <div class="lb-room-avas">${r.players.slice(0, 6).map(p => ava(p, 34)).join('')}</div>
                 <div class="lb-room-info">
-                    <div class="lb-room-names">${r.players.map(p => p.name).join(', ')}</div>
+                    <div class="lb-room-names">${r.players.map(p => safeText(p.name)).join(', ')}</div>
                     <div class="lb-room-meta">Код <b>${r.roomId}</b> · ${r.players.length}/${max}</div>
                 </div>
                 <div class="lb-room-go">Войти</div>
@@ -188,7 +190,7 @@
     function setBackButton(on) {
         if (backShown === on) return;
         backShown = on;
-        try { parent.postMessage({ type: 'monopoly_back', show: on }, '*'); } catch (e) {}
+        try { parent.postMessage({ type: 'monopoly_back', show: on }, location.origin); } catch (e) {}
         if (TG && TG.BackButton) {                     // если игра открыта напрямую
             try { on ? TG.BackButton.show() : TG.BackButton.hide(); } catch (e) {}
         }
@@ -205,7 +207,7 @@
     }
     function exitToApp() {
         try { net().socket() && net().socket().emit('m2:leave'); } catch (e) {}
-        try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
+        try { parent.postMessage({ type: 'monopoly_exit' }, location.origin); } catch (e) {}
     }
 
     /** Возврат из матча в лобби монополии. Перезагружаем страницу: так
@@ -216,6 +218,7 @@
         location.reload();
     }
     addEventListener('message', e => {
+        if (e.origin !== location.origin || e.source !== parent) return;
         const d = e.data;
         if (d && d.type === 'monopoly_back_pressed') goBack();
     });
@@ -248,7 +251,9 @@
         return [...new Set(list.filter(Boolean).map(u => String(u).replace(/\/+$/, '')))];
     }
     function authHeaders() {
-        return { 'Content-Type': 'application/json', 'x-init-data': initData() };
+        let visitId = global.SparkVisitId || '';
+        try { if (parent !== global && parent.location.origin === location.origin) visitId = parent.SparkVisitId || visitId; } catch (_) {}
+        return { 'Content-Type': 'application/json', 'x-init-data': initData(), 'X-Spark-Visit': visitId };
     }
     let connecting = null;
     function ensureNet() {
@@ -280,7 +285,7 @@
                и только по ней решит, показывать ли отладочную панель. */
             const s = net().connect(url, {
                 uid: ME.uid,
-                initData: initData(),
+                initData: initData(), visitId: (() => { try { return global.parent.SparkVisitId || global.SparkVisitId; } catch (_) { return ''; } })(),
             });
             net().setMe(ME.uid);
             const done = ok => {
@@ -529,7 +534,7 @@
                     ? `<button class="lb-seat-btn danger" data-kick="${id}">Убрать</button>` : '';
                 return sep + `<div class="lb-wp${p.bot ? ' bot' : ''}${
                     teamMode ? ' team' + (k < 2 ? '1' : '2') : ''}">
-                    ${ava(p, 42)}<span class="lb-wp-name">${p.name}</span>${tag}${kick}</div>`;
+                    ${ava(p, 42)}<span class="lb-wp-name">${safeText(p.name)}</span>${tag}${kick}</div>`;
             });
             const ids = S.order || [];
 
@@ -589,7 +594,7 @@
             on = !on;
             btn.classList.toggle('on', on);
             btn.querySelector('span').textContent = on ? 'Свернуть' : 'На весь экран';
-            try { parent.postMessage({ type: 'monopoly_fullscreen', on }, '*'); } catch (e) {}
+            try { parent.postMessage({ type: 'monopoly_fullscreen', on }, location.origin); } catch (e) {}
             try {
                 if (on) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
                 else if (document.fullscreenElement) document.exitFullscreen && document.exitFullscreen();
@@ -796,7 +801,7 @@
         };
         $('#lbInvite').onclick = () => {
             const roomId = $('#lbWaitCode').textContent;
-            try { parent.postMessage({ type: 'monopoly_invite', roomId }, '*'); }
+            try { parent.postMessage({ type: 'monopoly_invite', roomId }, location.origin); }
             catch (_) { toast('Не удалось открыть отправку', true); }
         };
         $('#lbStart').onclick = () => net().socket().emit('m2:start');

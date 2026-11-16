@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-liquid-glass-available="false">
 <head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-3crFNCpe1nWZPbIWF40jXYWAoCTBis441usmk4HY620=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
@@ -13,6 +14,9 @@
     <meta property="og:type" content="website">
     <title>Spark Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="assets/ui/safe-html.js?v=20261117"></script>
+    <script src="assets/ui/events.js?v=20261117"></script>
+    <script src="assets/ui/visit.js?v=20261117"></script>
     <script src="assets/ui/cloud-save.js?v=20261020"></script>
     <script>
         /* Paint Telegram's own safe-area chrome before the first video frame.
@@ -500,7 +504,6 @@
            reference. Android falls back to the metrically similar system stack. */
         .bb-best,
         .bb-score-box,
-        .bb-mult-hud,
         .bb-line-score,
         #bbScoreNum {
             font-family: "SF Pro Display", "SF Pro Text", -apple-system,
@@ -956,21 +959,6 @@
             color: #8e8e93;
             pointer-events: none;
         }
-        /* HUD multiplier badge inside the BB game */
-        .bb-mult-hud {
-            position: absolute;
-            top: 8px;
-            right: 12px;
-            background: linear-gradient(135deg, #ffa500, #ff3b30);
-            color: #fff;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 10px;
-            z-index: 5;
-            display: none;
-        }
-
         /* Combo buffer bar — square brick segments, always visible, shows how
            many no-line moves remain before the combo streak resets. */
         .bb-combo-bar {
@@ -3698,61 +3686,61 @@
     <div id="view-leaderboard" class="screen">
         <div class="header"><div class="app-title" data-i18n="tops">Топы</div></div>
         
-        <div class="card" onclick="openLeaderboardDetail('saper')">
+        <div class="card" data-spark-onclick="h1">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/minesweeper.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsMinesweeper">Топ Сапёр</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
-        <div class="card" onclick="openLeaderboardDetail('checkers')">
+        <div class="card" data-spark-onclick="h2">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/checkers.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsCheckers">Топ Шашки</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('chess')">
+        <div class="card" data-spark-onclick="h3">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/chess.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsChess">Топ Шахматы</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
         
-        <div class="card" onclick="openLeaderboardDetail('nardy')">
+        <div class="card" data-spark-onclick="h4">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/nardy.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsNardy">Топ Нарды</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('bb')">
+        <div class="card" data-spark-onclick="h5">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/block-blast.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" id="bbLbTitle" data-i18n="topsBlockBlast">Топ Блок Бласт</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('sudoku')">
+        <div class="card" data-spark-onclick="h6">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/sudoku.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsSudoku">Топ Судоку</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('tower')">
+        <div class="card" data-spark-onclick="h7">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/tower.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsTower">Топ Башня</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('wordle')">
+        <div class="card" data-spark-onclick="h8">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/wordle.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsWordle">Топ Вордли</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('monopoly')">
+        <div class="card" data-spark-onclick="h9">
             <div class="game-icon-box leaderboard-game-logo"><img src="assets/game-icons/monopoly.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="topsMonopoly">Топ Монополия</h3></div>
             <div style="color:#8e8e93;"><svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
         </div>
 
-        <div class="card" onclick="openLeaderboardDetail('referral')">
+        <div class="card" data-spark-onclick="h10">
             <div class="game-icon-box" style="background: linear-gradient(135deg, #FF9500, #FFCC00);">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -3768,24 +3756,24 @@
 
     <div id="view-leaderboard-detail" class="screen" style="z-index: 200; background: var(--bg-color);">
         <div class="header">
-            <div class="back-btn" onclick="closeLeaderboardDetail()" style="font-size: 17px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="back">Назад</span></div>
+            <div class="back-btn" data-spark-onclick="h11" style="font-size: 17px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="back">Назад</span></div>
         </div>
         
         <div class="lb-title-lg" id="lbGameTitle">Title</div>
         <div class="lb-selector-wrapper">
-            <div class="lb-selector" id="lbSelector" onclick="toggleDropdown()">
+            <div class="lb-selector" id="lbSelector" data-spark-onclick="h12">
                 <span id="lbCurrentCat">Category</span>
                 <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="dropdown-menu" id="dropdownMenu"></div>
         </div>
-        <div class="dropdown-catcher" id="dropdownCatcher" onclick="toggleDropdown()"></div>
+        <div class="dropdown-catcher" id="dropdownCatcher" data-spark-onclick="h12"></div>
         
         <!-- BB-only segmented switcher: Global vs Tournament leaderboard -->
         <div class="bb-lb-segment" id="bbLbSegment" style="display:none;">
             <div class="bb-lb-segment-thumb" id="bbLbSegmentThumb"></div>
-            <button class="bb-lb-segment-btn active" data-mode="global" onclick="setBBLbMode('global')" data-i18n="bbLbGlobal">Глобальный</button>
-            <button class="bb-lb-segment-btn" data-mode="tournament" onclick="setBBLbMode('tournament')" data-i18n="bbLbTournament">Турнирный</button>
+            <button class="bb-lb-segment-btn active" data-mode="global" data-spark-onclick="h13" data-i18n="bbLbGlobal">Глобальный</button>
+            <button class="bb-lb-segment-btn" data-mode="tournament" data-spark-onclick="h14" data-i18n="bbLbTournament">Турнирный</button>
         </div>
         
         <!-- Tournament Banner (visible only for BB best score) -->
@@ -3799,8 +3787,8 @@
             <div class="tournament-timer" id="tournamentTimer"></div>
             <div class="tournament-card-text" data-i18n="tournamentDesc">Турнир по Блок Бласт! Набирайте очки уже сейчас — ваш рекорд уже в таблице. Первое место заберёт весь приз!</div>
             <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:14px;">
-                <button class="tournament-history-btn" id="bbTournamentLbBtn" onclick="switchToTournamentLb()" data-i18n="tournamentLeaderboardBtn">Турнирная таблица</button>
-                <button class="tournament-history-btn" onclick="openTournamentHistory('bb')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
+                <button class="tournament-history-btn" id="bbTournamentLbBtn" data-spark-onclick="h15" data-i18n="tournamentLeaderboardBtn">Турнирная таблица</button>
+                <button class="tournament-history-btn" data-spark-onclick="h16" data-i18n="tournamentHistoryViewBtn">История турниров</button>
             </div>
         </div>
         
@@ -3814,7 +3802,7 @@
             <div class="tournament-card-title">Турнир идёт!</div>
             <div class="tournament-timer" id="referralTimer"></div>
             <div class="tournament-card-text" data-i18n="refTournamentDesc">Турнир среди рефоводов на 150$! Приглашайте друзей уже сейчас — ваши рефералы уже учтены. Первое место заберёт главный приз!</div>
-            <button class="tournament-history-btn" onclick="openTournamentHistory('referral')" data-i18n="tournamentHistoryViewBtn">История турниров</button>
+            <button class="tournament-history-btn" data-spark-onclick="h17" data-i18n="tournamentHistoryViewBtn">История турниров</button>
         </div>
         
         <div class="lb-list" id="lbList"></div>
@@ -3823,7 +3811,7 @@
     <!-- Tournament history overlay -->
     <div id="view-tournament-history" class="screen" style="z-index: 250; background: var(--bg-color);">
         <div class="header">
-            <div class="back-btn" onclick="closeTournamentHistory()" style="font-size: 17px;">
+            <div class="back-btn" data-spark-onclick="h18" style="font-size: 17px;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 <span data-i18n="back">Назад</span>
             </div>
@@ -3835,7 +3823,7 @@
     <!-- Tournament history detail overlay (one specific archived tournament) -->
     <div id="view-tournament-history-detail" class="screen" style="z-index: 260; background: var(--bg-color);">
         <div class="header">
-            <div class="back-btn" onclick="closeTournamentHistoryDetail()" style="font-size: 17px;">
+            <div class="back-btn" data-spark-onclick="h19" style="font-size: 17px;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 <span data-i18n="back">Назад</span>
             </div>
@@ -3848,7 +3836,7 @@
     <!-- BB Mode Selection (Original / Tournament) -->
     <div id="view-bb-mode" class="screen" style="z-index: 220; background: var(--bg-color);">
         <div class="header">
-            <div class="back-btn" onclick="closeBBMode()" style="font-size: 17px;">
+            <div class="back-btn" data-spark-onclick="h20" style="font-size: 17px;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 <span data-i18n="back">Назад</span>
             </div>
@@ -3879,52 +3867,52 @@
         <!-- Single banner (hidden by default; JS shows it only when an active BB tournament + feature is enabled) -->
         <div class="banner-carousel" id="bannerCarousel" style="display: none;">
             <div class="banner-track" id="bannerTrack">
-                <div class="banner-slide-wrap" onclick="openBannerLink('https://t.me/spark_game_news/4')">
+                <div class="banner-slide-wrap" data-spark-onclick="h21">
                     <img class="banner-slide" src="Banner_IPhone_17.png" alt="Tournament">
                 </div>
             </div>
         </div>
         
-        <div class="card game-card game-card--minesweeper" onclick="openGameModal('saper')">
+        <div class="card game-card game-card--minesweeper" data-spark-onclick="h22">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/minesweeper.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="minesweeper">Сапёр</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--checkers" onclick="openGameModal('checkers')">
+        <div class="card game-card game-card--checkers" data-spark-onclick="h23">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/checkers.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="checkers">Шашки</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--chess" onclick="openChess()">
+        <div class="card game-card game-card--chess" data-spark-onclick="h24">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/chess.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="chess">Шахматы</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--nardy" onclick="openNardy()">
+        <div class="card game-card game-card--nardy" data-spark-onclick="h25">
             <div class="game-beta-ribbon" data-i18n="newBadge">НОВОЕ</div>
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/nardy.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="nardy">Нарды</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--block-blast" id="bbHomeCard" onclick="startBlockBlastCheck()">
+        <div class="card game-card game-card--block-blast" id="bbHomeCard" data-spark-onclick="h26">
             <div class="card-event-badge" data-i18n="tournamentBadge" style="display:none;">ТУРНИР</div>
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/block-blast.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="blockBlast">Блок Бласт</h3><div style="font-size:12px; color:#FFA500; font-weight:600; margin-top:2px; display:none;" data-i18n="tournamentActive">Турнир на 150$</div></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--sudoku" onclick="startSudokuCheck()">
+        <div class="card game-card game-card--sudoku" data-spark-onclick="h27">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/sudoku.png" alt=""></div>
             <div style="flex:1;"><h3 style="margin:0; font-size:17px;" data-i18n="sudoku">Судоку</h3></div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--tower" onclick="openGameModal('tower')">
+        <div class="card game-card game-card--tower" data-spark-onclick="h28">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/tower.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="tower">Башня</h3>
             </div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--wordle" onclick="startWordle()" oncontextmenu="return false">
+        <div class="card game-card game-card--wordle" data-spark-onclick="h29" data-spark-oncontextmenu="h30">
             <div class="game-beta-ribbon" data-i18n="beta">БЕТА</div>
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/wordle.png" alt=""></div>
             <div style="flex:1;">
@@ -3932,7 +3920,7 @@
             </div>
             <div style="color:var(--accent); font-weight:600;" data-i18n="play">Играть</div>
         </div>
-        <div class="card game-card game-card--monopoly" onclick="openMonopolyLobby()">
+        <div class="card game-card game-card--monopoly" data-spark-onclick="h31">
             <div class="game-icon-box game-icon-real"><img src="assets/game-icons/monopoly.png" alt=""></div>
             <div style="flex:1;">
                 <h3 style="margin:0; font-size:17px;" data-i18n="monopoly">Монополия</h3>
@@ -3946,7 +3934,7 @@
         <div id="bgPatternMonopoly" class="game-overlay-bg"></div>
 
         <div class="game-top-bar">
-            <div class="back-btn" onclick="monoLobbyBack()">
+            <div class="back-btn" data-spark-onclick="h32">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span>
             </div>
             <div style="font-weight:700; font-size:18px;">Монополия</div>
@@ -3961,7 +3949,7 @@
             </div>
 
             <div class="mono-mode-list">
-                <button class="mono-mode-card" onclick="monoStartLocal()">
+                <button class="mono-mode-card" data-spark-onclick="h33">
                     <div class="mono-mode-icon" style="background:linear-gradient(135deg,#34c759,#28a745)">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     </div>
@@ -3972,7 +3960,7 @@
                     <div class="mono-mode-arrow">›</div>
                 </button>
 
-                <button class="mono-mode-card" onclick="monoGoCreate()">
+                <button class="mono-mode-card" data-spark-onclick="h34">
                     <div class="mono-mode-icon" style="background:linear-gradient(135deg,#0a84ff,#5ac8fa)">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                     </div>
@@ -3983,7 +3971,7 @@
                     <div class="mono-mode-arrow">›</div>
                 </button>
 
-                <button class="mono-mode-card" onclick="monoGoJoin()">
+                <button class="mono-mode-card" data-spark-onclick="h35">
                     <div class="mono-mode-icon" style="background:linear-gradient(135deg,#ff9f0a,#ff6b00)">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
                     </div>
@@ -3994,7 +3982,7 @@
                     <div class="mono-mode-arrow">›</div>
                 </button>
 
-                <button class="mono-mode-card" onclick="monoGoBrowse()">
+                <button class="mono-mode-card" data-spark-onclick="h36">
                     <div class="mono-mode-icon" style="background:linear-gradient(135deg,#bf5af2,#8e44ad)">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     </div>
@@ -4008,8 +3996,8 @@
         </div>
 
         <!-- ===== Screen: join by code ===== -->
-        <div class="mono-screen" id="monoScreenJoin" style="display:none;" onclick="monoBlurCode(event)">
-            <button class="mono-sub-back" onclick="monoBackToMode()">
+        <div class="mono-screen" id="monoScreenJoin" style="display:none;" data-spark-onclick="h37">
+            <button class="mono-sub-back" data-spark-onclick="h38">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 Назад
             </button>
@@ -4018,7 +4006,7 @@
                 <div class="mono-join-title">Введите код комнаты</div>
                 <div class="mono-join-sub" data-i18n="monoAskHostCode">Спросите код у хоста</div>
 
-                <div class="mono-code-boxes" id="monoCodeBoxes" onclick="monoFocusCode(event)">
+                <div class="mono-code-boxes" id="monoCodeBoxes" data-spark-onclick="h39">
                     <div class="mono-code-cell" data-i="0"></div>
                     <div class="mono-code-cell" data-i="1"></div>
                     <div class="mono-code-cell" data-i="2"></div>
@@ -4027,7 +4015,7 @@
                 <input id="monoCodeInput" inputmode="numeric" maxlength="4"
                        autocomplete="off" class="mono-code-hidden-input"/>
 
-                <button class="mono-primary-btn" id="monoJoinBtn" onclick="monoSubmitJoin()" data-i18n="monoJoinRoom" disabled>
+                <button class="mono-primary-btn" id="monoJoinBtn" data-spark-onclick="h40" data-i18n="monoJoinRoom" disabled>
                     Присоединиться
                 </button>
             </div>
@@ -4035,13 +4023,13 @@
 
         <!-- ===== Screen: browse open rooms ===== -->
         <div class="mono-screen" id="monoScreenBrowse" style="display:none;">
-            <button class="mono-sub-back" onclick="monoBackToMode()">
+            <button class="mono-sub-back" data-spark-onclick="h38">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 Назад
             </button>
             <div class="mono-browse-head">
                 <div class="mono-browse-title">Открытые комнаты</div>
-                <button class="mono-refresh-btn" id="monoRefreshBtn" onclick="monoRefreshRooms()" aria-label="Обновить">
+                <button class="mono-refresh-btn" id="monoRefreshBtn" data-spark-onclick="h41" aria-label="Обновить">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                 </button>
             </div>
@@ -4050,14 +4038,14 @@
 
         <!-- ===== Screen: waiting room ===== -->
         <div class="mono-screen" id="monoScreenWait" style="display:none;">
-            <button class="mono-sub-back" onclick="cancelMonopolyRoom()">
+            <button class="mono-sub-back" data-spark-onclick="h42">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 Выйти
             </button>
             <div class="mono-wait-codecard">
                 <div class="mono-wait-label">Код комнаты</div>
                 <div class="mono-wait-code" id="monoWaitCode">M0000</div>
-                <button class="mono-copy-btn" id="monoCopyBtn" onclick="monoCopyCode()">
+                <button class="mono-copy-btn" id="monoCopyBtn" data-spark-onclick="h43">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     <span id="monoCopyLabel" data-i18n="monoCopyCode">Копировать</span>
                 </button>
@@ -4070,7 +4058,7 @@
             <div class="mono-wait-list" id="monoWaitList"></div>
 
             <div class="mono-wait-actions">
-                <button class="mono-primary-btn" id="monoStartBtn" onclick="startMonopolyGame()" style="display:none;">
+                <button class="mono-primary-btn" id="monoStartBtn" data-spark-onclick="h44" style="display:none;">
                     Начать игру
                 </button>
                 <div class="mono-wait-hint" id="monoWaitHint" data-i18n="monoWaitingForHost">Ждём, пока хост начнёт игру…</div>
@@ -4087,7 +4075,7 @@
     <div class="profile-sticky-bar" id="profileStickyBar">
         <img id="profile-sticky-ava" src="" alt="" class="profile-sticky-avatar">
         <div class="profile-sticky-name" id="profile-sticky-name">Loading...</div>
-        <button class="profile-sticky-settings" onclick="openSettingsSheet()">
+        <button class="profile-sticky-settings" data-spark-onclick="h45">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                 <line x1="4" y1="8" x2="20" y2="8"></line>
                 <line x1="4" y1="16" x2="20" y2="16"></line>
@@ -4099,7 +4087,7 @@
 
         <div class="header" id="profileBigHeaderBar">
             <div class="app-title" data-i18n="profile">Профиль</div>
-            <button class="settings-btn" onclick="openSettingsSheet()">
+            <button class="settings-btn" data-spark-onclick="h45">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                     <line x1="4" y1="8" x2="20" y2="8"></line>
                     <line x1="4" y1="16" x2="20" y2="16"></line>
@@ -4109,7 +4097,7 @@
         <div class="profile-big-header" id="profileBigHeader"> 
             <img id="user-avatar" src="" alt="" class="avatar"> 
             <h2 id="user-name" style="margin:0;">Loading...</h2> 
-            <button class="profile-selected-title" id="profileSelectedTitle" type="button" hidden onclick="openTitleLibrary()">
+            <button class="profile-selected-title" id="profileSelectedTitle" type="button" hidden data-spark-onclick="h46">
                 <span class="profile-selected-title-icon"><img id="profileSelectedTitleIcon" src="assets/spark-logo.png" alt=""></span>
                 <span class="profile-selected-title-name" id="profileSelectedTitleName">—</span>
                 <span class="profile-selected-title-chevron" aria-hidden="true">›</span>
@@ -4147,11 +4135,11 @@
                             <div class="referral-title" data-i18n="inviteFriends">Приглашайте друзей и поднимайтесь выше в топе</div>
                             <div class="referral-subtitle" data-i18n="referralCompactText">Одна ссылка — и весь прогресс приглашений всегда под рукой.</div>
                         </div>
-                        <button class="referral-conditions-btn" onclick="showReferralConditions()" data-i18n="conditions">Условия</button>
+                        <button class="referral-conditions-btn" data-spark-onclick="h47" data-i18n="conditions">Условия</button>
                     </div>
                     <div class="referral-buttons">
-                        <button class="referral-invite-btn" onclick="shareReferralLink()" data-i18n="invite">Пригласить</button>
-                        <button class="referral-copy-btn" onclick="copyReferralLink()" aria-label="Скопировать ссылку-приглашение" data-i18n-aria-label="copyReferralLink">
+                        <button class="referral-invite-btn" data-spark-onclick="h48" data-i18n="invite">Пригласить</button>
+                        <button class="referral-copy-btn" data-spark-onclick="h49" aria-label="Скопировать ссылку-приглашение" data-i18n-aria-label="copyReferralLink">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -4172,7 +4160,7 @@
                 <div class="records-title" data-i18n="myRecords">Мои рекорды</div>
                 <div class="records-table" id="recordsTable">
                     <div class="record-row" data-profile-game="bb">
-                        <button class="record-summary" onclick="toggleProfileGameStats('bb')">
+                        <button class="record-summary" data-spark-onclick="h50">
                             <img class="record-icon" src="assets/game-icons/block-blast.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="blockBlast">Блок Бласт</span><span class="record-time" id="time-bb">—</span></span>
                             <span class="record-score" id="rec-bb">--</span><span class="record-rank" id="rank-bb"></span>
@@ -4181,7 +4169,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-bb"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="saper">
-                        <button class="record-summary" onclick="toggleProfileGameStats('saper')">
+                        <button class="record-summary" data-spark-onclick="h51">
                             <img class="record-icon" src="assets/game-icons/minesweeper.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="minesweeper">Сапёр</span><span class="record-time" id="time-saper">—</span></span>
                             <span class="record-score" id="rec-saper">--</span><span class="record-rank" id="rank-saper"></span>
@@ -4190,7 +4178,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-saper"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="tower">
-                        <button class="record-summary" onclick="toggleProfileGameStats('tower')">
+                        <button class="record-summary" data-spark-onclick="h52">
                             <img class="record-icon" src="assets/game-icons/tower.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="tower">Башня</span><span class="record-time" id="time-tower">—</span></span>
                             <span class="record-score" id="rec-tower">--</span><span class="record-rank" id="rank-tower"></span>
@@ -4199,7 +4187,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-tower"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="sudoku">
-                        <button class="record-summary" onclick="toggleProfileGameStats('sudoku')">
+                        <button class="record-summary" data-spark-onclick="h53">
                             <img class="record-icon" src="assets/game-icons/sudoku.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="sudoku">Судоку</span><span class="record-time" id="time-sudoku">—</span></span>
                             <span class="record-score" id="rec-sudoku">--</span><span class="record-rank" id="rank-sudoku"></span>
@@ -4208,7 +4196,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-sudoku"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="checkers">
-                        <button class="record-summary" onclick="toggleProfileGameStats('checkers')">
+                        <button class="record-summary" data-spark-onclick="h54">
                             <img class="record-icon" src="assets/game-icons/checkers.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="checkers">Шашки</span><span class="record-time" id="time-checkers">—</span></span>
                             <span class="record-score" id="rec-checkers">--</span><span class="record-rank" id="rank-checkers"></span>
@@ -4217,7 +4205,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-checkers"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="chess">
-                        <button class="record-summary" onclick="toggleProfileGameStats('chess')">
+                        <button class="record-summary" data-spark-onclick="h55">
                             <img class="record-icon" src="assets/game-icons/chess.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="chess">Шахматы</span><span class="record-time" id="time-chess">—</span></span>
                             <span class="record-score" id="rec-chess">--</span><span class="record-rank" id="rank-chess"></span>
@@ -4226,7 +4214,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-chess"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="nardy">
-                        <button class="record-summary" onclick="toggleProfileGameStats('nardy')">
+                        <button class="record-summary" data-spark-onclick="h56">
                             <img class="record-icon" src="assets/game-icons/nardy.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="nardy">Нарды</span><span class="record-time" id="time-nardy">—</span></span>
                             <span class="record-score" id="rec-nardy">--</span><span class="record-rank" id="rank-nardy"></span>
@@ -4235,7 +4223,7 @@
                         <div class="record-details"><div class="record-details-inner" id="details-nardy"></div></div>
                     </div>
                     <div class="record-row" data-profile-game="wordle">
-                        <button class="record-summary" onclick="toggleProfileGameStats('wordle')">
+                        <button class="record-summary" data-spark-onclick="h57">
                             <img class="record-icon" src="assets/game-icons/wordle.png" alt="">
                             <span class="record-game-wrap"><span class="record-game" data-i18n="wordle">Вордли</span><span class="record-time" id="time-wordle">—</span></span>
                             <span class="record-score" id="rec-wordle">--</span><span class="record-rank" id="rank-wordle"></span>
@@ -4249,7 +4237,7 @@
     </div>
     
     <div class="tab-bar" id="tabBar"> 
-        <div class="tab-item" data-tab="leaderboard" onclick="switchTab('leaderboard', this)">
+        <div class="tab-item" data-tab="leaderboard" data-spark-onclick="h58">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <rect x="3" y="10" width="5" height="10" rx="1.5"/>
                 <rect x="9.5" y="4" width="5" height="16" rx="1.5"/>
@@ -4257,14 +4245,14 @@
             </svg>
             <span data-i18n="tops">Топы</span>
         </div>
-        <div class="tab-item active" data-tab="games" onclick="switchTab('games', this)">
+        <div class="tab-item active" data-tab="games" data-spark-onclick="h59">
             <svg viewBox="0 0 22 17" fill="currentColor" stroke="none">
                 <path opacity="0.5" d="M9.38934 1.2285L8.8455 0.843917C8.06944 0.294707 7.14208 -0.000156492 6.19134 6.2308e-08H5.52834C5.08959 6.2308e-08 4.64759 0.0270832 4.23484 0.173333C1.65325 1.08983 -0.122329 4.43625 0.00658806 12.0283C0.0325881 13.5579 0.390088 15.2479 1.77025 15.9077C2.24106 16.134 2.75694 16.2511 3.27934 16.25C3.8665 16.2596 4.44333 16.0949 4.93684 15.7766C5.381 15.4863 5.771 15.1093 6.161 14.7323C6.642 14.2664 7.123 13.8006 7.70367 13.4994C8.33622 13.1711 9.03849 12.9998 9.75117 13H11.9168C12.6296 13 13.3316 13.1712 13.9643 13.4983C14.5449 13.8006 15.0259 14.2664 15.508 14.7323C15.898 15.1093 16.288 15.4863 16.73 15.7766C17.1525 16.0539 17.6996 16.25 18.3886 16.25C18.911 16.2511 19.4269 16.134 19.8977 15.9077C21.2778 15.2479 21.6353 13.5568 21.6613 12.0283C21.7903 4.43625 20.0147 1.08983 17.4331 0.174416C17.0193 0.0270831 16.5751 6.2308e-08 16.1385 6.2308e-08H15.4755C14.5246 0.000160243 13.5973 0.295406 12.8213 0.845L12.2775 1.2285C11.8551 1.52695 11.3506 1.6872 10.8334 1.6872C10.3162 1.6872 9.81173 1.52695 9.38934 1.2285Z"/>
                 <path d="M15.9798 4.3335C16.1953 4.3335 16.402 4.4191 16.5543 4.57147C16.7067 4.72385 16.7923 4.93051 16.7923 5.146C16.7923 5.36148 16.7067 5.56815 16.5543 5.72052C16.402 5.87289 16.1953 5.9585 15.9798 5.9585C15.7643 5.9585 15.5577 5.87289 15.4053 5.72052C15.2529 5.56815 15.1673 5.36148 15.1673 5.146C15.1673 4.93051 15.2529 4.72385 15.4053 4.57147C15.5577 4.4191 15.7643 4.3335 15.9798 4.3335ZM5.95898 4.60433C6.17447 4.60433 6.38113 4.68993 6.53351 4.84231C6.68588 4.99468 6.77148 5.20134 6.77148 5.41683V6.22933H7.58398C7.79947 6.22933 8.00613 6.31493 8.15851 6.46731C8.31088 6.61968 8.39648 6.82634 8.39648 7.04183C8.39648 7.25732 8.31088 7.46398 8.15851 7.61635C8.00613 7.76873 7.79947 7.85433 7.58398 7.85433H6.77148V8.66683C6.77148 8.88232 6.68588 9.08898 6.53351 9.24135C6.38113 9.39373 6.17447 9.47933 5.95898 9.47933C5.7435 9.47933 5.53683 9.39373 5.38446 9.24135C5.23209 9.08898 5.14648 8.88232 5.14648 8.66683V7.85433H4.33398C4.1185 7.85433 3.91183 7.76873 3.75946 7.61635C3.60709 7.46398 3.52148 7.25732 3.52148 7.04183C3.52148 6.82634 3.60709 6.61968 3.75946 6.46731C3.91183 6.31493 4.1185 6.22933 4.33398 6.22933H5.14648V5.41683C5.14648 5.20134 5.23209 4.99468 5.38446 4.84231C5.53683 4.68993 5.7435 4.60433 5.95898 4.60433ZM18.4173 6.771C18.4173 6.98648 18.3317 7.19315 18.1793 7.34552C18.027 7.49789 17.8203 7.5835 17.6048 7.5835C17.3893 7.5835 17.1827 7.49789 17.0303 7.34552C16.8779 7.19315 16.7923 6.98648 16.7923 6.771C16.7923 6.55551 16.8779 6.34885 17.0303 6.19647C17.1827 6.0441 17.3893 5.9585 17.6048 5.9585C17.8203 5.9585 18.027 6.0441 18.1793 6.19647C18.3317 6.34885 18.4173 6.55551 18.4173 6.771ZM14.3548 7.5835C14.5703 7.5835 14.777 7.49789 14.9293 7.34552C15.0817 7.19315 15.1673 6.98648 15.1673 6.771C15.1673 6.55551 15.0817 6.34885 14.9293 6.19647C14.777 6.0441 14.5703 5.9585 14.3548 5.9585C14.1393 5.9585 13.9327 6.0441 13.7803 6.19647C13.6279 6.34885 13.5423 6.55551 13.5423 6.771C13.5423 6.98648 13.6279 7.19315 13.7803 7.34552C13.9327 7.49789 14.1393 7.5835 14.3548 7.5835ZM16.7923 8.396C16.7923 8.18051 16.7067 7.97385 16.5543 7.82147C16.402 7.6691 16.1953 7.5835 15.9798 7.5835C15.7643 7.5835 15.5577 7.6691 15.4053 7.82147C15.2529 7.97385 15.1673 8.18051 15.1673 8.396C15.1673 8.61148 15.2529 8.81815 15.4053 8.97052C15.5577 9.12289 15.7643 9.2085 15.9798 9.2085C16.1953 9.2085 16.402 9.12289 16.5543 8.97052C16.7067 8.81815 16.7923 8.61148 16.7923 8.396Z"/>
             </svg>
             <span data-i18n="games">Игры</span>
         </div>
-        <div class="tab-item" data-tab="profile" onclick="switchTab('profile', this)">
+        <div class="tab-item" data-tab="profile" data-spark-onclick="h60">
             <svg viewBox="0 0 18 24" fill="currentColor" stroke="none">
                 <path d="M14.5363 13.9197C15.4862 14.0154 16.3661 14.4535 17.0059 15.1494C17.6457 15.8454 18 16.7496 18 17.6872C18 19.6341 16.7914 21.2451 15.1663 22.3082C13.5334 23.3788 11.3477 24 9 24C6.65229 24 4.46657 23.3788 2.83371 22.3082C1.206 21.2476 0 19.6341 0 17.6872C0 16.6827 0.406389 15.7191 1.12973 15.0088C1.85307 14.2985 2.83418 13.8995 3.85714 13.8995H14.1429L14.5363 13.9197ZM9.00514 0.00120841C9.77606 -0.0143968 10.5423 0.121278 11.2593 0.400254C11.9759 0.679254 12.6291 1.09595 13.1796 1.62592C13.7304 2.15592 14.1678 2.78851 14.4663 3.48666C14.7649 4.18481 14.9184 4.93444 14.9181 5.69162C14.9176 6.44888 14.7633 7.19834 14.4643 7.89628C14.1652 8.59397 13.7271 9.22627 13.176 9.75578C12.6247 10.2853 11.9715 10.7014 11.2544 10.9797C10.5375 11.2582 9.77091 11.3931 9 11.3769C7.48497 11.3456 6.04273 10.7325 4.98255 9.66917C3.92235 8.6061 3.32861 7.17713 3.32861 5.68905C3.32861 4.20097 3.92235 2.77213 4.98255 1.70885C6.04273 0.645594 7.48497 0.0325704 9 0.00120841"/>
             </svg>
@@ -4272,12 +4260,12 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="dropdownOverlay" onclick="toggleDropdown()"></div>
+    <div class="modal-overlay" id="dropdownOverlay" data-spark-onclick="h12"></div>
     
     <div id="saper-screen" class="game-overlay">
         <div id="bgPatternSaper" class="game-overlay-bg"></div>
         <div class="game-top-bar"> 
-            <div class="back-btn" onclick="closeGame('saper')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> 
+            <div class="back-btn" data-spark-onclick="h61"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div>
             <div style="display:flex; gap:15px; font-weight:600; font-size:18px;"> 
                 <span style="display:flex; align-items:center; gap:4px;"><span id="saperFlags">0</span> <svg class="saper-icon" viewBox="0 0 24 24" style="fill:#ff3b30; stroke:none;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></span> 
                 <span style="display:flex; align-items:center; gap:4px;"><span id="saperTimer">000.000</span> <svg class="saper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-color);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
@@ -4287,113 +4275,113 @@
         <div class="bottom-controls">
             <div class="segment-control" style="margin: 0; min-width: 220px;">
                 <div class="segment-glider" id="saperGlider"></div>
-                <div class="segment-item active" onclick="setSaperMode('dig', this, 0)" data-i18n="dig">Копать</div>
-                <div class="segment-item" onclick="setSaperMode('flag', this, 1)" data-i18n="flag">Флаг</div>
+                <div class="segment-item active" data-spark-onclick="h62" data-i18n="dig">Копать</div>
+                <div class="segment-item" data-spark-onclick="h63" data-i18n="flag">Флаг</div>
             </div>
         </div> 
     </div>
     
     <div id="checkers-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
-            <div class="back-btn" onclick="tryCloseCheckers()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> 
+            <div class="back-btn" data-spark-onclick="h64"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div>
             <div id="checkersTimer" style="font-weight:700; font-size:18px; color:var(--danger); display:none;">1:00</div>
             <div style="font-weight:700; font-size:18px;" id="checkersStatus"></div> 
         </div> 
         <div class="game-area"> 
             <div class="checkers-wrapper"><div id="checkersBoard" class="checkers-board"></div></div>
             <div id="checkersHistoryControls" style="display:flex; justify-content:center; gap:20px; margin-top:15px;">
-                <button id="historyPrev" class="history-btn" onclick="historyStep(-1)" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+                <button id="historyPrev" class="history-btn" data-spark-onclick="h65" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
                 <span id="historyIndicator" style="font-size:14px; color:#8e8e93; align-self:center; min-width:60px; text-align:center;"></span>
-                <button id="historyNext" class="history-btn" onclick="historyStep(1)" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
+                <button id="historyNext" class="history-btn" data-spark-onclick="h66" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
             </div>
         </div> 
     </div>
     <div id="chess-screen" class="game-overlay" data-i18n-skip></div>
     <div id="nardy-screen" class="game-overlay" data-i18n-skip></div>
-    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" onclick="closeGame('bb')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span id="bbBestScore">0</span><span data-i18n="best">Best</span></div><button id="bbMaterialButton" class="bb-style-button" type="button" aria-label="Настройки Блок Бласта" onclick="if(!dragData) BBVisuals.openPicker()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span><div id="bbHudVpnCta" style="display:none; font-size:11px; font-weight:700; color:#fff; background:linear-gradient(135deg,#ffa500,#ff3b30); padding:4px 9px; border-radius:8px; cursor:pointer;" onclick="openMultPromoModal()" data-i18n="bbHudVpnCta">Получить ×1.5</div> </div> </div> <div class="bb-game-container"> <div class="bb-mult-hud" id="bbMultHud">×1.5</div> <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
+    <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" data-spark-onclick="h67"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span id="bbBestScore">0</span><span data-i18n="best">Best</span></div><button id="bbMaterialButton" class="bb-style-button" type="button" aria-label="Настройки Блок Бласта" data-spark-onclick="h68"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span> </div> </div> <div class="bb-game-container">  <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
     <div id="sudoku-screen" class="game-overlay"> 
         <div class="game-top-bar"> 
-            <div class="back-btn" onclick="closeGame('sudoku')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> 
+            <div class="back-btn" data-spark-onclick="h69"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div>
             <div class="lives-box"><span data-i18n="errors">Ошибки</span>: <span id="sudokuLives">0/3</span></div>
         </div> 
         <div class="game-area" style="justify-content: flex-start; padding-top: 20px;">
             <div id="sudokuBoard" class="sudo-board"></div>
             <div class="numpad" id="sudokuNumpad">
-                <div class="num-btn" id="nb1" onclick="activateDigit(1, this)">1</div>
-                <div class="num-btn" id="nb2" onclick="activateDigit(2, this)">2</div>
-                <div class="num-btn" id="nb3" onclick="activateDigit(3, this)">3</div>
-                <div class="num-btn" id="nb4" onclick="activateDigit(4, this)">4</div>
-                <div class="num-btn" id="nb5" onclick="activateDigit(5, this)">5</div>
-                <div class="num-btn" id="nb6" onclick="activateDigit(6, this)">6</div>
-                <div class="num-btn" id="nb7" onclick="activateDigit(7, this)">7</div>
-                <div class="num-btn" id="nb8" onclick="activateDigit(8, this)">8</div>
-                <div class="num-btn" id="nb9" onclick="activateDigit(9, this)">9</div>
+                <div class="num-btn" id="nb1" data-spark-onclick="h70">1</div>
+                <div class="num-btn" id="nb2" data-spark-onclick="h71">2</div>
+                <div class="num-btn" id="nb3" data-spark-onclick="h72">3</div>
+                <div class="num-btn" id="nb4" data-spark-onclick="h73">4</div>
+                <div class="num-btn" id="nb5" data-spark-onclick="h74">5</div>
+                <div class="num-btn" id="nb6" data-spark-onclick="h75">6</div>
+                <div class="num-btn" id="nb7" data-spark-onclick="h76">7</div>
+                <div class="num-btn" id="nb8" data-spark-onclick="h77">8</div>
+                <div class="num-btn" id="nb9" data-spark-onclick="h78">9</div>
             </div>
         </div> 
     </div>
 
     <div class="modal-overlay ui-mode-sheet" id="modalSaper"><section class="modal ui-mode-panel">
         <div class="ui-sheet-grab" aria-hidden="true"></div>
-        <div class="ui-sheet-heading"><h2 data-i18n="minesweeper">Сапёр</h2><button class="ui-close" type="button" onclick="document.getElementById('modalSaper').classList.remove('visible')" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+        <div class="ui-sheet-heading"><h2 data-i18n="minesweeper">Сапёр</h2><button class="ui-close" type="button" data-spark-onclick="h79" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
         <p data-i18n="chooseDifficulty">Выберите сложность</p>
         <div class="segment-control vertical" style="--ui-options:4">
             <div class="segment-glider" id="saperDifficultyGlider" style="transform:translateY(100%)"></div>
-            <button class="segment-item diff-btn" onclick="setSaperDiff(6,6,5,this)"><span data-i18n="easy">Легко</span><span class="ui-option-note">6 × 6</span></button>
-            <button class="segment-item diff-btn active selected" onclick="setSaperDiff(8,8,10,this)"><span data-i18n="medium">Средне</span><span class="ui-option-note">8 × 8</span></button>
-            <button class="segment-item diff-btn" onclick="setSaperDiff(10,10,15,this)"><span data-i18n="hard">Сложно</span><span class="ui-option-note">10 × 10</span></button>
-            <button class="segment-item diff-btn" onclick="setSaperDiff(15,15,30,this)"><span data-i18n="expert">Эксперт</span><span class="ui-option-note">15 × 15</span></button>
+            <button class="segment-item diff-btn" data-spark-onclick="h80"><span data-i18n="easy">Легко</span><span class="ui-option-note">6 × 6</span></button>
+            <button class="segment-item diff-btn active selected" data-spark-onclick="h81"><span data-i18n="medium">Средне</span><span class="ui-option-note">8 × 8</span></button>
+            <button class="segment-item diff-btn" data-spark-onclick="h82"><span data-i18n="hard">Сложно</span><span class="ui-option-note">10 × 10</span></button>
+            <button class="segment-item diff-btn" data-spark-onclick="h83"><span data-i18n="expert">Эксперт</span><span class="ui-option-note">15 × 15</span></button>
         </div>
-        <button class="btn-main" onclick="launchSaper()" data-i18n="start">Начать</button>
+        <button class="btn-main" data-spark-onclick="h84" data-i18n="start">Начать</button>
     </section></div>
     
     <div class="modal-overlay ui-mode-sheet" id="modalCheckers">
         <div class="modal ui-mode-panel">
             <div class="ui-sheet-grab" aria-hidden="true"></div>
-            <div class="ui-sheet-heading"><h2 data-i18n="checkers">Шашки</h2><button class="ui-close" type="button" onclick="document.getElementById('modalCheckers').classList.remove('visible')" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+            <div class="ui-sheet-heading"><h2 data-i18n="checkers">Шашки</h2><button class="ui-close" type="button" data-spark-onclick="h85" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
             
             <div class="segment-control" style="margin-bottom: 15px;">
                 <div class="segment-glider" id="checkersMainGlider"></div>
-                <button class="segment-item active" onclick="setCheckersMainMode('offline', this, 0)" data-i18n="playOffline">На устройстве</button>
-                <button class="segment-item" onclick="setCheckersMainMode('online', this, 1)" data-i18n="playOnline">Онлайн</button>
+                <button class="segment-item active" data-spark-onclick="h86" data-i18n="playOffline">На устройстве</button>
+                <button class="segment-item" data-spark-onclick="h87" data-i18n="playOnline">Онлайн</button>
             </div>
 
             <div id="ch-offline-panel" class="panel-visible">
                 <p style=" margin-bottom:15px; margin-top:0;" data-i18n="chooseGameMode">Выберите режим игры</p>
                 <div class="segment-control vertical" style="--ui-options:2">
                     <div class="segment-glider" id="checkersGlider"></div>
-                    <button class="segment-item active" onclick="setCheckersMode(false, this, 0)" data-i18n="twoPlayers">2 Игрока</button>
-                    <button class="segment-item" onclick="setCheckersMode(true, this, 1)" data-i18n="vsRobot">С Роботом</button>
+                    <button class="segment-item active" data-spark-onclick="h88" data-i18n="twoPlayers">2 Игрока</button>
+                    <button class="segment-item" data-spark-onclick="h89" data-i18n="vsRobot">С Роботом</button>
                 </div>
                 <div class="checkers-difficulty-wrap" id="checkersDifficultyWrap" aria-hidden="true" inert>
                     <div class="checkers-difficulty-inner">
                         <p data-i18n="botDifficulty">Сложность бота</p>
                         <div class="segment-control vertical" style="--ui-options:3" aria-label="Сложность бота">
                             <div class="segment-glider" id="checkersDifficultyGlider" style="transform:translateY(100%)"></div>
-                            <button class="segment-item" onclick="setCheckersDifficulty('easy',this,0)"><span data-i18n="easy">Легко</span><span class="ui-option-note">+1</span></button>
-                            <button class="segment-item active" onclick="setCheckersDifficulty('medium',this,1)"><span data-i18n="medium">Средне</span><span class="ui-option-note">+2</span></button>
-                            <button class="segment-item" onclick="setCheckersDifficulty('hard',this,2)"><span data-i18n="hard">Сложно</span><span class="ui-option-note">+3</span></button>
+                            <button class="segment-item" data-spark-onclick="h90"><span data-i18n="easy">Легко</span><span class="ui-option-note">+1</span></button>
+                            <button class="segment-item active" data-spark-onclick="h91"><span data-i18n="medium">Средне</span><span class="ui-option-note">+2</span></button>
+                            <button class="segment-item" data-spark-onclick="h92"><span data-i18n="hard">Сложно</span><span class="ui-option-note">+3</span></button>
                         </div>
                     </div>
                 </div>
-                <button class="btn-main" onclick="launchCheckers()" data-i18n="play">Играть</button>
+                <button class="btn-main" data-spark-onclick="h93" data-i18n="play">Играть</button>
             </div>
 
             <div id="ch-online-panel" class="panel-hidden">
-                <button class="ck-hero" type="button" onclick="checkersQuickMatch()">
+                <button class="ck-hero" type="button" data-spark-onclick="h94">
                     <span class="ck-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
                     <span class="ck-hero-text"><b data-i18n="findOpponent">Найти соперника</b><small data-i18n="findOpponentHint">Случайный игрок онлайн</small></span>
                     <svg class="ck-hero-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
                 </button>
                 <div class="ck-tiles">
-                    <button class="ck-tile" type="button" onclick="createGame()"><span class="ck-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><b data-i18n="createRoom">Создать комнату</b><small data-i18n="inviteFriend">Позвать друга</small></button>
-                    <button class="ck-tile" type="button" onclick="toggleCheckersCode()"><span class="ck-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 7l3 3M14 9l2 2"/></svg></span><b data-i18n="enterCode">Ввести код</b><small data-i18n="joinFriend">Комната друга</small></button>
+                    <button class="ck-tile" type="button" data-spark-onclick="h95"><span class="ck-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><b data-i18n="createRoom">Создать комнату</b><small data-i18n="inviteFriend">Позвать друга</small></button>
+                    <button class="ck-tile" type="button" data-spark-onclick="h96"><span class="ck-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 7l3 3M14 9l2 2"/></svg></span><b data-i18n="enterCode">Ввести код</b><small data-i18n="joinFriend">Комната друга</small></button>
                 </div>
                 <div class="ck-code-row" id="ckCodeRow">
-                    <input type="text" id="joinCodeInput" inputmode="numeric" autocomplete="off" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5" onkeydown="if(event.key==='Enter')joinGameByCode()">
-                    <button type="button" onclick="joinGameByCode()" data-i18n="join">Войти</button>
+                    <input type="text" id="joinCodeInput" inputmode="numeric" autocomplete="off" placeholder="Код..." data-i18n-placeholder="codePlaceholder" maxlength="5" data-spark-onkeydown="h97">
+                    <button type="button" data-spark-onclick="h98" data-i18n="join">Войти</button>
                 </div>
-                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" onclick="refreshCheckersRooms(true)" data-i18n-aria-label="refresh" aria-label="Обновить"><span class="refresh-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg></span></button></div>
+                <div class="ck-rooms-head"><h3 data-i18n="openRooms">Открытые комнаты</h3><button class="ck-refresh" type="button" data-spark-onclick="h99" data-i18n-aria-label="refresh" aria-label="Обновить"><span class="refresh-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg></span></button></div>
                 <div class="ck-rooms" id="ckRoomList"></div>
             </div>
 
@@ -4405,47 +4393,37 @@
     <div class="modal-overlay" id="modalChessWait"><div class="modal ck-wait" data-i18n-skip></div></div>
     <div class="modal-overlay ui-mode-sheet" id="modalNardy"><div class="modal ui-mode-panel" data-i18n-skip></div></div>
     <div class="modal-overlay" id="modalNardyWait"><div class="modal ck-wait" data-i18n-skip></div></div>
-    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal ck-wait"><div class="ck-radar" aria-hidden="true"><span></span><span></span><span></span><img src="assets/game-icons/checkers.png" alt=""></div><h2 id="ckWaitTitle">Ожидание...</h2><p class="ck-wait-sub" data-i18n="roomCode">Код комнаты:</p><div class="ck-wait-code" id="displayRoomCode">-----</div><p class="ck-wait-hint" data-i18n="shareCode">Передай этот код другу</p><button class="btn-main ck-invite" type="button" onclick="inviteCheckersFriend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg><span data-i18n="inviteFriend">Позвать друга</span></button><button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="cancelOnlineWait()" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalWaitOpponent"><div class="modal ck-wait"><div class="ck-radar" aria-hidden="true"><span></span><span></span><span></span><img src="assets/game-icons/checkers.png" alt=""></div><h2 id="ckWaitTitle">Ожидание...</h2><p class="ck-wait-sub" data-i18n="roomCode">Код комнаты:</p><div class="ck-wait-code" id="displayRoomCode">-----</div><p class="ck-wait-hint" data-i18n="shareCode">Передай этот код другу</p><button class="btn-main ck-invite" type="button" data-spark-onclick="h100"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg><span data-i18n="inviteFriend">Позвать друга</span></button><button class="btn-secondary" style="width:100%; margin-top:8px;" data-spark-onclick="h101" data-i18n="cancel">Отмена</button></div></div>
     
-    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeBB()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="newGameBB()" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalBBResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
-    <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" onclick="refreshBBFromServer()" data-i18n="refresh">Обновить</button></div></div>
-    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden onclick="requestRematch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" onclick="closeResult()">Закрыть</button></div></div>
+    <div class="modal-overlay" id="modalBBResume"><div class="modal"><h2 data-i18n="blockBlast">Блок Бласт</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" data-spark-onclick="h102" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" data-spark-onclick="h103" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" data-spark-onclick="h104" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalBBStale"><div class="modal"><h2 data-i18n="bbSessionOutdated">Сессия устарела</h2><p style="color:#8e8e93;" data-i18n="bbSessionOutdatedText">Игра была продолжена на другом устройстве. Обновите состояние, чтобы играть дальше.</p><button class="btn-main" data-spark-onclick="h105" data-i18n="refresh">Обновить</button></div></div>
+    <div class="modal-overlay" id="modalResult"><div class="modal" id="modalResultContent"><h2 id="resTitle">Победа!</h2><p id="resText">Текст</p><button class="btn-secondary ck-rematch" id="resRematchBtn" type="button" hidden data-spark-onclick="h106"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50"/><path d="M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z" fill="currentColor" stroke-width=".6"/></svg><span>Реванш</span></button><button class="btn-main" id="resBtn" data-spark-onclick="h107">Закрыть</button></div></div>
     <div class="modal-overlay" id="modalBBGameOver"><div class="modal" id="bbGameOverContent"></div></div>
 
     <!-- Multiplier promo modal: explains the x1.5 partner offer -->
-    <div class="modal-overlay" id="modalMultPromo" style="z-index: 22550;">
-        <div class="modal" style="max-width: 380px;">
-            <div style="margin: 4px auto 12px; width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #ffa500, #ff3b30); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(255, 90, 0, 0.35);">
-                <span style="font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.5px;">×1.5</span>
-            </div>
-            <h2 style="margin: 0 0 8px 0; font-size: 22px;" data-i18n="multPromoTitle">Получите ×1.5 к итоговым очкам</h2>
-            <p style="color: #8e8e93; margin: 0 0 18px 0; line-height: 1.5; font-size: 14px;" data-i18n="multPromoDesc">Каждый итоговый счёт в турнирном режиме умножается на 1.5, если вы оформили подписку у нашего партнёра — VPN-сервиса.</p>
-            <button class="btn-main" onclick="closeMultPromoModalAndOpenPartner()" data-i18n="multPromoGoBtn">Перейти к партнёру</button>
-            <button style="margin-top: 10px; background: none; border: none; color: #8e8e93; font-size: 16px; width: 100%; padding: 10px;" onclick="closeMultPromoModal()" data-i18n="cancel">Отмена</button>
-        </div>
-    </div>
-    <div class="modal-overlay" id="modalConfirmExit"><div class="modal"><h2 data-i18n="exitGame">Выйти из игры?</h2><p style="color:#8e8e93; margin-bottom:20px;" data-i18n="exitConfirm">Вы уверены, что хотите выйти? Игра будет засчитана как поражение.</p><button class="btn-main" onclick="confirmExit(true)" data-i18n="yesExit">Да, выйти</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; width:100%; padding:10px;" onclick="confirmExit(false)" data-i18n="cancel">Отмена</button></div></div>
+
+    <div class="modal-overlay" id="modalConfirmExit"><div class="modal"><h2 data-i18n="exitGame">Выйти из игры?</h2><p style="color:#8e8e93; margin-bottom:20px;" data-i18n="exitConfirm">Вы уверены, что хотите выйти? Игра будет засчитана как поражение.</p><button class="btn-main" data-spark-onclick="h108" data-i18n="yesExit">Да, выйти</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; width:100%; padding:10px;" data-spark-onclick="h109" data-i18n="cancel">Отмена</button></div></div>
     
     <div class="modal-overlay" id="modalLoading"><div class="modal" style="display:flex; flex-direction:column; align-items:center;"><div class="loader"></div><h3 data-i18n="creatingRoom">Создание комнаты...</h3></div></div>
 
     <div class="modal-overlay ui-mode-sheet" id="modalSudoku"><div class="modal ui-mode-panel">
-            <div class="ui-sheet-grab" aria-hidden="true"></div><div class="ui-sheet-heading"><h2 data-i18n="sudoku">Судоку</h2><button class="ui-close" type="button" onclick="document.getElementById('modalSudoku').classList.remove('visible')" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div><p style=" margin-bottom:20px;" data-i18n="chooseDifficulty">Выберите сложность</p>
+            <div class="ui-sheet-grab" aria-hidden="true"></div><div class="ui-sheet-heading"><h2 data-i18n="sudoku">Судоку</h2><button class="ui-close" type="button" data-spark-onclick="h110" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div><p style=" margin-bottom:20px;" data-i18n="chooseDifficulty">Выберите сложность</p>
         <div class="segment-control vertical" >
             <div class="segment-glider" id="sudokuGlider" style="transform: translateY(100%);"></div>
-            <button class="segment-item" onclick="selectSudokuDiff(30, this, 0)"><span data-i18n="easy">Легко</span><span class="ui-option-note">+1</span></button>
-            <button class="segment-item active" onclick="selectSudokuDiff(40, this, 1)"><span data-i18n="medium">Средне</span><span class="ui-option-note">+2</span></button>
-            <button class="segment-item" onclick="selectSudokuDiff(50, this, 2)"><span data-i18n="hard">Сложно</span><span class="ui-option-note">+3</span></button>
+            <button class="segment-item" data-spark-onclick="h111"><span data-i18n="easy">Легко</span><span class="ui-option-note">+1</span></button>
+            <button class="segment-item active" data-spark-onclick="h112"><span data-i18n="medium">Средне</span><span class="ui-option-note">+2</span></button>
+            <button class="segment-item" data-spark-onclick="h113"><span data-i18n="hard">Сложно</span><span class="ui-option-note">+3</span></button>
         </div>
-        <button class="btn-main" onclick="startSudoku()" data-i18n="start">Начать</button>
+        <button class="btn-main" data-spark-onclick="h114" data-i18n="start">Начать</button>
 
     </div></div>
     
-    <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2 data-i18n="sudoku">Судоку</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" onclick="resumeSudoku()" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('modalSudoku').classList.add('visible');" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" onclick="document.getElementById('modalSudokuResume').classList.remove('visible')" data-i18n="cancel">Отмена</button></div></div>
+    <div class="modal-overlay" id="modalSudokuResume"><div class="modal"><h2 data-i18n="sudoku">Судоку</h2><p style="color:#8e8e93;" data-i18n="foundUnfinished">Найдена незаконченная игра</p><button class="btn-main" data-spark-onclick="h115" data-i18n="continue">Продолжить</button><button class="btn-main" style="background:var(--danger); margin-top:10px;" data-spark-onclick="h116" data-i18n="newGame">Новая игра</button><button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px;" data-spark-onclick="h117" data-i18n="cancel">Отмена</button></div></div>
 
     <div id="tower-screen" class="game-overlay">
         <div id="bgPatternTower" class="game-overlay-bg"></div>
         <div class="game-top-bar" id="towerTopBar">
-            <div class="back-btn" onclick="tryCloseTower()">
+            <div class="back-btn" data-spark-onclick="h118">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span>
             </div>
             <div style="font-weight:700; font-size:18px;"><span data-i18n="best">Best</span>: <span id="towerBestScore">0</span></div>
@@ -4464,7 +4442,7 @@
     <div id="wordle-screen" class="game-overlay">
         <div id="bgPatternWordle" class="game-overlay-bg"></div>
         <div class="game-top-bar">
-            <div class="back-btn" onclick="closeGame('wordle')">
+            <div class="back-btn" data-spark-onclick="h119">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span>
             </div>
             <div style="font-weight:700; font-size:18px;"><span data-i18n="wins">Победы</span>: <span id="wordleWins">0</span></div>
@@ -4488,19 +4466,19 @@
                     <h2 id="titleLibraryHeading">Титулы</h2>
                     <div class="title-library-count" id="titleLibraryCount">—</div>
                 </div>
-                <button class="title-library-close" type="button" onclick="closeTitleLibrary(event)" aria-label="Закрыть">
+                <button class="title-library-close" type="button" data-spark-onclick="h120" aria-label="Закрыть">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
                 </button>
             </div>
             <div class="title-library-scroll" id="titleLibraryScroll">
                 <div class="title-library-controls">
                     <div class="title-filter-summary-row">
-                        <button class="title-filter-summary" id="titleGameFilter" type="button" onclick="openTitleChoiceMenu('game')">
+                        <button class="title-filter-summary" id="titleGameFilter" type="button" data-spark-onclick="h121">
                             <span class="title-filter-label" id="titleGameFilterLabel">Игра</span>
                             <span class="title-filter-summary-value" id="titleGameFilterValue">Все игры</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg>
                         </button>
-                        <button class="title-filter-summary" id="titleRarityFilter" type="button" onclick="openTitleChoiceMenu('rarity')">
+                        <button class="title-filter-summary" id="titleRarityFilter" type="button" data-spark-onclick="h122">
                             <span class="title-filter-label" id="titleRarityFilterLabel">Редкость</span>
                             <span class="title-filter-summary-value" id="titleRarityFilterValue">Все редкости</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg>
@@ -4518,11 +4496,11 @@
         </section>
     </div>
 
-    <div class="title-bottom-overlay" id="titleDetailOverlay" onclick="closeTitleDetail(event)" aria-hidden="true">
-        <section class="title-bottom-sheet title-detail-sheet" id="titleDetailSheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="title-bottom-overlay" id="titleDetailOverlay" data-spark-onclick="h123" aria-hidden="true">
+        <section class="title-bottom-sheet title-detail-sheet" id="titleDetailSheet" role="dialog" aria-modal="true" data-spark-onclick="h124">
             <div class="title-bottom-sheet-header">
                 <div class="title-bottom-sheet-title" id="titleDetailSheetTitle">Титул</div>
-                <button class="title-bottom-close" type="button" onclick="closeTitleDetail(event)" aria-label="Закрыть">
+                <button class="title-bottom-close" type="button" data-spark-onclick="h123" aria-label="Закрыть">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
                 </button>
             </div>
@@ -4539,16 +4517,16 @@
                 <div class="title-detail-note" id="titleDetailNote" hidden></div>
                 <div class="title-detail-footer">
                     <div class="title-holder-count" id="titleHolderCount">—</div>
-                    <button class="title-equip-button" id="titleEquipButton" type="button" onclick="handleFocusedTitleAction()">Выбрать</button>
+                    <button class="title-equip-button" id="titleEquipButton" type="button" data-spark-onclick="h125">Выбрать</button>
                 </div>
             </article>
         </section>
     </div>
 
-    <div class="title-bottom-overlay" id="titleChoiceOverlay" onclick="closeTitleChoiceMenu(event)" aria-hidden="true">
-        <section class="title-bottom-sheet title-choice-sheet" id="titleChoiceSheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="title-bottom-overlay" id="titleChoiceOverlay" data-spark-onclick="h126" aria-hidden="true">
+        <section class="title-bottom-sheet title-choice-sheet" id="titleChoiceSheet" role="dialog" aria-modal="true" data-spark-onclick="h124">
             <div class="title-choice-header">
-                <button class="title-choice-cancel" id="titleChoiceCancel" type="button" onclick="closeTitleChoiceMenu(event)">Отмена</button>
+                <button class="title-choice-cancel" id="titleChoiceCancel" type="button" data-spark-onclick="h126">Отмена</button>
                 <h3 id="titleChoiceHeading">Игра</h3>
                 <span aria-hidden="true"></span>
             </div>
@@ -4575,8 +4553,8 @@
     </div>
 
     <!-- Referral Conditions Bottom Sheet -->
-    <div class="bottom-sheet-overlay" id="referralConditionsSheet" onclick="hideReferralConditions()">
-        <div class="bottom-sheet" onclick="event.stopPropagation()" id="referralConditionsContent">
+    <div class="bottom-sheet-overlay" id="referralConditionsSheet" data-spark-onclick="h127">
+        <div class="bottom-sheet" data-spark-onclick="h124" id="referralConditionsContent">
             <div class="bottom-sheet-handle" id="referralConditionsHandle"></div>
             <div class="bottom-sheet-title" data-i18n="conditionsTitle">Условия реф. программы</div>
             
@@ -4595,20 +4573,20 @@
                 <div class="condition-text" data-i18n="refCondition3">Реферал попадает в топ только когда наберёт 1000+ очков в Блок Бласт. До этого он отображается только в профиле.</div>
             </div>
             
-            <button class="btn-main" style="width:100%; margin-top:10px;" onclick="hideReferralConditions()" data-i18n="gotIt">Понятно</button>
+            <button class="btn-main" style="width:100%; margin-top:10px;" data-spark-onclick="h127" data-i18n="gotIt">Понятно</button>
         </div>
     </div>
     
     <!-- Settings Bottom Sheet -->
-    <div class="bottom-sheet-overlay" id="settingsSheet" onclick="closeSettingsSheet()">
-        <div class="bottom-sheet settings-sheet" onclick="event.stopPropagation()">
+    <div class="bottom-sheet-overlay" id="settingsSheet" data-spark-onclick="h128">
+        <div class="bottom-sheet settings-sheet" data-spark-onclick="h124">
             <div class="bottom-sheet-handle"></div>
             <div class="bottom-sheet-title" data-i18n="settings">Настройки</div>
             
             <!-- Язык: отдельная шторка со списком, в настройках только текущий выбор -->
             <div class="settings-section-label" data-i18n="language">ЯЗЫК</div>
             <div class="settings-group-sheet">
-                <button class="settings-row-sheet language-row" type="button" onclick="openLanguageSheet()" aria-haspopup="dialog">
+                <button class="settings-row-sheet language-row" type="button" data-spark-onclick="h129" aria-haspopup="dialog">
                     <span class="settings-label-sheet">
                         <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"/></svg>
                         <span data-i18n="languageInterface">Язык интерфейса</span>
@@ -4618,7 +4596,7 @@
             </div>
 
             <div class="settings-group-sheet intro-replay-group">
-                <button class="settings-row-sheet language-row" type="button" onclick="replaySparkIntro()">
+                <button class="settings-row-sheet language-row" type="button" data-spark-onclick="h130">
                     <span class="settings-label-sheet">
                         <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5c.9 5.2 3.3 7.6 8.5 8.5-5.2.9-7.6 3.3-8.5 8.5-.9-5.2-3.3-7.6-8.5-8.5 5.2-.9 7.6-3.3 8.5-8.5z"/></svg>
                         <span data-i18n="introReplay">Знакомство со Spark</span>
@@ -4634,7 +4612,7 @@
                         <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         <span data-i18n="theme">Тема</span>
                     </div>
-                    <div class="theme-switch" id="themeToggleSheet" onclick="toggleTheme()"> 
+                    <div class="theme-switch" id="themeToggleSheet" data-spark-onclick="h131">
                         <div class="theme-icons"> 
                             <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> 
                             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
@@ -4648,7 +4626,7 @@
                         <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                         <span data-i18n="simplifiedGraphics">Упрощённая графика</span>
                     </div>
-                    <div class="theme-switch" id="liteToggleSheet" onclick="toggleLiteMode()"> 
+                    <div class="theme-switch" id="liteToggleSheet" data-spark-onclick="h132">
                         <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
                         <div class="switch-circle"></div> 
                     </div>
@@ -4665,7 +4643,7 @@
                         </svg>
                         <span data-i18n="vibration">Вибрация</span>
                     </div>
-                    <div class="theme-switch" id="vibrationToggle" onclick="toggleVibration()"> 
+                    <div class="theme-switch" id="vibrationToggle" data-spark-onclick="h133">
                         <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
                         <div class="switch-circle"></div> 
                     </div>
@@ -4680,7 +4658,7 @@
                         </svg>
                         <span data-i18n="sounds">Звуки</span>
                     </div>
-                    <div class="theme-switch" id="soundToggle" onclick="toggleSounds()">
+                    <div class="theme-switch" id="soundToggle" data-spark-onclick="h134">
                         <div class="toggle-labels"><div>OFF</div><div>ON</div></div>
                         <div class="switch-circle"></div>
                     </div>
@@ -4709,20 +4687,20 @@
 
             <!-- Кнопки снизу -->
             <div class="settings-footer-buttons">
-                <button class="settings-footer-btn secondary" onclick="openPrivacyPolicy()" data-i18n="privacy">Политика</button>
-                <button class="settings-footer-btn primary" onclick="openSupport()" data-i18n="support">Поддержка</button>
+                <button class="settings-footer-btn secondary" data-spark-onclick="h135" data-i18n="privacy">Политика</button>
+                <button class="settings-footer-btn primary" data-spark-onclick="h136" data-i18n="support">Поддержка</button>
             </div>
         </div>
     </div>
 
-    <div class="bottom-sheet-overlay" id="languageSheet" onclick="closeLanguageSheet()">
-        <div class="bottom-sheet language-sheet" onclick="event.stopPropagation()">
+    <div class="bottom-sheet-overlay" id="languageSheet" data-spark-onclick="h137">
+        <div class="bottom-sheet language-sheet" data-spark-onclick="h124">
             <div class="bottom-sheet-handle"></div>
             <div class="bottom-sheet-title" data-i18n="languageTitle">Язык</div>
             <p class="language-sheet-hint" data-i18n="languageInterface">Язык интерфейса</p>
             <label class="language-search">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                <input id="languageSearch" type="search" autocomplete="off" enterkeyhint="search" oninput="renderLanguageList()" placeholder="Найти язык">
+                <input id="languageSearch" type="search" autocomplete="off" enterkeyhint="search" data-spark-oninput="h138" placeholder="Найти язык">
             </label>
             <div class="language-list" id="languageList" role="listbox"></div>
         </div>
@@ -4827,7 +4805,7 @@
                 return id;
             } catch (_) { return ''; }
         })();
-        const socket = io(API_BASE_URL, { auth: { initData: tg.initData || '', deviceId: SPARK_DEVICE_ID } });
+        const socket = io(API_BASE_URL, { auth: { initData: tg.initData || '', deviceId: SPARK_DEVICE_ID, visitId: window.SparkVisitId } });
         
         // Stable Telegram user id, captured at first successful read. Some
         // calls happen before tg.initDataUnsafe.user is populated (cold start
@@ -4988,7 +4966,7 @@
             } catch (_) { return 2; }
         })();
         async function fetchSubscription(userId) {
-            const resp = await fetch(`${API_BASE_URL}/check-subscription?user_id=${encodeURIComponent(userId)}`);
+            const resp = await fetch(`${API_BASE_URL}/check-subscription?fresh=1`, { headers: { 'X-Init-Data': tg.initData } });
             const data = await resp.json();
             const channels = (Array.isArray(data.channels) ? data.channels : []).map(c => ({ ...c, photo: c.photo ? `${API_BASE_URL}${c.photo}` : null }));
             return { subscribed: data.subscribed !== false, channels };
@@ -5008,16 +4986,24 @@
                 window.SparkGate ? null : load('script', { src: `assets/ui/subscribe-gate.js?v=${SPARK_GATE_VERSION}` }),
             ]).then(() => { sparkGateLoading = true; return window.SparkGate; });
         }
-        function showSubscribeGate(userId, channels) {
+        function showSubscribeGate(userId, channels, { force = false } = {}) {
             // как и знакомство: не поверх заставки, партии по приглашению или другой шторки
             const busy = document.querySelector('#appLoader, .ob-overlay, .game-overlay.visible, .modal-overlay.visible, .bottom-sheet-overlay.visible');
-            if (busy) { setTimeout(() => showSubscribeGate(userId, channels), 800); return; }
+            if (busy && !force) { setTimeout(() => showSubscribeGate(userId, channels), 800); return; }
             loadSparkGate().then(gate => gate.open({
                 channels,
                 check: async () => (await fetchSubscription(userId)).channels,
                 onDone: () => { isSubscribed = true; showToast(t('welcome'), 'welcome'); },
             })).catch(() => { isSubscribed = true; });
         }
+        window.addEventListener('spark-subscription-required', event => {
+            const user = tg.initDataUnsafe.user;
+            if (user && Array.isArray(event.detail?.channels)) {
+                isSubscribed = false;
+                showSubscribeGate(user.id, event.detail.channels, { force: true });
+            }
+        });
+        socket.on('subscription_required', data => window.dispatchEvent(new CustomEvent('spark-subscription-required', { detail: data })));
         async function checkSubscriptionOnStart() {
             const user = tg.initDataUnsafe.user;
             if (!user) { isSubscribed = true; return; }
@@ -5716,15 +5702,15 @@
                 play: 'Играть',
                 bbTournamentNewBest: 'Новый турнирный рекорд!',
                 bbFinalScore: 'Итоговый счёт',
-                bbHudVpnCta: 'Получить ×1.5',
-                multPromoTitle: 'Получите ×1.5 к итоговым очкам',
-                multPromoDesc: 'Каждый итоговый счёт в турнирном режиме умножается на 1.5, если вы оформили подписку у нашего партнёра — VPN-сервиса. Перейдите к партнёру, оформите подписку — и ×1.5 будет применяться автоматически.',
-                multPromoGoBtn: 'Перейти к партнёру',
+
+
+
+
                 bbLbGlobal: 'Глобальный',
                 bbLbTournament: 'Турнирный',
-                bbVpnActive: '×1.5 активен',
-                bbVpnCta: 'Купи VPN — получи ×1.5',
-                bbVpnPartnerLabel: 'Партнёр:',
+
+
+
                 shareReferralText: '🎮 Присоединяйся к Spark! Играй в крутые игры и соревнуйся в топах!',
                 shareMonopolyRoomText: '🎲 Заходи в мою комнату в Монополии Spark! Код комнаты: {code}',
                 back: 'Назад',
@@ -6020,15 +6006,15 @@
                 play: 'Play',
                 bbTournamentNewBest: 'New tournament record!',
                 bbFinalScore: 'Final score',
-                bbHudVpnCta: 'Get ×1.5',
-                multPromoTitle: 'Earn ×1.5 on your final score',
-                multPromoDesc: 'Every final score in tournament mode is multiplied by 1.5 if you subscribed with our partner — a VPN service. Open the partner, subscribe — and ×1.5 will be applied automatically.',
-                multPromoGoBtn: 'Go to partner',
+
+
+
+
                 bbLbGlobal: 'Global',
                 bbLbTournament: 'Tournament',
-                bbVpnActive: '×1.5 active',
-                bbVpnCta: 'Get VPN — earn ×1.5',
-                bbVpnPartnerLabel: 'Partner:',
+
+
+
                 shareReferralText: '🎮 Join me on Spark! Play great games and climb the leaderboards!',
                 shareMonopolyRoomText: '🎲 Join my Spark Monopoly room! Room code: {code}',
                 back: 'Back',
@@ -6120,11 +6106,11 @@
                 bbModeOriginal: '经典模式', bbModeOriginalDesc: '经典方块爆破，挑战个人纪录。',
                 bbModeTournament: '锦标赛', bbModeTournamentDesc: '争夺大奖，得分会进入比赛排行榜。',
                 bbModeTournamentInactive: '当前没有比赛', bbModeContinue: '未完成的游戏',
-                bbTournamentNewBest: '新的比赛纪录！', bbFinalScore: '最终得分', bbHudVpnCta: '获得 ×1.5',
-                multPromoTitle: '最终得分获得 ×1.5',
-                multPromoDesc: '如果您订阅合作伙伴的 VPN 服务，锦标赛模式的最终得分将乘以 1.5。打开合作伙伴页面并订阅，倍率会自动生效。',
-                multPromoGoBtn: '前往合作伙伴', bbLbGlobal: '全球', bbLbTournament: '锦标赛', bbVpnActive: '×1.5 已启用',
-                bbVpnCta: '获取 VPN，得分 ×1.5', bbVpnPartnerLabel: '合作伙伴：', beta: '测试版',
+                bbTournamentNewBest: '新的比赛纪录！', bbFinalScore: '最终得分',
+
+
+                 bbLbGlobal: '全球', bbLbTournament: '锦标赛',
+                  beta: '测试版',
                 shareReferralText: '🎮 来 Spark 一起玩游戏，在排行榜上比拼吧！',
                 shareMonopolyRoomText: '🎲 加入我的 Spark 大富翁房间！房间代码：{code}',
                 comingSoon: '即将推出', tournamentHistoryNoPlace: '您未参加'
@@ -6394,7 +6380,7 @@
         startBannerCarousel();
         
         // === TOURNAMENT STATE (driven by backend) ===
-        let _tournamentState = { bb: null, referral: null, vpn_active: false };
+        let _tournamentState = { bb: null, referral: null };
         let _tournamentStateAt = 0;
         const TOURNAMENT_STATE_TTL_MS = 60_000;
 
@@ -6653,7 +6639,7 @@
             stopGamePlaytime(game);
             document.getElementById(game+'-screen').classList.remove('visible'); 
             if(game==='saper') clearInterval(sTimerInt); 
-            if(game==='bb') { try { bbStopSparks(); BBVisuals.cleanup(); } catch(_) {} bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter(); updateBBScoreUI(); saveBBState(); const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none'; const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none'; }
+            if(game==='bb') { try { bbStopSparks(); BBVisuals.cleanup(); } catch(_) {} bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter(); updateBBScoreUI(); saveBBState();  }
             if(game==='sudoku') saveSudokuState();
             if(game==='tower') { 
                 twGameOverToken++;
@@ -6880,6 +6866,7 @@
             if (playtimeActionBelongsToActiveGame(document.activeElement, true)) noteGamePlaytimeAction();
         }, true);
         window.addEventListener('message', event => {
+            if (event.origin !== location.origin || event.source !== document.getElementById('monopolyFrame')?.contentWindow) return;
             if (event.data && event.data.type === 'spark-playtime-action') {
                 noteGamePlaytimeAction('monopoly');
             }
@@ -7235,7 +7222,7 @@
             }
             
             try {
-                const res = await fetch(`${API_BASE_URL}/user-ranks?user_id=${user.id}`);
+                const res = await fetch(`${API_BASE_URL}/user-ranks`, { headers: { 'X-Init-Data': tg.initData } });
                 const ranks = await res.json();
                 profileRankData = ranks && typeof ranks === 'object' ? ranks : {};
                 
@@ -7279,7 +7266,7 @@
                 const resp = await fetch(`${API_BASE_URL}/game-session/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Init-Data': tg.initData },
-                    body: JSON.stringify({ game_type, new_game: !!options.newGame })
+                    body: JSON.stringify({ game_type, new_game: !!options.newGame, difficulty: options.difficulty })
                 });
                 const data = await resp.json();
                 if (data.session_token) activeSessionTokens[game_type] = data.session_token;
@@ -7342,6 +7329,11 @@
                     const synced = await syncResp.json().catch(() => null);
                     if (!syncResp.ok || !synced || !synced.ok) return false;
                     bbServerCheckpoint = synced.bb_checkpoint || checkpoint;
+                    if (Number.isInteger(synced.revision)) {
+                        bbRevision = synced.revision;
+                        bbMoveQueue = bbMoveQueue.filter(item => Number(item.move_data?.revision) >= synced.revision);
+                    }
+                    if (!bbMoveQueue.length) applyBBAuthoritativeState(synced);
                     bbMoveQueue.forEach(item => { item.session_token = started.session_token; });
                     return true;
                 } catch (error) {
@@ -7388,7 +7380,10 @@
                             break;
                         }
                         if (data && data.reason === 'invalid_session') {
-                            if (await recoverBBServerSession()) continue;
+                            if (await recoverBBServerSession()) {
+                                if (!bbMoveQueue.includes(move)) { delivered = true; break; }
+                                continue;
+                            }
                             if (bbInputLocked) stopQueue = true;
                         }
                         console.error('BB move rejected:', data && data.reason);
@@ -7398,7 +7393,7 @@
                         shouldRetry = !stopQueue;
                         break;
                     }
-                    bbMoveQueue.shift();
+                    if (bbMoveQueue[0] === move) bbMoveQueue.shift();
                     if (!bbGameEnded) saveBBState();
                 }
             } finally {
@@ -7423,7 +7418,10 @@
         }
         
         async function reportGameMove(game_type, bbMoveData) {
-            const sessionKey = (game_type === 'tower_combo') ? 'tower_best' : game_type;
+            const sessionKey = (game_type === 'saper_wins') ? 'saper_best_' + sCols :
+                (game_type === 'checkers_total' || game_type === 'checkers_wins_pve') ? 'checkers_points' :
+                (game_type === 'bb_total_games') ? 'bb_best_score' :
+                (game_type === 'tower_combo') ? 'tower_best' : game_type;
             const token = activeSessionTokens[sessionKey];
             if (!token && !(game_type === 'bb_best_score' && bbMoveData)) return;
             const move_data = bbMoveData
@@ -7461,11 +7459,15 @@
             const url = `${API_BASE_URL}/save-stat`;
             // Tournament BB shares its session with regular BB on the backend
             const sessionKey =
+                (game_type === 'saper_wins') ? 'saper_best_' + sCols :
+                (game_type === 'checkers_total' || game_type === 'checkers_wins_pve') ? 'checkers_points' :
+                (game_type === 'bb_total_games') ? 'bb_best_score' :
                 (game_type === 'tower_combo') ? 'tower_best' :
                 (game_type === 'bb_tournament_score') ? 'bb_best_score' :
                 game_type;
             const token = options.sessionToken || activeSessionTokens[sessionKey] || '';
             const payload = { game_type, score, session_token: token };
+            if (game_type.startsWith('bb_')) payload.bb_checkpoint = bbServerCheckpoint;
             if (Number.isInteger(options.statDelta)) payload.stat_delta = options.statDelta;
             if (options.achievementContext && typeof options.achievementContext === 'object') {
                 payload.achievement_context = options.achievementContext;
@@ -7497,7 +7499,7 @@
                     saveStatToCloud(game_type, Math.max(localValue, serverValue));
                 }
                 collectNewTitles(data.new_titles);
-                if (game_type !== 'tower_best') delete activeSessionTokens[sessionKey];
+                // Keep this game's token for sibling statistics and safe retries; next start replaces it.
                 return data && typeof data === 'object' ? data : true;
             } catch (error) {
                 console.error(error);
@@ -7559,7 +7561,7 @@
             // Confirm against the server before replaying the signed result.
             let profile = null;
             try {
-                const profileResp = await fetch(`${API_BASE_URL}/api/profile/${user.id}`);
+                const profileResp = await fetch(`${API_BASE_URL}/api/profile/${user.id}`, { headers: { 'X-Init-Data': tg.initData } });
                 profile = profileResp.ok ? await profileResp.json() : null;
             } catch (_) {}
 
@@ -7595,7 +7597,7 @@
             const user = tg.initDataUnsafe.user;
             if (!user) return;
             try {
-                const resp = await fetch(`${API_BASE_URL}/api/profile/${user.id}`);
+                const resp = await fetch(`${API_BASE_URL}/api/profile/${user.id}`, { headers: { 'X-Init-Data': tg.initData } });
                 if (!resp.ok) return;
                 const data = await resp.json();
                 if (!data || !data.telegram_id) return;
@@ -7697,7 +7699,8 @@
             
             if (type === 'success' || type === 'welcome') {
                 const animationFile = type === 'welcome' ? 'wave_hand.json' : 'checkmark.json';
-                toast.innerHTML = `<div class="toast-lottie" id="toastLottie"></div><span>${message}</span>`;
+                toast.innerHTML = `<div class="toast-lottie" id="toastLottie"></div><span></span>`;
+                toast.querySelector('span').textContent = String(message ?? '');
                 toastVisible = true;
                 
                 requestAnimationFrame(() => {
@@ -7712,7 +7715,8 @@
                     });
                 });
             } else {
-                toast.innerHTML = `${TOAST_ICON_ERROR}<span>${message}</span>`;
+                toast.innerHTML = `${TOAST_ICON_ERROR}<span></span>`;
+                toast.querySelector('span').textContent = String(message ?? '');
                 toastVisible = true;
                 
                 requestAnimationFrame(() => {
@@ -7892,7 +7896,7 @@
             if (!user) return;
             
             try {
-                const resp = await fetch(`${API_BASE_URL}/referral-stats?user_id=${user.id}`);
+                const resp = await fetch(`${API_BASE_URL}/referral-stats`, { headers: { 'X-Init-Data': tg.initData } });
                 const data = await resp.json();
                 
                 document.getElementById('referral-count').innerText = data.referral_count || 0;
@@ -8230,7 +8234,7 @@
                         listEl.innerHTML = `
                             <div style="padding:30px 20px; text-align:center;">
                                 <div style="font-size:15px; color:#8e8e93; margin-bottom:14px;">${t('bbModeTournamentInactive')}</div>
-                                <button class="tournament-history-btn" onclick="openTournamentHistory('bb')">${t('tournamentHistoryViewBtn')}</button>
+                                <button class="tournament-history-btn" data-spark-onclick="h16">${t('tournamentHistoryViewBtn')}</button>
                             </div>`;
                         stickyEl.classList.remove('visible');
                         return;
@@ -8625,8 +8629,8 @@
             for(let r=0;r<BOARD_SIZE;r++){const row=[];for(let c=0;c<BOARD_SIZE;c++){const cell=document.createElement('div');const isDark=(r+c)%2!==0;cell.className=`ch-cell ${isDark?'dark':'light'}`;cell.onclick=()=>onBoardClick(r,c);el.appendChild(cell);let p=null;if(isDark){if(r<3)p={color:'black',isKing:false};if(r>4)p={color:'white',isKing:false};}row.push({piece:p,el:cell});if(p){const d=document.createElement('div');d.className=`checker ${p.color}`;cell.appendChild(d);}}board.push(row);}
             saveBoardState();
             if(isOnlineGame) startCheckersTimer();
+            if(!isOnlineGame) checkersPointsReady=startGameSession('checkers_points', { difficulty: isPvE ? checkersDifficulty : 'easy' });
             if(isPvE) {
-                checkersPointsReady=startGameSession('checkers_points');
                 try { checkersAiWorker=new Worker('assets/checkers/ai-worker.js'); }
                 catch(error) { console.warn('Checkers worker unavailable:',error); }
             }
@@ -9101,15 +9105,15 @@
 
         // === BB MODE STATE ===
         // 'original' — classic infinite mode (saved score goes to users.bb_best_score)
-        // 'tournament' — same gameplay, score goes to tournament_scores with multiplier
+        // 'tournament' — same gameplay, score goes to tournament_scores
         let bbMode = 'original';
         let bbGameEnded = false; // true after game-over until next new/resumed game
         let bbRevision = 0;
         let bbInputLocked = false;
         let bbStaleServerState = null;
-        const BB_PARTNER_DEFAULT_CTA = 'https://t.me/phantomio_bot?start=spark';
+
         // Master kill-switch for the BB Tournament mode UI. Set to true to re-enable
-        // mode-select screen, segmented leaderboard switcher, x1.5 multiplier UI, etc.
+        // mode-select screen and segmented leaderboard switcher.
         // Backend code & admin bot for BB tournaments are kept untouched.
         const BB_TOURNAMENT_ENABLED = false;
 
@@ -9163,7 +9167,7 @@
             bbRevision = Number.isInteger(data.revision) ? data.revision : 0;
             const shapes = normalizedBBShapes(data.shapes);
             if (shapes) bbShapes = shapes;
-            if (Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
+            bbNextHandSeed = null;
             bbServerCheckpoint = data.bb_checkpoint || bbServerCheckpoint;
             setBBLinePoints(data.line_points);
             renderBBGrid();
@@ -9182,8 +9186,11 @@
             if (shapes && !preserveOptimisticHand) {
                 bbShapes = shapes;
                 renderBBShapeSlots();
+                // The final slot may have waited for this authoritative next hand.
+                // Detect a blocked hand now, even when the last local tray was empty.
+                if (typeof checkGameOver === 'function') void checkGameOver();
             }
-            if (!preserveOptimisticHand && Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
+            if (!preserveOptimisticHand) bbNextHandSeed = null;
             // Visual effects never defer points. Only reconcile the last acknowledged move:
             // older replies must not overwrite points from moves still waiting in the queue.
             const serverScore = Number(data.server_score);
@@ -9228,24 +9235,6 @@
                 localStorage.removeItem('bb_pending_result');
                 if (pending.stateKey) localStorage.removeItem(pending.stateKey);
             };
-
-            // A successful response can be lost after Supabase has already
-            // persisted the record. In that case the profile is enough to
-            // acknowledge the pending result without resurrecting a finished
-            // run or counting anything twice.
-            if ((pending.gameType || 'bb_best_score') === 'bb_best_score') {
-                try {
-                    const user = tg.initDataUnsafe.user;
-                    const profileResp = user && await fetch(`${API_BASE_URL}/api/profile/${user.id}`);
-                    const profile = profileResp?.ok ? await profileResp.json() : null;
-                    const persistedBest = Number(profile?.bb_best_score);
-                    if (Number.isFinite(persistedBest) && persistedBest >= Number(pending.score)) {
-                        saveStatToCloud('bb_best_score', persistedBest);
-                        clearPending();
-                        return true;
-                    }
-                } catch (_) {}
-            }
 
             bbServerCheckpoint = pending.checkpoint;
             bbMoveQueue = [];
@@ -9324,9 +9313,7 @@
 
             const state = await fetchTournamentState();
             const tournament = state.bb;
-            const vpnActive = !!state.vpn_active;
-            const cta = (tournament && tournament.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
-            const multiplier = tournament ? Number(tournament.multiplier) || 1.0 : 1.0;
+
 
             track.innerHTML = '';
             _bbModeSlides = [];
@@ -9346,7 +9333,7 @@
                         ${origResume ? `<div style="margin-top:8px;">${origResume}</div>` : ''}
                     </div>
                 </div>
-                <button class="bb-mode-play-btn" onclick="pickBBMode('original')">${t('play') || 'Play'}</button>`;
+                <button class="bb-mode-play-btn" data-spark-onclick="h139">${t('play') || 'Play'}</button>`;
             track.appendChild(origCard);
             _bbModeSlides.push({ key: 'original', clickable: true });
 
@@ -9356,14 +9343,12 @@
             tournCard.className = 'bb-mode-card tournament' + (tournament ? '' : ' disabled');
             tournCard.style.cursor = 'default';
 
-            const multBadge = (tournament && multiplier > 1.0)
-                ? `<span class="bb-mode-mult-badge">×${multiplier}${vpnActive ? (' ' + t('bbVpnActive')) : ''}</span>`
-                : '';
+            const multBadge = '';
             const inactiveText = !tournament
                 ? `<div class="bb-mode-inactive-text">${t('bbModeTournamentInactive')}</div>`
                 : '';
             const playBtnHtml = tournament
-                ? `<button class="bb-mode-play-btn tournament-cta" onclick="pickBBMode('tournament')">${t('play') || 'Play'}</button>`
+                ? `<button class="bb-mode-play-btn tournament-cta" data-spark-onclick="h140">${t('play') || 'Play'}</button>`
                 : `<button class="bb-mode-play-btn disabled">${t('bbModeTournamentInactive')}</button>`;
             const extraPills = (multBadge || tournResume)
                 ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${multBadge}${tournResume}</div>`
@@ -9516,37 +9501,12 @@
             });
         }
 
-        function openBBPartnerCta(url) {
-            try {
-                if (tg.openTelegramLink) tg.openTelegramLink(url);
-                else window.open(url, '_blank');
-            } catch (e) { window.open(url, '_blank'); }
-        }
-
         async function pickBBMode(mode) {
             bbMode = mode;
             localStorage.setItem('bb_mode_slide', mode === 'tournament' ? '1' : '0');
             if (vibrationEnabled) tg.HapticFeedback.impactOccurred('light');
 
-            // Refresh tournament state to ensure HUD is accurate
-            const state = await fetchTournamentState(true);
-            const tournament = state.bb;
-            const vpnActive = !!state.vpn_active;
-            const showMultHud = mode === 'tournament' && vpnActive && tournament && Number(tournament.multiplier) > 1.0;
-            const showHudCta  = mode === 'tournament' && !vpnActive && tournament && Number(tournament.multiplier) > 1.0;
-
-            const hud = document.getElementById('bbMultHud');
-            if (hud) {
-                if (showMultHud) {
-                    hud.textContent = `×${Number(tournament.multiplier)}`;
-                    hud.style.display = 'block';
-                } else {
-                    hud.style.display = 'none';
-                }
-            }
-            const cta = document.getElementById('bbHudVpnCta');
-            if (cta) cta.style.display = showHudCta ? '' : 'none';
-
+            await fetchTournamentState(true);
             closeBBMode();
 
             if (hasBBSave(mode)) {
@@ -9556,19 +9516,6 @@
             }
         }
 
-        function openMultPromoModal() {
-            document.getElementById('modalMultPromo').classList.add('visible');
-            if (vibrationEnabled) tg.HapticFeedback.selectionChanged();
-        }
-        function closeMultPromoModal() {
-            document.getElementById('modalMultPromo').classList.remove('visible');
-        }
-        function closeMultPromoModalAndOpenPartner() {
-            closeMultPromoModal();
-            const tInfo = (_tournamentState && _tournamentState.bb) || null;
-            const url = (tInfo && tInfo.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
-            openBBPartnerCta(url);
-        }
 
         async function resumeBB() {
             bbGameEnded = false;
@@ -9577,7 +9524,7 @@
             // When tournament mode is disabled, force original mode and hide all tournament HUD
             if (!BB_TOURNAMENT_ENABLED) {
                 bbMode = 'original';
-                const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none';
+
                 const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none';
             }
             document.getElementById('modalBBResume').classList.remove('visible');
@@ -9640,7 +9587,7 @@
                     resetBBToCurrentSession(freshSession);
                     return false;
                 }
-                const localGrid = bbGrid;
+                if (Number.isInteger(data.revision)) bbMoveQueue = bbMoveQueue.filter(item => Number(item.move_data?.revision) >= data.revision);
                 const hasPendingMoves = bbMoveQueue.length > 0;
                 if (!hasPendingMoves) {
                     applyBBAuthoritativeState(data);
@@ -9650,7 +9597,7 @@
                 setBBLinePoints(data.line_points);
                 const serverShapes = normalizedBBShapes(data.shapes);
                 if (serverShapes) bbShapes = serverShapes;
-                if (Number.isInteger(data.next_hand_seed)) bbNextHandSeed = data.next_hand_seed >>> 0;
+                bbNextHandSeed = null;
                 bbMoveQueue.forEach(item => { item.session_token = token; });
                 renderBBGrid();
                 updateBBScoreUI();
@@ -9688,13 +9635,13 @@
             spawnShapes();
             saveBBState();
         }
-        function newGameBB() {
+        async function newGameBB() {
             bbGameEnded = false;
             try { bbInitSounds(); } catch(_) {}
             if (!BB_TOURNAMENT_ENABLED) {
                 bbMode = 'original';
-                const hud = document.getElementById('bbMultHud'); if (hud) hud.style.display = 'none';
-                const cta = document.getElementById('bbHudVpnCta'); if (cta) cta.style.display = 'none';
+
+
             }
             document.getElementById('modalBBResume').classList.remove('visible');
             document.getElementById('bb-screen').classList.add('visible');
@@ -10272,7 +10219,7 @@
                     accepted && bbScore > currentTournamentBest,
                     bbScore,
                     currentTournamentBest,
-                    tResult, // {raw_score, multiplier, final_score, vpn_active} or null
+                    tResult, // {raw_score, final_score} or null
                     !accepted
                 );
             } else {
@@ -10320,124 +10267,22 @@
         function showBBGameOverModal(isRecord, score, oldBest, tournamentResult, saveFailed = false) {
             const modal = document.getElementById('bbGameOverContent');
             const overlay = document.getElementById('modalBBGameOver');
-            modal.innerHTML = '';
-
-            const isTournament = (bbMode === 'tournament');
-            const tInfo = (_tournamentState && _tournamentState.bb) || null;
-            const multiplier = (tournamentResult && tournamentResult.multiplier) ||
-                               (tInfo ? Number(tInfo.multiplier) : 1.0);
-            const finalScore = (tournamentResult && tournamentResult.final_score) || score;
-            const vpnActive = !!(tournamentResult && tournamentResult.vpn_active);
-            const showMultAnim = isTournament && vpnActive && multiplier > 1.0;
-            const cta = (tInfo && tInfo.partner_cta_url) || BB_PARTNER_DEFAULT_CTA;
-
-            // Build CTA upsell HTML for tournament mode without VPN
-            const ctaHtml = (isTournament && !vpnActive && multiplier > 1.0)
-                ? `<button class="bb-mode-cta" style="margin-top:14px; width:100%; padding:12px; background:linear-gradient(135deg,#ffa500,#ff3b30); color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;" onclick="openMultPromoModal();">${t('bbHudVpnCta')}</button>`
-                : '';
-
-            if (isRecord) {
-                if (!BBVisuals.reduced()) confetti({ particleCount: 36, spread: 70, origin: { y: 0.6 }, zIndex: 22000, disableForReducedMotion: true });
-
-                const titleKey = isTournament ? 'bbTournamentNewBest' : 'newRecord';
-                const multHtml = showMultAnim ? `
-                        <div id="bbMultLine" style="display:none; margin:6px 0 4px 0;">
-                            <span style="font-size:14px; color:#8e8e93;">×</span>
-                            <span id="bbMultValue" style="font-size:22px; font-weight:800; color:#ffa500;">${multiplier}</span>
-                        </div>
-                        <div id="bbFinalLine" style="display:none; margin-top:6px;">
-                            <div style="font-size:13px; color:#8e8e93; margin-bottom:2px;">${t('bbFinalScore')}</div>
-                            <div id="bbFinalCounter" style="font-size:36px; font-weight:800; color:#ffa500;">0</div>
-                        </div>
-                    ` : '';
-                // единый экран итога (assets/ui/result.js); число докручивает игра сама — ниже
-                SparkResult.render(modal, {
-                    game: 'bb', kind: 'record', title: t(titleKey) || t('newRecord'),
-                    value: oldBest, valueId: 'recCounter', animate: false,
-                    stats: oldBest > 0 ? [[t('best'), BBVisuals.formatNumber(oldBest)]] : [],
-                    extraHtml: multHtml + ctaHtml,
-                    primary: { text: t('playAgain'), onClick: () => { closeResult(); newGameBB(); } },
-                    secondary: window.SparkShare && !isTournament ? { html: SparkShare.buttonHtml(), onClick: () => SparkShare.record({ game: 'bb', category: 'bb_best_score' }) } : null,
-                    link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
-                });
-
-                // 1) Count up the raw score
-                const counter = document.getElementById('recCounter');
-                animateNumber(counter, oldBest, score, 900).then(async () => {
-                    if (!showMultAnim) return;
-
-                    // 2) Briefly show ×N "appearing"
-                    const multLine = document.getElementById('bbMultLine');
-                    multLine.style.display = '';
-                    multLine.style.transform = 'scale(0.5)';
-                    multLine.style.opacity = '0';
-                    multLine.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s';
-                    await new Promise(r => requestAnimationFrame(r));
-                    multLine.style.transform = 'scale(1)';
-                    multLine.style.opacity = '1';
-                    if (vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');
-                    await new Promise(r => setTimeout(r, 500));
-
-                    // 3) Reveal final and animate it from raw to final
-                    const finalLine = document.getElementById('bbFinalLine');
-                    finalLine.style.display = '';
-                    finalLine.style.opacity = '0';
-                    finalLine.style.transition = 'opacity 0.25s';
-                    await new Promise(r => requestAnimationFrame(r));
-                    finalLine.style.opacity = '1';
-                    if (!BBVisuals.reduced()) confetti({ particleCount: 24, spread: 60, origin: { y: 0.55 }, colors: ['#ffa500', '#ff3b30', '#ffd700'], zIndex: 22001, disableForReducedMotion: true });
-                    if (vibrationEnabled) tg.HapticFeedback.notificationOccurred('success');
-                    await animateNumber(document.getElementById('bbFinalCounter'), score, finalScore, 800);
-                });
-            } else {
-                const multHtml = showMultAnim ? `
-                        <div id="bbMultLine" style="display:none; margin:8px 0 4px 0;">
-                            <span style="font-size:14px; color:#8e8e93;">×</span>
-                            <span style="font-size:22px; font-weight:800; color:#ffa500;">${multiplier}</span>
-                        </div>
-                        <div id="bbFinalLine" style="display:none;">
-                            <div style="font-size:13px; color:#8e8e93;">${t('bbFinalScore')}</div>
-                            <div id="bbFinalCounter" style="font-size:30px; font-weight:800; color:#ffa500;">${BBVisuals.formatNumber(score)}</div>
-                        </div>
-                    ` : '';
-                SparkResult.render(modal, {
-                    game: 'bb', kind: 'lose',
-                    title: saveFailed ? t('recordSaveFailed') : t('recordNotBeat'),
-                    text: saveFailed ? t('recordSaveRetry') : t('tryAgain'),
-                    value: score, valueId: 'bbScoreNum',
-                    stats: [[t('best'), BBVisuals.formatNumber(oldBest)]],
-                    extraHtml: multHtml + ctaHtml,
-                    primary: { text: t('newGame'), onClick: () => { closeResult(); newGameBB(); } },
-                    link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
-                });
-
-                if (showMultAnim) {
-                    setTimeout(async () => {
-                        const multLine = document.getElementById('bbMultLine');
-                        if (!multLine) return;
-                        multLine.style.display = '';
-                        multLine.style.transform = 'scale(0.5)';
-                        multLine.style.opacity = '0';
-                        multLine.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s';
-                        await new Promise(r => requestAnimationFrame(r));
-                        multLine.style.transform = 'scale(1)';
-                        multLine.style.opacity = '1';
-                        if (vibrationEnabled) tg.HapticFeedback.impactOccurred('medium');
-                        await new Promise(r => setTimeout(r, 500));
-                        const finalLine = document.getElementById('bbFinalLine');
-                        finalLine.style.display = '';
-                        finalLine.style.opacity = '0';
-                        finalLine.style.transition = 'opacity 0.25s';
-                        await new Promise(r => requestAnimationFrame(r));
-                        finalLine.style.opacity = '1';
-                        await animateNumber(document.getElementById('bbFinalCounter'), score, finalScore, 800);
-                    }, 400);
-                }
-            }
+            const isTournament = bbMode === 'tournament';
+            SparkResult.render(modal, {
+                game: 'bb', kind: isRecord ? 'record' : 'lose',
+                title: saveFailed ? t('recordSaveFailed') : isRecord ? t('newRecord') : t('recordNotBeat'),
+                text: saveFailed ? t('recordSaveRetry') : isRecord ? '' : t('tryAgain'),
+                value: isRecord ? oldBest : score, valueId: isRecord ? 'recCounter' : 'bbScoreNum', animate: !isRecord,
+                stats: oldBest > 0 ? [[t('best'), BBVisuals.formatNumber(oldBest)]] : [],
+                primary: { text: t('playAgain'), onClick: () => { closeResult(); newGameBB(); } },
+                secondary: window.SparkShare && !isTournament && isRecord ? { html: SparkShare.buttonHtml(), onClick: () => SparkShare.record({ game: 'bb', category: 'bb_best_score' }) } : null,
+                link: { text: t('exit'), onClick: () => { closeResult(); closeGame('bb'); } },
+            });
+            if (isRecord) animateNumber(document.getElementById('recCounter'), oldBest, score, 900);
             overlay.classList.add('visible');
         }
         function saveBBState() { if(bbGameEnded) return; const state = { grid: bbGrid, score: bbScore, shapes: bbShapes, combo: bbCombo, buffer: bbComboBuffer, revision: bbRevision, nextHandSeed: bbNextHandSeed, serverCheckpoint: bbServerCheckpoint, pendingMoves: bbMoveQueue.map(item => ({ game_type: item.game_type, move_data: item.move_data })) }; localStorage.setItem(bbStateKey(), JSON.stringify(state)); bbLiveBroadcast(); }
-        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbNextHandSeed = Number.isInteger(data.nextHandSeed) ? data.nextHandSeed >>> 0 : null; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter(); bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
+        function restoreBBState() { let data=null;try{data=JSON.parse(localStorage.getItem(bbStateKey()));}catch(_){} if(!data) { initBB(); return; } bbGrid = data.grid; bbScore = data.score; bbCombo = data.combo || 0; bbComboBuffer = data.buffer || 0; bbRevision = Number.isInteger(data.revision) ? data.revision : 0; bbNextHandSeed = null; bbServerCheckpoint = data.serverCheckpoint || null; bbDisplayedScore = bbScore; if (typeof BBVisuals !== 'undefined') BBVisuals.stopCounter(); bbShapes = Array.isArray(data.shapes) ? data.shapes : []; bbMoveQueue = Array.isArray(data.pendingMoves) ? data.pendingMoves.map(item => ({ game_type: 'bb_best_score', session_token: '', move_data: item.move_data })) : []; updateBBScoreUI(); updateBBHeaderBest(); renderBBGrid(); renderBBShapeSlots(); bbLiveBroadcast(); }
         
         // --- BB LIVE STREAMING ---
         let bbIsLive = false;
@@ -10593,9 +10438,9 @@
         /* --- SUDOKU LOGIC --- */
         let sudoBoard = [], sudoSolution = [], activeDigit = null, sudoLives = 3, sudoFilled = 0; let selectedSudoDiff = 40; let currentSudoMode = 1; let sudoSessionReady = null; let sudokuResultSaving = false;
         function startSudokuCheck() { if(localStorage.getItem('sudo_state')) document.getElementById('modalSudokuResume').classList.add('visible'); else document.getElementById('modalSudoku').classList.add('visible'); }
-        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); restoreSudokuState(); sudokuResultSaving=false; sudoSessionReady=activeSessionTokens.sudoku_wins ? Promise.resolve({ session_token: activeSessionTokens.sudoku_wins }) : startGameSession('sudoku_wins').then(data => { saveSudokuState(); return data; }); }
+        function resumeSudoku() { document.getElementById('modalSudokuResume').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); restoreSudokuState(); sudokuResultSaving=false; sudoSessionReady=activeSessionTokens.sudoku_wins ? Promise.resolve({ session_token: activeSessionTokens.sudoku_wins }) : startGameSession('sudoku_wins', { difficulty: selectedSudoDiff }).then(data => { saveSudokuState(); return data; }); }
         function selectSudokuDiff(diff, btn, index) { selectedSudoDiff = diff; const glider = document.getElementById('sudokuGlider'); glider.style.transform = `translateY(${index * 100}%)`; const items = btn.parentNode.querySelectorAll('.segment-item'); items.forEach(i => i.classList.remove('active')); btn.classList.add('active'); if(vibrationEnabled) tg.HapticFeedback.selectionChanged(); }
-        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); delete activeSessionTokens.sudoku_wins; generateSudoku(selectedSudoDiff); sudokuResultSaving=false; sudoSessionReady=startGameSession('sudoku_wins').then(data => { saveSudokuState(); return data; }); }
+        function startSudoku() { document.getElementById('modalSudoku').classList.remove('visible'); document.getElementById('sudoku-screen').classList.add('visible'); beginGamePlaytime('sudoku'); delete activeSessionTokens.sudoku_wins; generateSudoku(selectedSudoDiff); sudokuResultSaving=false; sudoSessionReady=startGameSession('sudoku_wins', { difficulty: selectedSudoDiff }).then(data => { saveSudokuState(); return data; }); }
         function generateSudoku(holes) {
             if (holes === 30) currentSudoMode = 1; else if (holes === 40) currentSudoMode = 2; else currentSudoMode = 3;
             sudoBoard = Array(81).fill(0); sudoSolution = Array(81).fill(0); sudoLives = 3; sudoFilled = 0; activeDigit = null; document.querySelectorAll('.num-btn').forEach(b => { b.classList.remove('active-digit', 'disabled'); });
@@ -11777,7 +11622,7 @@
         // нажатие пересылаем обратно в iframe.
         function onMonopolyBackClick() {
             const frame = document.getElementById('monopolyFrame');
-            try { frame?.contentWindow?.postMessage({ type: 'monopoly_back_pressed' }, '*'); } catch (_) {}
+            try { frame?.contentWindow?.postMessage({ type: 'monopoly_back_pressed' }, location.origin); } catch (_) {}
         }
         const nativeBackRouter = window.SparkNativeBack.createNativeBackRouter(
             document, tg?.BackButton, onMonopolyBackClick,
@@ -11805,9 +11650,12 @@
 
         // Listen for messages from the game iframe
         window.addEventListener('message', (e) => {
+            if (e.origin !== location.origin || e.source !== document.getElementById('monopolyFrame')?.contentWindow) return;
             const data = e.data;
             if (!data || typeof data !== 'object') return;
-            if (data.type === 'monopoly_back') {
+            if (data.type === 'subscription_required') {
+                window.dispatchEvent(new CustomEvent('spark-subscription-required', { detail: data }));
+            } else if (data.type === 'monopoly_back') {
                 // Монополия просит подменить служебную кнопку «Закрыть»
                 // на «Назад» (внутренние экраны лобби). Реальной кнопкой
                 // владеет приложение — игра лежит в iframe и до Telegram
@@ -12062,7 +11910,7 @@
                         <div class="mono-room-code">${monoCodeDigits(r.code)}</div>
                         <div class="mono-room-meta">${t('monoHost')} ${r.host} · ${r.count}/${r.max}</div>
                     </div>
-                    <button class="mono-room-join" onclick="monoJoinRoomByCode('${r.code}')">${t('monoEnterRoom')}</button>
+                    <button class="mono-room-join" data-spark-onclick="h141" data-spark-room-code="${SparkSafeHTML.escape(r.code)}">${t('monoEnterRoom')}</button>
                 </div>
             `).join('');
         }
@@ -12311,8 +12159,8 @@
                     </div>
                 </div>
                 <div class="mono-rejoin-actions">
-                    <button class="mono-rejoin-dismiss" onclick="dismissMonoRejoin()">${t('monoLater')}</button>
-                    <button class="mono-rejoin-resume" onclick="resumeMonopoly()">${t('continue')}</button>
+                    <button class="mono-rejoin-dismiss" data-spark-onclick="h142">${t('monoLater')}</button>
+                    <button class="mono-rejoin-resume" data-spark-onclick="h143">${t('continue')}</button>
                 </div>
             `;
             document.body.appendChild(banner);
@@ -12424,9 +12272,9 @@
             content.innerHTML = `
                 <h2 style="margin:0 0 10px;">${t('wordle')}</h2>
                 <p style="color:#8e8e93; margin:0 0 20px;">${t('foundUnfinished')}</p>
-                <button class="btn-main" onclick="closeWordleModal(); restoreWordleGame();">${t('continue')}</button>
-                <button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="closeWordleModal(); clearWordleSave(); initWordle();">${t('newGame')}</button>
-                <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; cursor:pointer;" onclick="closeWordleModal(); closeGame('wordle');">${t('cancel')}</button>
+                <button class="btn-main" data-spark-onclick="h144">${t('continue')}</button>
+                <button class="btn-main" style="background:var(--danger); margin-top:10px;" data-spark-onclick="h145">${t('newGame')}</button>
+                <button style="margin-top:10px; background:none; border:none; color:#8e8e93; font-size:16px; cursor:pointer;" data-spark-onclick="h146">${t('cancel')}</button>
             `;
             document.getElementById('modalWordleGameOver').classList.add('visible');
         }
@@ -13448,7 +13296,7 @@
                 <div class="bb-spectator-live-dot"></div>
                 <div class="bb-spectator-name" id="bbSpectatorName">LIVE</div>
             </div>
-            <div class="back-btn" onclick="closeBBSpectator()">
+            <div class="back-btn" data-spark-onclick="h147">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </div>
         </div>
@@ -13461,7 +13309,7 @@
     <div class="privacy-screen" id="privacyScreen">
         <div class="privacy-header">
             <div class="privacy-header-title" data-i18n="privacyTitle">Политика конфиденциальности</div>
-            <button class="privacy-close-btn" type="button" aria-label="Закрыть" onclick="closePrivacyPolicy()">
+            <button class="privacy-close-btn" type="button" aria-label="Закрыть" data-spark-onclick="h148">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         </div>
@@ -13472,7 +13320,7 @@
             <h3>1. Общие положения</h3>
             <p>1.1. Настоящая Политика конфиденциальности описывает порядок сбора, использования, хранения и защиты персональных данных пользователей Telegram-бота @spark_game_bot.</p>
             <p>1.2. Использование Бота означает безоговорочное согласие пользователя с настоящей Политикой и условиями обработки его данных. В случае несогласия с этими условиями пользователь должен прекратить использование Бота.</p>
-            <p>1.3. Официальным источником новостей и обновлений является Telegram-канал <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a>.</p>
+            <p>1.3. Официальным источником новостей и обновлений является Telegram-канал <a href="https://t.me/spark_game_news" data-spark-onclick="h149">@spark_game_news</a>.</p>
             
             <h3>2. Какие данные мы собираем</h3>
             <p>Для обеспечения полноценного функционала Бот автоматически собирает и обрабатывает следующие данные:</p>
@@ -13515,10 +13363,10 @@
             
             <h3>7. Изменение Политики</h3>
             <p>7.1. Администрация оставляет за собой право вносить изменения в Политику без предварительного уведомления.</p>
-            <p>7.2. Анонсы существенных изменений публикуются в канале <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a>.</p>
+            <p>7.2. Анонсы существенных изменений публикуются в канале <a href="https://t.me/spark_game_news" data-spark-onclick="h149">@spark_game_news</a>.</p>
             
             <h3>8. Контактная информация</h3>
-            <p>По всем вопросам обращайтесь: <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a></p>
+            <p>По всем вопросам обращайтесь: <a href="https://t.me/spark_game_support" data-spark-onclick="h150">@spark_game_support</a></p>
             </div>
 
             <div data-lang-content="en" hidden>
@@ -13527,7 +13375,7 @@
                 <h3>1. General Provisions</h3>
                 <p>1.1. This Privacy Policy describes how personal data belonging to users of the @spark_game_bot Telegram bot is collected, used, stored, and protected.</p>
                 <p>1.2. By using the Bot, the user fully agrees to this Policy and to the terms governing the processing of their data. Users who disagree with these terms must stop using the Bot.</p>
-                <p>1.3. The official source of news and updates is the <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a> Telegram channel.</p>
+                <p>1.3. The official source of news and updates is the <a href="https://t.me/spark_game_news" data-spark-onclick="h149">@spark_game_news</a> Telegram channel.</p>
 
                 <h3>2. Data We Collect</h3>
                 <p>To provide its full functionality, the Bot automatically collects and processes the following data:</p>
@@ -13570,10 +13418,10 @@
 
                 <h3>7. Changes to This Policy</h3>
                 <p>7.1. The administration may amend this Policy without prior notice.</p>
-                <p>7.2. Announcements of material changes are published in the <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a> channel.</p>
+                <p>7.2. Announcements of material changes are published in the <a href="https://t.me/spark_game_news" data-spark-onclick="h149">@spark_game_news</a> channel.</p>
 
                 <h3>8. Contact Information</h3>
-                <p>For any questions, contact <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a>.</p>
+                <p>For any questions, contact <a href="https://t.me/spark_game_support" data-spark-onclick="h150">@spark_game_support</a>.</p>
             </div>
 
             <div data-lang-content="zh" hidden>
@@ -13582,7 +13430,7 @@
                 <h3>1. 一般条款</h3>
                 <p>1.1. 本隐私政策说明 @spark_game_bot Telegram 机器人如何收集、使用、存储和保护用户的个人数据。</p>
                 <p>1.2. 使用本机器人即表示用户完全同意本政策及其数据处理条款。如不同意这些条款，用户应停止使用本机器人。</p>
-                <p>1.3. 官方新闻和更新发布于 Telegram 频道 <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a>。</p>
+                <p>1.3. 官方新闻和更新发布于 Telegram 频道 <a href="https://t.me/spark_game_news" data-spark-onclick="h149">@spark_game_news</a>。</p>
 
                 <h3>2. 我们收集的数据</h3>
                 <p>为了提供完整功能，本机器人会自动收集和处理以下数据：</p>
@@ -13625,10 +13473,10 @@
 
                 <h3>7. 政策变更</h3>
                 <p>7.1. 管理方可在不事先通知的情况下修改本政策。</p>
-                <p>7.2. 重大变更将在 <a href="https://t.me/spark_game_news" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_news');">@spark_game_news</a> 频道公告。</p>
+                <p>7.2. 重大变更将在 <a href="https://t.me/spark_game_news" data-spark-onclick="h149">@spark_game_news</a> 频道公告。</p>
 
                 <h3>8. 联系方式</h3>
-                <p>如有任何问题，请联系 <a href="https://t.me/spark_game_support" onclick="event.preventDefault(); tg.openTelegramLink('https://t.me/spark_game_support');">@spark_game_support</a>。</p>
+                <p>如有任何问题，请联系 <a href="https://t.me/spark_game_support" data-spark-onclick="h150">@spark_game_support</a>。</p>
             </div>
         </div>
     </div>

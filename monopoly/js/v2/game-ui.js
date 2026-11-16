@@ -5,6 +5,8 @@
    ============================================================ */
 (function (global) {
     'use strict';
+    const safeText = global.SparkSafeHTML.escape;
+    const safeImage = global.SparkSafeHTML.image;
 
     const D = global.MonopolyDataV2;
     let E = global.Engine;          // подменяется в init(): локальный движок или сетевой
@@ -137,9 +139,9 @@
 
     /** аватар: фото из Telegram, иначе инициалы */
     function avaHtml(p) {
-        if (p.avatar) return `<img src="${p.avatar}" alt="">`;
+        if (p.avatar) return `<img src="${safeImage(p.avatar)}" alt="">`;
         const ini = p.initials || (p.name || '?').trim().slice(0, 1).toUpperCase();
-        return `<div class="ava-fallback">${ini}</div>`;
+        return `<div class="ava-fallback">${safeText(ini)}</div>`;
     }
 
     /* ---------- анимация фишки ---------- */
@@ -401,7 +403,7 @@
                 card.innerHTML = `
                     <div class="turn-badge">–</div>
                     <div class="player-avatar">${avaHtml(p)}</div>
-                    <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${p.name}</div>
+                    <div class="player-name">${p.host ? '<span class="host-star">★</span>' : ''}${safeText(p.name)}</div>
                     <div class="player-money"><i class="dsign"></i><span class="pm-val"></span></div>
                     <div class="rip-mark"><img src="assets/icons/coffin.png" alt=""> RIP</div>`;
                 card.addEventListener('pointerdown', () => snd('inspect', { volume: 0.62, minInterval: 80 }));
@@ -516,7 +518,7 @@
                          </div>`;
                 } else {
                     html = head('Аукцион') +
-                        `<div class="service-desc">${tileName(ph.tile)} на аукционе: ставка ${DS}${fmt(ph.price)}, ходит @${S.players[ph.pid]?.name || ''}.</div>`;
+                        `<div class="service-desc">${tileName(ph.tile)} на аукционе: ставка ${DS}${fmt(ph.price)}, ходит @${safeText(S.players[ph.pid]?.name || '')}.</div>`;
                 }
                 break;
             }
@@ -593,7 +595,7 @@
             case 'ended': {
                 const w = ph.winner ? S.players[ph.winner] : null;
                 html = head('Игра завершена') +
-                    `<div class="service-desc">${w ? `Победитель — <b style="color:${w.color}">${w.name}</b>! 🏆` : 'Победителя нет.'}</div>
+                    `<div class="service-desc">${w ? `Победитель — <b style="color:${w.color}">${safeText(w.name)}</b>! 🏆` : 'Победителя нет.'}</div>
                      <div class="service-actions">
                         <button class="btn btn-primary" id="endExitBtn">Выйти в лобби</button>
                      </div>`;
@@ -821,7 +823,7 @@
                 .map(id => ({ p: S.players[id], a: assetsOf(id) }))
                 .sort((x, y) => y.a - x.a)
                 .map(r => `<div class="mi-row">
-                    <span class="mi-name" style="color:${r.p.color}">${r.p.name}</span>
+                    <span class="mi-name" style="color:${r.p.color}">${safeText(r.p.name)}</span>
                     <span>${r.p.alive ? '<i class="dsign"></i>' + fmt(r.a) : '⚰️'}</span></div>`)
                 .join('');
             wrap.querySelector('.mi-match').innerHTML = `
@@ -1007,9 +1009,9 @@
     function addLog({ pid, text }) {
         const d = document.createElement('div');
         d.className = 'msg';
-        d.innerHTML = text
+        d.innerHTML = safeText(text)
             .replace(/\*\*(.+?)\*\*/g, '<span class="prop">$1</span>')
-            .replace(/@(\S+)/g, (m, n) => nameSpan(n))
+            .replace(/@(\S+)/g, (m, n) => nameSpan(n, true))
             .replace(/\$\s?([\d\s\u00a0]+)/g, '<span class="money"><i class="dsign"></i>$1</span>');
         if (pid && E.S.players[pid]) d.innerHTML = nameSpan(E.S.players[pid].name) + ' ' + d.innerHTML;
         appendChatMessage(d);
@@ -1059,20 +1061,21 @@
         }
     }
 
-    function nameSpan(n) {
-        const p = Object.values(E.S.players).find(x => x.name === n);
-        return `<span class="pname" style="color:${p ? p.color : '#ccc'}">${n}</span>`;
+    function nameSpan(n, encoded = false) {
+        const p = Object.values(E.S.players).find(x => (encoded ? safeText(x.name) : x.name) === n);
+        return `<span class="pname" style="color:${p ? p.color : '#ccc'}">${encoded ? n : safeText(n)}</span>`;
     }
     function addUserMsg(pid, text, dmTo) {
         const p = E.S.players[pid];
+        if (!p) return;
         const d = document.createElement('div');
         d.className = 'msg usermsg';
         d.dataset.author = pid;
-        d.innerHTML = `<span class="nick-pill" style="--nc:${p.color}">${p.name}</span>
-            <span class="utext">${dmTo ? `<span class="dm-tag">лично для ${E.S.players[dmTo].name}:</span>` : ''}${emo(esc(text))}</span>`;
+        d.innerHTML = `<span class="nick-pill" style="--nc:${p.color}">${safeText(p.name)}</span>
+            <span class="utext">${dmTo ? `<span class="dm-tag">лично для ${safeText(E.S.players[dmTo]?.name)}:</span>` : ''}${emo(esc(text))}</span>`;
         appendChatMessage(d);
     }
-    function esc(s) { return s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+    function esc(s) { return safeText(s); }
     /** Эмодзи в сообщениях — картинками, чтобы вид был одинаковым везде.
         Вызывается только после esc(), поэтому чужую разметку не пропустит. */
     function emo(html) { return global.Emoji ? global.Emoji.render(html) : html; }

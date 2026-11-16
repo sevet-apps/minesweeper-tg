@@ -5,6 +5,8 @@
    ============================================================ */
 (function (global) {
     'use strict';
+    const safeText = global.SparkSafeHTML.escape;
+    const safeImage = global.SparkSafeHTML.image;
 
     const TITLES = ['Новичок', 'Арендатор', 'Риелтор', 'Домовладелец', 'Инвестор',
                     'Застройщик', 'Банкир', 'Магнат', 'Монополист', 'Легенда'];
@@ -20,7 +22,7 @@
     const esc = s => String(s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
     function avatar(p) {
-        if (p && p.avatar) return `<img src="${p.avatar}" alt="">`;
+        if (p && p.avatar) return `<img src="${safeImage(p.avatar)}" alt="">`;
         const ini = (p && (p.initials || (p.name || '?').slice(0, 1))) || '?';
         return `<span>${esc(ini).toUpperCase()}</span>`;
     }

@@ -40,7 +40,10 @@
                     headers,
                 });
                 const body = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(body.error || 'network_error');
+                if (!response.ok) {
+                    if (body.error === 'subscription_required') parent.postMessage({type:'spark-subscription-required',detail:body},location.origin);
+                    throw new Error(body.error || 'network_error');
+                }
                 return body;
             } catch (error) {
                 /* Ошибка API является окончательным ответом сервера. На следующий

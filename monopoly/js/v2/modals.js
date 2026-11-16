@@ -5,6 +5,8 @@
    ============================================================ */
 (function (global) {
     'use strict';
+    const safeText = global.SparkSafeHTML.escape;
+    const safeImage = global.SparkSafeHTML.image;
 
     const D = global.MonopolyDataV2;
     const fmt = n => n.toLocaleString('ru-RU');
@@ -190,9 +192,9 @@
         const card = openAt(`
             <div class="pm-card" style="--pc:${p.color}">
                 <div class="pm-ava">${p.avatar
-                    ? `<img src="${p.avatar}" alt="">`
-                    : `<div class="ava-fallback">${p.initials || (p.name || '?').slice(0,1).toUpperCase()}</div>`}</div>
-                <div class="pm-name">${p.name}</div>
+                    ? `<img src="${safeImage(p.avatar)}" alt="">`
+                    : `<div class="ava-fallback">${safeText(p.initials || (p.name || '?').slice(0,1).toUpperCase())}</div>`}</div>
+                <div class="pm-name">${safeText(p.name)}</div>
                 <div class="pm-money"><i class="dsign"></i>${fmt(p.money)}</div>
             </div>
             <div class="pm-menu">${items}</div>`, anchorRect, 'player-menu', anchorEl);
@@ -237,7 +239,7 @@
             close();
             /* в меню монополии, а не в лобби приложения */
             if (global.Lobby && global.Lobby.exitToLobby) global.Lobby.exitToLobby();
-            else try { parent.postMessage({ type: 'monopoly_exit' }, '*'); } catch (e) {}
+            else try { parent.postMessage({ type: 'monopoly_exit' }, location.origin); } catch (e) {}
         });
     }
 

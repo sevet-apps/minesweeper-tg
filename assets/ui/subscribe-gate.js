@@ -48,7 +48,7 @@
     function avatar(channel) {
         const letter = esc((channel.title || '?').trim().charAt(0).toUpperCase() || 'S');
         return channel.photo
-            ? `<span class="sg-ava"><img src="${esc(channel.photo)}" alt="" onerror="this.parentNode.classList.add('is-letter');this.remove()"><b>${letter}</b></span>`
+            ? `<span class="sg-ava"><img src="${esc(channel.photo)}" alt="" data-spark-onerror="h151"><b>${letter}</b></span>`
             : `<span class="sg-ava is-letter"><b>${letter}</b></span>`;
     }
 

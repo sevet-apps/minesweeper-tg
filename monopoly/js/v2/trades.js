@@ -6,6 +6,8 @@
    ============================================================ */
 (function (global) {
     'use strict';
+    const safeText = global.SparkSafeHTML.escape;
+    const safeImage = global.SparkSafeHTML.image;
 
     const D = global.MonopolyDataV2;
     const fmt = n => n.toLocaleString('ru-RU');
@@ -158,7 +160,7 @@
                     <div class="tp-total">Общая стоимость <span class="dots"></span> ${DS}${fmt(total([...c.give], deal.giveMoney))}</div>
                 </div>
                 <div class="tp-col">
-                    <div class="tp-who"><span class="pname" style="color:${other.color}">${other.name}</span> отдаст</div>
+                    <div class="tp-who"><span class="pname" style="color:${other.color}">${safeText(other.name)}</span> отдаст</div>
                     ${listHtml([...c.take])}
                     <label class="tp-money">Наличные
                         <input id="tpTakeMoney" type="number" inputmode="numeric" min="0" max="${other.money}" step="1" value="${deal.takeMoney || ''}" placeholder="0">
@@ -232,7 +234,7 @@
             <div class="tp-head"><span class="tp-title">Договор</span><span class="tp-timer" id="tpTimer">${secs}</span></div>
             <div class="tp-cols">
                 <div class="tp-col">
-                    <div class="tp-who"><span class="pname" style="color:${from.color}">${from.name}</span> предлагает</div>
+                    <div class="tp-who"><span class="pname" style="color:${from.color}">${safeText(from.name)}</span> предлагает</div>
                     ${listHtml(deal.giveTiles)}
                     ${deal.giveMoney ? `<div class="tp-row"><span>Наличные</span><span class="dots"></span><span>${DS}${fmt(deal.giveMoney)}</span></div>` : ''}
                     <div class="tp-total">Общая стоимость <span class="dots"></span> ${DS}${fmt(total(deal.giveTiles, deal.giveMoney))}</div>

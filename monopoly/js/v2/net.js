@@ -29,8 +29,14 @@
     let lastPhase = null;      // чтобы интерфейс мог пересчитать кнопки после залога
 
     function connect(url, auth) {
+        let visitId = '';
+        try { visitId = global.parent.SparkVisitId || global.SparkVisitId || ''; } catch (_) {}
+        auth = { ...auth, visitId };
         sock = global.io(url + '/mono2', { auth, transports: ['websocket', 'polling'] });
 
+        sock.on('subscription_required', data => {
+            try { parent.postMessage({ type: 'subscription_required', ...data }, location.origin); } catch (_) {}
+        });
         sock.on('m2:state', st => {
             Object.assign(S, st);
             emit('state');

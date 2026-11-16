@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-liquid-glass-available="false">
 <head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-mvaf70gfx6Ak5Ty+yWmFWYhh6L51wq0l2fi63ZbwbKw=' 'sha256-nP29b/BKTz/r7sOUFLXQUJkaWWATzg/B3pCSZRfjAKs=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Монополия — Spark Games</title>
@@ -206,6 +207,7 @@ window.DICE_SIZE = 1.0;
   </div>
 </div>
 
+<script src="../assets/ui/safe-html.js?v=20261116"></script>
 <script src="js/v2/i18n.js?v=20261003"></script>
 <script src="libs/three.min.js"></script>
 <script src="libs/cannon.min.js"></script>
@@ -220,15 +222,15 @@ window.DICE_SIZE = 1.0;
 <script src="js/scene/SceneManager.js"></script>
 <script src="js/scene/Dice.js"></script>
 <script src="js/v2/engine.js"></script>
-<script src="js/v2/net.js"></script>
+<script src="js/v2/net.js?v=20261117-security"></script>
 <script src="js/v2/dice-dock.js"></script>
-<script src="js/v2/modals.js"></script>
-<script src="js/v2/trades.js"></script>
+<script src="js/v2/modals.js?v=20261117-security"></script>
+<script src="js/v2/trades.js?v=20261117-security"></script>
 <script src="js/v2/emoji.js"></script>
-<script src="js/v2/rating-ui.js"></script>
-<script src="js/v2/collection-ui.js?v=20261018"></script>
-<script src="js/v2/game-ui.js"></script>
-<script src="js/v2/lobby.js?v=20261021"></script>
+<script src="js/v2/rating-ui.js?v=20261117-security"></script>
+<script src="js/v2/collection-ui.js?v=20261117-security"></script>
+<script src="js/v2/game-ui.js?v=20261117-security"></script>
+<script src="js/v2/lobby.js?v=20261117-security"></script>
 <script>
     if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
     const reportPlaytimeAction = () => {
