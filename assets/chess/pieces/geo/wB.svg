@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><!-- Geo set: shapes and colours drawn for Spark. --><g fill="#7a8494" stroke="#7a8494" stroke-width="3.400" stroke-linejoin="round"><rect x="23" y="77" width="54" height="10" rx="3.400"/><rect x="33" y="62" width="34" height="6" rx="3"/><path d="M35.500 77V45a14.500 23 0 0 1 29 0v32z"/><circle cx="50" cy="14.500" r="5"/></g><g fill="#bfc7d3" stroke="#bfc7d3" stroke-width="0"><rect x="23" y="77" width="54" height="10" rx="3.400"/></g><g fill="#f8f9fb"><path d="M35.500 77V45a14.500 23 0 0 1 29 0v32z"/><circle cx="50" cy="14.500" r="5"/></g><g fill="#bfc7d3" stroke="#bfc7d3" stroke-width="0"><path d="M58.500 26.500 46.500 43.500" fill="none" stroke-width="4.400" stroke-linecap="round"/><rect x="33" y="62" width="34" height="6" rx="3"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+<g stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="50" cy="14" r="5" fill="#FFF6DF" stroke="#7C8B88"/>
+<path d="M50 23L73 48L50 69L27 48Z" fill="#FFF6DF" stroke="#7C8B88"/>
+<path d="M50 23L73 48L50 69V53L59 45L50 35Z" fill="#D3DCCC"/>
+<path d="M64 33L49 49" fill="none" stroke="#698680" stroke-width="4.5" stroke-linecap="square"/>
+<path d="M42 68H58L67 80H33Z" fill="#FFF6DF" stroke="#7C8B88"/>
+<rect x="24" y="81" width="52" height="7" rx="1.5" fill="#FFF6DF" stroke="#7C8B88"/>
+</g>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+<path d="M50 5 V24 M42.5 12 H57.5" fill="none" stroke="#29292B" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M50 20 C40 20 36 29 40 39 L50 60 L60 39 C64 29 60 20 50 20 Z" fill="#F7EBDD" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M53 21 C62 23 63 30 60 39 L50 60 L50 48 Q55 32 53 21 Z" fill="#E8D7C3" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M50 20 C40 20 36 29 40 39 L50 60 L60 39 C64 29 60 20 50 20 Z" fill="none" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M50 59 C43 45 39 30 27 27 C14 23 5 34 8 47 Q10 58 23 65 L27 73 Q50 68 73 73 L77 65 Q90 58 92 47 C95 34 86 23 73 27 C61 30 57 45 50 59 Z" fill="#F7EBDD" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M73 28 C88 24 95 35 92 47 Q90 58 77 65 L73 73 L64 71 Q67 64 75 57 Q86 44 82 35 Q79 30 73 28 Z" fill="#E8D7C3" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M13 46 Q11 34 23 31 Q30 30 34 34 Q22 30 17 38 Q15 42 15 48 Z" fill="#FFF8EE" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M50 59 C43 45 39 30 27 27 C14 23 5 34 8 47 Q10 58 23 65 L27 73 Q50 68 73 73 L77 65 Q90 58 92 47 C95 34 86 23 73 27 C61 30 57 45 50 59 Z" fill="none" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M50 59 V69" fill="none" stroke="#29292B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M23 65 Q50 57 77 65 L73 75 Q50 69 27 75 Z" fill="#F7EBDD" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M63 63 L77 65 L73 75 L63 72 Z" fill="#E8D7C3" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M23 65 Q50 57 77 65 L73 75 Q50 69 27 75 Z" fill="none" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M27 75 Q50 68 73 75 L77 85 Q50 94 23 85 Z" fill="#F7EBDD" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M23 85 Q50 76 77 85 Q50 94 23 85 Z" fill="#E8D7C3" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M27 75 Q50 68 73 75 L77 85 Q50 94 23 85 Z" fill="none" stroke="#29292B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="50" cy="85" rx="27" ry="5.5" fill="#F7EBDD" stroke="#29292B" stroke-width="2"/>
+</svg>

@@ -118,7 +118,7 @@
 
     /* ---------- наборы фигур ----------
        Набор выбирают в настройках партии; его видит только сам игрок. */
-    const PIECE_SETS = Object.freeze(['classic', 'soft', 'line', 'geo', 'glitter']);
+    const PIECE_SETS = Object.freeze(['classic', 'soft', 'retro', 'geo', 'pixel', 'royal']);
     function pieceSet() { return PIECE_SETS.includes(settings.pieces) ? settings.pieces : 'classic'; }
 
     /* ---------- скины доски ----------
@@ -427,7 +427,6 @@
         screen.querySelectorAll('[data-ref]').forEach(el => { refs[el.dataset.ref] = el; });
         // искры блёсток: белые и золотые плитки, по две разных — слои мерцают вразнобой
         for (const [name, seed, color] of [['--gl-a', 11, '#ffffff'], ['--gl-b', 47, '#ffffff'], ['--gl-ga', 23, '#ffe7a8'], ['--gl-gb', 71, '#fff4d6']]) screen.style.setProperty(name, sparkleTile(seed, color));
-        if (pieceSet() !== 'classic') screen.dataset.pieces = pieceSet();
         fx = window.SparkChessFx?.create({
             refs: () => refs, view, sqXY, tf, haptic, tempo, reduced: REDUCED_MOTION,
             sound: (name, volume, delay, rate) => Sound.play(name, volume, delay, rate),
@@ -536,23 +535,17 @@
         el.className = 'cs-pc';
         el.dataset.code = code;
         el.innerHTML = '<i></i>';
-        el.style.setProperty('--tw', (Math.random() * 3).toFixed(2));   // у каждой фигуры блёстки мерцают в своём ритме
         paintPiece(el);
         el.style.transform = sqTf(sq);
         refs.pieces.appendChild(el);
         return el;
     }
-    /** Картинка фигуры из текущего набора; она же — маска для искр набора «Блёстки». */
     function paintPiece(el) {
-        const image = `url('${pieceUrl(el.dataset.code)}')`;
-        el.firstChild.style.backgroundImage = image;
-        el.style.setProperty('--pc', image);
+        el.firstChild.style.backgroundImage = `url('${pieceUrl(el.dataset.code)}')`;
     }
     /** Набор фигур сменили в настройках: перекрашиваем доску и всё, где фигуры нарисованы. */
     function applyPieces() {
         if (!screen) return;
-        const set = pieceSet();
-        if (set === 'classic') delete screen.dataset.pieces; else screen.dataset.pieces = set;
         for (const el of view.els.values()) paintPiece(el);
         if (game) { renderPlayers(); renderMoveList(); renderCoach(); }
     }
@@ -3490,9 +3483,10 @@
         const cells = Array.from({ length: 8 }, (_, i) => `<span class="${(i + Math.floor(i / 4)) % 2 ? 'd' : ''}" style="--x:${i % 4};--y:${Math.floor(i / 4)}"></span>`).join('');
         return PIECE_SETS.map(set => {
             const pieces = ['bK', 'bQ', 'bN', 'bR', 'wR', 'wN', 'wQ', 'wK'].map((code, i) => `<i class="cs-set-piece ${code[0]}" style="left:${(i % 4) * 25}%;top:${i < 4 ? 0 : 50}%;background-image:url('${pieceUrl(code, set)}')"></i>`).join('');
+            const note = set === 'soft' ? `<small>${esc(tr('set_soft_note'))}</small>` : '';
             return `<button type="button" class="cs-skin cs-set${set === current ? ' is-active' : ''}" data-set-pick="${set}" aria-pressed="${set === current}">
                 <span class="cs-skin-board"><span class="cs-skin-grid"><span class="cs-skin-cells">${cells}</span>${pieces}</span></span>
-                <b>${esc(tr(`set_${set}`))}</b></button>`;
+                <b>${esc(tr(`set_${set}`))}</b>${note}</button>`;
         }).join('');
     }
     function onSetClick(event) {

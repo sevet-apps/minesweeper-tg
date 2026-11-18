@@ -115,9 +115,12 @@
         async function loadFigure(url) {
             const text = await (await fetch(url)).text();
             const inner = Math.round(FIG_N / FIG_PAD);
-            // у SVG фигур нет своих размеров — задаём их, чтобы все браузеры рисовали одинаково
-            const svg = text.replace(/<svg\b/, `<svg width="${inner}" height="${inner}" preserveAspectRatio="none"`);
-            const blob = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+            // У SVG из разных наборов могут быть свои размеры. Заменяем их перед отрисовкой.
+            const svg = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement;
+            svg.setAttribute('width', inner);
+            svg.setAttribute('height', inner);
+            svg.setAttribute('preserveAspectRatio', 'none');
+            const blob = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
             try {
                 const img = new Image();
                 img.src = blob;

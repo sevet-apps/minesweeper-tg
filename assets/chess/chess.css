@@ -699,6 +699,10 @@ canvas.cs-morph:not(#_):not(#__):not(#___) { position: absolute; left: -15%; top
 .cs-skin-piece.b { left: 75%; top: 0; }
 .cs-skin b { display: -webkit-box; width: 100%; margin-top: 7px; text-align: center; font-size: 13px; font-weight: 700; line-height: 1.18; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .cs-skin small { display: block; width: 100%; margin-top: 2px; text-align: center; font-size: 11px; font-weight: 600; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-skin.cs-set { display: flex; flex-direction: column; align-items: center; }
+.cs-set b, .cs-set small { width: calc(100% + 10px); }
+.cs-set b { font-size: clamp(12px, 3.5vw, 13px); }
+.cs-set small { white-space: normal; overflow-wrap: anywhere; }
 .cs-skin.is-locked .cs-skin-board { filter: saturate(.55) brightness(.92); }
 .cs-skin.is-locked::after { content: ''; position: absolute; top: 12px; left: 14px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0, 0, 0, .55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / 12px no-repeat; }
 .cs-settings-label { margin: 20px 4px 10px; font-size: 13px; font-weight: 700; color: var(--ui-muted); text-align: left; }
@@ -1013,7 +1017,7 @@ body.desktop #modalChess.is-full .ui-mode-panel > .ui-sheet-heading { padding-to
 #modalChess .cs-room-tc small { margin-top: 1px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; text-transform: lowercase; opacity: .8; }
 #modalChess .ck-room-join { margin-left: 0; }
 
-/* ---------- блёстки: доска и фигуры ----------
+/* ---------- блёстки на доске ----------
    Искры — плитки-звёздочки (--gl-a, --gl-b задаёт приложение). Три слоя разного
    шага проявляются и гаснут в разном ритме: получается живое мерцание, а
    анимируется только прозрачность слоёв. */
@@ -1030,12 +1034,8 @@ body.desktop #modalChess.is-full .ui-mode-panel > .ui-sheet-heading { padding-to
 /* Плитки выбора: на досках с блёстками искры видны и в превью. */
 .cs-skin[data-skin="stardust"] .cs-skin-grid::before, .cs-skin[data-skin="rosegold"] .cs-skin-grid::before { content: ''; position: absolute; inset: 0; z-index: 1; background: var(--gl-a) 0 0 / 50% 100%; pointer-events: none; }
 .cs-skin[data-skin="rosegold"] .cs-skin-grid::before { background-image: var(--gl-ga); }
-/* Набор «Блёстки»: искры по силуэту каждой фигуры (маска — её же картинка), два слоя в противофазе. */
-#chess-screen[data-pieces="glitter"] .cs-pc > i::before, #chess-screen[data-pieces="glitter"] .cs-pc > i::after { content: ''; position: absolute; inset: 0; -webkit-mask: var(--pc) center / 100% 100% no-repeat; mask: var(--pc) center / 100% 100% no-repeat; pointer-events: none; animation: csGlitter 2.9s ease-in-out infinite; animation-delay: calc(var(--tw, 0) * -1s); }
-#chess-screen[data-pieces="glitter"] .cs-pc > i::before { background: var(--gl-a) 20% 10% / 62% 62%; }
-#chess-screen[data-pieces="glitter"] .cs-pc > i::after { background: var(--gl-b) 70% 60% / 78% 78%; animation-delay: calc(var(--tw, 0) * -1s - 1.45s); }
-body.lite-mode .cs-glitter i, body.lite-mode #chess-screen[data-pieces="glitter"] .cs-pc > i::before, body.lite-mode #chess-screen[data-pieces="glitter"] .cs-pc > i::after { animation: none; opacity: .6; }
-@media (prefers-reduced-motion: reduce) { .cs-glitter i, #chess-screen[data-pieces="glitter"] .cs-pc > i::before, #chess-screen[data-pieces="glitter"] .cs-pc > i::after { animation: none; opacity: .6; } }
+body.lite-mode .cs-glitter i { animation: none; opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .cs-glitter i { animation: none; opacity: .6; } }
 /* Плитки наборов фигур в настройках. */
 .cs-set-piece { position: absolute; width: 25%; height: 50%; background: center / 100% 100% no-repeat; filter: drop-shadow(0 0 var(--cs-rim-size, 0px) var(--cs-rim, transparent)) drop-shadow(0 1px 1px rgba(0, 0, 0, .22)); }
 .cs-set-piece.b { --cs-rim: var(--cs-rim-b, transparent); }
