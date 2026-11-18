@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-liquid-glass-available="false">
 <head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-DTB5WYOf6onqrPtcX1RL5Cdu4VACD6uKOU0FlZyK5cw=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-8WAGO5NU80wDIaid39pJmRSIEWxQQuQlo7DQoCUb968=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
@@ -1426,6 +1426,12 @@
         .profile-favorite-label { grid-column: 1 / -1; margin-bottom: 5px; color: #8e8e93; font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
         .profile-favorite-name { font-size: 15px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .profile-favorite-time { color: #8e8e93; font-size: 12px; white-space: nowrap; }
+        .player-admin-entry { grid-template-columns: 42px minmax(0, 1fr) 18px; color: var(--ui-text); text-align: left; cursor: pointer; font: inherit; }
+        .player-admin-entry[hidden] { display: none; }
+        .player-admin-entry .profile-favorite-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+        .player-admin-entry-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--ui-accent); background: var(--ui-accent-soft); }
+        .player-admin-entry-icon svg { width: 23px; height: 23px; }
+        .player-admin-entry-chevron { width: 18px; color: var(--ui-muted); }
 
         .profile-segment {
             --profile-tab-progress: 0;
@@ -3593,6 +3599,7 @@
     <script src="assets/ui/guide.js?v=2026110804" defer></script>
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
+    <script src="assets/ui/player-presence.js?v=20261118"></script>
     <script src="assets/block-blast/hand.js?v=20261025"></script>
     <script src="assets/block-blast/motion.js?v=20261025"></script>
     <script src="assets/block-blast/picker.js?v=20261026"></script>
@@ -4103,6 +4110,11 @@
                 <span class="profile-selected-title-chevron" aria-hidden="true">›</span>
             </button>
             <p id="user-id" style="color:#8e8e93; margin:5px 0 20px;">@username</p>
+            <button class="profile-favorite player-admin-entry" id="playerAdminEntry" type="button" hidden data-i18n-skip>
+                <span class="player-admin-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M5 18v-4m5 4V9m5 9v-6m5 6V5"/></svg></span>
+                <span class="profile-favorite-copy"><strong>Сводка игроков</strong><span class="profile-favorite-time">Активность и матчи</span></span>
+                <svg class="player-admin-entry-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            </button>
             <div class="profile-favorite" id="profileFavorite">
                 <img class="profile-favorite-icon" id="profileFavoriteIcon" src="assets/game-icons/minesweeper.png" alt="">
                 <div class="profile-favorite-copy">
@@ -4297,6 +4309,7 @@
         </div> 
     </div>
     <div id="chess-screen" class="game-overlay" data-i18n-skip></div>
+    <section id="playerAdminScreen" class="game-overlay pa" role="dialog" aria-modal="true" aria-label="Сводка игроков" data-i18n-skip hidden></section>
     <div id="nardy-screen" class="game-overlay" data-i18n-skip></div>
     <div id="bb-screen" class="game-overlay"> <div class="game-top-bar bb-top-bar"> <div class="bb-tb-row"> <div class="back-btn" data-spark-onclick="h67"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span data-i18n="menu">Меню</span></div> <div class="bb-best"><span id="bbBestScore">0</span><span data-i18n="best">Best</span></div><button id="bbMaterialButton" class="bb-style-button" type="button" aria-label="Настройки Блок Бласта" data-spark-onclick="h68"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button> </div> <div class="bb-tb-row bb-tb-row2"> <div id="bbComboBar" class="bb-combo-bar"><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div><div class="bb-combo-seg"></div></div><span id="bbComboLabel" class="bb-combo-label"></span> </div> </div> <div class="bb-game-container">  <div class="bb-score-box" id="bbScore">0</div> <div id="bbGrid" class="bb-grid"></div> <div class="bb-footer"> <div class="bb-shape-container" id="shape0"></div> <div class="bb-shape-container" id="shape1"></div> <div class="bb-shape-container" id="shape2"></div> </div> </div> </div>
     
@@ -4840,6 +4853,7 @@
                 }, 1500);
             }
         });
+        const playerPresence = window.SparkPlayerPresence?.create(socket);
         
         let onlineRoomCode = null;
         let onlineMyColor = null; // Для шашек
@@ -6513,7 +6527,7 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
             if(t==='games') { document.getElementById('view-games').classList.add('active'); scheduleTitleRewardCheck(420, true); }
             else if(t==='leaderboard') document.getElementById('view-leaderboard').classList.add('active'); 
-            else { document.getElementById('view-profile').classList.add('active'); loadProfile(); }
+            else { document.getElementById('view-profile').classList.add('active'); loadProfile(); initPlayerAdminEntry(); }
             
             if(vibrationEnabled) tg.HapticFeedback.selectionChanged();
         }
@@ -6541,6 +6555,30 @@
             ready.catch(() => gameModuleFiles.delete(name));
             gameModuleFiles.set(name, ready);
             return ready;
+        }
+        function initPlayerAdminEntry() {
+            const user = tg.initDataUnsafe?.user;
+            if (String(user?.id) !== '1482228376' || !tg.initData) return;
+            const entry = document.getElementById('playerAdminEntry');
+            if (entry.dataset.checking || !entry.hidden) return;
+            entry.dataset.checking = '1';
+            const auth = () => ({ 'X-Init-Data': tg.initData, 'X-Spark-Visit': window.SparkVisitId || '' });
+            const endpoint = `${API_BASE_URL}/api/admin/players`;
+            fetch(`${endpoint}/access`, { headers: auth(), cache: 'no-store' }).then(async response => {
+                if (!response.ok || (await response.json()).allowed !== true) return;
+                entry.hidden = false;
+                entry.onclick = async () => {
+                    if (entry.disabled) return;
+                    entry.disabled = true;
+                    try {
+                        await loadGameModuleFiles('player-admin', 'assets/ui/', '20261118', 'player-admin.css', ['player-admin.js']);
+                        window.SparkPlayerAdmin.open({ endpoint, auth, entry, haptic: () => {
+                            if (vibrationEnabled) tg.HapticFeedback?.selectionChanged?.();
+                        } });
+                    } catch (_) { showToast('Не удалось открыть сводку', 'error'); }
+                    finally { entry.disabled = false; }
+                };
+            }).catch(() => {}).finally(() => { delete entry.dataset.checking; });
         }
         const CHESS_VERSION = '20261118';
         let chessLoading = null;
@@ -6825,11 +6863,13 @@
             }
             flushGamePlaytime(true);
             activePlaytime = { game, lastActionAt: null, pendingMs: 0 };
+            playerPresence?.setGame(game);
         }
         function stopGamePlaytime(game) {
             if (!activePlaytime || (game && activePlaytime.game !== game)) return;
             flushGamePlaytime(true);
             activePlaytime = null;
+            playerPresence?.setGame(null);
         }
         function playtimeSnapshot() {
             const totals = readPlaytime();
@@ -13328,6 +13368,7 @@
                 <li><b>Игровая статистика:</b> результаты и прогресс в играх, история матчей, количество набранных очков.</li>
                 <li><b>Данные для турниров:</b> реквизиты, предоставляемые пользователем по его личной инициативе для получения призов.</li>
                 <li><b>Технические данные:</b> метаданные сообщений (дата и время запросов, нажатия кнопок).</li>
+                <li>Для статистики и диагностики Spark сохраняет сведения о запусках приложения, смене игр, состоянии соединения, участниках матчей и служебных данных inline-команд. Журнал событий за последние 35 дней доступен владельцу Spark.</li>
             </ul>
             
             <h3>3. Цели сбора и использования данных</h3>
@@ -13383,6 +13424,7 @@
                     <li><b>Game statistics:</b> game results and progress, match history, and scores earned.</li>
                     <li><b>Tournament data:</b> payment details voluntarily supplied by the user for the purpose of receiving prizes.</li>
                     <li><b>Technical data:</b> message metadata, including the date and time of requests and button presses.</li>
+                    <li>For statistics and diagnostics, Spark records app launches, game changes, connection status, match participants and metadata about inline commands. The Spark owner can view the event log for the last 35 days.</li>
                 </ul>
 
                 <h3>3. Purposes of Data Collection and Use</h3>
@@ -13438,6 +13480,7 @@
                     <li><b>游戏统计：</b>游戏结果与进度、对局历史和获得的分数。</li>
                     <li><b>锦标赛数据：</b>用户为领取奖金而自愿提供的收款信息。</li>
                     <li><b>技术数据：</b>消息元数据，包括请求和点击按钮的日期及时间。</li>
+                    <li>为进行统计和诊断，Spark 会记录应用启动、游戏切换、连接状态、对局参与者及行内指令的元数据。Spark 所有者可以查看最近 35 天的事件日志。</li>
                 </ul>
 
                 <h3>3. 收集和使用数据的目的</h3>
