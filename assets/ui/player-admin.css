@@ -1,26 +1,29 @@
 /* Player overview uses Spark's native overlay, palette and press feedback. */
 #playerAdminScreen {
-    --pa-hero-a: #06469f;
-    --pa-hero-b: #066cdf;
-    --pa-action-a: #0056c9;
-    --pa-action-b: #006ce3;
-    --pa-bar: #0566d8;
+    --pa-sky: #69beff;
+    --pa-sky-text: #092742;
+    --pa-action: #e4f2ff;
+    --pa-bar: #0a67ad;
+    --pa-chart: #3389d0;
     --pa-green: #16865e;
     --pa-amber: #c58031;
+    --pa-safe-top: calc(max(var(--safe-top, 0px), var(--tg-safe-area-inset-top, 0px)) + var(--tg-content-safe-area-inset-top, 0px));
+    --pa-safe-bottom: calc(max(var(--safe-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px)) + var(--tg-content-safe-area-inset-bottom, 0px));
+    padding-left: calc(16px + max(env(safe-area-inset-left, 0px), var(--tg-safe-area-inset-left, 0px)) + var(--tg-content-safe-area-inset-left, 0px));
+    padding-right: calc(16px + max(env(safe-area-inset-right, 0px), var(--tg-safe-area-inset-right, 0px)) + var(--tg-content-safe-area-inset-right, 0px));
     background: var(--ui-bg);
     color: var(--ui-text);
     font-family: var(--ui-font);
     touch-action: pan-y;
 }
 [data-theme="dark"] #playerAdminScreen {
-    --pa-hero-a: #07336f;
-    --pa-hero-b: #0759bb;
-    --pa-action-a: #09366c;
-    --pa-action-b: #084a99;
-    --pa-bar: #409dff;
+    --pa-action: #163550;
+    --pa-bar: #84ccff;
+    --pa-chart: #55aaff;
     --pa-green: #58d7a8;
     --pa-amber: #e8a45d;
 }
+#playerAdminScreen.pa-ios { --pa-top-fallback: var(--tg-content-safe-area-inset-top, 56px); }
 #playerAdminScreen[hidden], .pa [hidden] { display: none; }
 .pa button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .pa button:focus-visible, .pa input:focus-visible, .pa summary:focus-visible { outline: 2px solid var(--pa-bar); outline-offset: 2px; }
@@ -32,10 +35,10 @@
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     align-items: center;
     gap: 10px;
-    padding: calc(8px + var(--safe-top, 0px)) 14px 10px;
+    padding: calc(12px + max(var(--pa-safe-top), var(--pa-top-fallback, 0px))) 0 12px;
     flex: none;
 }
-.pa-heading { margin: 0; font-size: clamp(21px, 5.8vw, 30px); font-weight: 790; letter-spacing: -.035em; outline: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pa-heading { margin: 0; font-size: clamp(21px, 5.8vw, 30px); font-weight: 790; letter-spacing: -.035em; text-align: center; outline: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pa .pa-icon-button {
     display: grid;
     place-items: center;
@@ -48,15 +51,14 @@
     color: var(--ui-text);
 }
 .pa .pa-back { position: static; margin: 0; color: var(--ui-text); }
-.pa .pa-icon-button.is-loading svg { opacity: .48; animation: pa-spin .8s linear infinite; }
-@keyframes pa-spin { to { transform: rotate(360deg); } }
+.pa .refresh-glyph svg { width: 100%; height: 100%; stroke-width: 2.2; }
+.pa .pa-icon-button.is-spinning .refresh-glyph { animation: ckSpin .7s cubic-bezier(.4,0,.2,1) infinite; }
 .pa-nav {
     --pa-tab: 0;
     flex: none;
     position: relative;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    width: min(calc(100% - 28px), 752px);
     margin-bottom: 10px;
     padding: 4px;
     background: var(--ui-track);
@@ -70,8 +72,7 @@
     inset: 4px auto 4px 4px;
     width: calc(25% - 2px);
     border-radius: var(--ui-pill);
-    background: linear-gradient(165deg, #147eff, #045cd3);
-    box-shadow: 0 3px 9px #004c9855, inset 0 1px 0 #ffffff3a;
+    background: var(--pa-sky);
     transform: translateX(calc(var(--pa-tab) * 100%));
     transition: transform var(--ui-slide) var(--cs-spring-soft, cubic-bezier(.25, 1.20, .4, 1));
     pointer-events: none;
@@ -95,10 +96,10 @@
 }
 .pa-nav-item svg { width: 17px; height: 17px; }
 .pa-nav-item .pa-controller-icon { width: 20px; height: 20px; }
-.pa .pa-nav-item[aria-pressed="true"] { color: #fff; }
+.pa .pa-nav-item[aria-pressed="true"] { color: var(--pa-sky-text); }
 .pa-nav.is-scrubbing .pa-nav-glider { transition: none; }
 .pa-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-.pa-frame { padding: 4px 14px calc(20px + var(--safe-bottom, 0px)); }
+.pa-frame { padding: 4px 0 calc(24px + var(--pa-safe-bottom)); }
 .pa-content, .pa-stack, .pa-timeline { display: grid; gap: 10px; }
 .pa-enter { animation: pa-enter .32s var(--ui-ease) both; }
 @keyframes pa-enter { from { opacity: .65; transform: translateY(9px) scale(.994); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -112,20 +113,18 @@
     gap: 12px;
     padding: 19px;
     border-radius: 22px;
-    color: #fff;
-    background: radial-gradient(ellipse at 92% 4%, #0a84ffab, transparent 63%), linear-gradient(120deg, var(--pa-hero-a), var(--pa-hero-b));
-    border: 1px solid #5aaaff82;
-    box-shadow: inset 0 1px 0 #ffffff25, 0 5px 16px #005ace20;
+    color: var(--pa-sky-text);
+    background: var(--pa-sky);
 }
 .pa-hero-main { display: grid; gap: 3px; }
 .pa-hero-label { font-size: 13px; font-weight: 690; }
 .pa-total { font-size: clamp(30px, 8.6vw, 46px); line-height: 1.05; letter-spacing: -.055em; font-weight: 830; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.pa .pa-hero-live { display: grid; grid-template-columns: auto 16px; align-items: center; gap: 4px 8px; padding: 10px 11px; min-width: 104px; border: 1px solid #a0caff5c; border-radius: 15px; background: #003f8e9c; text-align: left; }
-.pa-hero-live .pa-live { grid-column: 1 / -1; color: #fff; }
-.pa-hero-live .pa-live.is-live::before { background: #67f4bd; }
+.pa .pa-hero-live { display: grid; grid-template-columns: auto 16px; align-items: center; gap: 4px 8px; padding: 10px 11px; min-width: 104px; border-radius: 15px; background: #ffffff4d; text-align: left; }
+.pa-hero-live .pa-live { grid-column: 1 / -1; color: inherit; }
+.pa-hero-live .pa-live.is-live::before { background: #087553; }
 .pa-hero-live strong { font-size: 26px; line-height: 1.1; letter-spacing: -.045em; font-weight: 800; }
 .pa-hero-live svg { width: 16px; height: 16px; }
-.pa-hero-foot { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid #b5d9ff54; font-size: 12px; font-weight: 650; }
+.pa-hero-foot { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid #09274233; font-size: 12px; font-weight: 650; }
 .pa-live { display: inline-flex; align-items: center; gap: 6px; color: var(--ui-muted); font-size: 12px; font-weight: 700; line-height: 1.25; }
 .pa-live::before { content: ''; flex: 0 0 7px; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .pa-live.is-live { color: var(--pa-green); }
@@ -134,8 +133,8 @@
 .pa-metric span { font-size: 12px; color: var(--ui-muted); font-weight: 650; }
 .pa-metric-value { display: flex; align-items: center; gap: 7px; }
 .pa-metric strong { font-size: clamp(19px, 5.6vw, 26px); line-height: 1.1; font-weight: 790; letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.pa .pa-metric.is-action { color: #fff; background: linear-gradient(140deg, var(--pa-action-a), var(--pa-action-b)); border: 1px solid #55a5ff55; box-shadow: inset 0 1px 0 #ffffff20; }
-.pa-metric.is-action > span { color: #fff; }
+.pa .pa-metric.is-action { color: var(--pa-bar); background: var(--pa-action); }
+.pa-metric.is-action > span { color: inherit; }
 .pa-metric-value svg { width: 16px; height: 16px; margin-inline-start: auto; stroke-width: 2.2; }
 .pa .pa-link { display: inline-flex; align-items: center; gap: 3px; min-height: 34px; padding: 4px 0 4px 6px; background: transparent; color: var(--pa-bar); font-size: 12px; font-weight: 750; white-space: nowrap; }
 .pa-link svg { order: 1; width: 15px; height: 15px; }
@@ -143,9 +142,9 @@
 .pa-chart-info { display: block; margin-bottom: 8px; color: var(--ui-muted); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 650; }
 .pa-bars { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; height: 75px; align-items: end; touch-action: pan-y; }
 .pa .pa-column { display: flex; align-items: flex-end; width: 100%; height: 100%; padding: 0; border-radius: 4px; background: transparent; touch-action: pan-y; }
-.pa-column span { width: 100%; height: max(4px, var(--pa-height, 0%)); border-radius: 3px 3px 2px 2px; background: linear-gradient(#409aff, #0a6ded); opacity: .86; pointer-events: none; }
+.pa-column span { width: 100%; height: max(4px, var(--pa-height, 0%)); border-radius: 3px 3px 2px 2px; background: var(--pa-chart); pointer-events: none; }
 .pa .pa-column[aria-pressed="true"] { background: var(--ui-accent-soft); }
-.pa-column[aria-pressed="true"] span { background: linear-gradient(#72c4ff, #157aff); opacity: 1; }
+.pa-column[aria-pressed="true"] span { background: var(--pa-bar); }
 .pa-chart-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--ui-muted); margin-top: 6px; }
 .pa-controls { margin-bottom: 10px; }
 .pa-search { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 6px 0 12px; background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 15px; }
@@ -220,7 +219,7 @@
 
 @media (max-width: 365px) {
     .pa-header { gap: 6px; }
-    .pa .pa-nav-item { gap: 4px; font-size: 12px; }
+    .pa .pa-nav-item { gap: 4px; padding-inline: 2px; font-size: 12px; }
     .pa-nav-item svg { width: 14px; height: 14px; }
     .pa-nav-item .pa-controller-icon { width: 17px; height: 17px; }
     .pa-hero { padding: 14px; }
@@ -230,7 +229,7 @@
     .pa .pa-hero-live, .pa .pa-metric.is-action, .pa .pa-icon-button { transition: filter var(--ui-press) var(--ui-ease); }
     .pa .pa-hero-live:hover, .pa .pa-metric.is-action:hover, .pa .pa-icon-button:hover { filter: brightness(1.12); }
     .pa .pa-player-row:hover { background: var(--ui-accent-soft); }
-    .pa-column:hover span { opacity: 1; }
+    .pa-column:hover span { background: var(--pa-bar); }
 }
 @media (min-width: 590px) {
     .pa-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -239,6 +238,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
     #playerAdminScreen, .pa-nav-glider { transition: none; }
-    .pa-enter, .pa .pa-icon-button.is-loading svg { animation: none; }
+    .pa-enter, .pa .pa-icon-button.is-spinning .refresh-glyph { animation: none; }
 }
-body.lite-mode .pa-enter, body.lite-mode .pa .pa-icon-button.is-loading svg { animation: none; }
+body.lite-mode .pa-enter, body.lite-mode .pa .pa-icon-button.is-spinning .refresh-glyph { animation: none; }

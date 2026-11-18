@@ -10,7 +10,8 @@
     };
     const LABELS = { overview: 'Обзор', players: 'Игроки', matches: 'Матчи', feed: 'Журнал' };
     const ICONS = {
-        back: 'M14 6 8 12l6 6', arrow: 'm9 6 6 6-6 6', refresh: 'M20 7v5h-5M20 12a8 8 0 1 1-2-5.3L20 9',
+        back: 'M14 6 8 12l6 6', arrow: 'm9 6 6 6-6 6',
+        refresh: 'M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50',
         chart: 'M5 19v-5m5 5V9m5 10v-7m5 7V5', players: 'M16 20v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1m16 0v-1a4 4 0 0 0-3-3.9M13 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3-2.8a3 3 0 0 1 0 5.6',
         game: 'M7.5 6.3h9c2.2 0 3.6 1.5 4.1 3.8l1.2 5.5c.5 2.7-2.2 4.2-4 2.4l-2.3-2.3h-7L6.2 18c-1.8 1.8-4.5.3-4-2.4l1.2-5.5c.5-2.3 1.9-3.8 4.1-3.8Z',
         list: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01',
@@ -61,6 +62,16 @@
         const path = document.createElementNS(namespace, 'path');
         path.setAttribute('d', ICONS[name] || ICONS.bolt);
         svg.append(path);
+        if (name === 'refresh') {
+            const arrows = document.createElementNS(namespace, 'path');
+            arrows.setAttribute('d', 'M19.03 9.49L19.28 5.89L15.45 9.11ZM4.97 14.51L4.72 18.11L8.55 14.89Z');
+            arrows.setAttribute('fill', 'currentColor');
+            arrows.setAttribute('stroke-width', '.6');
+            svg.append(arrows);
+            const glyph = el('span', 'refresh-glyph');
+            glyph.append(svg);
+            return glyph;
+        }
         if (name === 'game') {
             svg.classList.add('pa-controller-icon');
             path.setAttribute('fill', 'currentColor');
@@ -201,6 +212,10 @@
         const heading = el('h1', 'pa-heading', 'Сводка игроков');
         heading.tabIndex = -1;
         const refresh = iconButton('refresh', 'Обновить', 'refresh');
+        const glyph = refresh.firstElementChild;
+        const stopSpin = () => refresh.classList.remove('is-spinning');
+        glyph.addEventListener('animationiteration', () => { if (!refresh.disabled) stopSpin(); });
+        glyph.addEventListener('animationcancel', stopSpin);
         header.append(back, heading, refresh);
         const nav = el('nav', 'pa-nav');
         nav.setAttribute('aria-label', 'Разделы сводки');
@@ -228,6 +243,7 @@
         announcement.setAttribute('role', 'status');
         frame.append(controls, content);
         scroll.append(frame);
+        screen.classList.toggle('pa-ios', root.Telegram?.WebApp?.platform === 'ios');
         screen.replaceChildren(header, nav, scroll, announcement);
 
         function updateChrome() {
@@ -260,7 +276,6 @@
             const current = new AbortController();
             controller = current;
             const selected = uid();
-            refresh.classList.add('is-loading');
             refresh.disabled = true;
             if (!quiet && !more) { error = ''; render(true); }
             try {
@@ -297,7 +312,7 @@
                 if (current === controller) {
                     controller = null;
                     refresh.disabled = false;
-                    refresh.classList.remove('is-loading');
+                    if (refresh.classList.contains('is-spinning') && getComputedStyle(glyph).animationName === 'none') stopSpin();
                 }
             }
         }
@@ -570,6 +585,7 @@
             navigate();
         }
         function refreshCurrent() {
+            refresh.classList.add('is-spinning');
             player = null;
             void load();
         }
@@ -595,6 +611,8 @@
             screen.classList.remove('visible');
             clearInterval(timer); clearTimeout(searchTimer);
             controller?.abort(); controller = null;
+            refresh.disabled = false;
+            stopSpin();
             data = player = null; trail = [];
             content.replaceChildren();
             document.getElementById('view-profile').inert = false;

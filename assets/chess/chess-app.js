@@ -187,9 +187,10 @@
     const NEW_SOUNDS = true;
     const Sound = {
         ctx: null, buffers: {}, loading: null,
-        names: ['move', 'move2', 'capture', 'castle', 'check', 'promote', 'start', 'win', 'lose', 'draw', 'lowtime', 'notify'],
+        names: ['move', 'move2', 'capture', 'castle', 'check', 'start', 'win', 'lose', 'draw', 'lowtime', 'notify'],
         // звуки тактильной доски: короткие и тихие, ложатся поверх записи хода
-        extra: ['pick', 'back', 'ui_tick', 'promo_open', 'morph', 'curtain', 'setup', 'tick', 'mate_rise', 'mate_hit', 'mate_tick', 'mate_fall', 'mate_out', 'pill', 'pill_win'],
+        extra: ['piece_pick', 'piece_return', 'piece_hover', 'pawn_morph', 'report_count', 'ui_tick', 'promo_open',
+            'curtain', 'setup', 'tick', 'mate_rise', 'mate_hit', 'mate_tick', 'mate_fall', 'mate_out', 'pill', 'pill_win'],
         unlock() {
             try {
                 const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -221,6 +222,7 @@
                 gain.gain.value = volume;
                 source.connect(gain).connect(this.ctx.destination);
                 source.start(delay > 0 ? this.ctx.currentTime + delay / 1000 : 0);
+                return source;
             } catch (_) {}
         },
     };
@@ -228,7 +230,7 @@
     /** at — через сколько мс фигура коснётся клетки: звук, вибрация и посадка — одно событие. */
     function playMoveSound(move, inCheck, at = 0) {
         at = Math.max(0, at - 22);   // в записи хода удар звучит через ~25 мс после начала файла
-        if (move.promotion) { Sound.play('move', 1, at); Sound.play('promote', 0.8, at + 90); }
+        if (move.promotion) Sound.play('move', 1, at);
         else if (move.flags.includes('k') || move.flags.includes('q')) { Sound.play('castle', 1, at); Sound.play('move2', 0.9, at + 110); }
         else if (move.captured) Sound.play('capture', 1, at);
         else Sound.play(Math.random() < 0.5 ? 'move' : 'move2', 1, at);
@@ -438,7 +440,10 @@
         window.addEventListener('resize', () => { if (screen.classList.contains('visible')) layout(); });
         document.addEventListener('keydown', onKey);
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) { hintToken++; engines.hint?.stop(); engines.review?.stop(); }
+            if (document.hidden) {
+                ui.dialog?.stopCount?.();
+                hintToken++; engines.hint?.stop(); engines.review?.stop();
+            }
             else if (screen.classList.contains('visible')) { scheduleHint(); scheduleReview(); }
         });
         if (typeof updateBackgroundPatterns === 'function') updateBackgroundPatterns();
@@ -553,7 +558,8 @@
     function setPieceCode(el, code, animate, fromCode = null) {
         el.dataset.code = code;
         const swap = () => paintPiece(el);
-        if (animate && fromCode && fx && !REDUCED_MOTION) { Sound.play('morph', 0.55); fx.morph(el, pieceUrl(fromCode), pieceUrl(code), swap); }
+        if (animate && fromCode) Sound.play('pawn_morph', 0.65);
+        if (animate && fromCode && fx && !REDUCED_MOTION) fx.morph(el, pieceUrl(fromCode), pieceUrl(code), swap);
         else swap();
     }
     /** kick — направление удара: взятую фигуру выбивает в эту сторону. */
@@ -992,7 +998,7 @@
             const keep = ui.selected === drag.sq;
             slide(drag.el, drag.sq, { dropped: true, drag: release, rest: keep ? SELECTED_FACE : null });
             if (keep) drag.el.classList.add('selected');
-            Sound.play('back', 0.6);
+            Sound.play('piece_return', 0.6);
             renderMarks();
         }
     }
@@ -1009,6 +1015,8 @@
     /* ---------- фигура в руке: пружина за пальцем и магнит клеток (chess-motion.js) ---------- */
     function startDrag(drag) {
         drag.active = true;
+        drag.over = drag.sq;
+        drag.lastHoverAt = -Infinity;
         const [x, y] = sqXY(drag.sq);
         const scale = drag.touch ? Motion.FEEL.liftTouch : Motion.FEEL.liftMouse;
         // фигура уже приподнята выбором — подъём продолжается с этой высоты, без рывка
@@ -1041,6 +1049,13 @@
         const py = Math.max(-0.1, Math.min(7.9, (event.clientY - rect.top - lift) / cell));
         drag.model.aim(px, py, drag.targets);
         const over = pointSq({ clientX: event.clientX, clientY: event.clientY - lift });
+        if (over !== drag.over) {
+            drag.over = over;
+            if (over && event.timeStamp - drag.lastHoverAt >= 50) {
+                drag.lastHoverAt = event.timeStamp;
+                Sound.play('piece_hover', 0.42);
+            }
+        }
         const hover = over && ui.targets.some(m => m.to === over) ? over : null;
         if (hover !== ui.hover) { ui.hover = hover; renderMarks(); if (hover) haptic('select'); }
     }
@@ -1227,7 +1242,7 @@
         ui.selected = sq;
         ui.targets = ui.preMode ? premoveTargets(sq) : game.chess.moves({ square: sq, verbose: true });
         const el = view.els.get(sq);
-        if (el && !el.classList.contains('selected')) { el.classList.add('selected'); Sound.play('pick', 0.7); }
+        if (el && !el.classList.contains('selected')) { el.classList.add('selected'); Sound.play('piece_pick', 0.7); }
         haptic('select');
         renderMarks();
     }
@@ -1303,7 +1318,7 @@
             if (ui.promo !== pending) return;
             ui.promo = null;
             if (kind) playMove({ from, to, promotion: kind }, { byUser: true, dropped: true });
-            else if (el?.isConnected) { slide(el, from); Sound.play('back', 0.6); }
+            else if (el?.isConnected) { slide(el, from); Sound.play('piece_return', 0.6); }
         });
     }
     /** Закрывает капсулу превращения без выбора (выход, конец партии). */
@@ -2007,10 +2022,7 @@
         renderMarks();
         renderMoveList();
         renderCoach();
-        if (ui.dialog?.kind === 'result') {
-            const box = refs.sheet.querySelector('[data-ref="report"]');
-            if (box) box.innerHTML = reportHtml();
-        }
+        if (ui.dialog?.kind === 'result') renderResultReport();
     }
 
     /** Разбор после партии: панель с оценкой показанного хода. */
@@ -2193,7 +2205,6 @@
     }
     /** Цифры точности в отчёте «набегают» от нуля, когда отчёт открывают впервые. */
     function countUp(root) {
-        if (REDUCED_MOTION) return;
         root.querySelectorAll('[data-count]').forEach(el => {
             const to = Number(el.dataset.count);
             if (!Number.isFinite(to)) return;
@@ -2205,6 +2216,40 @@
             };
             requestAnimationFrame(frame);
         });
+    }
+    function renderResultReport() {
+        const box = refs.sheet.querySelector('[data-ref="report"]');
+        if (!box) return;
+        const dialog = ui.dialog;
+        if (dialog.stopCount) {
+            // Новые оценки не должны прерывать первый показ графика.
+            dialog.reportPending = true;
+            return;
+        }
+        const fresh = !game.reportSeen && !REDUCED_MOTION;
+        box.innerHTML = reportHtml(fresh);
+        if (!fresh) return;
+        countUp(box);
+        const graph = box.querySelector('.cs-graph.is-fresh > svg');
+        if (!graph) return;
+        game.reportSeen = true;
+        let source;
+        const stop = dialog.stopCount = () => {
+            source?.stop();
+            source = null;
+        };
+        const finish = () => {
+            stop();
+            dialog.stopCount = null;
+            if (ui.dialog === dialog && dialog.reportPending) renderResultReport();
+        };
+        graph.addEventListener('animationstart', () => {
+            if (ui.dialog === dialog && graph.isConnected && !document.hidden) {
+                source = Sound.play('report_count', 0.75);
+            }
+        }, { once: true });
+        graph.addEventListener('animationend', finish, { once: true });
+        graph.addEventListener('animationcancel', finish, { once: true });
     }
     /** Значки классов у фигур: в партии — у двух последних ходов (свой и бота),
         при просмотре — у показанного хода. Значки не пересоздаются, чтобы не мигать. */
@@ -3298,6 +3343,7 @@
 
     /* ---------- шторки внутри экрана: подтверждение, итог, настройки ---------- */
     function openDialog(kind, html, { dismissable = true } = {}) {
+        ui.dialog?.stopCount?.();
         ui.dialog = { kind, dismissable };
         // Шапка с крестиком не прокручивается; содержимое листается внутри.
         refs.sheet.innerHTML = `<div class="cs-sheet-head${dismissable ? ' has-close' : ''}">${dismissable ? `<button class="ui-close cs-sheet-close" type="button" data-dlg="x" aria-label="${esc(tr('cancel'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button>` : ''}</div><div class="cs-sheet-body">${html}</div>`;
@@ -3310,6 +3356,7 @@
     function closeDialog(instant = false) {
         if (!refs.sheet) return;
         if (ui.talkHello) { ui.talkHello = false; setTimeout(sayHello, 420); }
+        ui.dialog?.stopCount?.();
         ui.dialog = null;
         refs.sheet.classList.remove('show');
         refs.scrim.classList.remove('show');
@@ -3330,8 +3377,6 @@
     function showResult() {
         if (!game?.over) return;
         const outcome = game.over;
-        const fresh = !game.reportSeen;   // первый показ: график рисуется, цифры набегают
-        game.reportSeen = true;
         const r = myResult(outcome);
         const icon = r === 'win' ? ICON.trophy : r === 'loss' ? ICON.broken : r === 'aborted' ? ICON.abort : r === 'draw' ? ICON.handshake : ICON.trophy;
         const iconClass = r === 'win' || r === 'white' || r === 'black' ? 'win' : r === 'loss' ? 'loss' : 'draw';
@@ -3344,7 +3389,7 @@
             <div class="cs-result-icon ${iconClass}">${icon}</div>
             <h2>${esc(resultTitle(outcome))}</h2>
             <p data-ref="resultReason">${esc(reasonText(outcome))}</p>
-            ${reviewOn() ? `<div class="cs-report" data-ref="report">${reportHtml(fresh)}</div>` : ''}
+            ${reviewOn() ? '<div class="cs-report" data-ref="report"></div>' : ''}
             <div class="cs-rating-chip" data-ref="resultRating" hidden></div>
             <p data-ref="resultNote" hidden></p>
             <div class="cs-sheet-actions">
@@ -3353,7 +3398,7 @@
                 <button type="button" class="cs-btn" data-dlg="menu">${esc(tr('menu'))}</button>
             </div>`);
         const sheet = refs.sheet;
-        if (fresh) countUp(sheet);
+        renderResultReport();
         sheet.querySelector('[data-dlg="review"]').onclick = () => { closeDialog(); if (reviewOn()) openReview(game.view ?? 1); };
         if (reviewOn() && !game.coach) { game.coach = true; renderCoach(); renderMarks(); }
         sheet.querySelector('[data-dlg="menu"]').onclick = () => { closeDialog(true); closeScreen(); openSheet(); };

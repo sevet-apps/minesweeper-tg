@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-liquid-glass-available="false">
 <head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-8WAGO5NU80wDIaid39pJmRSIEWxQQuQlo7DQoCUb968=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-0PgxZgAkV3Py6Mk6ZIHghzBlnU6fUCj/IeCUCt2aShM=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
@@ -6571,7 +6571,7 @@
                     if (entry.disabled) return;
                     entry.disabled = true;
                     try {
-                        await loadGameModuleFiles('player-admin', 'assets/ui/', '20261118', 'player-admin.css', ['player-admin.js']);
+                        await loadGameModuleFiles('player-admin', 'assets/ui/', '20261118.1', 'player-admin.css', ['player-admin.js']);
                         window.SparkPlayerAdmin.open({ endpoint, auth, entry, haptic: () => {
                             if (vibrationEnabled) tg.HapticFeedback?.selectionChanged?.();
                         } });
@@ -6580,7 +6580,7 @@
                 };
             }).catch(() => {}).finally(() => { delete entry.dataset.checking; });
         }
-        const CHESS_VERSION = '20261118';
+        const CHESS_VERSION = '20261118.1';
         let chessLoading = null;
         const loadChessFiles = () => loadGameModuleFiles('chess', 'assets/chess/', CHESS_VERSION, 'chess.css',
             ['chess-core.js', 'chess-i18n.js', 'chess-motion.js', 'chess-fx.js', 'chess-talk.js', 'chess-app.js']);
