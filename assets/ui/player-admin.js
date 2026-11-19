@@ -9,6 +9,14 @@
         ttt: ['Крестики-нолики'], rps: ['КНБ'], sea: ['Морской бой'],
     };
     const LABELS = { overview: 'Обзор', players: 'Игроки', matches: 'Матчи', feed: 'Журнал' };
+    const SECTIONS = {
+        games: 'Список игр', top: 'Топы', top_game: 'Рейтинг игры', tournaments: 'История турниров',
+        profile: 'Профиль', profile_stats: 'Статистика профиля', titles: 'Титулы', settings: 'Настройки',
+        language: 'Язык', privacy: 'Конфиденциальность', referrals: 'Реферальная программа', streak: 'Серия дней',
+        bb_menu: 'Меню Block Blast', chess_menu: 'Меню шахмат', nardy_menu: 'Меню нард', checkers_menu: 'Меню шашек',
+        sudoku_menu: 'Меню судоку', saper_menu: 'Меню сапёра', monopoly_menu: 'Меню «Монополии»',
+    };
+    const FEED_FILTERS = [['Все', 'all'], ['Разделы', 'sections'], ['Игры', 'games'], ['Матчи', 'matches'], ['Команды', 'inline']];
     const ICONS = {
         back: 'M14 6 8 12l6 6', arrow: 'm9 6 6 6-6 6',
         refresh: 'M5.24 10.19A7 7 0 0 1 17.36 7.50M18.76 13.81A7 7 0 0 1 6.64 16.50',
@@ -22,7 +30,8 @@
     };
     const EVENT_LABELS = {
         app_open: 'Открыл Spark', app_reconnect: 'Соединение восстановлено', app_hide: 'Свернул приложение', app_resume: 'Вернулся в Spark', app_close: 'Завершил сеанс',
-        connection_lost: 'Соединение прервалось', game_enter: 'Открыл игру', game_leave: 'Вышел из игры', game_switch: 'Переключил игру',
+        connection_lost: 'Соединение прервалось', section_enter: 'Открыл раздел', section_leave: 'Вышел из раздела',
+        game_enter: 'Открыл игру', game_leave: 'Вышел из игры', game_switch: 'Переключил игру',
         match_start: 'Начал матч', match_end: 'Завершил матч', match_disconnect: 'Потерял связь в матче', match_reconnect: 'Вернулся в матч',
         inline_command: 'Отправил inline-команду',
     };
@@ -44,6 +53,8 @@
     const relFmt = new Intl.RelativeTimeFormat('ru-RU', { numeric: 'auto' });
     const nf = value => nfmt.format(Math.max(0, Number(value) || 0));
     const gameName = key => GAMES[key]?.[0] || '';
+    const sectionName = key => Object.hasOwn(SECTIONS, key) ? SECTIONS[key] : '';
+    const placeName = live => gameName(live?.game) || sectionName(live?.section) || 'В Spark';
     const timeLabel = at => at ? shortTime.format(new Date(at)) : '—';
     const dateLabel = at => at ? dateFmt.format(new Date(at)) : '—';
     const dateKey = at => new Date(at).toDateString();
@@ -102,11 +113,12 @@
         return person?.display_name || person?.name || (person?.handle ? `@${person.handle}` : person?.uid ? `Игрок ${person.uid}` : person?.bot ? 'Бот' : 'Гость');
     }
     function duration(ms) {
-        if (!(Number(ms) >= 1000)) return '';
-        const min = Math.floor(ms / 60_000);
-        if (!min) return `${Math.floor(ms / 1000)} с`;
+        if (!(Number(ms) > 0)) return '';
+        const seconds = Math.floor(ms / 1000);
+        if (!seconds) return '<1 с';
+        const min = Math.floor(seconds / 60);
         const hours = Math.floor(min / 60);
-        return hours ? `${nf(hours)} ч ${min % 60 ? `${min % 60} мин` : ''}`.trim() : `${min} мин`;
+        return [hours && `${nf(hours)} ч`, min % 60 && `${min % 60} мин`, !hours && seconds % 60 && `${seconds % 60} с`].filter(Boolean).join(' ');
     }
     function recency(at) {
         if (!at) return 'Нет истории';
@@ -236,7 +248,7 @@
         const sortBar = el('div', 'pa-filters');
         sortBar.append(btn('Недавние', 'sort', 'recent'), btn('Новые', 'sort', 'new'), btn('Онлайн', 'sort', 'online'));
         const filterBar = el('div', 'pa-filters');
-        filterBar.append(btn('Все', 'filter', 'all'), btn('Матчи', 'filter', 'matches'), btn('Команды', 'filter', 'inline'));
+        filterBar.append(...FEED_FILTERS.map(([label, value]) => btn(label, 'filter', value)));
         controls.append(searchBox, sortBar, filterBar);
         const content = el('div', 'pa-content');
         const announcement = el('div', 'pa-sr');
@@ -283,7 +295,7 @@
                 const cursor = more ? data.next : null;
                 if (selected) {
                     const feedReq = request('feed', { uid: selected, kind: playerFilter, ...cursor }, current.signal);
-                    if (more || player?.uid === selected) next = await feedReq;
+                    if (more || (player?.uid === selected && !quiet)) next = await feedReq;
                     else {
                         const result = await Promise.all([request(`player/${selected}`, null, current.signal), feedReq]);
                         if (current !== controller) return;
@@ -328,8 +340,11 @@
             const desc = el('span', 'pa-player-text');
             desc.append(el('strong', '', labelOf(person)), el('small', '', person.handle ? `@${person.handle}` : `ID ${person.uid}`));
             const status = el('span', 'pa-player-status');
-            if (person.live) status.append(liveDot(gameName(person.live.game) || 'В приложении'));
-            else status.append(el('small', '', recency(person.last_at)));
+            if (person.live) {
+                status.append(liveDot(placeName(person.live)));
+                const liveDuration = duration(Date.now() - person.live.since);
+                if (liveDuration) status.append(el('small', '', liveDuration));
+            } else status.append(el('small', '', recency(person.last_at)));
             row.append(avatar(person), desc, status, icon('arrow'));
             return row;
         }
@@ -439,7 +454,8 @@
             const title = (row.kind === 'inline_command' ? INLINE_LABELS[row.details?.action] : '') || EVENT_LABELS[row.kind] || 'Игровое событие';
             const game = gameName(row.game);
             return row.kind === 'game_switch' && row.details?.previous
-                ? `${gameName(row.details.previous)} → ${game}` : [title, game].filter(Boolean).join(' · ');
+                ? `${gameName(row.details.previous)} → ${game}`
+                : [title, game || sectionName(row.details?.section)].filter(Boolean).join(' · ');
         }
         function timeline(rows, person = false) {
             const block = el('div', 'pa-timeline');
@@ -461,7 +477,13 @@
                 text.append(el('strong', '', eventTitle(row)));
                 const meta = row.details || {};
                 if (meta.peers?.length) text.append(peopleList(meta.peers));
-                const details = [RESULTS[meta.result], REASONS[meta.reason], duration(meta.duration_ms),
+                const time = duration(meta.duration_ms);
+                const active = duration(meta.active_ms);
+                const appTime = duration(meta.app_duration_ms);
+                const matchEvent = row.kind.startsWith('match_');
+                const details = [RESULTS[meta.result], REASONS[meta.reason],
+                    time && (row.game && !matchEvent ? `На экране игры ${time}` : time),
+                    active && `Активно ${active}`, appTime && `В Spark ${appTime}`,
                     (meta.source === 'inline' || row.kind === 'inline_command') ? chatLabel(meta.chat, meta.legacy ? 'Из прежней статистики' : 'Telegram не передал чат') : ''].filter(Boolean);
                 if (details.length) text.append(el('small', '', details.join(' · ')));
                 item.append(when, point, text);
@@ -471,12 +493,20 @@
         }
         function playerStats(person) {
             const source = person.stats || {};
+            const history = new Map((person.history?.games || []).map(row => [row.game, row]));
             const block = el('div', 'pa-card pa-game-stats');
             for (const game of Object.keys(GAMES)) {
                 const fields = (stats[game] || []).filter(([key, , unit]) => Number(source[key]) > 0 && !(unit && Number(source[key]) === 9999))
                     .map(([key, label, unit = '']) => `${label} ${nf(source[key])}${unit}`);
                 const play = duration(source[`playtime_${game}_ms`]);
-                if (play) fields.unshift(play);
+                if (play) fields.unshift(`За всё время ${play}`);
+                const sessions = history.get(game);
+                if (sessions) {
+                    const screenTime = duration(sessions.duration_ms);
+                    const active = duration(sessions.active_ms);
+                    fields.unshift(`Открытий ${nf(sessions.visits)}`,
+                        ...(screenTime ? [`На экране ${screenTime}`] : []), ...(active ? [`Активно ${active}`] : []));
+                }
                 for (const category of person.ratings?.[game] || []) {
                     fields.push(`${RATING_CATEGORIES[category.cat] || 'Рейтинг'} ${nf(category.rating)} · побед ${nf(category.wins)} из ${nf(category.games)}`);
                 }
@@ -488,6 +518,26 @@
             if (Number(source.referral_count) > 0) block.append(el('div', 'pa-meta pa-referrals', `Приглашено игроков · ${nf(source.referral_count)}`));
             return block;
         }
+        function renderVisitStats(history) {
+            if (!history || (!history.visits && !history.app_duration_ms && !history.sections?.length)) return;
+            const total = el('div', 'pa-card pa-session-total');
+            total.append(el('strong', '', `Визитов ${nf(history.visits)}`));
+            const appTime = duration(history.app_duration_ms);
+            if (appTime) total.append(el('span', '', `В Spark ${appTime}`));
+            content.append(sectionTitle('Посещения за 35 дней'), total);
+            if (!history.sections?.length) return;
+            const sections = el('div', 'pa-card pa-archive');
+            for (const item of history.sections) {
+                const label = sectionName(item.section);
+                if (!label) continue;
+                const row = el('div', 'pa-section-stat');
+                const time = duration(item.duration_ms);
+                row.append(el('strong', '', label),
+                    el('small', '', [`Открытий ${nf(item.visits)}`, time].filter(Boolean).join(' · ')));
+                sections.append(row);
+            }
+            if (sections.childElementCount) content.append(sectionTitle('Разделы за 35 дней'), sections);
+        }
         function renderPlayer() {
             heading.textContent = labelOf(player);
             heading.title = labelOf(player);
@@ -497,7 +547,9 @@
             const copy = iconButton('copy', 'Скопировать Telegram ID', 'copy');
             card.append(avatar(player), name, copy);
             const details = el('div', 'pa-identity-data');
-            details.append(liveDot(player.live ? (gameName(player.live.game) || 'В приложении') : 'Вне приложения', !!player.live));
+            const liveDuration = player.live && duration(Date.now() - player.live.since);
+            const status = player.live ? [placeName(player.live), liveDuration].filter(Boolean).join(' · ') : 'Вне приложения';
+            details.append(liveDot(status, !!player.live));
             const dates = el('dl', 'pa-dates');
             for (const [label, value] of [['Первый визит', player.first_at], ['Последнее событие', player.last_at]]) {
                 const wrap = el('div');
@@ -508,10 +560,11 @@
             card.append(details);
             content.append(card);
             if (player.active_matches?.length) content.append(sectionTitle('Текущие матчи'), matchCards(player.active_matches));
+            renderVisitStats(player.history);
             const rows = playerStats(player);
             if (rows.childElementCount) content.append(sectionTitle('Игровая статистика'), rows);
             const profileFilters = el('div', 'pa-filters');
-            for (const [label, value] of [['Все', 'all'], ['Матчи', 'matches'], ['Команды', 'inline']]) {
+            for (const [label, value] of FEED_FILTERS) {
                 const chip = btn(label, 'filter', value);
                 chip.setAttribute('aria-pressed', String(value === playerFilter));
                 profileFilters.append(chip);
@@ -590,8 +643,10 @@
             void load();
         }
         function poll() {
-            if (document.hidden || controller || uid() || !data || nav.classList.contains('is-scrubbing') || content.querySelector('.is-scrubbing')) return;
-            if (tab === 'overview' || tab === 'matches' && data.rows.length <= 25 || tab === 'players' && sort === 'online' && !query && data.rows.length <= 25) {
+            if (document.hidden || controller || !data || nav.classList.contains('is-scrubbing') || content.querySelector('.is-scrubbing')) return;
+            const firstPage = data.rows?.length <= 25 && scroll.scrollTop < 60;
+            if ((!uid() && tab === 'overview') || (firstPage && (uid() || tab === 'feed' || tab === 'matches' ||
+                (tab === 'players' && sort === 'online' && !query)))) {
                 void load({ quiet: true });
             }
         }

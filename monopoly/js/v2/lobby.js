@@ -555,6 +555,7 @@
         document.body.classList.remove('monopoly-pregame');
         $('#lobby').style.display = 'none';
         $('#game').style.display = '';
+        if (parent !== window) parent.postMessage({ type: 'spark-monopoly-playing' }, location.origin);
         setBackButton(false);
         if (mode === 'bots') {
             global.MONO_LOCAL = true;             // меню игрока показывает «Выйти»

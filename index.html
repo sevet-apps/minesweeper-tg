@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-liquid-glass-available="false">
 <head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-0PgxZgAkV3Py6Mk6ZIHghzBlnU6fUCj/IeCUCt2aShM=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-//kcPvQISjJ/EZzOhfe2DSFwB3UOQiOOeiYQ6xKa0iw=' 'sha256-ZTaB1lsJRI8cLsVy3L+j9ahq65SGwnDjCveEjnOpAHM=' 'sha256-j4zR/zmaKo5b6HDbR1jVI+rBu/75dGpg5g3f24o2rdQ=' 'sha256-63MReEQ6Dvy39Qpinu/d5GphrP4fjXJtYstqbM/a2ck=' https://telegram.org https://cdn.jsdelivr.net https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: https://spark-game-backend.onrender.com wss://spark-game-backend.onrender.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
@@ -3599,7 +3599,7 @@
     <script src="assets/ui/guide.js?v=2026110804" defer></script>
     <script src="assets/ui/liquid-glass.js?v=20261004-paused" defer></script>
     <script src="assets/ui/native-back.js?v=20261001"></script>
-    <script src="assets/ui/player-presence.js?v=20261118"></script>
+    <script src="assets/ui/player-presence.js?v=20261119"></script>
     <script src="assets/block-blast/hand.js?v=20261025"></script>
     <script src="assets/block-blast/motion.js?v=20261025"></script>
     <script src="assets/block-blast/picker.js?v=20261026"></script>
@@ -4853,7 +4853,7 @@
                 }, 1500);
             }
         });
-        const playerPresence = window.SparkPlayerPresence?.create(socket);
+        const playerPresence = window.SparkPlayerPresence?.create(socket, document, visitPlaytimeSnapshot);
         
         let onlineRoomCode = null;
         let onlineMyColor = null; // Для шашек
@@ -6571,7 +6571,7 @@
                     if (entry.disabled) return;
                     entry.disabled = true;
                     try {
-                        await loadGameModuleFiles('player-admin', 'assets/ui/', '20261118.1', 'player-admin.css', ['player-admin.js']);
+                        await loadGameModuleFiles('player-admin', 'assets/ui/', '20261119', 'player-admin.css', ['player-admin.js']);
                         window.SparkPlayerAdmin.open({ endpoint, auth, entry, haptic: () => {
                             if (vibrationEnabled) tg.HapticFeedback?.selectionChanged?.();
                         } });
@@ -6736,6 +6736,7 @@
             monopoly: 'playtime_monopoly_ms'
         });
         let activePlaytime = null;
+        const visitPlaytime = {};
         let playtimeSyncTimer = null;
         let playtimeIdleTimer = null;
         const PLAYTIME_IDLE_WINDOW_MS = 3 * 60 * 1000;
@@ -6810,13 +6811,12 @@
                 playtimeIdleTimer = null;
             }
             const now = Date.now();
-            let elapsed = Math.max(0, Number(activePlaytime.pendingMs) || 0);
-            if (activePlaytime.lastActionAt) {
-                elapsed += Math.max(0, Math.min(now - activePlaytime.lastActionAt, PLAYTIME_IDLE_WINDOW_MS));
-            }
+            const elapsed = pendingPlaytime(now);
             const totals = readPlaytime();
             if (elapsed > 0) {
-                totals[activePlaytime.game] = Math.round((Number(totals[activePlaytime.game]) || 0) + elapsed);
+                const game = activePlaytime.game;
+                visitPlaytime[game] = (visitPlaytime[game] || 0) + elapsed;
+                totals[game] = Math.round((Number(totals[game]) || 0) + elapsed);
                 writePlaytime(totals);
                 if (immediateSync) syncPlaytimeWithServer(totals, true);
                 else schedulePlaytimeSync(totals);
@@ -6858,6 +6858,7 @@
         }
         function beginGamePlaytime(game) {
             if (!PROFILE_GAMES[game]) return;
+            if (game === 'monopoly') playerPresence?.setMonopolyMenu(false);
             if (activePlaytime && activePlaytime.game === game) {
                 return;
             }
@@ -6871,17 +6872,23 @@
             activePlaytime = null;
             playerPresence?.setGame(null);
         }
+        function pendingPlaytime(now = Date.now()) {
+            const { pendingMs, lastActionAt } = activePlaytime;
+            return pendingMs + (lastActionAt ? Math.max(0, Math.min(now - lastActionAt, PLAYTIME_IDLE_WINDOW_MS)) : 0);
+        }
+        function visitPlaytimeSnapshot() {
+            const totals = { ...visitPlaytime };
+            if (activePlaytime) {
+                const game = activePlaytime.game;
+                totals[game] = (totals[game] || 0) + pendingPlaytime();
+            }
+            return totals;
+        }
         function playtimeSnapshot() {
             const totals = readPlaytime();
             if (activePlaytime) {
-                let elapsed = Math.max(0, Number(activePlaytime.pendingMs) || 0);
-                if (activePlaytime.lastActionAt) {
-                    elapsed += Math.max(0, Math.min(
-                        Date.now() - activePlaytime.lastActionAt,
-                        PLAYTIME_IDLE_WINDOW_MS
-                    ));
-                }
-                totals[activePlaytime.game] = (Number(totals[activePlaytime.game]) || 0) + elapsed;
+                const game = activePlaytime.game;
+                totals[game] = (Number(totals[game]) || 0) + pendingPlaytime();
             }
             return totals;
         }
@@ -6899,6 +6906,7 @@
             if (!activePlaytime) return;
             if (document.hidden) flushGamePlaytime(true, true);
         });
+        tg.onEvent?.('deactivated', () => flushGamePlaytime(true, true));
         document.addEventListener('pointerdown', event => {
             if (playtimeActionBelongsToActiveGame(event.target, false)) noteGamePlaytimeAction();
         }, true);
@@ -11631,12 +11639,13 @@
                 ? `&invite=${encodeURIComponent(window.__monoInviteRoom)}` : '';
             frame.src = `monopoly/index.html?v=${Date.now()}&safeTop=${safeTop}&safeBottom=${bottom}&desktop=${document.body.classList.contains('desktop') ? 1 : 0}&theme=${isDark ? 'dark' : 'light'}&lang=${encodeURIComponent(currentLang)}&server=${encodeURIComponent(API_BASE_URL)}${invite}${window.__monoDebug ? '&debug=1' : ''}`;
             document.getElementById('monopoly-game').classList.add('visible');
-            beginGamePlaytime('monopoly');
+            playerPresence?.setMonopolyMenu(true);
         }
 
         function closeMonopolyGame() {
             setMonopolyBackButton(false);
             document.getElementById('monopoly-game').classList.remove('visible');
+            playerPresence?.setMonopolyMenu(false);
             stopGamePlaytime('monopoly');
             // Unload the iframe so the game fully resets next open
             document.getElementById('monopolyFrame').src = 'about:blank';
@@ -11694,6 +11703,8 @@
             if (!data || typeof data !== 'object') return;
             if (data.type === 'subscription_required') {
                 window.dispatchEvent(new CustomEvent('spark-subscription-required', { detail: data }));
+            } else if (data.type === 'spark-monopoly-playing') {
+                if (document.getElementById('monopoly-game').classList.contains('visible')) beginGamePlaytime('monopoly');
             } else if (data.type === 'monopoly_back') {
                 // Монополия просит подменить служебную кнопку «Закрыть»
                 // на «Назад» (внутренние экраны лобби). Реальной кнопкой
